@@ -6,19 +6,26 @@ The `pkg` module provides functions for managing system packages. It automatical
 
 Installs one or more packages.
 
-*   **`packages`**: A string or a table of strings representing the packages to install.
+*   **`packages`**: A string representing a single package, or a Lua table of strings representing multiple packages to install.
 
 **Returns:**
 
 *   `true` on success, `false` on failure.
 *   The command's output (stdout and stderr).
 
-**Example:**
+**Examples:**
 
 ```lua
+-- Install a single package
 local success, output = pkg.install("htop")
 if not success then
   log.error("Failed to install htop: " .. output)
+end
+
+-- Install multiple packages
+local success, output = pkg.install({"htop", "git"})
+if not success then
+  log.error("Failed to install htop and git: " .. output)
 end
 ```
 
@@ -26,19 +33,26 @@ end
 
 Removes one or more packages.
 
-*   **`packages`**: A string or a table of strings representing the packages to remove.
+*   **`packages`**: A string representing a single package, or a Lua table of strings representing multiple packages to remove.
 
 **Returns:**
 
 *   `true` on success, `false` on failure.
 *   The command's output (stdout and stderr).
 
-**Example:**
+**Examples:**
 
 ```lua
+-- Remove a single package
 local success, output = pkg.remove("htop")
 if not success then
   log.error("Failed to remove htop: " .. output)
+end
+
+-- Remove multiple packages
+local success, output = pkg.remove({"htop", "git"})
+if not success then
+  log.error("Failed to remove htop and git: " .. output)
 end
 ```
 
