@@ -1,21 +1,28 @@
-site_name: Sloth Runner
-site_description: 'A fast and flexible task runner built with Go and Lua.'
+site_name: 🦥 Sloth Runner - Enterprise Task Orchestration Platform
+site_description: 'A powerful, flexible, and scalable task orchestration platform built with Go and Lua. Features state management, distributed agents, real-time monitoring, and enterprise-grade reliability.'
 site_author: 'Sloth Runner Team'
+site_url: 'https://sloth-runner.dev'
 
 # Repository
 repo_name: 'chalkan3/sloth-runner'
 repo_url: 'https://github.com/chalkan3/sloth-runner'
+edit_uri: 'edit/main/docs/'
 
 # Copyright
-copyright: 'Copyright &copy; 2024 Sloth Runner Team'
+copyright: 'Copyright &copy; 2024 Sloth Runner Team. All rights reserved.'
 
 # Theme
 theme:
   name: material
+  custom_dir: overrides
+  favicon: assets/favicon.png
+  logo: assets/logo.png
   palette:
     # Palette toggle for light mode
     - media: '(prefers-color-scheme: light)'
       scheme: default
+      primary: blue grey
+      accent: blue
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
@@ -23,144 +30,264 @@ theme:
     # Palette toggle for dark mode
     - media: '(prefers-color-scheme: dark)'
       scheme: slate
+      primary: blue grey
+      accent: blue
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
   features:
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.sections
+    - navigation.expand
+    - navigation.path
     - navigation.top
+    - navigation.footer
     - search.suggest
     - search.highlight
+    - search.share
+    - header.autohide
     - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.tooltips
+    - content.action.edit
+    - content.action.view
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+
+# Additional CSS and JS
+extra_css:
+  - stylesheets/extra.css
+  - stylesheets/termynal.css
+
+extra_javascript:
+  - javascripts/extra.js
+  - javascripts/termynal.js
 
 # Plugins
 plugins:
-  - search
+  - search:
+      lang: 
+        - en
+        - pt
+        - zh
+  - minify:
+      minify_html: true
+  - git-revision-date-localized:
+      type: date
+  - awesome-pages
 
 # Extensions
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
   - pymdownx.inlinehilite
   - pymdownx.snippets
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - attr_list
+  - md_in_html
   - admonition
+  - pymdownx.details
   - toc:
       permalink: true
+      title: Page contents
+  - footnotes
+  - pymdownx.critic
+  - pymdownx.caret
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
+
+# Social and extra info
+extra:
+  homepage: https://sloth-runner.dev
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/chalkan3/sloth-runner
+      name: GitHub Repository
+    - icon: fontawesome/brands/docker
+      link: https://hub.docker.com/r/slothrunner/sloth-runner
+      name: Docker Hub
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/sloth-runner
+      name: Discord Community
+  version:
+    provider: mike
+    default: stable
+  analytics:
+    provider: google
+    property: G-XXXXXXXXXX
+    feedback:
+      title: Was this page helpful?
+      ratings:
+        - icon: material/emoticon-happy-outline
+          name: This page was helpful
+          data: 1
+          note: >-
+            Thanks for your feedback!
+        - icon: material/emoticon-sad-outline
+          name: This page could be improved
+          data: 0
+          note: >-
+            Thanks for your feedback! Help us improve this page by
+            <a href="https://github.com/chalkan3/sloth-runner/issues/new/?title=[Feedback]+{title}+-+{url}" target="_blank" rel="noopener">telling us what you need</a>.
 
 # Navigation
 nav:
-  - 'Home': 'index.md'
-  - 'Português':
-    - 'Primeiros Passos':
-      - 'Tutorial': 'TUTORIAL.md'
-      - 'Instalação': 'pt/getting-started.md'
-      - 'Conceitos Essenciais': 'pt/core-concepts.md'
-    - 'Guia do Usuário':
-      - 'Comandos da CLI': 'pt/CLI.md'
-      - 'REPL Interativo': 'pt/repl.md'
-      - 'Recursos Avançados': 'pt/advanced-features.md'
-      - 'Exemplos': 'pt/advanced-examples.md'
-    - 'Master-Agent':
-      - 'Arquitetura': 'en/master-agent-architecture.md' # Needs translation
-      - 'Saída do Agente Aprimorada': 'en/enhanced-agent-output.md' # Needs translation
-      - 'Execução de Tarefas Distribuídas': 'pt/distributed.md'
-      - 'Agendador': 'pt/scheduler.md'
-    - 'API & Módulos':
-      - 'API Lua': 'LUA_API.md'
-      - 'Módulos':
-        - 'AWS': 'pt/modules/aws.md'
-        - 'Azure': 'pt/modules/azure.md'
-        - 'Data': 'pt/modules/data.md'
-        - 'DigitalOcean': 'pt/modules/digitalocean.md'
-        - 'Docker': 'pt/modules/docker.md'
-        - 'Exec': 'pt/modules/exec.md'
-        - 'FS': 'pt/modules/fs.md'
-        - 'GCP': 'pt/modules/gcp.md'
-        - 'Git': 'pt/modules/git.md'
-        - 'Log': 'pt/modules/log.md'
-        - 'Net': 'pt/modules/net.md'
-        - 'Notificações': 'pt/modules/notifications.md'
-        - 'Pulumi': 'pt/modules/pulumi.md'
-        - 'Python': 'pt/modules/python.md'
-        - 'Salt': 'pt/modules/salt.md'
-        - 'Terraform': 'pt/modules/terraform.md'
-    - 'Desenvolvimento':
-      - 'Testes': 'pt/testing.md'
-  - '中文':
-    - '入门':
-      - '教程': 'TUTORIAL.md'
-      - '安装': 'zh/getting-started.md'
-      - '核心概念': 'zh/core-concepts.md'
-    - '用户指南':
-      - 'CLI 命令': 'zh/CLI.md'
-      - '交互式 REPL': 'zh/repl.md'
-      - '高级功能': 'zh/advanced-features.md'
-      - '示例': 'zh/advanced-examples.md'
-    - 'Master-Agent':
-      - '架构': 'en/master-agent-architecture.md' # Needs translation
-      - '增强型代理输出': 'en/enhanced-agent-output.md' # Needs translation
-      - '分布式任务执行': 'zh/distributed.md'
-      - '调度器': 'zh/scheduler.md'
-    - 'API & 模块':
-      - 'Lua API': 'LUA_API.md'
-      - '模块':
-        - 'AWS': 'zh/modules/aws.md'
-        - 'Azure': 'zh/modules/azure.md'
-        - '数据': 'zh/modules/data.md'
-        - 'DigitalOcean': 'zh/modules/digitalocean.md'
-        - 'Docker': 'zh/modules/docker.md'
-        - '执行': 'zh/modules/exec.md'
-        - '文件系统': 'zh/modules/fs.md'
-        - 'GCP': 'zh/modules/gcp.md'
-        - 'Git': 'zh/modules/git.md'
-        - '日志': 'zh/modules/log.md'
-        - '网络': 'zh/modules/net.md'
-        - '通知': 'zh/modules/notifications.md'
-        - 'Pulumi': 'zh/modules/pulumi.md'
-        - 'Python': 'zh/modules/python.md'
-        - 'Salt': 'zh/modules/salt.md'
-        - 'Terraform': 'zh/modules/terraform.md'
-    - '开发':
-      - '测试': 'zh/testing.md'
-  - 'English':
-    - 'Getting Started':
-      - 'Tutorial': 'TUTORIAL.md'
-      - 'Installation': 'en/getting-started.md'
-      - 'Core Concepts': 'en/core-concepts.md'
-    - 'User Guide':
-      - 'CLI Commands': 'en/CLI.md'
-      - 'Interactive REPL': 'en/repl.md'
-      - 'Advanced Features': 'en/advanced-features.md'
-      - 'Examples': 'en/advanced-examples.md'
-    - 'Master-Agent':
-      - 'Architecture': 'en/master-agent-architecture.md'
-      - 'Enhanced Agent Output': 'en/enhanced-agent-output.md'
-      - 'Distributed Task Execution': 'en/distributed.md'
-      - 'Scheduler': 'en/scheduler.md'
-    - 'API & Modules':
-      - 'Lua API': 'LUA_API.md'
-      - 'Modules':
-        - 'AWS': 'en/modules/aws.md'
-        - 'Azure': 'en/modules/azure.md'
-        - 'Data': 'en/modules/data.md'
-        - 'DigitalOcean': 'en/modules/digitalocean.md'
-        - 'Docker': 'en/modules/docker.md'
-        - 'Exec': 'en/modules/exec.md'
-        - 'FS': 'en/modules/fs.md'
-        - 'GCP': 'en/modules/gcp.md'
-        - 'Git': 'en/modules/git.md'
-        - 'Log': 'en/modules/log.md'
-        - 'Net': 'en/modules/net.md'
-        - 'Notifications': 'en/modules/notifications.md'
-        - 'Pulumi': 'en/modules/pulumi.md'
-        - 'Python': 'en/modules/python.md'
-        - 'Salt': 'en/modules/salt.md'
-        - 'Pkg': 'en/modules/pkg.md'
-        - 'Terraform': 'en/modules/terraform.md'
-    - 'Development':
-      - 'Testing': 'en/testing.md'
+  - '🏠 Home': 'index.md'
+  - '🚀 Quick Start': 'TUTORIAL.md'
+  - '🇺🇸 English':
+    - '📚 Getting Started':
+      - '🛠️ Installation': 'en/getting-started.md'
+      - '🧠 Core Concepts': 'en/core-concepts.md'
+      - '⚡ Quick Tutorial': 'en/quick-start.md'
+    - '📖 User Guide':
+      - '💻 CLI Commands': 'en/CLI.md'
+      - '🔄 Interactive REPL': 'en/repl.md'
+      - '🎯 Advanced Features': 'en/advanced-features.md'
+      - '📝 Examples': 'en/advanced-examples.md'
+    - '🌐 Distributed System':
+      - '🏗️ Master-Agent Architecture': 'en/master-agent-architecture.md'
+      - '🤖 Agent Management': 'en/agent-management.md'
+      - '📊 Enhanced Agent Output': 'en/enhanced-agent-output.md'
+      - '🔄 Distributed Task Execution': 'en/distributed.md'
+      - '⏰ Task Scheduler': 'en/scheduler.md'
+      - '🚀 Agent Improvements': 'en/agent-improvements.md'
+    - '🔧 API & Modules':
+      - '🌙 Lua API Overview': 'en/lua-api-overview.md'
+      - '📦 Built-in Modules':
+        - '💾 State Management': 'en/modules/state.md'
+        - '📊 Metrics & Monitoring': 'en/modules/metrics.md'
+        - '⚡ Exec': 'en/modules/exec.md'
+        - '📁 File System': 'en/modules/fs.md'
+        - '📡 Network': 'en/modules/net.md'
+        - '📋 Data Processing': 'en/modules/data.md'
+        - '📝 Logging': 'en/modules/log.md'
+        - '🐙 Git': 'en/modules/git.md'
+        - '🐍 Python': 'en/modules/python.md'
+      - '☁️ Cloud Providers':
+        - '☁️ AWS': 'en/modules/aws.md'
+        - '🔷 Azure': 'en/modules/azure.md'
+        - '🌩️ GCP': 'en/modules/gcp.md'
+        - '🌊 DigitalOcean': 'en/modules/digitalocean.md'
+      - '🛠️ Infrastructure':
+        - '🐳 Docker': 'en/modules/docker.md'
+        - '🏗️ Pulumi': 'en/modules/pulumi.md'
+        - '🌍 Terraform': 'en/modules/terraform.md'
+        - '🧂 SaltStack': 'en/modules/salt.md'
+        - '📦 Package Manager': 'en/modules/pkg.md'
+        - '🔔 Notifications': 'en/modules/notifications.md'
+    - '🧪 Development':
+      - '🧪 Testing': 'en/testing.md'
+      - '🔌 Plugin Development': 'en/plugin-development.md'
+      - '🤝 Contributing': 'en/contributing.md'
+  - '🇧🇷 Português':
+    - '📚 Primeiros Passos':
+      - '🛠️ Instalação': 'pt/getting-started.md'
+      - '🧠 Conceitos Fundamentais': 'pt/core-concepts.md'
+      - '⚡ Tutorial Rápido': 'pt/quick-start.md'
+    - '📖 Guia do Usuário':
+      - '💻 Comandos CLI': 'pt/CLI.md'
+      - '🔄 REPL Interativo': 'pt/repl.md'
+      - '🎯 Recursos Avançados': 'pt/advanced-features.md'
+      - '📝 Exemplos': 'pt/advanced-examples.md'
+    - '🌐 Sistema Distribuído':
+      - '🏗️ Arquitetura Master-Agent': 'pt/master-agent-architecture.md'
+      - '🤖 Gerenciamento de Agentes': 'pt/agent-management.md'
+      - '📊 Saída Aprimorada dos Agentes': 'pt/enhanced-agent-output.md'
+      - '🔄 Execução Distribuída de Tarefas': 'pt/distributed.md'
+      - '⏰ Agendador de Tarefas': 'pt/scheduler.md'
+      - '🚀 Melhorias dos Agentes': 'pt/agent-improvements.md'
+    - '🔧 API & Módulos':
+      - '🌙 Visão Geral da API Lua': 'pt/lua-api-overview.md'
+      - '📦 Módulos Integrados':
+        - '💾 Gerenciamento de Estado': 'pt/modules/state.md'
+        - '📊 Métricas e Monitoramento': 'pt/modules/metrics.md'
+        - '⚡ Exec': 'pt/modules/exec.md'
+        - '📁 Sistema de Arquivos': 'pt/modules/fs.md'
+        - '📡 Rede': 'pt/modules/net.md'
+        - '📋 Processamento de Dados': 'pt/modules/data.md'
+        - '📝 Logs': 'pt/modules/log.md'
+        - '🐙 Git': 'pt/modules/git.md'
+        - '🐍 Python': 'pt/modules/python.md'
+      - '☁️ Provedores de Nuvem':
+        - '☁️ AWS': 'pt/modules/aws.md'
+        - '🔷 Azure': 'pt/modules/azure.md'
+        - '🌩️ GCP': 'pt/modules/gcp.md'
+        - '🌊 DigitalOcean': 'pt/modules/digitalocean.md'
+      - '🛠️ Infraestrutura':
+        - '🐳 Docker': 'pt/modules/docker.md'
+        - '🏗️ Pulumi': 'pt/modules/pulumi.md'
+        - '🌍 Terraform': 'pt/modules/terraform.md'
+        - '🧂 SaltStack': 'pt/modules/salt.md'
+        - '📦 Gerenciador de Pacotes': 'pt/modules/pkg.md'
+        - '🔔 Notificações': 'pt/modules/notifications.md'
+    - '🧪 Desenvolvimento':
+      - '🧪 Testes': 'pt/testing.md'
+      - '🔌 Desenvolvimento de Plugins': 'pt/plugin-development.md'
+      - '🤝 Contribuindo': 'pt/contributing.md'
+  - '🇨🇳 中文':
+    - '📚 入门指南':
+      - '🛠️ 安装': 'zh/getting-started.md'
+      - '🧠 核心概念': 'zh/core-concepts.md'
+      - '⚡ 快速教程': 'zh/quick-start.md'
+    - '📖 用户指南':
+      - '💻 CLI 命令': 'zh/CLI.md'
+      - '🔄 交互式 REPL': 'zh/repl.md'
+      - '🎯 高级功能': 'zh/advanced-features.md'
+      - '📝 示例': 'zh/advanced-examples.md'
+    - '🌐 分布式系统':
+      - '🏗️ Master-Agent 架构': 'zh/master-agent-architecture.md'
+      - '🤖 代理管理': 'zh/agent-management.md'
+      - '📊 增强代理输出': 'zh/enhanced-agent-output.md'
+      - '🔄 分布式任务执行': 'zh/distributed.md'
+      - '⏰ 任务调度器': 'zh/scheduler.md'
+      - '🚀 代理改进': 'zh/agent-improvements.md'
+    - '🔧 API & 模块':
+      - '🌙 Lua API 概览': 'zh/lua-api-overview.md'
+      - '📦 内置模块':
+        - '💾 状态管理': 'zh/modules/state.md'
+        - '📊 指标和监控': 'zh/modules/metrics.md'
+        - '⚡ 执行': 'zh/modules/exec.md'
+        - '📁 文件系统': 'zh/modules/fs.md'
+        - '📡 网络': 'zh/modules/net.md'
+        - '📋 数据处理': 'zh/modules/data.md'
+        - '📝 日志': 'zh/modules/log.md'
+        - '🐙 Git': 'zh/modules/git.md'
+        - '🐍 Python': 'zh/modules/python.md'
+      - '☁️ 云服务提供商':
+        - '☁️ AWS': 'zh/modules/aws.md'
+        - '🔷 Azure': 'zh/modules/azure.md'
+        - '🌩️ GCP': 'zh/modules/gcp.md'
+        - '🌊 DigitalOcean': 'zh/modules/digitalocean.md'
+      - '🛠️ 基础设施':
+        - '🐳 Docker': 'zh/modules/docker.md'
+        - '🏗️ Pulumi': 'zh/modules/pulumi.md'
+        - '🌍 Terraform': 'zh/modules/terraform.md'
+        - '🧂 SaltStack': 'zh/modules/salt.md'
+        - '📦 包管理器': 'zh/modules/pkg.md'
+        - '🔔 通知': 'zh/modules/notifications.md'
+    - '🧪 开发':
+      - '🧪 测试': 'zh/testing.md'
+      - '🔌 插件开发': 'zh/plugin-development.md'
+      - '🤝 贡献': 'zh/contributing.md'
 
 # Docs directory
+docs_dir: docs
 docs_dir: docs

@@ -621,74 +621,6 @@ func (x *ExecuteCommandRequest) GetCommand() string {
 	return ""
 }
 
-type ExecuteCommandResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	Stdout        string                 `protobuf:"bytes,2,opt,name=stdout,proto3" json:"stdout,omitempty"`
-	Stderr        string                 `protobuf:"bytes,3,opt,name=stderr,proto3" json:"stderr,omitempty"`
-	Error         string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *ExecuteCommandResponse) Reset() {
-	*x = ExecuteCommandResponse{}
-	mi := &file_proto_agent_proto_msgTypes[12]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *ExecuteCommandResponse) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*ExecuteCommandResponse) ProtoMessage() {}
-
-func (x *ExecuteCommandResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_agent_proto_msgTypes[12]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use ExecuteCommandResponse.ProtoReflect.Descriptor instead.
-func (*ExecuteCommandResponse) Descriptor() ([]byte, []int) {
-	return file_proto_agent_proto_rawDescGZIP(), []int{12}
-}
-
-func (x *ExecuteCommandResponse) GetSuccess() bool {
-	if x != nil {
-		return x.Success
-	}
-	return false
-}
-
-func (x *ExecuteCommandResponse) GetStdout() string {
-	if x != nil {
-		return x.Stdout
-	}
-	return ""
-}
-
-func (x *ExecuteCommandResponse) GetStderr() string {
-	if x != nil {
-		return x.Stderr
-	}
-	return ""
-}
-
-func (x *ExecuteCommandResponse) GetError() string {
-	if x != nil {
-		return x.Error
-	}
-	return ""
-}
-
 type RunCommandRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Command       string                 `protobuf:"bytes,1,opt,name=command,proto3" json:"command,omitempty"`
@@ -698,7 +630,7 @@ type RunCommandRequest struct {
 
 func (x *RunCommandRequest) Reset() {
 	*x = RunCommandRequest{}
-	mi := &file_proto_agent_proto_msgTypes[13]
+	mi := &file_proto_agent_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -710,7 +642,7 @@ func (x *RunCommandRequest) String() string {
 func (*RunCommandRequest) ProtoMessage() {}
 
 func (x *RunCommandRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_agent_proto_msgTypes[13]
+	mi := &file_proto_agent_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -723,7 +655,7 @@ func (x *RunCommandRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunCommandRequest.ProtoReflect.Descriptor instead.
 func (*RunCommandRequest) Descriptor() ([]byte, []int) {
-	return file_proto_agent_proto_rawDescGZIP(), []int{13}
+	return file_proto_agent_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *RunCommandRequest) GetCommand() string {
@@ -733,31 +665,33 @@ func (x *RunCommandRequest) GetCommand() string {
 	return ""
 }
 
-type RunCommandResponse struct {
+// New message for streaming output
+type StreamOutputResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	Stdout        string                 `protobuf:"bytes,2,opt,name=stdout,proto3" json:"stdout,omitempty"`
-	Stderr        string                 `protobuf:"bytes,3,opt,name=stderr,proto3" json:"stderr,omitempty"`
-	Error         string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	StdoutChunk   string                 `protobuf:"bytes,1,opt,name=stdout_chunk,json=stdoutChunk,proto3" json:"stdout_chunk,omitempty"`
+	StderrChunk   string                 `protobuf:"bytes,2,opt,name=stderr_chunk,json=stderrChunk,proto3" json:"stderr_chunk,omitempty"`
+	Finished      bool                   `protobuf:"varint,3,opt,name=finished,proto3" json:"finished,omitempty"`
+	ExitCode      int32                  `protobuf:"varint,4,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
+	Error         string                 `protobuf:"bytes,5,opt,name=error,proto3" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RunCommandResponse) Reset() {
-	*x = RunCommandResponse{}
-	mi := &file_proto_agent_proto_msgTypes[14]
+func (x *StreamOutputResponse) Reset() {
+	*x = StreamOutputResponse{}
+	mi := &file_proto_agent_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RunCommandResponse) String() string {
+func (x *StreamOutputResponse) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RunCommandResponse) ProtoMessage() {}
+func (*StreamOutputResponse) ProtoMessage() {}
 
-func (x *RunCommandResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_agent_proto_msgTypes[14]
+func (x *StreamOutputResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -768,33 +702,40 @@ func (x *RunCommandResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RunCommandResponse.ProtoReflect.Descriptor instead.
-func (*RunCommandResponse) Descriptor() ([]byte, []int) {
-	return file_proto_agent_proto_rawDescGZIP(), []int{14}
+// Deprecated: Use StreamOutputResponse.ProtoReflect.Descriptor instead.
+func (*StreamOutputResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{13}
 }
 
-func (x *RunCommandResponse) GetSuccess() bool {
+func (x *StreamOutputResponse) GetStdoutChunk() string {
 	if x != nil {
-		return x.Success
+		return x.StdoutChunk
+	}
+	return ""
+}
+
+func (x *StreamOutputResponse) GetStderrChunk() string {
+	if x != nil {
+		return x.StderrChunk
+	}
+	return ""
+}
+
+func (x *StreamOutputResponse) GetFinished() bool {
+	if x != nil {
+		return x.Finished
 	}
 	return false
 }
 
-func (x *RunCommandResponse) GetStdout() string {
+func (x *StreamOutputResponse) GetExitCode() int32 {
 	if x != nil {
-		return x.Stdout
+		return x.ExitCode
 	}
-	return ""
+	return 0
 }
 
-func (x *RunCommandResponse) GetStderr() string {
-	if x != nil {
-		return x.Stderr
-	}
-	return ""
-}
-
-func (x *RunCommandResponse) GetError() string {
+func (x *StreamOutputResponse) GetError() string {
 	if x != nil {
 		return x.Error
 	}
@@ -810,7 +751,7 @@ type HeartbeatRequest struct {
 
 func (x *HeartbeatRequest) Reset() {
 	*x = HeartbeatRequest{}
-	mi := &file_proto_agent_proto_msgTypes[15]
+	mi := &file_proto_agent_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -822,7 +763,7 @@ func (x *HeartbeatRequest) String() string {
 func (*HeartbeatRequest) ProtoMessage() {}
 
 func (x *HeartbeatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_agent_proto_msgTypes[15]
+	mi := &file_proto_agent_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -835,7 +776,7 @@ func (x *HeartbeatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatRequest.ProtoReflect.Descriptor instead.
 func (*HeartbeatRequest) Descriptor() ([]byte, []int) {
-	return file_proto_agent_proto_rawDescGZIP(), []int{15}
+	return file_proto_agent_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *HeartbeatRequest) GetAgentName() string {
@@ -855,7 +796,7 @@ type HeartbeatResponse struct {
 
 func (x *HeartbeatResponse) Reset() {
 	*x = HeartbeatResponse{}
-	mi := &file_proto_agent_proto_msgTypes[16]
+	mi := &file_proto_agent_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -867,7 +808,7 @@ func (x *HeartbeatResponse) String() string {
 func (*HeartbeatResponse) ProtoMessage() {}
 
 func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_agent_proto_msgTypes[16]
+	mi := &file_proto_agent_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -880,7 +821,7 @@ func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatResponse.ProtoReflect.Descriptor instead.
 func (*HeartbeatResponse) Descriptor() ([]byte, []int) {
-	return file_proto_agent_proto_rawDescGZIP(), []int{16}
+	return file_proto_agent_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *HeartbeatResponse) GetSuccess() bool {
@@ -940,37 +881,33 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\x15ExecuteCommandRequest\x12\x1d\n" +
 	"\n" +
 	"agent_name\x18\x01 \x01(\tR\tagentName\x12\x18\n" +
-	"\acommand\x18\x02 \x01(\tR\acommand\"x\n" +
-	"\x16ExecuteCommandResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x16\n" +
-	"\x06stdout\x18\x02 \x01(\tR\x06stdout\x12\x16\n" +
-	"\x06stderr\x18\x03 \x01(\tR\x06stderr\x12\x14\n" +
-	"\x05error\x18\x04 \x01(\tR\x05error\"-\n" +
+	"\acommand\x18\x02 \x01(\tR\acommand\"-\n" +
 	"\x11RunCommandRequest\x12\x18\n" +
-	"\acommand\x18\x01 \x01(\tR\acommand\"t\n" +
-	"\x12RunCommandResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x16\n" +
-	"\x06stdout\x18\x02 \x01(\tR\x06stdout\x12\x16\n" +
-	"\x06stderr\x18\x03 \x01(\tR\x06stderr\x12\x14\n" +
-	"\x05error\x18\x04 \x01(\tR\x05error\"1\n" +
+	"\acommand\x18\x01 \x01(\tR\acommand\"\xab\x01\n" +
+	"\x14StreamOutputResponse\x12!\n" +
+	"\fstdout_chunk\x18\x01 \x01(\tR\vstdoutChunk\x12!\n" +
+	"\fstderr_chunk\x18\x02 \x01(\tR\vstderrChunk\x12\x1a\n" +
+	"\bfinished\x18\x03 \x01(\bR\bfinished\x12\x1b\n" +
+	"\texit_code\x18\x04 \x01(\x05R\bexitCode\x12\x14\n" +
+	"\x05error\x18\x05 \x01(\tR\x05error\"1\n" +
 	"\x10HeartbeatRequest\x12\x1d\n" +
 	"\n" +
 	"agent_name\x18\x01 \x01(\tR\tagentName\"G\n" +
 	"\x11HeartbeatResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage2\xcd\x01\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage2\xd1\x01\n" +
 	"\x05Agent\x12D\n" +
-	"\vExecuteTask\x12\x19.agent.ExecuteTaskRequest\x1a\x1a.agent.ExecuteTaskResponse\x12A\n" +
+	"\vExecuteTask\x12\x19.agent.ExecuteTaskRequest\x1a\x1a.agent.ExecuteTaskResponse\x12E\n" +
 	"\n" +
-	"RunCommand\x12\x18.agent.RunCommandRequest\x1a\x19.agent.RunCommandResponse\x12;\n" +
+	"RunCommand\x12\x18.agent.RunCommandRequest\x1a\x1b.agent.StreamOutputResponse0\x01\x12;\n" +
 	"\bShutdown\x12\x16.agent.ShutdownRequest\x1a\x17.agent.ShutdownResponse2\xed\x02\n" +
 	"\rAgentRegistry\x12J\n" +
 	"\rRegisterAgent\x12\x1b.agent.RegisterAgentRequest\x1a\x1c.agent.RegisterAgentResponse\x12A\n" +
 	"\n" +
 	"ListAgents\x12\x18.agent.ListAgentsRequest\x1a\x19.agent.ListAgentsResponse\x12>\n" +
 	"\tStopAgent\x12\x17.agent.StopAgentRequest\x1a\x18.agent.StopAgentResponse\x12M\n" +
-	"\x0eExecuteCommand\x12\x1c.agent.ExecuteCommandRequest\x1a\x1d.agent.ExecuteCommandResponse\x12>\n" +
-	"\tHeartbeat\x12\x17.agent.HeartbeatRequest\x1a\x18.agent.HeartbeatResponseB(Z&github.com/chalkan3/sloth-runner/protob\x06proto3"
+	"\x0eExecuteCommand\x12\x1c.agent.ExecuteCommandRequest\x1a\x1b.agent.StreamOutputResponse0\x01\x12>\n" +
+	"\tHeartbeat\x12\x17.agent.HeartbeatRequest\x1a\x18.agent.HeartbeatResponseB\tZ\a./protob\x06proto3"
 
 var (
 	file_proto_agent_proto_rawDescOnce sync.Once
@@ -984,44 +921,43 @@ func file_proto_agent_proto_rawDescGZIP() []byte {
 	return file_proto_agent_proto_rawDescData
 }
 
-var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_proto_agent_proto_goTypes = []any{
-	(*ShutdownRequest)(nil),        // 0: agent.ShutdownRequest
-	(*ShutdownResponse)(nil),       // 1: agent.ShutdownResponse
-	(*ExecuteTaskRequest)(nil),     // 2: agent.ExecuteTaskRequest
-	(*ExecuteTaskResponse)(nil),    // 3: agent.ExecuteTaskResponse
-	(*RegisterAgentRequest)(nil),   // 4: agent.RegisterAgentRequest
-	(*RegisterAgentResponse)(nil),  // 5: agent.RegisterAgentResponse
-	(*AgentInfo)(nil),              // 6: agent.AgentInfo
-	(*ListAgentsRequest)(nil),      // 7: agent.ListAgentsRequest
-	(*ListAgentsResponse)(nil),     // 8: agent.ListAgentsResponse
-	(*StopAgentRequest)(nil),       // 9: agent.StopAgentRequest
-	(*StopAgentResponse)(nil),      // 10: agent.StopAgentResponse
-	(*ExecuteCommandRequest)(nil),  // 11: agent.ExecuteCommandRequest
-	(*ExecuteCommandResponse)(nil), // 12: agent.ExecuteCommandResponse
-	(*RunCommandRequest)(nil),      // 13: agent.RunCommandRequest
-	(*RunCommandResponse)(nil),     // 14: agent.RunCommandResponse
-	(*HeartbeatRequest)(nil),       // 15: agent.HeartbeatRequest
-	(*HeartbeatResponse)(nil),      // 16: agent.HeartbeatResponse
+	(*ShutdownRequest)(nil),       // 0: agent.ShutdownRequest
+	(*ShutdownResponse)(nil),      // 1: agent.ShutdownResponse
+	(*ExecuteTaskRequest)(nil),    // 2: agent.ExecuteTaskRequest
+	(*ExecuteTaskResponse)(nil),   // 3: agent.ExecuteTaskResponse
+	(*RegisterAgentRequest)(nil),  // 4: agent.RegisterAgentRequest
+	(*RegisterAgentResponse)(nil), // 5: agent.RegisterAgentResponse
+	(*AgentInfo)(nil),             // 6: agent.AgentInfo
+	(*ListAgentsRequest)(nil),     // 7: agent.ListAgentsRequest
+	(*ListAgentsResponse)(nil),    // 8: agent.ListAgentsResponse
+	(*StopAgentRequest)(nil),      // 9: agent.StopAgentRequest
+	(*StopAgentResponse)(nil),     // 10: agent.StopAgentResponse
+	(*ExecuteCommandRequest)(nil), // 11: agent.ExecuteCommandRequest
+	(*RunCommandRequest)(nil),     // 12: agent.RunCommandRequest
+	(*StreamOutputResponse)(nil),  // 13: agent.StreamOutputResponse
+	(*HeartbeatRequest)(nil),      // 14: agent.HeartbeatRequest
+	(*HeartbeatResponse)(nil),     // 15: agent.HeartbeatResponse
 }
 var file_proto_agent_proto_depIdxs = []int32{
 	6,  // 0: agent.ListAgentsResponse.agents:type_name -> agent.AgentInfo
 	2,  // 1: agent.Agent.ExecuteTask:input_type -> agent.ExecuteTaskRequest
-	13, // 2: agent.Agent.RunCommand:input_type -> agent.RunCommandRequest
+	12, // 2: agent.Agent.RunCommand:input_type -> agent.RunCommandRequest
 	0,  // 3: agent.Agent.Shutdown:input_type -> agent.ShutdownRequest
 	4,  // 4: agent.AgentRegistry.RegisterAgent:input_type -> agent.RegisterAgentRequest
 	7,  // 5: agent.AgentRegistry.ListAgents:input_type -> agent.ListAgentsRequest
 	9,  // 6: agent.AgentRegistry.StopAgent:input_type -> agent.StopAgentRequest
 	11, // 7: agent.AgentRegistry.ExecuteCommand:input_type -> agent.ExecuteCommandRequest
-	15, // 8: agent.AgentRegistry.Heartbeat:input_type -> agent.HeartbeatRequest
+	14, // 8: agent.AgentRegistry.Heartbeat:input_type -> agent.HeartbeatRequest
 	3,  // 9: agent.Agent.ExecuteTask:output_type -> agent.ExecuteTaskResponse
-	14, // 10: agent.Agent.RunCommand:output_type -> agent.RunCommandResponse
+	13, // 10: agent.Agent.RunCommand:output_type -> agent.StreamOutputResponse
 	1,  // 11: agent.Agent.Shutdown:output_type -> agent.ShutdownResponse
 	5,  // 12: agent.AgentRegistry.RegisterAgent:output_type -> agent.RegisterAgentResponse
 	8,  // 13: agent.AgentRegistry.ListAgents:output_type -> agent.ListAgentsResponse
 	10, // 14: agent.AgentRegistry.StopAgent:output_type -> agent.StopAgentResponse
-	12, // 15: agent.AgentRegistry.ExecuteCommand:output_type -> agent.ExecuteCommandResponse
-	16, // 16: agent.AgentRegistry.Heartbeat:output_type -> agent.HeartbeatResponse
+	13, // 15: agent.AgentRegistry.ExecuteCommand:output_type -> agent.StreamOutputResponse
+	15, // 16: agent.AgentRegistry.Heartbeat:output_type -> agent.HeartbeatResponse
 	9,  // [9:17] is the sub-list for method output_type
 	1,  // [1:9] is the sub-list for method input_type
 	1,  // [1:1] is the sub-list for extension type_name
@@ -1040,7 +976,7 @@ func file_proto_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_agent_proto_rawDesc), len(file_proto_agent_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
