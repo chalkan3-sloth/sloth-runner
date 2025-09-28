@@ -1,4 +1,4 @@
-name: CI
+name: build-and-test
 
 on:
   push:
@@ -17,22 +17,37 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21.0'
+          go-version: '1.24.0'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential sqlite3 libsqlite3-dev
 
       - name: Install dependencies
         run: go mod tidy
         env:
           GOPROXY: "direct"
+          CGO_ENABLED: 1
 
       - name: Run tests with coverage
         run: go test -v ./... -coverprofile=coverage.out
+        env:
+          CGO_ENABLED: 1
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage.out
-
 
   build:
     name: Build
@@ -45,15 +60,49 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21.0'
+          go-version: '1.24.0'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential sqlite3 libsqlite3-dev
 
       - name: Install dependencies
         run: go mod tidy
         env:
           GOPROXY: "direct"
+          CGO_ENABLED: 1
 
-      - name: Build
-        run: go build -v ./cmd/sloth-runner
+      - name: Build for Linux AMD64
+        run: |
+          GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -v -o sloth-runner-linux-amd64 ./cmd/sloth-runner
+        env:
+          CC: gcc
+
+      - name: Build for Linux ARM64  
+        run: |
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=1 CC=aarch64-linux-gnu-gcc go build -v -o sloth-runner-linux-arm64 ./cmd/sloth-runner
+
+      - name: Build for macOS
+        run: |
+          GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -v -o sloth-runner-darwin-amd64 ./cmd/sloth-runner
+          GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -v -o sloth-runner-darwin-arm64 ./cmd/sloth-runner
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: |
+            sloth-runner-*
 
   changelog:
     name: Changelog
@@ -69,7 +118,20 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21.0'
+          go-version: '1.24.0'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential sqlite3 libsqlite3-dev
 
       - name: Run GoReleaser for changelog
         uses: goreleaser/goreleaser-action@v5
@@ -79,3 +141,4 @@ jobs:
         env:
           GOPROXY: "direct"
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CGO_ENABLED: 1
