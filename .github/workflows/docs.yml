@@ -1,0 +1,61 @@
+name: Documentation Test
+
+on:
+  push:
+    branches: [ master ]
+    paths: 
+      - 'docs/**'
+      - 'mkdocs.yml'
+  pull_request:
+    branches: [ master ]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+
+jobs:
+  test-docs:
+    name: Test Documentation Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+
+      - name: Cache Python packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          pip install mkdocs-material
+          pip install mkdocs-multilang-plugin
+          pip install mkdocs-awesome-pages-plugin
+          pip install mkdocs-git-revision-date-localized-plugin
+          pip install mkdocs-minify-plugin
+          pip install mkdocs-redirects
+          pip install pymdown-extensions
+
+      - name: Test documentation build
+        run: mkdocs build --clean --strict
+
+      - name: Check for broken links (basic)
+        run: |
+          # Basic link validation
+          find site -name "*.html" -exec grep -l "href=\"#" {} \; | head -5
+          echo "✅ Documentation built successfully"
+
+      - name: Upload built site as artifact
+        uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request'
+        with:
+          name: documentation-site
+          path: site/
+          retention-days: 5

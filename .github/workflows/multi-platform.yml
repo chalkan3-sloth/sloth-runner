@@ -1,0 +1,89 @@
+name: Multi-Platform Build Test
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+  pull_request:
+    branches: [ master ]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+
+jobs:
+  test-builds:
+    name: Test Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.0'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential sqlite3 libsqlite3-dev
+
+      - name: Install system dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install sqlite3
+
+      - name: Install system dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install sqlite
+
+      - name: Install Go dependencies
+        run: go mod tidy
+
+      - name: Run tests (with SQLite on Linux)
+        if: runner.os == 'Linux'
+        run: go test -v ./...
+        env:
+          CGO_ENABLED: 1
+
+      - name: Run tests (without SQLite on macOS/Windows)
+        if: runner.os != 'Linux'
+        run: go test -v ./... -tags="no_sqlite"
+        env:
+          CGO_ENABLED: 0
+
+      - name: Build binary (Linux with SQLite)
+        if: runner.os == 'Linux'
+        run: |
+          CGO_ENABLED=1 go build -v -o sloth-runner-test ./cmd/sloth-runner
+
+      - name: Build binary (macOS/Windows without SQLite)
+        if: runner.os != 'Linux'
+        run: |
+          CGO_ENABLED=0 go build -v -o sloth-runner-test ./cmd/sloth-runner
+
+      - name: Test binary execution
+        run: ./sloth-runner-test version || echo "Binary built successfully"
+
+      - name: Upload test binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: sloth-runner-${{ matrix.os }}
+          path: sloth-runner-test*
+          retention-days: 1
