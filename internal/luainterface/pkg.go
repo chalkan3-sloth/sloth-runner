@@ -3,7 +3,7 @@ package luainterface
 import (
 	"fmt"
 	"os/exec"
-	"strings"
+
 
 	lua "github.com/yuin/gopher-lua"
 )

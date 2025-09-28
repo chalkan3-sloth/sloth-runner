@@ -29,7 +29,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AgentClient interface {
 	ExecuteTask(ctx context.Context, in *ExecuteTaskRequest, opts ...grpc.CallOption) (*ExecuteTaskResponse, error)
-	RunCommand(ctx context.Context, in *RunCommandRequest, opts ...grpc.CallOption) (*RunCommandResponse, error)
+	RunCommand(ctx context.Context, in *RunCommandRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamOutputResponse], error)
 	Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error)
 }
 
@@ -51,15 +51,24 @@ func (c *agentClient) ExecuteTask(ctx context.Context, in *ExecuteTaskRequest, o
 	return out, nil
 }
 
-func (c *agentClient) RunCommand(ctx context.Context, in *RunCommandRequest, opts ...grpc.CallOption) (*RunCommandResponse, error) {
+func (c *agentClient) RunCommand(ctx context.Context, in *RunCommandRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamOutputResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(RunCommandResponse)
-	err := c.cc.Invoke(ctx, Agent_RunCommand_FullMethodName, in, out, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &Agent_ServiceDesc.Streams[0], Agent_RunCommand_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &grpc.GenericClientStream[RunCommandRequest, StreamOutputResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Agent_RunCommandClient = grpc.ServerStreamingClient[StreamOutputResponse]
 
 func (c *agentClient) Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -76,7 +85,7 @@ func (c *agentClient) Shutdown(ctx context.Context, in *ShutdownRequest, opts ..
 // for forward compatibility.
 type AgentServer interface {
 	ExecuteTask(context.Context, *ExecuteTaskRequest) (*ExecuteTaskResponse, error)
-	RunCommand(context.Context, *RunCommandRequest) (*RunCommandResponse, error)
+	RunCommand(*RunCommandRequest, grpc.ServerStreamingServer[StreamOutputResponse]) error
 	Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error)
 	mustEmbedUnimplementedAgentServer()
 }
@@ -91,8 +100,8 @@ type UnimplementedAgentServer struct{}
 func (UnimplementedAgentServer) ExecuteTask(context.Context, *ExecuteTaskRequest) (*ExecuteTaskResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ExecuteTask not implemented")
 }
-func (UnimplementedAgentServer) RunCommand(context.Context, *RunCommandRequest) (*RunCommandResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RunCommand not implemented")
+func (UnimplementedAgentServer) RunCommand(*RunCommandRequest, grpc.ServerStreamingServer[StreamOutputResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method RunCommand not implemented")
 }
 func (UnimplementedAgentServer) Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Shutdown not implemented")
@@ -136,23 +145,16 @@ func _Agent_ExecuteTask_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Agent_RunCommand_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RunCommandRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _Agent_RunCommand_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(RunCommandRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(AgentServer).RunCommand(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Agent_RunCommand_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AgentServer).RunCommand(ctx, req.(*RunCommandRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(AgentServer).RunCommand(m, &grpc.GenericServerStream[RunCommandRequest, StreamOutputResponse]{ServerStream: stream})
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Agent_RunCommandServer = grpc.ServerStreamingServer[StreamOutputResponse]
 
 func _Agent_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ShutdownRequest)
@@ -184,15 +186,17 @@ var Agent_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Agent_ExecuteTask_Handler,
 		},
 		{
-			MethodName: "RunCommand",
-			Handler:    _Agent_RunCommand_Handler,
-		},
-		{
 			MethodName: "Shutdown",
 			Handler:    _Agent_Shutdown_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "RunCommand",
+			Handler:       _Agent_RunCommand_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "proto/agent.proto",
 }
 
@@ -211,7 +215,7 @@ type AgentRegistryClient interface {
 	RegisterAgent(ctx context.Context, in *RegisterAgentRequest, opts ...grpc.CallOption) (*RegisterAgentResponse, error)
 	ListAgents(ctx context.Context, in *ListAgentsRequest, opts ...grpc.CallOption) (*ListAgentsResponse, error)
 	StopAgent(ctx context.Context, in *StopAgentRequest, opts ...grpc.CallOption) (*StopAgentResponse, error)
-	ExecuteCommand(ctx context.Context, in *ExecuteCommandRequest, opts ...grpc.CallOption) (*ExecuteCommandResponse, error)
+	ExecuteCommand(ctx context.Context, in *ExecuteCommandRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamOutputResponse], error)
 	Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
 }
 
@@ -253,15 +257,24 @@ func (c *agentRegistryClient) StopAgent(ctx context.Context, in *StopAgentReques
 	return out, nil
 }
 
-func (c *agentRegistryClient) ExecuteCommand(ctx context.Context, in *ExecuteCommandRequest, opts ...grpc.CallOption) (*ExecuteCommandResponse, error) {
+func (c *agentRegistryClient) ExecuteCommand(ctx context.Context, in *ExecuteCommandRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamOutputResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ExecuteCommandResponse)
-	err := c.cc.Invoke(ctx, AgentRegistry_ExecuteCommand_FullMethodName, in, out, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &AgentRegistry_ServiceDesc.Streams[0], AgentRegistry_ExecuteCommand_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &grpc.GenericClientStream[ExecuteCommandRequest, StreamOutputResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type AgentRegistry_ExecuteCommandClient = grpc.ServerStreamingClient[StreamOutputResponse]
 
 func (c *agentRegistryClient) Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -280,7 +293,7 @@ type AgentRegistryServer interface {
 	RegisterAgent(context.Context, *RegisterAgentRequest) (*RegisterAgentResponse, error)
 	ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error)
 	StopAgent(context.Context, *StopAgentRequest) (*StopAgentResponse, error)
-	ExecuteCommand(context.Context, *ExecuteCommandRequest) (*ExecuteCommandResponse, error)
+	ExecuteCommand(*ExecuteCommandRequest, grpc.ServerStreamingServer[StreamOutputResponse]) error
 	Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
 	mustEmbedUnimplementedAgentRegistryServer()
 }
@@ -301,8 +314,8 @@ func (UnimplementedAgentRegistryServer) ListAgents(context.Context, *ListAgentsR
 func (UnimplementedAgentRegistryServer) StopAgent(context.Context, *StopAgentRequest) (*StopAgentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopAgent not implemented")
 }
-func (UnimplementedAgentRegistryServer) ExecuteCommand(context.Context, *ExecuteCommandRequest) (*ExecuteCommandResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ExecuteCommand not implemented")
+func (UnimplementedAgentRegistryServer) ExecuteCommand(*ExecuteCommandRequest, grpc.ServerStreamingServer[StreamOutputResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method ExecuteCommand not implemented")
 }
 func (UnimplementedAgentRegistryServer) Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Heartbeat not implemented")
@@ -382,23 +395,16 @@ func _AgentRegistry_StopAgent_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AgentRegistry_ExecuteCommand_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ExecuteCommandRequest)
-	if err := dec(in); err != nil {
-		return nil, err
+func _AgentRegistry_ExecuteCommand_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(ExecuteCommandRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
 	}
-	if interceptor == nil {
-		return srv.(AgentRegistryServer).ExecuteCommand(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AgentRegistry_ExecuteCommand_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AgentRegistryServer).ExecuteCommand(ctx, req.(*ExecuteCommandRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return srv.(AgentRegistryServer).ExecuteCommand(m, &grpc.GenericServerStream[ExecuteCommandRequest, StreamOutputResponse]{ServerStream: stream})
 }
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type AgentRegistry_ExecuteCommandServer = grpc.ServerStreamingServer[StreamOutputResponse]
 
 func _AgentRegistry_Heartbeat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HeartbeatRequest)
@@ -438,14 +444,16 @@ var AgentRegistry_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _AgentRegistry_StopAgent_Handler,
 		},
 		{
-			MethodName: "ExecuteCommand",
-			Handler:    _AgentRegistry_ExecuteCommand_Handler,
-		},
-		{
 			MethodName: "Heartbeat",
 			Handler:    _AgentRegistry_Heartbeat_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "ExecuteCommand",
+			Handler:       _AgentRegistry_ExecuteCommand_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "proto/agent.proto",
 }

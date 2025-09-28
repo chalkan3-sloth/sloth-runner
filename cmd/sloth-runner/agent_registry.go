@@ -2,28 +2,39 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io"
 	"net"
+	"os"
 	"sync"
 	"time"
 
-	"github.com/pterm/pterm"
 	pb "github.com/chalkan3/sloth-runner/proto"
+	"github.com/pterm/pterm"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 // agentRegistryServer implements the AgentRegistry service.
- type agentRegistryServer struct {
+type agentRegistryServer struct {
 	pb.UnimplementedAgentRegistryServer
-	mu      sync.Mutex
-	agents  map[string]*pb.AgentInfo
-	grpcServer *grpc.Server
+	mu          sync.Mutex
+	agents      map[string]*pb.AgentInfo
+	grpcServer  *grpc.Server
+	tlsCertFile string
+	tlsKeyFile  string
+	tlsCaFile   string
 }
 
 // newAgentRegistryServer creates a new agentRegistryServer.
-func newAgentRegistryServer() *agentRegistryServer {
+func newAgentRegistryServer(tlsCertFile, tlsKeyFile, tlsCaFile string) *agentRegistryServer {
 	return &agentRegistryServer{
-		agents: make(map[string]*pb.AgentInfo),
+		agents:      make(map[string]*pb.AgentInfo),
+		tlsCertFile: tlsCertFile,
+		tlsKeyFile:  tlsKeyFile,
+		tlsCaFile:   tlsCaFile,
 	}
 }
 
@@ -49,10 +60,8 @@ func (s *agentRegistryServer) ListAgents(ctx context.Context, req *pb.ListAgents
 
 	var agents []*pb.AgentInfo
 	for _, agent := range s.agents {
-		// Determine agent status based on last heartbeat
 		status := "Inactive"
-		pterm.Debug.Printf("Agent %s: LastHeartbeat=%d, CurrentTime=%d, Diff=%d\n", agent.AgentName, agent.LastHeartbeat, time.Now().Unix(), time.Now().Unix()-agent.LastHeartbeat)
-		if time.Now().Unix()-agent.LastHeartbeat < 60 { // Agent considered active if heartbeat within last 60 seconds
+		if agent.LastHeartbeat > 0 && time.Now().Unix()-agent.LastHeartbeat < 60 { // Agent considered active if heartbeat within last 60 seconds
 			status = "Active"
 		}
 		agents = append(agents, &pb.AgentInfo{
@@ -79,34 +88,53 @@ func (s *agentRegistryServer) Heartbeat(ctx context.Context, req *pb.HeartbeatRe
 	return &pb.HeartbeatResponse{Success: false, Message: "Agent not found"}, nil
 }
 
-// ExecuteCommand executes a command on a remote agent.
-func (s *agentRegistryServer) ExecuteCommand(ctx context.Context, req *pb.ExecuteCommandRequest) (*pb.ExecuteCommandResponse, error) {
+// ExecuteCommand executes a command on a remote agent and streams the output back to the client.
+func (s *agentRegistryServer) ExecuteCommand(req *pb.ExecuteCommandRequest, stream pb.AgentRegistry_ExecuteCommandServer) error {
 	s.mu.Lock()
 	agent, ok := s.agents[req.AgentName]
 	s.mu.Unlock()
 
 	if !ok {
-		return nil, fmt.Errorf("agent not found: %s", req.AgentName)
+		return fmt.Errorf("agent not found: %s", req.AgentName)
 	}
 
-	conn, err := grpc.Dial(agent.AgentAddress, grpc.WithInsecure())
+	dialOpts, err := getDialOptions(s.tlsCertFile, s.tlsKeyFile, s.tlsCaFile) // No client certs for master to agent communication
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to agent: %v", err)
+		return err
+	}
+
+	conn, err := grpc.Dial(agent.AgentAddress, dialOpts...)
+	if err != nil {
+		return fmt.Errorf("failed to connect to agent: %v", err)
 	}
 	defer conn.Close()
 
 	client := pb.NewAgentClient(conn)
-	resp, err := client.RunCommand(ctx, &pb.RunCommandRequest{Command: req.Command})
+	agentStream, err := client.RunCommand(stream.Context(), &pb.RunCommandRequest{Command: req.Command})
 	if err != nil {
-		return nil, fmt.Errorf("failed to run command on agent: %v", err)
+		return fmt.Errorf("failed to call RunCommand on agent: %v", err)
 	}
 
-	return &pb.ExecuteCommandResponse{
-		Success: resp.Success,
-		Stdout:  resp.Stdout,
-		Stderr:  resp.Stderr,
-		Error:   resp.Error,
-	}, nil
+	for {
+		resp, err := agentStream.Recv()
+		if err == io.EOF {
+			break // Stream has ended
+		}
+		if err != nil {
+			return fmt.Errorf("error receiving stream from agent: %v", err)
+		}
+
+		// Stream the response directly to the client
+		if err := stream.Send(resp); err != nil {
+			return fmt.Errorf("error sending stream to client: %v", err)
+		}
+
+		if resp.GetFinished() {
+			break
+		}
+	}
+
+	return nil
 }
 
 // StopAgent stops a remote agent.
@@ -119,7 +147,12 @@ func (s *agentRegistryServer) StopAgent(ctx context.Context, req *pb.StopAgentRe
 		return nil, fmt.Errorf("agent not found: %s", req.AgentName)
 	}
 
-	conn, err := grpc.Dial(agent.AgentAddress, grpc.WithInsecure())
+	dialOpts, err := getDialOptions(s.tlsCertFile, s.tlsKeyFile, s.tlsCaFile) // No client certs for master to agent communication
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := grpc.Dial(agent.AgentAddress, dialOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to agent: %v", err)
 	}
@@ -141,7 +174,33 @@ func (s *agentRegistryServer) Start(port int) error {
 		return fmt.Errorf("failed to listen: %v", err)
 	}
 
-	s.grpcServer = grpc.NewServer()
+	var opts []grpc.ServerOption
+	if s.tlsCertFile != "" && s.tlsKeyFile != "" && s.tlsCaFile != "" {
+		serverCert, err := tls.LoadX509KeyPair(s.tlsCertFile, s.tlsKeyFile)
+		if err != nil {
+			return fmt.Errorf("failed to load server certificate: %v", err)
+		}
+
+		caCert, err := os.ReadFile(s.tlsCaFile)
+		if err != nil {
+			return fmt.Errorf("failed to read CA certificate: %v", err)
+		}
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM(caCert) {
+			return fmt.Errorf("failed to append CA certificate")
+		}
+
+		creds := credentials.NewTLS(&tls.Config{
+			Certificates: []tls.Certificate{serverCert},
+			ClientCAs:    caCertPool,
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+		})
+		opts = []grpc.ServerOption{grpc.Creds(creds)}
+	} else {
+		pterm.Warning.Println("Starting master in insecure mode. TLS certificates not provided.")
+	}
+
+	s.grpcServer = grpc.NewServer(opts...)
 	pb.RegisterAgentRegistryServer(s.grpcServer, s)
 	pterm.Info.Printf("Agent registry listening at %v\n", lis.Addr())
 	return s.grpcServer.Serve(lis)
@@ -150,4 +209,36 @@ func (s *agentRegistryServer) Start(port int) error {
 // Stop stops the agent registry server.
 func (s *agentRegistryServer) Stop() {
 	s.grpcServer.GracefulStop()
+}
+
+func getDialOptions(tlsCertFile, tlsKeyFile, tlsCaFile string) ([]grpc.DialOption, error) {
+	if tlsCaFile != "" {
+		caCert, err := os.ReadFile(tlsCaFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read CA certificate: %v", err)
+		}
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM(caCert) {
+			return nil, fmt.Errorf("failed to append CA certificate")
+		}
+
+		var clientCerts []tls.Certificate
+		if tlsCertFile != "" && tlsKeyFile != "" {
+			clientCert, err := tls.LoadX509KeyPair(tlsCertFile, tlsKeyFile)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load client certificate: %v", err)
+			}
+			clientCerts = append(clientCerts, clientCert)
+		}
+
+		creds := credentials.NewTLS(&tls.Config{
+			Certificates: clientCerts,
+			RootCAs:      caCertPool,
+			ServerName:   "localhost", // Explicitly set ServerName
+		})
+		return []grpc.DialOption{grpc.WithTransportCredentials(creds)}, nil
+	}
+
+	pterm.Warning.Println("Connecting in insecure mode. TLS certificates not provided.")
+	return []grpc.DialOption{grpc.WithInsecure()}, nil
 }
