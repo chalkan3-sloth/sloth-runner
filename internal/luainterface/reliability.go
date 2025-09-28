@@ -83,7 +83,7 @@ func (rm *ReliabilityModule) luaRetry(L *lua.LState) int {
 		if top > 1 {
 			if errVal := L.Get(2); errVal != lua.LNil {
 				if errStr, ok := errVal.(lua.LString); ok && string(errStr) != "" {
-					return result, fmt.Errorf(string(errStr))
+					return result, fmt.Errorf("%s", string(errStr))
 				}
 			}
 		}
@@ -173,7 +173,7 @@ func (rm *ReliabilityModule) luaRetryWithConfig(L *lua.LState) int {
 		if top > 1 {
 			if errVal := L.Get(2); errVal != lua.LNil {
 				if errStr, ok := errVal.(lua.LString); ok && string(errStr) != "" {
-					return result, fmt.Errorf(string(errStr))
+					return result, fmt.Errorf("%s", string(errStr))
 				}
 			}
 		}
@@ -255,7 +255,7 @@ func (rm *ReliabilityModule) luaCircuitBreaker(L *lua.LState) int {
 		if top > 1 {
 			if errVal := L.Get(2); errVal != lua.LNil {
 				if errStr, ok := errVal.(lua.LString); ok && string(errStr) != "" {
-					return result, fmt.Errorf(string(errStr))
+					return result, fmt.Errorf("%s", string(errStr))
 				}
 			}
 		}
