@@ -618,6 +618,8 @@ func OpenAll(L *lua.LState) {
 	L.PreloadModule("python", PythonLoader)
 	L.PreloadModule("aws", AWSLoader)
 	L.PreloadModule("pkg", NewPkgModule().Loader)
+	L.PreloadModule("state", StateLoader)
+	L.PreloadModule("metrics", MetricsLoader)
 	// Assuming other modules will be refactored to have a simple Loader function.
 	// If they still use the New...Module pattern, they need to be updated.
 	// For now, let's assume they will be updated or we will fix them next.
@@ -641,6 +643,8 @@ func OpenAll(L *lua.LState) {
 		aws = require("aws")
 		salt = require("salt")
 		pkg = require("pkg")
+		state = require("state")
+		metrics = require("metrics")
 	`); err != nil {
 		panic(err)
 	}

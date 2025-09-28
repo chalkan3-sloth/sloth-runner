@@ -6,7 +6,7 @@ option go_package = "github.com/chalkan3/sloth-runner/proto";
 
 service Agent {
   rpc ExecuteTask(ExecuteTaskRequest) returns (ExecuteTaskResponse);
-  rpc RunCommand(RunCommandRequest) returns (RunCommandResponse);
+  rpc RunCommand(RunCommandRequest) returns (stream StreamOutputResponse); // Changed to stream
   rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
 }
 
@@ -66,29 +66,24 @@ message ExecuteCommandRequest {
   string command = 2;
 }
 
-message ExecuteCommandResponse {
-  bool success = 1;
-  string stdout = 2;
-  string stderr = 3;
-  string error = 4;
-}
-
 message RunCommandRequest {
   string command = 1;
 }
 
-message RunCommandResponse {
-  bool success = 1;
-  string stdout = 2;
-  string stderr = 3;
-  string error = 4;
+// New message for streaming output
+message StreamOutputResponse {
+  string stdout_chunk = 1;
+  string stderr_chunk = 2;
+  bool finished = 3;
+  int32 exit_code = 4;
+  string error = 5;
 }
 
 service AgentRegistry {
   rpc RegisterAgent(RegisterAgentRequest) returns (RegisterAgentResponse);
   rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
   rpc StopAgent(StopAgentRequest) returns (StopAgentResponse);
-  rpc ExecuteCommand(ExecuteCommandRequest) returns (ExecuteCommandResponse);
+  rpc ExecuteCommand(ExecuteCommandRequest) returns (stream StreamOutputResponse); // Changed to stream
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
 }
 
