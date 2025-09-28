@@ -1,28 +1,159 @@
 version: 2
+
+env:
+  - CGO_ENABLED=1
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
 builds:
-  - env:
-      - CGO_ENABLED=0
+  - id: linux-amd64
+    env:
+      - CGO_ENABLED=1
+      - CC=gcc
     ldflags:
       - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -s -w
     goos:
       - linux
-      - windows
-      - darwin
     goarch:
       - amd64
+    main: ./cmd/sloth-runner
+    binary: sloth-runner
+
+  - id: linux-arm64
+    env:
+      - CGO_ENABLED=1
+      - CC=aarch64-linux-gnu-gcc
+    ldflags:
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -s -w
+    goos:
+      - linux
+    goarch:
       - arm64
     main: ./cmd/sloth-runner
     binary: sloth-runner
+
+  - id: darwin-amd64
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -s -w
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    main: ./cmd/sloth-runner
+    binary: sloth-runner
+
+  - id: darwin-arm64
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -s -w
+    goos:
+      - darwin
+    goarch:
+      - arm64
+    main: ./cmd/sloth-runner
+    binary: sloth-runner
+
+  - id: windows-amd64
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -s -w
+    goos:
+      - windows
+    goarch:
+      - amd64
+    main: ./cmd/sloth-runner
+    binary: sloth-runner
+
 archives:
   - format: tar.gz
-    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+      - docs/**/*
+
 checksum:
-  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+  name_template: "{{ .ProjectName }}_v{{ .Version }}_checksums.txt"
+
 snapshot:
-  name_template: "{{ .ProjectName }}_snapshot_{{ .Version }}"
+  name_template: "{{ .ProjectName }}_snapshot_{{ .Version }}_{{ .ShortCommit }}"
+
 changelog:
   sort: asc
+  use: github
   filters:
     exclude:
       - '^docs:'
       - '^test:'
+      - '^chore:'
+      - '^ci:'
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: 'Bug fixes'
+      regexp: '^.*?bug(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Others
+      order: 999
+
+release:
+  github:
+    owner: chalkan3
+    name: sloth-runner
+  name_template: "🚀 sloth-runner v{{ .Version }}"
+  mode: replace
+  draft: false
+  prerelease: auto
+  footer: |
+    ## 🦥 Sloth Runner Enterprise Edition
+
+    ### 📦 Downloads
+    
+    Choose the appropriate binary for your platform:
+    - **Linux AMD64**: `sloth-runner_v{{ .Version }}_linux_amd64.tar.gz` (with SQLite support)
+    - **Linux ARM64**: `sloth-runner_v{{ .Version }}_linux_arm64.tar.gz` (with SQLite support)
+    - **macOS AMD64**: `sloth-runner_v{{ .Version }}_darwin_amd64.tar.gz` (SQLite disabled)
+    - **macOS ARM64**: `sloth-runner_v{{ .Version }}_darwin_arm64.tar.gz` (SQLite disabled)
+    - **Windows AMD64**: `sloth-runner_v{{ .Version }}_windows_amd64.zip` (SQLite disabled)
+    
+    ### 🚀 Quick Install
+    ```bash
+    # Linux/macOS
+    curl -L https://github.com/chalkan3/sloth-runner/releases/latest/download/sloth-runner_v{{ .Version }}_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/').tar.gz | tar xz
+    chmod +x sloth-runner
+    sudo mv sloth-runner /usr/local/bin/
+    ```
+    
+    ### 📚 Documentation
+    - [📖 Getting Started](https://chalkan3.github.io/sloth-runner/en/quick-start/)
+    - [🌐 Multilingual Docs](https://chalkan3.github.io/sloth-runner/)
+    - [💾 State Management](https://chalkan3.github.io/sloth-runner/en/modules/state/)
+    - [📊 Metrics & Monitoring](https://chalkan3.github.io/sloth-runner/en/modules/metrics/)
+
+    **Full Changelog**: https://github.com/chalkan3/sloth-runner/compare/{{ .PreviousTag }}...{{ .Tag }}
