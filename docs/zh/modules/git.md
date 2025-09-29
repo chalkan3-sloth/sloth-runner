@@ -93,7 +93,7 @@ command = function()
 
   -- 1. 克隆存储库
   log.info("正在克隆存储库...")
-  local repo, err = git.clone("https://github.com/chalkan3/sloth-runner.git", repo_path)
+  local repo, err = git.clone("https://github.com/chalkan3-sloth/sloth-runner.git", repo_path)
   if err then
     return false, "克隆失败: " .. err
   end

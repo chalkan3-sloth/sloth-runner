@@ -1,3 +1,6 @@
+//go:build cgo
+// +build cgo
+
 // Package state provides state management and persistence for sloth-runner
 package state
 
@@ -271,4 +274,40 @@ type StateMetadata struct {
 	Value     string    `json:"value"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// StateStats represents state statistics
+type StateStats struct {
+	TotalKeys    int    `json:"total_keys"`
+	TotalSize    int64  `json:"total_size"`
+	LastModified int64  `json:"last_modified"`
+	Backend      string `json:"backend"`
+}
+
+// Stats returns state statistics
+func (sm *StateManager) Stats() (StateStats, error) {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+
+	var totalKeys int
+	err := sm.db.QueryRow("SELECT COUNT(*) FROM state").Scan(&totalKeys)
+	if err != nil {
+		return StateStats{}, fmt.Errorf("failed to count keys: %w", err)
+	}
+
+	// Get approximate database size
+	var totalSize int64
+	err = sm.db.QueryRow("PRAGMA page_count").Scan(&totalSize)
+	if err == nil {
+		var pageSize int64
+		sm.db.QueryRow("PRAGMA page_size").Scan(&pageSize)
+		totalSize *= pageSize
+	}
+
+	return StateStats{
+		TotalKeys:    totalKeys,
+		TotalSize:    totalSize,
+		LastModified: time.Now().Unix(),
+		Backend:      "sqlite",
+	}, nil
 }

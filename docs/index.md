@@ -172,7 +172,7 @@ sloth-runner agent run agent-1 "deploy-script.sh"
 
 ```bash
 # Install Sloth Runner
-curl -L https://github.com/chalkan3/sloth-runner/releases/latest/download/sloth-runner-linux-amd64 -o sloth-runner
+curl -L https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner-linux-amd64 -o sloth-runner
 chmod +x sloth-runner && sudo mv sloth-runner /usr/local/bin/
 
 # Create your first task
@@ -184,8 +184,8 @@ sloth-runner run -f hello.lua
 
 ## 🤝 **Community & Support**
 
-- 💬 [GitHub Discussions](https://github.com/chalkan3/sloth-runner/discussions)
-- 🐛 [Issue Tracker](https://github.com/chalkan3/sloth-runner/issues)
+- 💬 [GitHub Discussions](https://github.com/chalkan3-sloth/sloth-runner/discussions)
+- 🐛 [Issue Tracker](https://github.com/chalkan3-sloth/sloth-runner/issues)
 - 📧 [Email Support](mailto:support@sloth-runner.dev)
 - 💼 [Enterprise Support](mailto:enterprise@sloth-runner.dev)
 
@@ -193,5 +193,5 @@ sloth-runner run -f hello.lua
   <h2>Ready to Transform Your Task Automation? 🚀</h2>
   <p>Join thousands of developers using Sloth Runner for reliable, scalable task orchestration</p>
   <a href="en/quick-start.md" class="btn">Start Your Journey →</a>
-  <a href="https://github.com/chalkan3/sloth-runner" class="btn">View on GitHub →</a>
+  <a href="https://github.com/chalkan3-sloth/sloth-runner" class="btn">View on GitHub →</a>
 </div>

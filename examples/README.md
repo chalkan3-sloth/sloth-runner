@@ -321,10 +321,10 @@ examples/real-world/nodejs-cicd.lua     # Casos reais
 ### Requisitos
 ```bash
 # Instalar Sloth Runner (versão com Modern DSL)
-curl -sSL https://raw.githubusercontent.com/chalkan3/sloth-runner/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/main/install.sh | bash
 
 # Ou compilar do código fonte
-go install github.com/chalkan3/sloth-runner/cmd/sloth-runner@latest
+go install github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner@latest
 ```
 
 ### Executar Exemplos
@@ -589,8 +589,8 @@ Quer adicionar um exemplo? Siga estas diretrizes:
 ## 📞 Suporte
 
 - 📚 **Documentação**: [docs/](../docs/)
-- 🐛 **Issues**: [GitHub Issues](https://github.com/chalkan3/sloth-runner/issues)
-- 💬 **Discussões**: [GitHub Discussions](https://github.com/chalkan3/sloth-runner/discussions)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/chalkan3-sloth/sloth-runner/issues)
+- 💬 **Discussões**: [GitHub Discussions](https://github.com/chalkan3-sloth/sloth-runner/discussions)
 - 📧 **Email**: support@sloth-runner.dev
 
 ---
