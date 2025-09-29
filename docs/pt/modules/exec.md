@@ -28,7 +28,7 @@ Este exemplo demonstra como usar `exec.run` com um diretório de trabalho e vari
 ```lua
 -- examples/exec_module_example.lua
 
-TaskDefinitions = {
+Modern DSLs = {
   main = {
     description = "Uma tarefa para demonstrar o módulo exec.",
     tasks = {

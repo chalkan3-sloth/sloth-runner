@@ -9,7 +9,7 @@ Para iniciar uma sessão, simplesmente execute:
 sloth-runner repl
 ```
 
-Você também pode pré-carregar um arquivo de workflow para ter suas `TaskDefinitions` e quaisquer funções auxiliares disponíveis na sessão. Isso é incrivelmente útil para depurar uma pipeline existente.
+Você também pode pré-carregar um arquivo de workflow para ter suas `Modern DSLs` e quaisquer funções auxiliares disponíveis na sessão. Isso é incrivelmente útil para depurar uma pipeline existente.
 
 ```bash
 sloth-runner repl -f /caminho/para/sua/pipeline.lua

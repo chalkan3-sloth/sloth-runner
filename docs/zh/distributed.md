@@ -15,10 +15,10 @@
 
 ### 1. 在任务组级别委托给代理
 
-您可以使用 `delegate_to` 字段直接在 `TaskDefinitions` 组中定义代理。此组中的所有任务都将委托给此代理，除非被任务特定的 `delegate_to` 覆盖。
+您可以使用 `delegate_to` 字段直接在 `Modern DSLs` 组中定义代理。此组中的所有任务都将委托给此代理，除非被任务特定的 `delegate_to` 覆盖。
 
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
   my_distributed_group = {
     description = "一个包含分布式任务的任务组。",
     delegate_to = { address = "localhost:50051" }, -- 为整个组定义代理
@@ -42,7 +42,7 @@ TaskDefinitions = {
 或者，您可以直接在单个任务上指定 `delegate_to` 字段。这将覆盖任何组级别的委托或允许即席远程执行。
 
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
   my_group = {
     description = "一个包含特定远程任务的任务组。",
     tasks = {

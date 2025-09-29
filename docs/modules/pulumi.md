@@ -145,7 +145,7 @@ command = function()
     return true, "Pulumi orchestration example finished."
 end
 
-TaskDefinitions = {
+Modern DSLs = {
     pulumi_orchestration_example = {
         description = "Demonstrates using the 'pulumi' module to orchestrate infrastructure stacks.",
         tasks = {

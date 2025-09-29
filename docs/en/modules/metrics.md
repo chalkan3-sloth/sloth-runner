@@ -216,7 +216,7 @@ function check_application_health()
 end
 
 -- Use in tasks
-TaskDefinitions = {
+Modern DSLs = {
     health_monitoring = {
         tasks = {
             health_check = {
@@ -296,7 +296,7 @@ end
 ### Performance Monitoring Example
 
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
     performance_monitoring = {
         tasks = {
             monitor_api_performance = {

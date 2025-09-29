@@ -188,7 +188,7 @@ workflow.define("ci_cd_pipeline", {
 
 ## Modern DSL vs Legacy Format
 
-The Modern DSL provides several advantages over the legacy TaskDefinitions format:
+The Modern DSL provides several advantages over the legacy Modern DSLs format:
 
 | Feature | Legacy Format | Modern DSL |
 |---------|---------------|------------|

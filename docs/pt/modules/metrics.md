@@ -216,7 +216,7 @@ function verificar_saude_aplicacao()
 end
 
 -- Usar em tasks
-TaskDefinitions = {
+Modern DSLs = {
     monitoramento_saude = {
         tasks = {
             verificacao_saude = {
@@ -296,7 +296,7 @@ end
 ### Exemplo de Monitoramento de Performance
 
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
     monitoramento_performance = {
         tasks = {
             monitorar_performance_api = {

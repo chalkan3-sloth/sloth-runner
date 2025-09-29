@@ -10,7 +10,7 @@ sloth-runner 包含一个内置的测试框架，允许您为任务工作流编�
 sloth-runner test -w <工作流路径.lua> -f <测试文件路径.lua>
 ```
 
--   `-w, --workflow`: 指定要测试的主 `TaskDefinitions` 文件的路径。
+-   `-w, --workflow`: 指定要测试的主 `Modern DSLs` 文件的路径。
 -   `-f, --file`: 指定您的测试文件的路径。
 
 ## 编写测试

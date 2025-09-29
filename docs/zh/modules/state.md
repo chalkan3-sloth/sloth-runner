@@ -186,7 +186,7 @@ end, 15) -- 15秒超时
 ### 1. 部署版本控制
 
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
     deployment_pipeline = {
         tasks = {
             prepare_deploy = {
@@ -259,7 +259,7 @@ function get_cached_data(cache_key, fetch_function, ttl)
 end
 
 -- 在任务中使用
-TaskDefinitions = {
+Modern DSLs = {
     data_processing = {
         tasks = {
             fetch_user_data = {
@@ -306,7 +306,7 @@ function check_rate_limit(identifier, max_requests, window_seconds)
 end
 
 -- 在任务中使用
-TaskDefinitions = {
+Modern DSLs = {
     api_tasks = {
         tasks = {
             make_api_call = {

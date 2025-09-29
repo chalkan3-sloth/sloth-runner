@@ -17,7 +17,7 @@ The Modern DSL is a new syntax layer built on top of Sloth Runner that provides:
 
 ### Legacy Format (Still Supported)
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
     my_pipeline = {
         description = "Traditional pipeline",
         tasks = {
@@ -229,8 +229,8 @@ The Modern DSL provides a smooth migration path:
 Your existing scripts continue to work without any changes:
 
 ```lua
--- Your existing TaskDefinitions still work perfectly
-TaskDefinitions = {
+-- Your existing Modern DSLs still work perfectly
+Modern DSLs = {
     legacy_pipeline = {
         description = "This still works!",
         tasks = { /* your existing tasks */ }
@@ -249,7 +249,7 @@ local modern_task = task("modern_deploy")
     :build()
 
 -- Legacy tasks still work
-TaskDefinitions = {
+Modern DSLs = {
     mixed_workflow = {
         description = "Mix of old and new",
         tasks = {

@@ -171,7 +171,7 @@ command = function(params)
     return true, "Git automation example finished."
 end
 
-TaskDefinitions = {
+Modern DSLs = {
     git_automation_example = {
         description = "Demonstrates using the 'git' module for repository automation.",
         tasks = {

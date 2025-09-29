@@ -9,7 +9,7 @@ To start a session, simply run:
 sloth-runner repl
 ```
 
-You can also pre-load a workflow file to have its `TaskDefinitions` and any helper functions available in the session. This is incredibly useful for debugging an existing pipeline.
+You can also pre-load a workflow file to have its `Modern DSLs` and any helper functions available in the session. This is incredibly useful for debugging an existing pipeline.
 
 ```bash
 sloth-runner repl -f /path/to/your/pipeline.lua

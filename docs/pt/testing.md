@@ -10,7 +10,7 @@ Você pode executar um arquivo de teste usando o comando `sloth-runner test`. El
 sloth-runner test -w <caminho_para_workflow.lua> -f <caminho_para_arquivo_de_teste.lua>
 ```
 
--   `-w, --workflow`: Especifica o caminho para o arquivo principal de `TaskDefinitions` que você quer testar.
+-   `-w, --workflow`: Especifica o caminho para o arquivo principal de `Modern DSLs` que você quer testar.
 -   `-f, --file`: Especifica o caminho para o seu arquivo de teste.
 
 ## Escrevendo Testes
