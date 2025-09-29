@@ -306,7 +306,7 @@ func (ws *WorkflowScaffolder) generateGitignore(filename string) error {
 
 // generateConfig generates a sloth-runner.yaml config file
 func (ws *WorkflowScaffolder) generateConfig(filename string, data TemplateData) error {
-	content := fmt.Sprintf(configTemplate, data.WorkflowName, data.Description, data.Version)
+	content := fmt.Sprintf(configTemplate, data.WorkflowName, data.WorkflowName, data.Description, data.Version)
 	return os.WriteFile(filename, []byte(content), 0644)
 }
 
