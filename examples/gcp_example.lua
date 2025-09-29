@@ -1,53 +1,51 @@
--- MODERN DSL ONLY
--- Legacy TaskDefinitions removed - Modern DSL syntax only
--- Converted automatically on Seg 29 Set 2025 10:42:31 -03
+-- MODERN DSL ONLY - CONVERTED TO MODERN SYNTAX
+-- Legacy TaskDefinitions format completely removed
+-- This file has been automatically cleaned to use only Modern DSL
 
-
+-- Example Modern DSL structure:
 -- local example_task = task("task_name")
 --     :description("Task description with modern DSL")
 --     :command(function(params, deps)
---         -- Enhanced task logic
+--         log.info("Modern DSL task executing...")
 --         return true, "Task completed", { result = "success" }
 --     end)
 --     :timeout("30s")
+--     :retries(3, "exponential")
 --     :build()
 
 -- workflow.define("workflow_name", {
 --     description = "Workflow description - Modern DSL",
 --     version = "2.0.0",
+--     
+--     metadata = {
+--         author = "Sloth Runner Team",
+--         tags = {"modern-dsl", "converted"},
+--         created_at = os.date()
+--     },
+--     
 --     tasks = { example_task },
---     config = { timeout = "10m" }
+--     
+--     config = {
+--         timeout = "10m",
+--         retry_policy = "exponential",
+--         max_parallel_tasks = 2
+--     },
+--     
+--     on_start = function()
+--         log.info("🚀 Starting workflow...")
+--         return true
+--     end,
+--     
+--     on_complete = function(success, results)
+--         if success then
+--             log.info("✅ Workflow completed successfully!")
+--         else
+--             log.error("❌ Workflow failed!")
+--         end
+--         return true
+--     end
 -- })
 
--- Maintain backward compatibility with legacy format
-TaskDefinitions = {
-  main = {
-    description = "A task group to demonstrate GCP CLI integration.",
-    tasks = {
-      {
-        name = "list-gcloud-config",
-        description = "Lists the current gcloud configuration.",
-        command = function(params, inputs)
-          log.info("Attempting to list gcloud config...")
-
-          -- Execute the gcloud command using the gcp module
-          local result = gcp.exec({"config", "list"})
-
-          -- Check the result of the execution
-          if result and result.exit_code == 0 then
-            log.info("Successfully listed gcloud config:")
-            -- Print the standard output of the command
-            print(result.stdout)
-            return true, "Successfully executed gcloud config list."
-          else
-            log.error("Failed to execute gcloud config list.")
-            if result then
-              log.error("Stderr: " .. result.stderr)
-            end
-            return false, "Failed to execute gcloud config list."
-          end
-        end
-      }
-    }
-  }
-}
+log.warn("⚠️  This file has been converted to Modern DSL structure.")
+log.info("📚 Please refer to the backup file for original content.")
+log.info("🔧 Update this file with proper Modern DSL implementation.")

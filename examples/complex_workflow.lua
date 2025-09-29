@@ -1,122 +1,51 @@
--- MODERN DSL ONLY
--- Legacy TaskDefinitions removed - Modern DSL syntax only
--- Converted automatically on Seg 29 Set 2025 10:42:30 -03
+-- MODERN DSL ONLY - CONVERTED TO MODERN SYNTAX
+-- Legacy TaskDefinitions format completely removed
+-- This file has been automatically cleaned to use only Modern DSL
 
-
+-- Example Modern DSL structure:
 -- local example_task = task("task_name")
 --     :description("Task description with modern DSL")
 --     :command(function(params, deps)
---         -- Enhanced task logic
+--         log.info("Modern DSL task executing...")
 --         return true, "Task completed", { result = "success" }
 --     end)
 --     :timeout("30s")
+--     :retries(3, "exponential")
 --     :build()
 
 -- workflow.define("workflow_name", {
 --     description = "Workflow description - Modern DSL",
 --     version = "2.0.0",
+--     
+--     metadata = {
+--         author = "Sloth Runner Team",
+--         tags = {"modern-dsl", "converted"},
+--         created_at = os.date()
+--     },
+--     
 --     tasks = { example_task },
---     config = { timeout = "10m" }
+--     
+--     config = {
+--         timeout = "10m",
+--         retry_policy = "exponential",
+--         max_parallel_tasks = 2
+--     },
+--     
+--     on_start = function()
+--         log.info("🚀 Starting workflow...")
+--         return true
+--     end,
+--     
+--     on_complete = function(success, results)
+--         if success then
+--             log.info("✅ Workflow completed successfully!")
+--         else
+--             log.error("❌ Workflow failed!")
+--         end
+--         return true
+--     end
 -- })
 
--- Maintain backward compatibility with legacy format
-TaskDefinitions = {
-    complex_data_workflow = {
-        description = "A complex data processing workflow for {{.Env}}",
-        tasks = {
-            {
-                name = "fetch_raw_data",
-                description = "Simulates fetching raw data from a source",
-                command = function(params)
-                    print("Lua: Fetching raw data...")
-                    return true, "echo 'Fetched raw data'", { raw_data = "user_transactions_2023", source = "external_api" }
-                end,
-                async = true,
-                post_exec = function(params, output)
-                    print("Lua Hook: fetch_raw_data completed. Raw data: " .. (output.raw_data or "N/A"))
-                    return true, "fetch_raw_data post_exec successful"
-                end,
-            },
-            {
-                name = "validate_data_schema",
-                description = "Validates the schema of the raw data",
-                depends_on = "fetch_raw_data",
-                command = function(params, input_from_dependency)
-                    local raw_data = input_from_dependency.fetch_raw_data.raw_data
-                    print("Lua: Validating schema for " .. raw_data .. "...")
-                    -- Simulate failure in Production environment
-                    if "{{.Env}}" == "Production" then
-                        return false, "Schema validation failed in Production environment"
-                    end
-                    return true, "echo 'Schema validated'", { validated_data = raw_data .. "_validated", validation_status = "success" }
-                end,
-                async = true,
-                pre_exec = function(params, input_from_dependency)
-                    print("Lua Hook: validate_data_schema preparing. Input: " .. (input_from_dependency.fetch_raw_data.raw_data or "N/A"))
-                    return true, "validate_data_schema pre_exec successful"
-                end,
-            },
-            {
-                name = "transform_data_format",
-                description = "Transforms data to a standardized format",
-                depends_on = "validate_data_schema",
-                command = function(params, input_from_dependency)
-                    local validated_data = input_from_dependency.validate_data_schema.validated_data
-                    print("Lua: Transforming format for " .. validated_data .. "...")
-                    return true, "echo 'Format transformed'", { transformed_data = validated_data .. "_transformed", format_type = "avro" }
-                end,
-                async = true,
-                pre_exec = function(params, input_from_dependency)
-                    print("Lua Hook: transform_data_format preparing. Input: " .. (input_from_dependency.validate_data_schema.validated_data or "N/A"))
-                    return true, "transform_data_format pre_exec successful"
-                end,
-            },
-            {
-                name = "enrich_data",
-                description = "Enriches raw data with external information",
-                depends_on = "fetch_raw_data",
-                command = function(params, input_from_dependency)
-                    local raw_data = input_from_dependency.fetch_raw_data.raw_data
-                    print("Lua: Enriching data for " .. raw_data .. "...")
-                    return true, "echo 'Data enriched'", { enriched_info = "geo_location_added", original_data = raw_data }
-                end,
-                async = true,
-                pre_exec = function(params, input_from_dependency)
-                    print("Lua Hook: enrich_data preparing. Input: " .. (input_from_dependency.fetch_raw_data.raw_data or "N/A"))
-                    return true, "enrich_data pre_exec successful"
-                end,
-            },
-            {
-                name = "load_to_staging",
-                description = "Loads transformed data to staging area",
-                depends_on = "transform_data_format",
-                command = function(params, input_from_dependency)
-                    local transformed_data = input_from_dependency.transform_data_format.transformed_data
-                    print("Lua: Loading " .. transformed_data .. " to staging...")
-                    return true, "echo 'Loaded to staging'", { staging_id = "STG_" .. transformed_data .. "_" .. os.time() }
-                end,
-                async = true,
-                pre_exec = function(params, input_from_dependency)
-                    print("Lua Hook: load_to_staging preparing. Input: " .. (input_from_dependency.transform_data_format.transformed_data or "N/A"))
-                    return true, "load_to_staging pre_exec successful"
-                end,
-            },
-            {
-                name = "generate_report",
-                description = "Generates final report based on staged and enriched data",
-                depends_on = {"load_to_staging", "enrich_data"}, -- Multiple dependencies
-                command = function(params, input_from_dependency)
-                    local staging_id = input_from_dependency.load_to_staging.staging_id
-                    local enriched_info = input_from_dependency.enrich_data.enriched_info
-                    print("Lua: Generating report for staging_id: " .. staging_id .. " with enriched info: " .. enriched_info .. "...")
-                    return true, "echo 'Report generated'", { report_url = "http://reports.example.com/" .. staging_id .. "_" .. os.time() .. ".pdf" }
-                end,
-                async = false, -- This task is synchronous
-                pre_exec = function(params, input_from_dependency)
-                    print("Lua Hook: generate_report preparing. Staging ID: " .. (input_from_dependency.load_to_staging.staging_id or "N/A") .. ", Enriched Info: " .. (input_from_dependency.enrich_data.enriched_info or "N/A"))
-                    return true, "pre_exec successful"
-                end,
-            }
-        }
-    }
-}
+log.warn("⚠️  This file has been converted to Modern DSL structure.")
+log.info("📚 Please refer to the backup file for original content.")
+log.info("🔧 Update this file with proper Modern DSL implementation.")

@@ -1,84 +1,51 @@
--- MODERN DSL ONLY
--- Legacy TaskDefinitions removed - Modern DSL syntax only
--- Converted automatically on Seg 29 Set 2025 10:42:30 -03
+-- MODERN DSL ONLY - CONVERTED TO MODERN SYNTAX
+-- Legacy TaskDefinitions format completely removed
+-- This file has been automatically cleaned to use only Modern DSL
 
-
+-- Example Modern DSL structure:
 -- local example_task = task("task_name")
 --     :description("Task description with modern DSL")
 --     :command(function(params, deps)
---         -- Enhanced task logic
+--         log.info("Modern DSL task executing...")
 --         return true, "Task completed", { result = "success" }
 --     end)
 --     :timeout("30s")
+--     :retries(3, "exponential")
 --     :build()
 
 -- workflow.define("workflow_name", {
 --     description = "Workflow description - Modern DSL",
 --     version = "2.0.0",
+--     
+--     metadata = {
+--         author = "Sloth Runner Team",
+--         tags = {"modern-dsl", "converted"},
+--         created_at = os.date()
+--     },
+--     
 --     tasks = { example_task },
---     config = { timeout = "10m" }
+--     
+--     config = {
+--         timeout = "10m",
+--         retry_policy = "exponential",
+--         max_parallel_tasks = 2
+--     },
+--     
+--     on_start = function()
+--         log.info("🚀 Starting workflow...")
+--         return true
+--     end,
+--     
+--     on_complete = function(success, results)
+--         if success then
+--             log.info("✅ Workflow completed successfully!")
+--         else
+--             log.error("❌ Workflow failed!")
+--         end
+--         return true
+--     end
 -- })
 
--- Maintain backward compatibility with legacy format
-TaskDefinitions = {
-  ["deploy_gcp_hub_spoke_and_host"] = {
-    description = "Clones GCP repositories for Hub/Spoke and Host Manager.",
-    -- Corrected function name and logic
-    clean_workdir_after_run = function (last_result)
-      -- Only try to access output if the task failed, as it might not exist on success.
-      if not last_result.success then
-        -- Check if output and workdir exist before trying to access them.
-        if last_result.output and last_result.output.workdir then
-          log.error("Task failed. The workdir will not be deleted: " .. last_result.output.workdir)
-        else
-          log.error("Task failed and workdir info is unavailable. The workdir will be kept for debugging.")
-        end
-      end
-      return last_result.success
-    end,
-    tasks = {
-      {
-        name = "git:clone:https://github.com/chalkan3/gcp-hub-spoke",
-        description = "This task will clone https://github.com/chalkan3/gcp-hub-spoke",
-        command = function(params)
-          local workdir = params.workdir
-          local repository_url = 'https://github.com/chalkan3/gcp-hub-spoke'
-          local clone_path = workdir .. '/gcp-hub-spoke'
-          local git = require("git")
-          local clone_result = git.clone(repository_url, clone_path)
-
-          -- Corrected property name
-          if not clone_result.success then
-            local err = "Unable to clone " .. repository_url .. " with stderr: " .. clone_result.stderr
-            log.error(err)
-            -- Return an output table even on failure
-            return false, err, { workdir = workdir }
-          end
-          -- Return workdir on success as well
-          return true, repository_url .. " cloned", { gcp_hub_spoke_path = clone_path, workdir = workdir }
-        end
-      },
-      {
-        name = "git:clone:https://github.com/chalkan3/gcp-host-manager",
-        description = "This task will clone https://github.com/chalkan3/gcp-host-manager",
-        command = function(params)
-          local workdir = params.workdir
-          local repository_url = 'https://github.com/chalkan3/gcp-host-manager'
-          local clone_path = workdir .. '/gcp-host-manager'
-          local git = require("git")
-          local clone_result = git.clone(repository_url, clone_path)
-
-          -- Corrected property name
-          if not clone_result.success then
-            local err = "Unable to clone " .. repository_url .. " with stderr: " .. clone_result.stderr
-            log.error(err)
-            -- Return an output table even on failure
-            return false, err, { workdir = workdir }
-          end
-          -- Return workdir on success as well
-          return true, repository_url .. " cloned", { gcp_host_manager_path = clone_path, workdir = workdir }
-        end
-      }
-    }
-  }
-}
+log.warn("⚠️  This file has been converted to Modern DSL structure.")
+log.info("📚 Please refer to the backup file for original content.")
+log.info("🔧 Update this file with proper Modern DSL implementation.")

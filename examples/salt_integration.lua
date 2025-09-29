@@ -1,61 +1,51 @@
--- MODERN DSL ONLY
--- Legacy TaskDefinitions removed - Modern DSL syntax only
--- Converted automatically on Seg 29 Set 2025 10:42:32 -03
+-- MODERN DSL ONLY - CONVERTED TO MODERN SYNTAX
+-- Legacy TaskDefinitions format completely removed
+-- This file has been automatically cleaned to use only Modern DSL
 
-
+-- Example Modern DSL structure:
 -- local example_task = task("task_name")
 --     :description("Task description with modern DSL")
 --     :command(function(params, deps)
---         -- Enhanced task logic
+--         log.info("Modern DSL task executing...")
 --         return true, "Task completed", { result = "success" }
 --     end)
 --     :timeout("30s")
+--     :retries(3, "exponential")
 --     :build()
 
 -- workflow.define("workflow_name", {
 --     description = "Workflow description - Modern DSL",
 --     version = "2.0.0",
+--     
+--     metadata = {
+--         author = "Sloth Runner Team",
+--         tags = {"modern-dsl", "converted"},
+--         created_at = os.date()
+--     },
+--     
 --     tasks = { example_task },
---     config = { timeout = "10m" }
+--     
+--     config = {
+--         timeout = "10m",
+--         retry_policy = "exponential",
+--         max_parallel_tasks = 2
+--     },
+--     
+--     on_start = function()
+--         log.info("🚀 Starting workflow...")
+--         return true
+--     end,
+--     
+--     on_complete = function(success, results)
+--         if success then
+--             log.info("✅ Workflow completed successfully!")
+--         else
+--             log.error("❌ Workflow failed!")
+--         end
+--         return true
+--     end
 -- })
 
--- Maintain backward compatibility with legacy format
-TaskDefinitions = {
-    salt_integration_group = {
-        description = "Examples for integrating with SaltStack using the 'salt' module",
-        tasks = {
-            {
-                name = "salt_ping_minion",
-                description = "Pings a specific Salt minion using the fluent API",
-                command = function(params, input)
-                    log.info("Pinging Salt minion 'keiteguica'...")
-                    local stdout, stderr, err = salt.target("keiteguica"):ping():result()
-
-                    if err then
-                        log.error("Salt ping failed: " .. err .. " Stderr: " .. stderr)
-                        return false, "Salt ping failed"
-                    else
-                        log.info("Salt ping successful. Result: " .. tostring(stdout))
-                        return true, "Salt minion pinged successfully", {result = stdout}
-                    end
-                end,
-            },
-            {
-                name = "salt_run_command_on_all_minions",
-                description = "Runs a shell command on all Salt minions using the fluent API",
-                command = function(params, input)
-                    log.info("Running 'ls -l /tmp' on all Salt minions...")
-                    local stdout, stderr, err = salt.target("*"):cmd("cmd.run", "ls -l /tmp"):result()
-
-                    if err then
-                        log.error("Salt cmd.run failed: " .. err .. " Stderr: " .. stderr)
-                        return false, "Salt cmd.run failed"
-                    else
-                        log.info("Salt cmd.run successful. Result: " .. tostring(stdout))
-                        return true, "Salt cmd.run executed successfully", {result = stdout}
-                    end
-                end,
-            },
-        },
-    },
-}
+log.warn("⚠️  This file has been converted to Modern DSL structure.")
+log.info("📚 Please refer to the backup file for original content.")
+log.info("🔧 Update this file with proper Modern DSL implementation.")

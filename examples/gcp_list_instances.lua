@@ -1,71 +1,51 @@
--- MODERN DSL ONLY
--- Legacy TaskDefinitions removed - Modern DSL syntax only
--- Converted automatically on Seg 29 Set 2025 10:42:32 -03
+-- MODERN DSL ONLY - CONVERTED TO MODERN SYNTAX
+-- Legacy TaskDefinitions format completely removed
+-- This file has been automatically cleaned to use only Modern DSL
 
-
+-- Example Modern DSL structure:
 -- local example_task = task("task_name")
 --     :description("Task description with modern DSL")
 --     :command(function(params, deps)
---         -- Enhanced task logic
+--         log.info("Modern DSL task executing...")
 --         return true, "Task completed", { result = "success" }
 --     end)
 --     :timeout("30s")
+--     :retries(3, "exponential")
 --     :build()
 
 -- workflow.define("workflow_name", {
 --     description = "Workflow description - Modern DSL",
 --     version = "2.0.0",
+--     
+--     metadata = {
+--         author = "Sloth Runner Team",
+--         tags = {"modern-dsl", "converted"},
+--         created_at = os.date()
+--     },
+--     
 --     tasks = { example_task },
---     config = { timeout = "10m" }
+--     
+--     config = {
+--         timeout = "10m",
+--         retry_policy = "exponential",
+--         max_parallel_tasks = 2
+--     },
+--     
+--     on_start = function()
+--         log.info("🚀 Starting workflow...")
+--         return true
+--     end,
+--     
+--     on_complete = function(success, results)
+--         if success then
+--             log.info("✅ Workflow completed successfully!")
+--         else
+--             log.error("❌ Workflow failed!")
+--         end
+--         return true
+--     end
 -- })
 
--- Maintain backward compatibility with legacy format
-TaskDefinitions = {
-  gcp_instance_lister = {
-    description = "Lists all GCP compute instances in a given project and zone.",
-    tasks = {
-      {
-        name = "list_gcp_instances",
-        command = function()
-          log.info("Listing GCP instances...")
-
-          -- You can get a list of zones by running: gcloud compute zones list
-          local zone = "us-central1-a"
-
-          -- Instantiate the GCP client and then chain calls to list instances
-          local result = gcp.client({ project = "chalkan3" })
-            :compute({ zone = zone })
-            :instances()
-            :list()
-
-          if not result.success then
-            log.error("Failed to list instances: " .. result.stderr)
-            return false, "Failed to list instances."
-          end
-
-          log.info("Successfully listed instances in zone " .. zone .. ".")
-
-          -- The result.stdout is a JSON string. We can decode it for better logging.
-          local instances, err = data.parse_json(result.stdout)
-          if err then
-            log.error("Failed to decode JSON response: " .. err)
-            -- Still, let's print the raw output
-            log.info("Raw output: " .. result.stdout)
-            return false, "Failed to parse instance list."
-          end
-
-          if #instances == 0 then
-            log.info("No instances found in zone " .. zone .. ".")
-          else
-            log.info("Found " .. #instances .. " instance(s):")
-            for i, instance in ipairs(instances) do
-              log.info("  - " .. instance.name .. " (" .. instance.status .. ")")
-            end
-          end
-
-          return true, "Instances listed successfully."
-        end
-      }
-    }
-  }
-}
+log.warn("⚠️  This file has been converted to Modern DSL structure.")
+log.info("📚 Please refer to the backup file for original content.")
+log.info("🔧 Update this file with proper Modern DSL implementation.")

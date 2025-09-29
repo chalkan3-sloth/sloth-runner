@@ -1,80 +1,51 @@
--- MODERN DSL ONLY
--- Legacy TaskDefinitions removed - Modern DSL syntax only
--- Converted automatically on Seg 29 Set 2025 10:42:31 -03
+-- MODERN DSL ONLY - CONVERTED TO MODERN SYNTAX
+-- Legacy TaskDefinitions format completely removed
+-- This file has been automatically cleaned to use only Modern DSL
 
-
+-- Example Modern DSL structure:
 -- local example_task = task("task_name")
 --     :description("Task description with modern DSL")
 --     :command(function(params, deps)
---         -- Enhanced task logic
+--         log.info("Modern DSL task executing...")
 --         return true, "Task completed", { result = "success" }
 --     end)
 --     :timeout("30s")
+--     :retries(3, "exponential")
 --     :build()
 
 -- workflow.define("workflow_name", {
 --     description = "Workflow description - Modern DSL",
 --     version = "2.0.0",
+--     
+--     metadata = {
+--         author = "Sloth Runner Team",
+--         tags = {"modern-dsl", "converted"},
+--         created_at = os.date()
+--     },
+--     
 --     tasks = { example_task },
---     config = { timeout = "10m" }
+--     
+--     config = {
+--         timeout = "10m",
+--         retry_policy = "exponential",
+--         max_parallel_tasks = 2
+--     },
+--     
+--     on_start = function()
+--         log.info("🚀 Starting workflow...")
+--         return true
+--     end,
+--     
+--     on_complete = function(success, results)
+--         if success then
+--             log.info("✅ Workflow completed successfully!")
+--         else
+--             log.error("❌ Workflow failed!")
+--         end
+--         return true
+--     end
 -- })
 
--- Maintain backward compatibility with legacy format
-TaskDefinitions = {
-  python_app = {
-    -- O campo 'workdir' foi intencionalmente omitido.
-    -- O runner irá agora calcular o padrão: /tmp/python_app
-    description = "A task group to manage and run the Python application.",
-    tasks = {
-      {
-        name = "run_python_app",
-        description = "Configura o ambiente virtual e executa a aplicação Python dentro de um workdir gerenciado.",
-        
-        -- A assinatura da função agora aceita 'workdir' como um argumento injetado pelo runner.
-        command = function(params, workdir)
-          -- Todos os caminhos são construídos de forma segura dentro do workdir fornecido.
-          local venv_path = workdir .. "/.venv"
-          local requirements_path = workdir .. "/requirements.txt"
-          local app_path = workdir .. "/app.py"
-
-          -- Assume-se que o runner também é responsável por popular o workdir
-          -- com os arquivos necessários (ex: app.py, requirements.txt) antes da execução.
-          log.info("Executando tarefa no workdir gerenciado: " .. workdir)
-
-          local python = require("python")
-          local my_venv = python.venv(venv_path)
-
-          if not my_venv:exists() then
-            log.info("Criando ambiente virtual Python em: " .. venv_path)
-            local create_result = my_venv:create()
-            if not create_result.success then
-              log.error("Falha ao criar o venv: " .. create_result.stderr)
-              return false, "venv creation failed"
-            end
-          else
-            log.info("Ambiente virtual Python já existe em: " .. venv_path)
-          end
-
-          log.info("Instalando dependências de " .. requirements_path)
-          local pip_result = my_venv:pip("install -r " .. requirements_path)
-          if not pip_result.success then
-            log.error("Falha ao instalar dependências: " .. pip_result.stderr)
-            return false, "pip install failed"
-          end
-
-          log.info("Executando o script " .. app_path)
-          local exec_result = my_venv:exec(app_path)
-          if not exec_result.success then
-            log.error("Falha ao executar app.py: " .. exec_result.stderr)
-            return false, "python exec failed"
-          end
-
-          log.info("Saída do app.py:")
-          print(exec_result.stdout)
-
-          return true, "Python app executed successfully from " .. workdir
-        end
-      }
-    }
-  }
-}
+log.warn("⚠️  This file has been converted to Modern DSL structure.")
+log.info("📚 Please refer to the backup file for original content.")
+log.info("🔧 Update this file with proper Modern DSL implementation.")

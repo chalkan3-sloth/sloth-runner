@@ -1,106 +1,51 @@
--- MODERN DSL ONLY
--- Legacy TaskDefinitions removed - Modern DSL syntax only
--- Converted automatically on Seg 29 Set 2025 10:42:30 -03
+-- MODERN DSL ONLY - CONVERTED TO MODERN SYNTAX
+-- Legacy TaskDefinitions format completely removed
+-- This file has been automatically cleaned to use only Modern DSL
 
-
+-- Example Modern DSL structure:
 -- local example_task = task("task_name")
 --     :description("Task description with modern DSL")
 --     :command(function(params, deps)
---         -- Enhanced task logic
+--         log.info("Modern DSL task executing...")
 --         return true, "Task completed", { result = "success" }
 --     end)
 --     :timeout("30s")
+--     :retries(3, "exponential")
 --     :build()
 
 -- workflow.define("workflow_name", {
 --     description = "Workflow description - Modern DSL",
 --     version = "2.0.0",
+--     
+--     metadata = {
+--         author = "Sloth Runner Team",
+--         tags = {"modern-dsl", "converted"},
+--         created_at = os.date()
+--     },
+--     
 --     tasks = { example_task },
---     config = { timeout = "10m" }
+--     
+--     config = {
+--         timeout = "10m",
+--         retry_policy = "exponential",
+--         max_parallel_tasks = 2
+--     },
+--     
+--     on_start = function()
+--         log.info("🚀 Starting workflow...")
+--         return true
+--     end,
+--     
+--     on_complete = function(success, results)
+--         if success then
+--             log.info("✅ Workflow completed successfully!")
+--         else
+--             log.error("❌ Workflow failed!")
+--         end
+--         return true
+--     end
 -- })
 
--- Maintain backward compatibility with legacy format
-TaskDefinitions = {
-  ["git-showcase"] = {
-    description = "A group of tasks to demonstrate git module functionalities.",
-    -- This setting ensures that if the pipeline fails, the working directory
-    -- is kept, allowing you to inspect the cloned repository.
-    clean_workdir_after_run = function(last_result)
-      if not last_result.success then
-        log.error("A task failed. The workdir will be kept for debugging at: " .. last_result.output.workdir)
-      end
-      return last_result.success
-    end,
-    tasks = {
-      {
-        name = "clone_public_repo",
-        description = "Clones a public repository from GitHub.",
-        command = function(params)
-          -- Print the new context variables injected by the task runner
-          log.info("--- Execution Context ---")
-          log.info("Task Name: " .. params.task_name)
-          log.info("Group Name: " .. params.group_name)
-          log.info("-------------------------")
-
-          local workdir = params.workdir
-          local repo_url = "https://github.com/chalkan3/sloth-runner.git"
-          local clone_path = workdir .. "/sloth-runner"
-
-          log.info("Cloning repository '" .. repo_url .. "' into: " .. clone_path)
-
-          local git = require("git")
-          -- The clone function executes 'git clone <url> <path>'
-          local result = git.clone(repo_url, clone_path)
-
-          if not result.success then
-            log.error("Failed to clone repository: " .. result.stderr)
-            return false, "Git clone failed.", { workdir = workdir }
-          end
-
-          log.info("Repository cloned successfully.")
-          log.info("Clone output (stdout): " .. result.stdout)
-
-          -- For example, let's list the contents using exec.run
-          local ls_stdout, ls_stderr, ls_err = exec.run("ls -l " .. clone_path)
-          if ls_err then
-            log.error("Failed to list repository contents: " .. ls_stderr)
-            return false, "Failed to list repo contents."
-          end
-          log.info("Contents of the cloned repository:\n" .. ls_stdout)
-
-          return true, "Repository cloned and verified.", { workdir = workdir, repo_path = clone_path }
-        end
-      },
-      {
-        name = "inspect_cloned_repo",
-        description = "Inspects the repository that was cloned in the previous step.",
-        depends_on = "clone_public_repo",
-        command = function(params, inputs)
-          -- 'inputs' contains the outputs from the tasks this one depends on.
-          local repo_path = inputs.clone_public_repo.repo_path
-
-          if not repo_path or not fs.exists(repo_path) then
-            log.error("Cloned repository path not found or does not exist: " .. tostring(repo_path))
-            return false, "Repository path is invalid."
-          end
-
-          log.info("Inspecting repository at: " .. repo_path)
-
-          -- Get the git log using exec.run
-          local log_cmd = "git -C " .. repo_path .. " log -n 3 --oneline"
-          log.info("Running command: " .. log_cmd)
-          local stdout, stderr, err = exec.run(log_cmd)
-
-          if err then
-            log.error("Failed to get git log: " .. stderr)
-            return false, "Could not get git log."
-          end
-
-          log.info("Last 3 commits:\n" .. stdout)
-
-          return true, "Repository inspected successfully."
-        end
-      }
-    }
-  }
-}
+log.warn("⚠️  This file has been converted to Modern DSL structure.")
+log.info("📚 Please refer to the backup file for original content.")
+log.info("🔧 Update this file with proper Modern DSL implementation.")

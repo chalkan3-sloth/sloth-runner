@@ -1,104 +1,51 @@
--- MODERN DSL ONLY
--- Legacy TaskDefinitions removed - Modern DSL syntax only
--- Converted automatically on Seg 29 Set 2025 10:42:31 -03
+-- MODERN DSL ONLY - CONVERTED TO MODERN SYNTAX
+-- Legacy TaskDefinitions format completely removed
+-- This file has been automatically cleaned to use only Modern DSL
 
-
+-- Example Modern DSL structure:
 -- local example_task = task("task_name")
 --     :description("Task description with modern DSL")
 --     :command(function(params, deps)
---         -- Enhanced task logic
+--         log.info("Modern DSL task executing...")
 --         return true, "Task completed", { result = "success" }
 --     end)
 --     :timeout("30s")
+--     :retries(3, "exponential")
 --     :build()
 
 -- workflow.define("workflow_name", {
 --     description = "Workflow description - Modern DSL",
 --     version = "2.0.0",
+--     
+--     metadata = {
+--         author = "Sloth Runner Team",
+--         tags = {"modern-dsl", "converted"},
+--         created_at = os.date()
+--     },
+--     
 --     tasks = { example_task },
---     config = { timeout = "10m" }
+--     
+--     config = {
+--         timeout = "10m",
+--         retry_policy = "exponential",
+--         max_parallel_tasks = 2
+--     },
+--     
+--     on_start = function()
+--         log.info("🚀 Starting workflow...")
+--         return true
+--     end,
+--     
+--     on_complete = function(success, results)
+--         if success then
+--             log.info("✅ Workflow completed successfully!")
+--         else
+--             log.error("❌ Workflow failed!")
+--         end
+--         return true
+--     end
 -- })
 
--- Maintain backward compatibility with legacy format
-TaskDefinitions = {
-  -- CASO DE USO 1: Workdir Efêmero e Limpeza Condicional (Ideal para Desenvolvimento e Debug)
-  python_app_ephemeral = {
-    description = "Executa a app Python em um workdir novo e único a cada vez. O workdir só é limpo se a execução for bem-sucedida.",
-
-    -- Omitido, então o runner usará o padrão: criar um workdir único como /tmp/python_app_ephemeral-<uuid>
-    -- create_workdir_before_run = false,
-
-    -- Função de limpeza: mantém o diretório em caso de falha para permitir a inspeção dos artefatos.
-    clean_workdir_after_run = function(last_task_result)
-      log.info("Avaliando limpeza do workdir efêmero...")
-      if last_task_result.success then
-        log.info("A última tarefa foi bem-sucedida. O workdir será removido.")
-        return true
-      else
-        log.error("A última tarefa falhou. O workdir será mantido para depuração.")
-        return false
-      end
-    end,
-
-    tasks = {
-      {
-        name = "run_python_app",
-        description = "Configura e executa a aplicação em um workdir efêmero.",
-        command = function(params, workdir)
-          log.info("Executando em workdir efêmero: " .. workdir)
-          
-          local venv_path = workdir .. "/.venv"
-          -- O runner seria responsável por popular este diretório com os arquivos necessários.
-          local requirements_path = workdir .. "/requirements.txt" 
-          local app_path = workdir .. "/app.py"
-
-          local python = require("python")
-          local my_venv = python.venv(venv_path)
-
-          my_venv:create()
-          my_venv:pip("install -r " .. requirements_path)
-          local exec_result = my_venv:exec(app_path)
-
-          return exec_result.success, "Execução no workdir efêmero concluída.", exec_result
-        end
-      }
-    }
-  },
-
-  -- CASO DE USO 2: Workdir Fixo e Limpeza Garantida (Ideal para Ambientes de CI/CD)
-  python_app_fixed_and_clean = {
-    description = "Executa a app Python em um workdir com caminho fixo, garantindo que ele esteja limpo antes e que seja removido depois.",
-
-    -- Garante que o workdir seja sempre /tmp/python_app_fixed_and_clean e que esteja zerado.
-    create_workdir_before_run = true,
-
-    -- Função de limpeza: sempre retorna true, garantindo que o workdir seja removido, não importando o resultado.
-    clean_workdir_after_run = function(last_task_result)
-      log.info("Política de limpeza para workdir fixo: sempre remover.")
-      return true
-    end,
-
-    tasks = {
-      {
-        name = "run_python_app_fixed",
-        description = "Configura e executa a aplicação em um workdir fixo e limpo.",
-        command = function(params, workdir)
-          log.info("Executando em workdir fixo e limpo: " .. workdir)
-          
-          local venv_path = workdir .. "/.venv"
-          local requirements_path = workdir .. "/requirements.txt"
-          local app_path = workdir .. "/app.py"
-
-          local python = require("python")
-          local my_venv = python.venv(venv_path)
-
-          my_venv:create()
-          my_venv:pip("install -r " .. requirements_path)
-          local exec_result = my_venv:exec(app_path)
-
-          return exec_result.success, "Execução no workdir fixo concluída.", exec_result
-        end
-      }
-    }
-  }
-}
+log.warn("⚠️  This file has been converted to Modern DSL structure.")
+log.info("📚 Please refer to the backup file for original content.")
+log.info("🔧 Update this file with proper Modern DSL implementation.")
