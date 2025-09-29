@@ -6,6 +6,32 @@
     <title>Sloth Runner - Task Management Dashboard</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        :root {
+            --bg-primary: #667eea;
+            --bg-secondary: #764ba2;
+            --bg-surface: rgba(255, 255, 255, 0.95);
+            --text-primary: #333;
+            --text-secondary: #666;
+            --accent-color: #667eea;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --error-color: #dc3545;
+            --info-color: #17a2b8;
+            --border-radius: 15px;
+            --shadow-light: 0 10px 30px rgba(0, 0, 0, 0.1);
+            --shadow-medium: 0 20px 40px rgba(0, 0, 0, 0.15);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-surface: rgba(26, 26, 46, 0.95);
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --accent-color: #667eea;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -14,9 +40,10 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
             min-height: 100vh;
+            transition: var(--transition);
         }
 
         .container {
@@ -25,26 +52,73 @@
             padding: 20px;
         }
 
-        .header {
-            background: rgba(255, 255, 255, 0.95);
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-surface);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: var(--text-primary);
+            transition: var(--transition);
             backdrop-filter: blur(10px);
-            border-radius: 15px;
+            z-index: 1002;
+            box-shadow: var(--shadow-light);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1) rotate(180deg);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .header {
+            background: var(--bg-surface);
+            backdrop-filter: blur(20px);
+            border-radius: var(--border-radius);
             padding: 30px;
             margin-bottom: 30px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            box-shadow: var(--shadow-medium);
             text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .header h1 {
-            color: #667eea;
+            color: var(--accent-color);
             font-size: 2.5rem;
             margin-bottom: 10px;
             font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
         }
 
         .header p {
-            color: #666;
+            color: var(--text-secondary);
             font-size: 1.1rem;
+        }
+
+        .realtime-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--success-color);
+            border-radius: 50%;
+            margin-left: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
         }
 
         .stats-grid {
@@ -55,37 +129,109 @@
         }
 
         .stat-card {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
+            background: var(--bg-surface);
+            border-radius: var(--border-radius);
             padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            box-shadow: var(--shadow-light);
             text-align: center;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: var(--transition);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .stat-card:hover::before {
+            left: 100%;
         }
 
         .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-medium);
         }
 
         .stat-icon {
             font-size: 2.5rem;
             margin-bottom: 15px;
-            color: #667eea;
+            color: var(--accent-color);
+            transition: var(--transition);
+        }
+
+        .stat-card:hover .stat-icon {
+            transform: scale(1.1);
         }
 
         .stat-number {
             font-size: 2rem;
             font-weight: bold;
-            color: #333;
+            color: var(--text-primary);
             margin-bottom: 5px;
         }
 
         .stat-label {
-            color: #666;
+            color: var(--text-secondary);
             font-size: 0.9rem;
             text-transform: uppercase;
             letter-spacing: 1px;
+        }
+
+        .search-filter-bar {
+            background: var(--bg-surface);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow-light);
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 250px;
+            padding: 12px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 25px;
+            outline: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            transition: var(--transition);
+            font-size: 14px;
+        }
+
+        .search-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .search-input:focus {
+            border-color: var(--accent-color);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .filter-select {
+            padding: 12px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 25px;
+            outline: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .filter-select:focus {
+            border-color: var(--accent-color);
         }
 
         .main-grid {
@@ -96,14 +242,15 @@
         }
 
         .panel {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
+            background: var(--bg-surface);
+            border-radius: var(--border-radius);
             padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            box-shadow: var(--shadow-light);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .panel h2 {
-            color: #333;
+            color: var(--text-primary);
             margin-bottom: 20px;
             font-size: 1.5rem;
             display: flex;
@@ -115,50 +262,107 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px;
-            margin-bottom: 10px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            border-left: 4px solid #667eea;
-            transition: all 0.3s ease;
+            padding: 20px;
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            border-left: 4px solid var(--accent-color);
+            transition: var(--transition);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .task-item:hover {
-            background: #e9ecef;
-            transform: translateX(5px);
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(8px) translateY(-2px);
+            box-shadow: var(--shadow-light);
+        }
+
+        .task-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .task-name {
             font-weight: 600;
-            color: #333;
-            flex: 1;
+            color: var(--text-primary);
+            font-size: 1.1rem;
         }
 
-        .task-status {
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+        .task-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            align-items: center;
+        }
+
+        .task-type {
+            padding: 4px 8px;
+            background: rgba(102, 126, 234, 0.2);
+            color: var(--accent-color);
+            border-radius: 6px;
+            font-size: 0.75rem;
             font-weight: 600;
             text-transform: uppercase;
         }
 
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            opacity: 0;
+            transition: var(--transition);
+        }
+
+        .task-item:hover .task-actions {
+            opacity: 1;
+        }
+
+        .task-status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .task-status::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .task-status:hover::before {
+            left: 100%;
+        }
+
         .status-running {
-            background: #28a745;
+            background: linear-gradient(45deg, var(--success-color), #34ce57);
             color: white;
         }
 
         .status-pending {
-            background: #ffc107;
+            background: linear-gradient(45deg, var(--warning-color), #ffcd39);
             color: #333;
         }
 
         .status-failed {
-            background: #dc3545;
+            background: linear-gradient(45deg, var(--error-color), #e55353);
             color: white;
         }
 
         .status-completed {
-            background: #17a2b8;
+            background: linear-gradient(45deg, var(--info-color), #20c997);
             color: white;
         }
 
@@ -166,101 +370,234 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px;
-            margin-bottom: 10px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            border-left: 4px solid #28a745;
+            padding: 20px;
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            border-left: 4px solid var(--success-color);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: var(--transition);
+        }
+
+        .agent-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-light);
+        }
+
+        .agent-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
         }
 
         .agent-status {
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
-            margin-right: 10px;
+            position: relative;
+        }
+
+        .agent-status::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 50%;
+            background: inherit;
+            opacity: 0.3;
+            animation: ping 2s infinite;
+        }
+
+        @keyframes ping {
+            0% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.5); opacity: 0.1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        .agent-details {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .agent-name {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+        }
+
+        .agent-address {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-family: 'Courier New', monospace;
         }
 
         .agent-online {
-            background: #28a745;
+            background: var(--success-color);
         }
 
         .agent-offline {
-            background: #dc3545;
+            background: var(--error-color);
         }
 
         .controls {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 15px;
             margin-bottom: 30px;
-            flex-wrap: wrap;
         }
 
         .btn {
-            padding: 12px 25px;
+            padding: 14px 28px;
             border: none;
             border-radius: 25px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: var(--transition);
             text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            font-size: 0.9rem;
+            justify-content: center;
+            gap: 10px;
+            font-size: 0.95rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s ease, height 0.3s ease;
+        }
+
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
         }
 
         .btn-primary {
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(45deg, var(--accent-color), var(--bg-secondary));
             color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
 
         .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
         }
 
         .btn-secondary {
-            background: white;
-            color: #667eea;
-            border: 2px solid #667eea;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
         }
 
         .btn-secondary:hover {
-            background: #667eea;
-            color: white;
-        }
-
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: #c82333;
+            background: rgba(255, 255, 255, 0.2);
+            border-color: var(--accent-color);
             transform: translateY(-2px);
         }
 
+        .btn-danger {
+            background: linear-gradient(45deg, var(--error-color), #e55353);
+            color: white;
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(220, 53, 69, 0.4);
+        }
+
+        .btn-icon {
+            padding: 12px;
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         .terminal {
-            background: #1e1e1e;
-            color: #00ff00;
+            background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+            color: #00ff41;
             padding: 20px;
-            border-radius: 10px;
-            font-family: 'Courier New', monospace;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+            font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
             max-height: 400px;
             overflow-y: auto;
-            margin-top: 20px;
             border: 1px solid #333;
+            position: relative;
+        }
+
+        .terminal::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #00ff41, transparent);
         }
 
         .terminal-header {
-            background: #333;
+            background: linear-gradient(135deg, #333 0%, #404040 100%);
             color: white;
-            padding: 10px 15px;
-            border-radius: 10px 10px 0 0;
+            padding: 15px 20px;
+            border-radius: var(--border-radius) var(--border-radius) 0 0;
             font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: space-between;
+            border: 1px solid #333;
+            border-bottom: none;
+        }
+
+        .terminal-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .terminal-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .terminal-dot.red { background: #ff5f56; }
+        .terminal-dot.yellow { background: #ffbd2e; }
+        .terminal-dot.green { background: #27ca3f; }
+
+        .terminal-line {
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+
+        .terminal-prompt {
+            color: #00ff41;
+            font-weight: bold;
+        }
+
+        .terminal-output {
+            color: #ffffff;
+        }
+
+        .terminal-error {
+            color: #ff6b6b;
         }
 
         .loading {
@@ -286,86 +623,183 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(5px);
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         .modal-content {
-            background-color: white;
+            background: var(--bg-surface);
             margin: 5% auto;
-            padding: 30px;
-            border-radius: 15px;
-            width: 80%;
+            padding: 40px;
+            border-radius: var(--border-radius);
+            width: 90%;
             max-width: 600px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: var(--shadow-medium);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
 
         .close {
-            color: #aaa;
+            color: var(--text-secondary);
             float: right;
             font-size: 28px;
             font-weight: bold;
             cursor: pointer;
+            transition: var(--transition);
+            line-height: 1;
         }
 
         .close:hover {
-            color: #333;
+            color: var(--text-primary);
+            transform: scale(1.1);
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             font-weight: 600;
-            color: #333;
+            color: var(--text-primary);
+            font-size: 0.95rem;
         }
 
         .form-group input,
         .form-group textarea,
         .form-group select {
             width: 100%;
-            padding: 12px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
+            padding: 14px 18px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
             font-size: 14px;
-            transition: border-color 0.3s ease;
+            transition: var(--transition);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            backdrop-filter: blur(10px);
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: var(--text-secondary);
         }
 
         .form-group input:focus,
         .form-group textarea:focus,
         .form-group select:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: var(--accent-color);
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        @media (max-width: 1200px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
 
         @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
             .main-grid {
                 grid-template-columns: 1fr;
             }
             
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
             .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .search-filter-bar {
                 flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .search-input {
+                min-width: auto;
             }
             
             .header h1 {
                 font-size: 2rem;
             }
+            
+            .theme-toggle {
+                top: 15px;
+                right: 15px;
+                width: 45px;
+                height: 45px;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+                padding: 25px;
+            }
+            
+            .task-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+            
+            .task-meta {
+                flex-wrap: wrap;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .stat-card {
+                padding: 20px;
+            }
+            
+            .btn {
+                padding: 12px 20px;
+                font-size: 0.9rem;
+            }
         }
 
         .notification {
             position: fixed;
-            top: 20px;
+            top: 80px;
             right: 20px;
-            padding: 15px 20px;
-            border-radius: 8px;
+            padding: 16px 24px;
+            border-radius: 12px;
             color: white;
             font-weight: 600;
             z-index: 1001;
             transform: translateX(400px);
-            transition: transform 0.3s ease;
+            transition: var(--transition);
+            box-shadow: var(--shadow-medium);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .notification.show {
@@ -373,22 +807,30 @@
         }
 
         .notification.success {
-            background: #28a745;
+            background: linear-gradient(45deg, var(--success-color), #34ce57);
         }
 
         .notification.error {
-            background: #dc3545;
+            background: linear-gradient(45deg, var(--error-color), #e55353);
         }
 
         .notification.info {
-            background: #17a2b8;
+            background: linear-gradient(45deg, var(--info-color), #20c997);
         }
     </style>
 </head>
 <body>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle Dark Mode">
+        <i class="fas fa-moon" id="theme-icon"></i>
+    </button>
+    
     <div class="container">
         <div class="header">
-            <h1><i class="fas fa-sloth"></i> Sloth Runner</h1>
+            <h1>
+                <i class="fas fa-sloth"></i> 
+                Sloth Runner
+                <span class="realtime-indicator" title="Real-time connection"></span>
+            </h1>
             <p>Advanced Task Management & Automation Dashboard</p>
         </div>
 
@@ -421,6 +863,23 @@
                 <div class="stat-number" id="completedTasks">0</div>
                 <div class="stat-label">Completed</div>
             </div>
+        </div>
+
+        <div class="search-filter-bar">
+            <input type="text" class="search-input" placeholder="🔍 Search tasks..." id="taskSearch" oninput="filterTasks()">
+            <select class="filter-select" id="statusFilter" onchange="filterTasks()">
+                <option value="">All Status</option>
+                <option value="running">Running</option>
+                <option value="pending">Pending</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+            </select>
+            <select class="filter-select" id="typeFilter" onchange="filterTasks()">
+                <option value="">All Types</option>
+                <option value="shell">Shell</option>
+                <option value="lua">Lua</option>
+                <option value="pipeline">Pipeline</option>
+            </select>
         </div>
 
         <div class="controls">
@@ -456,12 +915,24 @@
 
         <div class="panel">
             <div class="terminal-header">
-                <i class="fas fa-terminal"></i> System Console
-                <div class="loading" id="consoleLoading" style="display: none;"></div>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-terminal"></i> System Console
+                    <div class="loading" id="consoleLoading" style="display: none;"></div>
+                </div>
+                <div class="terminal-controls">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                </div>
             </div>
             <div class="terminal" id="console">
-                <div>Sloth Runner Console - Ready</div>
-                <div>Type commands or view real-time task output here...</div>
+                <div class="terminal-line">
+                    <span class="terminal-prompt">sloth@runner:~$</span> 
+                    <span class="terminal-output">Sloth Runner Console - Ready</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="terminal-output">Type commands or view real-time task output here...</span>
+                </div>
             </div>
         </div>
     </div>
@@ -527,12 +998,64 @@
         let tasks = [];
         let agents = [];
         let wsConnection = null;
+        let filteredTasks = [];
+
+        // Theme management
+        function toggleTheme() {
+            const body = document.body;
+            const icon = document.getElementById('theme-icon');
+            const isDark = body.getAttribute('data-theme') === 'dark';
+            
+            if (isDark) {
+                body.removeAttribute('data-theme');
+                icon.className = 'fas fa-moon';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.setAttribute('data-theme', 'dark');
+                icon.className = 'fas fa-sun';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Initialize theme from localStorage
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const icon = document.getElementById('theme-icon');
+            
+            if (savedTheme === 'dark') {
+                document.body.setAttribute('data-theme', 'dark');
+                icon.className = 'fas fa-sun';
+            } else {
+                icon.className = 'fas fa-moon';
+            }
+        }
+
+        // Filter functions
+        function filterTasks() {
+            const searchTerm = document.getElementById('taskSearch').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const typeFilter = document.getElementById('typeFilter').value;
+            
+            filteredTasks = tasks.filter(task => {
+                const matchesSearch = task.name.toLowerCase().includes(searchTerm);
+                const matchesStatus = !statusFilter || task.status === statusFilter;
+                const matchesType = !typeFilter || task.type === typeFilter;
+                
+                return matchesSearch && matchesStatus && matchesType;
+            });
+            
+            renderTasks();
+        }
 
         // Initialize the dashboard
         document.addEventListener('DOMContentLoaded', function() {
+            initializeTheme();
             initializeWebSocket();
             refreshData();
             setInterval(refreshData, 5000); // Refresh every 5 seconds
+            
+            // Initialize filtered tasks
+            filteredTasks = tasks;
         });
 
         // WebSocket connection for real-time updates
@@ -608,18 +1131,19 @@
 
         function mockTasks() {
             return [
-                { id: 1, name: 'Build Project', status: 'completed', type: 'shell' },
-                { id: 2, name: 'Run Tests', status: 'running', type: 'lua' },
-                { id: 3, name: 'Deploy to Staging', status: 'pending', type: 'pipeline' },
-                { id: 4, name: 'Backup Database', status: 'failed', type: 'shell' }
+                { id: 1, name: 'Build Project', status: 'completed', type: 'shell', created: Date.now() - 3600000 },
+                { id: 2, name: 'Run Tests', status: 'running', type: 'lua', created: Date.now() - 1800000 },
+                { id: 3, name: 'Deploy to Staging', status: 'pending', type: 'pipeline', created: Date.now() - 900000 },
+                { id: 4, name: 'Backup Database', status: 'failed', type: 'shell', created: Date.now() - 300000 },
+                { id: 5, name: 'Code Analysis', status: 'completed', type: 'lua', agent: 'prod-server-1', created: Date.now() - 600000 }
             ];
         }
 
         function mockAgents() {
             return [
-                { name: 'local-agent', address: 'localhost:50051', status: 'online' },
-                { name: 'prod-server-1', address: '192.168.1.100:50051', status: 'online' },
-                { name: 'test-server', address: '192.168.1.101:50051', status: 'offline' }
+                { name: 'local-agent', address: 'localhost:50051', status: 'online', lastSeen: 'Just now' },
+                { name: 'prod-server-1', address: '192.168.1.100:50051', status: 'online', lastSeen: '2m ago' },
+                { name: 'test-server', address: '192.168.1.101:50051', status: 'offline', lastSeen: '15m ago' }
             ];
         }
 
@@ -632,6 +1156,9 @@
                 
                 tasks = tasksData.tasks || [];
                 agents = agentsData.agents || [];
+                
+                // Initialize filtered tasks
+                filteredTasks = tasks;
                 
                 updateStats();
                 renderTasks();
@@ -651,15 +1178,33 @@
 
         function renderTasks() {
             const tasksList = document.getElementById('tasksList');
+            const tasksToRender = filteredTasks.length > 0 ? filteredTasks : tasks;
             
-            if (tasks.length === 0) {
-                tasksList.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No tasks found</p>';
+            if (tasksToRender.length === 0) {
+                tasksList.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">No tasks found</p>';
                 return;
             }
             
-            tasksList.innerHTML = tasks.map(task => `
+            tasksList.innerHTML = tasksToRender.map(task => `
                 <div class="task-item">
-                    <div class="task-name">${task.name}</div>
+                    <div class="task-content">
+                        <div class="task-name">${task.name}</div>
+                        <div class="task-meta">
+                            <span class="task-type">${task.type}</span>
+                            <span><i class="fas fa-clock"></i> ${getTimeAgo(task.created || Date.now())}</span>
+                            ${task.agent ? `<span><i class="fas fa-server"></i> ${task.agent}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="task-actions">
+                        <button class="btn btn-icon btn-secondary" onclick="viewTaskDetails(${task.id})" title="View Details">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        ${task.status === 'running' ? 
+                            `<button class="btn btn-icon btn-danger" onclick="stopTask(${task.id})" title="Stop Task">
+                                <i class="fas fa-stop"></i>
+                            </button>` : ''
+                        }
+                    </div>
                     <div class="task-status status-${task.status}">${task.status}</div>
                 </div>
             `).join('');
@@ -669,17 +1214,23 @@
             const agentsList = document.getElementById('agentsList');
             
             if (agents.length === 0) {
-                agentsList.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No agents registered</p>';
+                agentsList.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 20px;">No agents registered</p>';
                 return;
             }
             
             agentsList.innerHTML = agents.map(agent => `
                 <div class="agent-item">
-                    <div style="display: flex; align-items: center;">
+                    <div class="agent-info">
                         <div class="agent-status ${agent.status === 'online' ? 'agent-online' : 'agent-offline'}"></div>
-                        <span>${agent.name}</span>
+                        <div class="agent-details">
+                            <div class="agent-name">${agent.name}</div>
+                            <div class="agent-address">${agent.address}</div>
+                        </div>
                     </div>
-                    <small style="color: #666;">${agent.address}</small>
+                    <div style="text-align: right; color: var(--text-secondary); font-size: 0.85rem;">
+                        <div>${agent.status.toUpperCase()}</div>
+                        <div>${agent.lastSeen || 'Just now'}</div>
+                    </div>
                 </div>
             `).join('');
         }
@@ -742,13 +1293,17 @@
                     id: Date.now(),
                     name: taskData.name,
                     status: 'pending',
-                    type: taskData.type
+                    type: taskData.type,
+                    agent: taskData.agent,
+                    created: Date.now()
                 };
                 tasks.push(newTask);
+                filteredTasks = tasks;
                 showNotification('Task created successfully! (Demo Mode)', 'success');
                 closeNewTaskModal();
                 updateStats();
                 renderTasks();
+                addConsoleMessage(`New task created: ${taskData.name}`, 'output');
             }
         });
 
@@ -775,7 +1330,8 @@
                 const newAgent = {
                     name: agentData.name,
                     address: agentData.address,
-                    status: 'online'
+                    status: 'online',
+                    lastSeen: 'Just now'
                 };
                 agents.push(newAgent);
                 showNotification('Agent added successfully! (Demo Mode)', 'success');
@@ -783,6 +1339,7 @@
                 updateStats();
                 renderAgents();
                 updateAgentDropdown();
+                addConsoleMessage(`New agent connected: ${agentData.name}`, 'output');
             }
         });
 
@@ -802,9 +1359,11 @@
                         task.status = 'failed';
                     }
                 });
+                filteredTasks = tasks;
                 showNotification('All tasks stopped successfully! (Demo Mode)', 'success');
                 updateStats();
                 renderTasks();
+                addConsoleMessage('All running tasks stopped', 'output');
             }
         }
 
@@ -830,13 +1389,61 @@
             }
         }
 
-        function addConsoleMessage(message) {
+        function addConsoleMessage(message, type = 'output') {
             const console = document.getElementById('console');
             const timestamp = new Date().toLocaleTimeString();
             const div = document.createElement('div');
-            div.textContent = `[${timestamp}] ${message}`;
+            div.className = 'terminal-line';
+            
+            let content = '';
+            if (type === 'prompt') {
+                content = `<span class="terminal-prompt">sloth@runner:~$</span> <span class="terminal-output">${message}</span>`;
+            } else if (type === 'error') {
+                content = `<span class="terminal-error">[${timestamp}] ${message}</span>`;
+            } else {
+                content = `<span class="terminal-output">[${timestamp}] ${message}</span>`;
+            }
+            
+            div.innerHTML = content;
             console.appendChild(div);
             console.scrollTop = console.scrollHeight;
+            
+            // Keep only last 100 messages
+            while (console.children.length > 100) {
+                console.removeChild(console.firstChild);
+            }
+        }
+
+        function getTimeAgo(timestamp) {
+            const now = Date.now();
+            const diff = now - timestamp;
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+            
+            if (days > 0) return `${days}d ago`;
+            if (hours > 0) return `${hours}h ago`;
+            if (minutes > 0) return `${minutes}m ago`;
+            return 'Just now';
+        }
+
+        function viewTaskDetails(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                showNotification(`Viewing details for "${task.name}"`, 'info');
+                addConsoleMessage(`Viewing task details: ${task.name}`, 'prompt');
+            }
+        }
+
+        function stopTask(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task && confirm(`Stop task "${task.name}"?`)) {
+                task.status = 'failed';
+                showNotification(`Task "${task.name}" stopped`, 'info');
+                addConsoleMessage(`Task stopped: ${task.name}`, 'output');
+                updateStats();
+                renderTasks();
+            }
         }
 
         function showNotification(message, type = 'info') {
@@ -870,12 +1477,13 @@
             tasks.forEach(task => {
                 if (task.status === 'running' && Math.random() > 0.7) {
                     task.status = Math.random() > 0.8 ? 'failed' : 'completed';
-                    addConsoleMessage(`Task "${task.name}" ${task.status}`);
+                    addConsoleMessage(`Task "${task.name}" ${task.status}`, 'output');
                 }
             });
             
+            // Update filtered tasks
+            filterTasks();
             updateStats();
-            renderTasks();
         }, 10000);
     </script>
 </body>

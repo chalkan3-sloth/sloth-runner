@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/yuin/gopher-lua"
@@ -369,7 +368,7 @@ func (d *DatabaseModule) luaValueToInterface(value lua.LValue) interface{} {
 		return float64(v)
 	case lua.LBool:
 		return bool(v)
-	case lua.LNil:
+	case *lua.LNilType:
 		return nil
 	default:
 		return value.String()

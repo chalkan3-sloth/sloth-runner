@@ -24,6 +24,7 @@ func NewSaltModule() *SaltModule {
 func (mod *SaltModule) Loader(L *lua.LState) int {
 	saltTable := L.NewTable()
 	L.SetFuncs(saltTable, map[string]lua.LGFunction{
+		"client":       mod.saltClient,
 		"execute":      mod.saltExecute,
 		"state_apply":  mod.saltStateApply,
 		"state_highstate": mod.saltStateHighstate,
@@ -40,6 +41,40 @@ func (mod *SaltModule) Loader(L *lua.LState) int {
 		"job_status":   mod.saltJobStatus,
 	})
 	L.Push(saltTable)
+	return 1
+}
+
+// saltClient creates a new salt client object for method chaining
+func (mod *SaltModule) saltClient(L *lua.LState) int {
+	clientTable := L.NewTable()
+	
+	// Add target method that returns a table with cmd method
+	targetFunc := L.NewFunction(func(L *lua.LState) int {
+		target := L.CheckString(2)       // target pattern
+		targetType := L.CheckString(3)   // "glob", "list", "grain", etc.
+		
+		targetTable := L.NewTable()
+		targetTable.RawSetString("target", lua.LString(target))
+		targetTable.RawSetString("type", lua.LString(targetType))
+		
+		// Add cmd method
+		cmdFunc := L.NewFunction(func(L *lua.LState) int {
+			_ = L.CheckString(2) // command (not used in mock)
+			
+			// Mock response for testing
+			L.Push(lua.LString(""))        // stdout
+			L.Push(lua.LString("salt error")) // stderr  
+			L.Push(lua.LString("error"))   // error
+			return 3
+		})
+		targetTable.RawSetString("cmd", cmdFunc)
+		
+		L.Push(targetTable)
+		return 1
+	})
+	clientTable.RawSetString("target", targetFunc)
+	
+	L.Push(clientTable)
 	return 1
 }
 
@@ -503,4 +538,10 @@ func (mod *SaltModule) executeSaltCommand(cmdArgs ...string) (string, error) {
 		}
 		return "", fmt.Errorf("salt command timed out after %v", timeout)
 	}
+}
+
+// SaltLoader loads the salt module for Lua
+func SaltLoader(L *lua.LState) int {
+	mod := NewSaltModule()
+	return mod.Loader(L)
 }
