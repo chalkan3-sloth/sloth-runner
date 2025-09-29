@@ -2,28 +2,10 @@ version: 2
 
 project_name: sloth-runner
 
-# Allow dirty builds
-git:
-  tag_sort: -version:refname
-  ignore_tags:
-    - '*-dirty'
-
-env:
-  - CGO_ENABLED=1
-
 before:
   hooks:
     - go mod tidy
     - go generate ./...
-
-# Global build settings
-dist: dist
-
-# Allow dirty git state
-snapshot:
-  version_template: "{{ .ProjectName }}_snapshot_{{ .Version }}_{{ .ShortCommit }}"
-
-# Global configuration to allow dirty state
 release:
   github:
     owner: chalkan3
@@ -110,7 +92,6 @@ archives:
     files:
       - README.md
       - LICENSE
-      - docs/**/*
 
 checksum:
   name_template: "{{ .ProjectName }}_v{{ .Version }}_checksums.txt"
