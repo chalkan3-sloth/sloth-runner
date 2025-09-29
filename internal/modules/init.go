@@ -48,6 +48,11 @@ func InitializeCoreModules(registry *ModuleRegistry) error {
 		NewCoreModuleAdapter(core.NewHTTPModule()),
 		NewCoreModuleAdapter(core.NewHelpModule()), 
 		NewCoreModuleAdapter(core.NewValidateModule()),
+		NewCoreModuleAdapter(core.NewSystemModule()),
+		NewCoreModuleAdapter(core.NewCryptoModule()),
+		NewCoreModuleAdapter(core.NewNotificationModule()),
+		NewCoreModuleAdapter(core.NewDatabaseModule()),
+		NewCoreModuleAdapter(core.NewMonitoringModule()),
 	}
 	
 	for _, module := range coreModules {
