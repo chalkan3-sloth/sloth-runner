@@ -1,32 +1,68 @@
-# Core Concepts
+# Core Concepts - Modern DSL
 
-This document explains the fundamental concepts of `sloth-runner`, helping you understand how to define and orchestrate complex workflows.
+This document explains the fundamental concepts of `sloth-runner` using the **Modern DSL**, helping you understand how to define and orchestrate complex workflows with the new fluent API.
 
 ---
 
-## The `TaskDefinitions` Table
+## Modern DSL Overview
 
-The entry point for any `sloth-runner` workflow is a Lua file that returns a global table named `TaskDefinitions`. This table is a dictionary where each key is a **Task Group** name.
+The Modern DSL replaces the legacy `TaskDefinitions` approach with a more intuitive, fluent API for defining workflows. Instead of large table structures, you now use chainable methods to build tasks and define workflows declaratively.
 
 ```lua
--- my_pipeline.lua
-TaskDefinitions = {
-  -- Task Groups are defined here
-}
+-- my_pipeline.lua - Modern DSL
+local my_task = task("task_name")
+    :description("Task description")
+    :command(function() ... end)
+    :build()
+
+workflow.define("workflow_name", {
+    description = "Workflow description - Modern DSL",
+    tasks = { my_task }
+})
 ```
 
 ---
 
-## Task Groups
+## Task Definition with Modern DSL
 
-A Task Group is a collection of related tasks. It can also define properties that affect all tasks within it.
+Tasks are now defined using the `task()` function and fluent API methods:
 
-**Group Properties:**
+### Basic Task Structure
 
-*   `description` (string): A description of what the group does.
-*   `tasks` (table): A list of individual task tables.
-*   `create_workdir_before_run` (boolean): If `true`, a temporary working directory is created for the group before any task runs. This directory is passed to each task.
-*   `clean_workdir_after_run` (function): A Lua function that decides if the temporary workdir should be deleted after the group finishes. It receives the final result of the group (`{success = true/false, ...}`). Returning `true` deletes the directory.
+```lua
+local my_task = task("task_name")
+    :description("What this task does")
+    :command(function(params, deps)
+        -- Task logic here
+        return true, "Success message", { output_data = "value" }
+    end)
+    :timeout("5m")
+    :retries(3, "exponential")
+    :build()
+```
+
+### Task Builder Methods
+
+**Core Properties:**
+*   `:description(string)` - Human-readable task description
+*   `:command(function|string)` - Task execution logic
+*   `:timeout(string)` - Maximum execution time (e.g., "10s", "5m", "1h")
+*   `:retries(number, strategy)` - Retry configuration with strategy ("exponential", "linear", "fixed")
+*   `:depends_on(array)` - Array of task names this task depends on
+
+**Advanced Features:**
+*   `:async(boolean)` - Enable asynchronous execution
+*   `:artifacts(array)` - Files to save after successful execution
+*   `:consumes(array)` - Artifacts from other tasks to use
+*   `:run_if(function|string)` - Conditional execution logic
+*   `:abort_if(function|string)` - Condition to abort entire workflow
+
+**Lifecycle Hooks:**
+*   `:on_success(function)` - Execute when task succeeds
+*   `:on_failure(function)` - Execute when task fails  
+*   `:on_timeout(function)` - Execute when task times out
+*   `:pre_hook(function)` - Execute before main command
+*   `:post_hook(function)` - Execute after main command
 
 **Example:**
 ```lua
