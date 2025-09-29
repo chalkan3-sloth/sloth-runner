@@ -1,10 +1,10 @@
 # 🎯 Modern DSL Introduction
 
-Welcome to the **Modern DSL** (Domain Specific Language) for Sloth Runner - a revolutionary approach to defining workflows that combines the power of Lua with an intuitive, fluent API.
+Welcome to the **Modern DSL** (Domain Specific Language) for Sloth Runner - a powerful approach to defining workflows that combines the flexibility of Lua with an intuitive, fluent API.
 
 ## 🚀 What is Modern DSL?
 
-The Modern DSL is a new syntax layer built on top of Sloth Runner that provides:
+The Modern DSL is the syntax for Sloth Runner that provides:
 
 - **🎯 Fluent API**: Chainable, intuitive method calls
 - **📋 Declarative Workflows**: Configuration-driven workflow definitions  
@@ -13,33 +13,9 @@ The Modern DSL is a new syntax layer built on top of Sloth Runner that provides:
 - **📊 Rich Metadata**: Comprehensive workflow and task information
 - **⚡ Modern Patterns**: Async operations, performance monitoring, and observability
 
-## 🎨 Syntax Comparison
+## 🎨 Modern DSL Syntax
 
-### Legacy Format (Still Supported)
-```lua
-Modern DSLs = {
-    my_pipeline = {
-        description = "Traditional pipeline",
-        tasks = {
-            {
-                name = "build_app",
-                command = "go build -o app ./cmd/main.go",
-                timeout = "5m",
-                retries = 3,
-                depends_on = "setup"
-            },
-            {
-                name = "run_tests", 
-                command = "go test ./...",
-                depends_on = "build_app",
-                timeout = "10m"
-            }
-        }
-    }
-}
-```
-
-### Modern DSL (New Approach)
+### Task Definition
 ```lua
 -- Define tasks with fluent API
 local build_task = task("build_app")
@@ -219,58 +195,6 @@ workflow.define("data_pipeline", {
         }
     }
 })
-```
-
-## 🔄 Migration Path
-
-The Modern DSL provides a smooth migration path:
-
-### 1. **100% Backward Compatibility**
-Your existing scripts continue to work without any changes:
-
-```lua
--- Your existing Modern DSLs still work perfectly
-Modern DSLs = {
-    legacy_pipeline = {
-        description = "This still works!",
-        tasks = { /* your existing tasks */ }
-    }
-}
-```
-
-### 2. **Gradual Adoption**
-You can mix legacy and modern syntax in the same file:
-
-```lua
--- New tasks using Modern DSL
-local modern_task = task("modern_deploy")
-    :description("Deploy with modern patterns")
-    :command(function() return deploy_with_retry() end)
-    :build()
-
--- Legacy tasks still work
-Modern DSLs = {
-    mixed_workflow = {
-        description = "Mix of old and new",
-        tasks = {
-            {
-                name = "legacy_task",
-                command = "echo 'Still works!'"
-            }
-        }
-    }
-}
-```
-
-### 3. **Migration Tools**
-Use built-in tools to convert existing workflows:
-
-```bash
-# Convert legacy to modern DSL
-./sloth-runner migrate -f legacy-workflow.lua -o modern-workflow.lua
-
-# Validate modern DSL syntax
-./sloth-runner validate -f modern-workflow.lua --dsl-version 2.0
 ```
 
 ## 🎓 Learning Path

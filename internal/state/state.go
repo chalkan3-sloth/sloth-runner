@@ -97,14 +97,14 @@ func (sm *StateManager) Set(key, value string) error {
 }
 
 // Get retrieves a value by key
-func (sm *StateManager) Get(key string) (string, error) {
+func (sm *StateManager) Get(key string) (interface{}, error) {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
 
 	var value string
 	err := sm.db.QueryRow("SELECT value FROM state WHERE key = ?", key).Scan(&value)
 	if err == sql.ErrNoRows {
-		return "", fmt.Errorf("key not found: %s", key)
+		return nil, fmt.Errorf("key not found: %s", key)
 	}
 	return value, err
 }

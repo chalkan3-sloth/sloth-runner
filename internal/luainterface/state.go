@@ -91,14 +91,18 @@ func (s *StateModule) luaStateSet(L *lua.LState) int {
 func (s *StateModule) luaStateGet(L *lua.LState) int {
 	key := L.CheckString(1)
 	
-	valueStr, err := s.stateManager.Get(key)
+	// Use interface{} to handle both implementations
+	value, err := s.stateManager.Get(key)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(err.Error()))
 		return 2
 	}
 	
-	L.Push(stringToLua(valueStr))
+	// Convert to string safely
+	strValue := fmt.Sprintf("%v", value)
+	
+	L.Push(stringToLua(strValue))
 	return 1
 }
 
