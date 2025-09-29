@@ -41,14 +41,13 @@ jobs:
 
           # Get commit message for analysis
           if [ "${{ github.event_name }}" = "push" ]; then
-            COMMIT_MSG="${{ github.event.head_commit.message }}"
-            echo "Analyzing push commit: $COMMIT_MSG"
+            COMMIT_MSG=$(printf '%s' '${{ github.event.head_commit.message }}' | tr '\n' ' ')
+            echo "Analyzing push commit: $(echo "$COMMIT_MSG" | head -c 100)..."
           else
-            COMMIT_MSG="${{ github.event.pull_request.title }}"
-            PR_BODY="${{ github.event.pull_request.body }}"
+            COMMIT_MSG=$(printf '%s' '${{ github.event.pull_request.title }}' | tr '\n' ' ')
+            PR_BODY=$(printf '%s' '${{ github.event.pull_request.body }}' | tr '\n' ' ')
             PR_LABELS="${{ join(github.event.pull_request.labels.*.name, ' ') }}"
-            echo "Analyzing PR: $COMMIT_MSG"
-            echo "PR Body: $PR_BODY"
+            echo "Analyzing PR: $(echo "$COMMIT_MSG" | head -c 100)..."
             echo "PR Labels: $PR_LABELS"
           fi
 
