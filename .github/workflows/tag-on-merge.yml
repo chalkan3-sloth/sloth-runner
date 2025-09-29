@@ -5,10 +5,13 @@ on:
     types: [closed]
     branches:
       - master
+  push:
+    branches:
+      - master
 
 jobs:
   create-tag:
-    if: github.event.pull_request.merged == true
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
     name: Create Tag
     runs-on: ubuntu-latest
     permissions:
@@ -36,23 +39,28 @@ jobs:
           MINOR=$(echo $LATEST_TAG | sed -E 's/v([0-9]+)\.([0-9]+)\.([0-9]+)/\2/')
           PATCH=$(echo $LATEST_TAG | sed -E 's/v([0-9]+)\.([0-9]+)\.([0-9]+)/\3/')
 
-          # Check PR title and labels to determine version bump type
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          PR_BODY="${{ github.event.pull_request.body }}"
-          PR_LABELS="${{ join(github.event.pull_request.labels.*.name, ' ') }}"
-          
-          echo "PR Title: $PR_TITLE"
-          echo "PR Labels: $PR_LABELS"
+          # Get commit message for analysis
+          if [ "${{ github.event_name }}" = "push" ]; then
+            COMMIT_MSG="${{ github.event.head_commit.message }}"
+            echo "Analyzing push commit: $COMMIT_MSG"
+          else
+            COMMIT_MSG="${{ github.event.pull_request.title }}"
+            PR_BODY="${{ github.event.pull_request.body }}"
+            PR_LABELS="${{ join(github.event.pull_request.labels.*.name, ' ') }}"
+            echo "Analyzing PR: $COMMIT_MSG"
+            echo "PR Body: $PR_BODY"
+            echo "PR Labels: $PR_LABELS"
+          fi
 
           # Determine version bump based on conventional commits or labels
-          if echo "$PR_TITLE $PR_BODY" | grep -iE "(BREAKING CHANGE|breaking:|major:)" || echo "$PR_LABELS" | grep -q "major"; then
+          if echo "$COMMIT_MSG $PR_BODY" | grep -iE "(BREAKING CHANGE|breaking:|major:)" || echo "$PR_LABELS" | grep -q "major"; then
             # Major version bump
             NEW_MAJOR=$((MAJOR + 1))
             NEW_MINOR=0
             NEW_PATCH=0
             NEW_TAG="v${NEW_MAJOR}.${NEW_MINOR}.${NEW_PATCH}"
             echo "🚀 MAJOR version bump detected"
-          elif echo "$PR_TITLE $PR_BODY" | grep -iE "(feat\(|feature:|minor:)" || echo "$PR_LABELS" | grep -q "minor\|feature"; then
+          elif echo "$COMMIT_MSG $PR_BODY" | grep -iE "(feat\(|feat:|feature:|minor:)" || echo "$PR_LABELS" | grep -q "minor\|feature"; then
             # Minor version bump  
             NEW_MINOR=$((MINOR + 1))
             NEW_PATCH=0
