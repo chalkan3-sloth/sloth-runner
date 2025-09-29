@@ -3,7 +3,7 @@ package modules
 import (
 	"log/slog"
 
-	"github.com/chalkan3/sloth-runner/internal/modules/core"
+	"github.com/chalkan3-sloth/sloth-runner/internal/modules/core"
 	"github.com/yuin/gopher-lua"
 )
 

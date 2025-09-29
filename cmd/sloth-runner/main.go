@@ -24,9 +24,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/chalkan3/sloth-runner/internal/luainterface"
-	"github.com/chalkan3/sloth-runner/internal/taskrunner"
-	pb "github.com/chalkan3/sloth-runner/proto"
+	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
+	"github.com/chalkan3-sloth/sloth-runner/internal/taskrunner"
+	pb "github.com/chalkan3-sloth/sloth-runner/proto"
 	lua "github.com/yuin/gopher-lua"
 )
 
