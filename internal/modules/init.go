@@ -7,12 +7,47 @@ import (
 	"github.com/yuin/gopher-lua"
 )
 
+// CoreModuleAdapter adapts core modules to implement ModuleLoader interface
+type CoreModuleAdapter struct {
+	*BaseModule
+	coreModule interface{
+		Loader(L *lua.LState) int
+		Info() core.CoreModuleInfo
+	}
+}
+
+// NewCoreModuleAdapter creates an adapter for core modules
+func NewCoreModuleAdapter(coreModule interface{
+	Loader(L *lua.LState) int
+	Info() core.CoreModuleInfo
+}) *CoreModuleAdapter {
+	coreInfo := coreModule.Info()
+	info := ModuleInfo{
+		Name:         coreInfo.Name,
+		Version:      coreInfo.Version,
+		Description:  coreInfo.Description,
+		Author:       coreInfo.Author,
+		Category:     coreInfo.Category,
+		Dependencies: coreInfo.Dependencies,
+	}
+	
+	return &CoreModuleAdapter{
+		BaseModule: NewBaseModule(info),
+		coreModule: coreModule,
+	}
+}
+
+// Loader implements ModuleLoader interface
+func (c *CoreModuleAdapter) Loader(L *lua.LState) int {
+	return c.coreModule.Loader(L)
+}
+
 // InitializeCoreModules registers all core modules
 func InitializeCoreModules(registry *ModuleRegistry) error {
 	coreModules := []ModuleLoader{
-		core.NewHTTPModule(),
-		core.NewHelpModule(), 
-		core.NewValidateModule(),
+		NewCoreModuleAdapter(core.NewHTTPModule()),
+		NewCoreModuleAdapter(core.NewHelpModule()), 
+		NewCoreModuleAdapter(core.NewValidateModule()),
 	}
 	
 	for _, module := range coreModules {

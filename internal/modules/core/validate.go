@@ -13,12 +13,12 @@ import (
 
 // ValidateModule provides data validation and sanitization
 type ValidateModule struct {
-	*BaseModule
+	info CoreModuleInfo
 }
 
 // NewValidateModule creates a new validation module
 func NewValidateModule() *ValidateModule {
-	info := ModuleInfo{
+	info := CoreModuleInfo{
 		Name:        "validate",
 		Version:     "1.0.0",
 		Description: "Data validation and sanitization utilities",
@@ -28,8 +28,13 @@ func NewValidateModule() *ValidateModule {
 	}
 	
 	return &ValidateModule{
-		BaseModule: NewBaseModule(info),
+		info: info,
 	}
+}
+
+// Info returns module information
+func (v *ValidateModule) Info() CoreModuleInfo {
+	return v.info
 }
 
 // Loader returns the Lua loader function
