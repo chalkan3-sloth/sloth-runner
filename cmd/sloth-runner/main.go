@@ -19,6 +19,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
@@ -27,6 +28,7 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
 	"github.com/chalkan3-sloth/sloth-runner/internal/output"
 	"github.com/chalkan3-sloth/sloth-runner/internal/scaffolding"
+	"github.com/chalkan3-sloth/sloth-runner/internal/stack"
 	"github.com/chalkan3-sloth/sloth-runner/internal/taskrunner"
 	"github.com/chalkan3-sloth/sloth-runner/internal/ui"
 	pb "github.com/chalkan3-sloth/sloth-runner/proto"
@@ -83,6 +85,29 @@ func SetProcessSignal(f func(p *os.Process, sig os.Signal) error) {
 // SetTestOutputBuffer allows tests to capture output
 func SetTestOutputBuffer(w io.Writer) {
 	testOutputBuffer = w
+}
+
+// luaValueToInterface converts a Lua value to a Go interface{}
+func luaValueToInterface(lv lua.LValue) interface{} {
+	switch lv.Type() {
+	case lua.LTNil:
+		return nil
+	case lua.LTBool:
+		return lua.LVAsBool(lv)
+	case lua.LTNumber:
+		return float64(lua.LVAsNumber(lv))
+	case lua.LTString:
+		return lua.LVAsString(lv)
+	case lua.LTTable:
+		table := lv.(*lua.LTable)
+		result := make(map[string]interface{})
+		table.ForEach(func(key, value lua.LValue) {
+			result[key.String()] = luaValueToInterface(value)
+		})
+		return result
+	default:
+		return lv.String()
+	}
 }
 
 var rootCmd = &cobra.Command{
@@ -348,9 +373,10 @@ var schedulerDeleteCmd = &cobra.Command{
 
 // Run command
 var runCmd = &cobra.Command{
-	Use:   "run",
+	Use:   "run [stack-name]",
 	Short: "Run sloth-runner tasks",
-	Long:  `Run sloth-runner tasks from Lua files with enhanced Pulumi-style output.`,
+	Long:  `Run sloth-runner tasks from Lua files with configurable output styles. Optionally specify a stack name for state persistence.`,
+	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		filePath, _ := cmd.Flags().GetString("file")
 		if filePath == "" {
@@ -360,7 +386,13 @@ var runCmd = &cobra.Command{
 		values, _ := cmd.Flags().GetString("values")
 		_, _ = cmd.Flags().GetBool("yes") // yes flag - for future use
 		interactive, _ := cmd.Flags().GetBool("interactive")
-		pulumiStyle, _ := cmd.Flags().GetBool("pulumi-style")
+		outputStyle, _ := cmd.Flags().GetString("output")
+		
+		// Get stack name from positional argument
+		var stackName string
+		if len(args) > 0 {
+			stackName = args[0]
+		}
 
 		// Use test output buffer if available, otherwise use stdout
 		writer := cmd.OutOrStdout()
@@ -368,35 +400,92 @@ var runCmd = &cobra.Command{
 			writer = testOutputBuffer
 		}
 
-		// Initialize Pulumi-style output if requested
-		var pulumiOutput *output.PulumiStyleOutput
-		if pulumiStyle {
-			pulumiOutput = output.NewPulumiStyleOutput()
+		// Initialize enhanced output based on style
+		var enhancedOutput *output.PulumiStyleOutput
+		useEnhancedOutput := outputStyle == "enhanced" || outputStyle == "rich" || outputStyle == "modern"
+		
+		if useEnhancedOutput {
+			enhancedOutput = output.NewPulumiStyleOutput()
 		}
+
+		// Initialize stack manager
+		stackManager, err := stack.NewStackManager("")
+		if err != nil {
+			return fmt.Errorf("failed to initialize stack manager: %w", err)
+		}
+		defer stackManager.Close()
 
 		// Load values.yaml if specified
 		var valuesTable *lua.LTable
 		if values != "" {
 			// Load and parse values file (simplified for now)
-			fmt.Fprintf(writer, "Loading values from: %s\n", values)
+			if enhancedOutput != nil {
+				enhancedOutput.Info(fmt.Sprintf("Loading values from: %s", values))
+			} else {
+				fmt.Fprintf(writer, "Loading values from: %s\n", values)
+			}
 		}
 
 		// Parse the Lua script
 		taskGroups, err := luainterface.ParseLuaScript(cmd.Context(), filePath, valuesTable)
 		if err != nil {
-			if pulumiOutput != nil {
-				pulumiOutput.Error(fmt.Sprintf("Failed to parse Lua script: %v", err))
+			if enhancedOutput != nil {
+				enhancedOutput.Error(fmt.Sprintf("Failed to parse Lua script: %v", err))
 			}
 			return fmt.Errorf("failed to parse Lua script: %w", err)
 		}
 
 		if len(taskGroups) == 0 {
-			if pulumiOutput != nil {
-				pulumiOutput.Warning("No task groups found in script")
+			if enhancedOutput != nil {
+				enhancedOutput.Warning("No task groups found in script")
 			} else {
 				fmt.Fprintln(writer, "No task groups found in script")
 			}
 			return nil
+		}
+
+		// Get workflow name from first task group or use stack name
+		var workflowName string
+		for name := range taskGroups {
+			workflowName = name
+			break
+		}
+		
+		if stackName != "" {
+			workflowName = stackName
+		}
+
+		// Create or get existing stack
+		stackID := uuid.New().String()
+		if stackName != "" {
+			existingStack, err := stackManager.GetStackByName(stackName)
+			if err == nil {
+				stackID = existingStack.ID
+				if enhancedOutput != nil {
+					enhancedOutput.Info(fmt.Sprintf("Using existing stack: %s", stackName))
+				}
+			} else {
+				// Create new stack
+				newStack := &stack.StackState{
+					ID:           stackID,
+					Name:         stackName,
+					Description:  fmt.Sprintf("Stack for workflow: %s", workflowName),
+					Version:      "1.0.0",
+					WorkflowFile: filePath,
+					TaskResults:  make(map[string]interface{}),
+					Outputs:      make(map[string]interface{}),
+					Configuration: make(map[string]interface{}),
+					Metadata:     make(map[string]interface{}),
+				}
+				
+				if err := stackManager.CreateStack(newStack); err != nil {
+					return fmt.Errorf("failed to create stack: %w", err)
+				}
+				
+				if enhancedOutput != nil {
+					enhancedOutput.Info(fmt.Sprintf("Created new stack: %s", stackName))
+				}
+			}
 		}
 
 		// Create task runner
@@ -413,21 +502,26 @@ var runCmd = &cobra.Command{
 		// Set outputs to capture results
 		runner.Outputs = make(map[string]interface{})
 		
-		// Set Pulumi-style output if enabled
-		if pulumiOutput != nil {
-			runner.SetPulumiOutput(pulumiOutput)
-			
-			// Get workflow name from first task group
-			var workflowName string
-			for name := range taskGroups {
-				workflowName = name
-				break
+		// Set enhanced output if enabled
+		if enhancedOutput != nil {
+			runner.SetPulumiOutput(enhancedOutput)
+			enhancedOutput.WorkflowStart(workflowName, "Executing workflow")
+		}
+		
+		// Record execution start
+		executionStart := time.Now()
+		if stackName != "" {
+			currentStack, err := stackManager.GetStack(stackID)
+			if err == nil {
+				currentStack.Status = "running"
+				if updateErr := stackManager.UpdateStack(currentStack); updateErr != nil {
+					slog.Warn("Failed to update stack status", "error", updateErr)
+				}
 			}
-			pulumiOutput.WorkflowStart(workflowName, "Executing workflow")
 		}
 		
 		// Execute the tasks
-		if !pulumiStyle {
+		if enhancedOutput == nil {
 			fmt.Fprintf(writer, "Executing tasks from: %s\n", filePath)
 		}
 		
@@ -435,18 +529,100 @@ var runCmd = &cobra.Command{
 		err = runner.Run()
 		duration := time.Since(startTime)
 		
+		// Get exported outputs from the Lua environment
+		exportedOutputs := make(map[string]interface{})
+		if runner.Exports != nil {
+			for key, value := range runner.Exports {
+				exportedOutputs[key] = value
+			}
+		}
+		
+		// Also check for global 'outputs' table in Lua
+		if outputsTable := L.GetGlobal("outputs"); outputsTable.Type() == lua.LTTable {
+			outputsTable.(*lua.LTable).ForEach(func(key, value lua.LValue) {
+				exportedOutputs[key.String()] = luaValueToInterface(value)
+			})
+		}
+		
+		// Record execution in stack
+		if stackName != "" {
+			executionEnd := time.Now()
+			status := "completed"
+			errorMessage := ""
+			
+			if err != nil {
+				status = "failed"
+				errorMessage = err.Error()
+			}
+			
+			execution := &stack.StackExecution{
+				StackID:      stackID,
+				StartedAt:    executionStart,
+				CompletedAt:  &executionEnd,
+				Duration:     duration,
+				Status:       status,
+				TaskCount:    len(runner.Results),
+				SuccessCount: 0,
+				FailureCount: 0,
+				Outputs:      exportedOutputs, // Use exported outputs instead of internal outputs
+				ErrorMessage: errorMessage,
+			}
+			
+			// Count successes and failures
+			for _, result := range runner.Results {
+				if result.Status == "success" || result.Error == nil {
+					execution.SuccessCount++
+				} else {
+					execution.FailureCount++
+				}
+			}
+			
+			if recordErr := stackManager.RecordExecution(stackID, execution); recordErr != nil {
+				slog.Warn("Failed to record execution", "error", recordErr)
+			}
+			
+			// Update stack state
+			stackState, getErr := stackManager.GetStack(stackID)
+			if getErr == nil {
+				stackState.Status = status
+				stackState.LastDuration = duration
+				stackState.LastError = errorMessage
+				stackState.ExecutionCount++
+				stackState.Outputs = exportedOutputs // Use exported outputs
+				if status == "completed" {
+					completedAt := time.Now()
+					stackState.CompletedAt = &completedAt
+				}
+				
+				if updateErr := stackManager.UpdateStack(stackState); updateErr != nil {
+					slog.Warn("Failed to update stack", "error", updateErr)
+				}
+			}
+		}
+		
 		if err != nil {
-			if pulumiOutput != nil {
-				pulumiOutput.WorkflowFailure("workflow", duration, err)
+			if enhancedOutput != nil {
+				enhancedOutput.WorkflowFailure("workflow", duration, err)
 			}
 			return fmt.Errorf("task execution failed: %w", err)
 		}
 
-		if pulumiOutput != nil {
+		if enhancedOutput != nil {
 			taskCount := len(runner.Results)
-			pulumiOutput.WorkflowSuccess("workflow", duration, taskCount)
+			// Add exported outputs to enhanced output display
+			if len(exportedOutputs) > 0 {
+				enhancedOutput.AddOutput("exports", exportedOutputs)
+			}
+			enhancedOutput.WorkflowSuccess("workflow", duration, taskCount)
 		} else {
 			fmt.Fprintln(writer, "Task execution completed successfully!")
+			// Show exported outputs in basic mode
+			if len(exportedOutputs) > 0 {
+				fmt.Fprintln(writer, "\nExported Outputs:")
+				for key, value := range exportedOutputs {
+					fmt.Fprintf(writer, "  %s: %v\n", key, value)
+				}
+			}
 		}
 		
 		return nil
@@ -810,6 +986,207 @@ var workflowListTemplatesCmd = &cobra.Command{
 	},
 }
 
+// Stack command and subcommands
+var stackCmd = &cobra.Command{
+	Use:   "stack",
+	Short: "Manage workflow stacks",
+	Long:  `The stack command provides subcommands to manage workflow stacks and their state.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
+}
+
+var stackListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List all workflow stacks",
+	Long:  `List all workflow stacks with their current state and execution history.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		stackManager, err := stack.NewStackManager("")
+		if err != nil {
+			return fmt.Errorf("failed to initialize stack manager: %w", err)
+		}
+		defer stackManager.Close()
+
+		stacks, err := stackManager.ListStacks()
+		if err != nil {
+			return fmt.Errorf("failed to list stacks: %w", err)
+		}
+
+		if len(stacks) == 0 {
+			pterm.Info.Println("No stacks found.")
+			return nil
+		}
+
+		// Create table output
+		pterm.DefaultHeader.WithFullWidth(false).WithBackgroundStyle(pterm.NewStyle(pterm.BgBlue)).WithTextStyle(pterm.NewStyle(pterm.FgWhite)).Printf("Workflow Stacks")
+		
+		pterm.Printf("\n")
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+		fmt.Fprintln(w, "NAME\tSTATUS\tLAST RUN\tDURATION\tEXECUTIONS\tDESCRIPTION")
+		fmt.Fprintln(w, "----\t------\t--------\t--------\t----------\t-----------")
+
+		for _, s := range stacks {
+			status := s.Status
+			switch status {
+			case "completed":
+				status = pterm.Green(status)
+			case "failed":
+				status = pterm.Red(status)
+			case "running":
+				status = pterm.Yellow(status)
+			default:
+				status = pterm.Gray(status)
+			}
+
+			lastRun := "never"
+			if s.CompletedAt != nil {
+				lastRun = s.CompletedAt.Format("2006-01-02 15:04")
+			} else if s.UpdatedAt.Year() > 1 {
+				lastRun = s.UpdatedAt.Format("2006-01-02 15:04")
+			}
+
+			duration := "0s"
+			if s.LastDuration > 0 {
+				duration = s.LastDuration.String()
+			}
+
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\n",
+				s.Name, status, lastRun, duration, s.ExecutionCount, s.Description)
+		}
+
+		return w.Flush()
+	},
+}
+
+var stackShowCmd = &cobra.Command{
+	Use:   "show <stack-name>",
+	Short: "Show detailed information about a stack",
+	Long:  `Show detailed information about a specific workflow stack including execution history.`,
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		stackName := args[0]
+		
+		stackManager, err := stack.NewStackManager("")
+		if err != nil {
+			return fmt.Errorf("failed to initialize stack manager: %w", err)
+		}
+		defer stackManager.Close()
+
+		stackState, err := stackManager.GetStackByName(stackName)
+		if err != nil {
+			return fmt.Errorf("failed to get stack: %w", err)
+		}
+
+		// Show stack details
+		pterm.DefaultHeader.WithFullWidth(false).WithBackgroundStyle(pterm.NewStyle(pterm.BgCyan)).WithTextStyle(pterm.NewStyle(pterm.FgBlack)).Printf("Stack: %s", stackState.Name)
+		
+		pterm.Printf("\n")
+		pterm.Printf("ID: %s\n", stackState.ID)
+		pterm.Printf("Description: %s\n", stackState.Description)
+		pterm.Printf("Version: %s\n", stackState.Version)
+		pterm.Printf("Status: %s\n", stackState.Status)
+		pterm.Printf("Created: %s\n", stackState.CreatedAt.Format("2006-01-02 15:04:05"))
+		pterm.Printf("Updated: %s\n", stackState.UpdatedAt.Format("2006-01-02 15:04:05"))
+		if stackState.CompletedAt != nil {
+			pterm.Printf("Completed: %s\n", stackState.CompletedAt.Format("2006-01-02 15:04:05"))
+		}
+		pterm.Printf("Workflow File: %s\n", stackState.WorkflowFile)
+		pterm.Printf("Executions: %d\n", stackState.ExecutionCount)
+		if stackState.LastDuration > 0 {
+			pterm.Printf("Last Duration: %s\n", stackState.LastDuration.String())
+		}
+		if stackState.LastError != "" {
+			pterm.Printf("Last Error: %s\n", pterm.Red(stackState.LastError))
+		}
+
+		// Show outputs if any
+		if len(stackState.Outputs) > 0 {
+			pterm.Printf("\n")
+			pterm.DefaultHeader.WithFullWidth(false).WithBackgroundStyle(pterm.NewStyle(pterm.BgBlue)).WithTextStyle(pterm.NewStyle(pterm.FgWhite)).Printf("Outputs")
+			pterm.Printf("\n")
+			for key, value := range stackState.Outputs {
+				pterm.Printf("%s: %v\n", pterm.Cyan(key), value)
+			}
+		}
+
+		// Show recent executions
+		executions, err := stackManager.GetStackExecutions(stackState.ID, 5)
+		if err != nil {
+			slog.Warn("Failed to get executions", "error", err)
+		} else if len(executions) > 0 {
+			pterm.Printf("\n")
+			pterm.DefaultHeader.WithFullWidth(false).WithBackgroundStyle(pterm.NewStyle(pterm.BgBlue)).WithTextStyle(pterm.NewStyle(pterm.FgWhite)).Printf("Recent Executions")
+			pterm.Printf("\n")
+			
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+			fmt.Fprintln(w, "STARTED\tSTATUS\tDURATION\tTASKS\tSUCCESS\tFAILED")
+			fmt.Fprintln(w, "-------\t------\t--------\t-----\t-------\t------")
+
+			for _, exec := range executions {
+				status := exec.Status
+				switch status {
+				case "completed":
+					status = pterm.Green(status)
+				case "failed":
+					status = pterm.Red(status)
+				default:
+					status = pterm.Gray(status)
+				}
+
+				fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d\t%d\n",
+					exec.StartedAt.Format("2006-01-02 15:04"),
+					status,
+					exec.Duration.String(),
+					exec.TaskCount,
+					exec.SuccessCount,
+					exec.FailureCount)
+			}
+			w.Flush()
+		}
+
+		return nil
+	},
+}
+
+var stackDeleteCmd = &cobra.Command{
+	Use:   "delete <stack-name>",
+	Short: "Delete a workflow stack",
+	Long:  `Delete a workflow stack and all its execution history.`,
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		stackName := args[0]
+		force, _ := cmd.Flags().GetBool("force")
+		
+		stackManager, err := stack.NewStackManager("")
+		if err != nil {
+			return fmt.Errorf("failed to initialize stack manager: %w", err)
+		}
+		defer stackManager.Close()
+
+		stackState, err := stackManager.GetStackByName(stackName)
+		if err != nil {
+			return fmt.Errorf("failed to get stack: %w", err)
+		}
+
+		if !force {
+			pterm.Warning.Printf("This will permanently delete stack '%s' and all its execution history.\n", stackName)
+			confirm := pterm.DefaultInteractiveConfirm.WithDefaultValue(false)
+			result, _ := confirm.Show("Are you sure?")
+			if !result {
+				pterm.Info.Println("Operation cancelled.")
+				return nil
+			}
+		}
+
+		if err := stackManager.DeleteStack(stackState.ID); err != nil {
+			return fmt.Errorf("failed to delete stack: %w", err)
+		}
+
+		pterm.Success.Printf("Stack '%s' deleted successfully.\n", stackName)
+		return nil
+	},
+}
+
 type agentServer struct {
 	pb.UnimplementedAgentServer
 	grpcServer *grpc.Server
@@ -1019,7 +1396,7 @@ func init() {
 	runCmd.Flags().StringP("values", "v", "", "Path to the values file")
 	runCmd.Flags().Bool("yes", false, "Skip confirmation prompts")
 	runCmd.Flags().Bool("interactive", false, "Run in interactive mode")
-	runCmd.Flags().Bool("pulumi-style", true, "Use Pulumi-style output formatting")
+	runCmd.Flags().StringP("output", "o", "basic", "Output style: basic, enhanced, rich, modern")
 
 	// Workflow command and subcommands
 	rootCmd.AddCommand(workflowCmd)
@@ -1029,6 +1406,15 @@ func init() {
 	// Workflow init command flags
 	workflowInitCmd.Flags().StringP("template", "t", "", "Template to use (basic, cicd, infrastructure, microservices, data-pipeline)")
 	workflowInitCmd.Flags().BoolP("interactive", "i", false, "Run in interactive mode")
+
+	// Stack command and subcommands
+	rootCmd.AddCommand(stackCmd)
+	stackCmd.AddCommand(stackListCmd)
+	stackCmd.AddCommand(stackShowCmd)
+	stackCmd.AddCommand(stackDeleteCmd)
+	
+	// Stack delete command flags
+	stackDeleteCmd.Flags().Bool("force", false, "Force deletion without confirmation")
 
 	// Version command
 	rootCmd.AddCommand(versionCmd)

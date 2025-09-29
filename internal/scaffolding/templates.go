@@ -659,7 +659,6 @@ logging:
 
 # Output configuration
 output:
-  style: "pulumi"  # pulumi, basic, json
   show_outputs: true
   capture_artifacts: true
 
