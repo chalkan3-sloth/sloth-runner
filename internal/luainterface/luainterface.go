@@ -366,6 +366,12 @@ func RegisterAllModules(L *lua.LState) {
 	RegisterStringModule(L)
 	RegisterMathModule(L)
 	
+	// Register new advanced modules
+	RegisterCryptoModule(L)
+	RegisterTimeModule(L)
+	RegisterDataModule(L)
+	RegisterDatabaseModule(L)
+	
 	// Register modules that may not exist yet
 	// OpenPkg is handled by the pkg.go file
 }
