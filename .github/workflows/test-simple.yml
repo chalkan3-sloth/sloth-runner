@@ -1,0 +1,24 @@
+name: Simple Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+
+jobs:
+  simple-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Simple test
+        run: |
+          echo "Repository directory contents:"
+          ls -la
+          echo "Current user:"
+          whoami
+          echo "System info:"
+          uname -a
+          echo "Environment:"
+          env | grep -E "(GITHUB|CI)" | sort
