@@ -8,7 +8,7 @@ before:
     - go generate ./...
 release:
   github:
-    owner: chalkan3
+    owner: chalkan3-sloth
     name: sloth-runner
   name_template: "🚀 sloth-runner v{{ .Version }}"
   mode: replace
