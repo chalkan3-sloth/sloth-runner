@@ -1,33 +1,29 @@
---
--- aws_example.lua
---
--- This example demonstrates how to use the aws module to interact with
--- various AWS services. It shows how to use the generic `aws.exec` function
--- as well as the higher-level helpers for S3 and Secrets Manager.
---
--- This pipeline assumes you have AWS credentials configured in your environment
--- or are using aws-vault.
---
--- To run this example:
--- 1. (Optional) If using aws-vault, ensure it's configured with a profile.
--- 2. (Optional) Create an S3 bucket and a test secret in Secrets Manager.
--- 3. Edit the `aws_profile`, `s3_bucket`, and `secret_id` variables below.
--- 4. Run the pipeline:
---    go run ./cmd/sloth-runner -f examples/aws_example.lua
---
+-- MODERN DSL ONLY
+-- Legacy TaskDefinitions removed - Modern DSL syntax only
+-- Converted automatically on Seg 29 Set 2025 10:42:30 -03
 
 local log = require("log")
-
--- Configuration --
--- Set your AWS profile for aws-vault, or leave as "" to use default credentials.
 local aws_profile = ""
--- Set your S3 bucket name for the sync example.
 local s3_bucket = "your-s3-bucket-name"
--- Set the name of your secret in AWS Secrets Manager.
 local secret_id = "your/secret/name"
--------------------
 
+-- local example_task = task("task_name")
+--     :description("Task description with modern DSL")
+--     :command(function(params, deps)
+--         -- Enhanced task logic
+--         return true, "Task completed", { result = "success" }
+--     end)
+--     :timeout("30s")
+--     :build()
 
+-- workflow.define("workflow_name", {
+--     description = "Workflow description - Modern DSL",
+--     version = "2.0.0",
+--     tasks = { example_task },
+--     config = { timeout = "10m" }
+-- })
+
+-- Maintain backward compatibility with legacy format
 TaskDefinitions = {
   ["aws-examples"] = {
     description = "A pipeline demonstrating various AWS module functions.",

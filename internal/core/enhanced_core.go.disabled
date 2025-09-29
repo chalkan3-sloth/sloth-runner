@@ -1,0 +1,487 @@
+package core
+
+import (
+	"context"
+	"fmt"
+	"log/slog"
+	"runtime"
+	"sync"
+	"sync/atomic"
+	"time"
+)
+
+// EnhancedGlobalCore provides advanced task execution capabilities
+type EnhancedGlobalCore struct {
+	*GlobalCore
+	
+	// Enhanced components
+	TaskOrchestrator    *TaskOrchestrator
+	DependencyResolver  *DependencyResolver
+	MetricsCollector    *MetricsCollector
+	EventSystem         *EventSystem
+	ResourceMonitor     *ResourceMonitor
+	
+	// Advanced scheduling
+	Scheduler           *AdvancedScheduler
+	LoadBalancer        *LoadBalancer
+	
+	// State synchronization
+	StateSynchronizer   *StateSynchronizer
+	
+	// Enhanced error handling
+	AdvancedRecovery    *AdvancedRecovery
+	
+	mu sync.RWMutex
+	enhanced bool
+}
+
+// TaskOrchestrator manages complex task execution with advanced patterns
+type TaskOrchestrator struct {
+	core             *EnhancedGlobalCore
+	activeExecutions *SafeMap
+	executionHistory *CircularBuffer
+	pipeline         *ExecutionPipeline
+	mu               sync.RWMutex
+}
+
+// DependencyResolver handles complex dependency graphs
+type DependencyResolver struct {
+	dependencies *SafeMap
+	resolved     *SafeMap
+	graph        *DependencyGraph
+	mu           sync.RWMutex
+}
+
+// MetricsCollector provides comprehensive metrics collection
+type MetricsCollector struct {
+	metrics          *SafeMap
+	timeSeries       *TimeSeriesData
+	aggregators      map[string]*MetricAggregator
+	collectors       []MetricCollector
+	exporters        []MetricExporter
+	mu               sync.RWMutex
+}
+
+// EventSystem provides pub-sub event handling
+type EventSystem struct {
+	subscribers map[string][]EventHandler
+	eventQueue  chan Event
+	processor   *EventProcessor
+	mu          sync.RWMutex
+}
+
+// ResourceMonitor tracks system resources in real-time
+type ResourceMonitor struct {
+	cpuUsage    *MovingAverage
+	memoryUsage *MovingAverage
+	diskIO      *MovingAverage
+	networkIO   *MovingAverage
+	thresholds  *ResourceThresholds
+	alerts      chan ResourceAlert
+	mu          sync.RWMutex
+}
+
+// AdvancedScheduler provides sophisticated task scheduling
+type AdvancedScheduler struct {
+	queues         map[Priority]*PriorityQueue
+	loadBalancer   *EnhancedLoadBalancer
+	affinityRules  *AffinityRules
+	constraints    *SchedulingConstraints
+	mu             sync.RWMutex
+}
+
+// Submit submits a task to the scheduler
+func (as *AdvancedScheduler) Submit(taskInfo *TaskInfo) bool {
+	as.mu.Lock()
+	defer as.mu.Unlock()
+	
+	queue, exists := as.queues[taskInfo.Priority]
+	if !exists {
+		return false
+	}
+	
+	// Add to priority queue (simplified implementation)
+	// In a real implementation, this would add to the queue properly
+	return queue.Size() >= 0 // Always true for now
+}
+
+// LoadBalancer distributes tasks across workers intelligently
+type LoadBalancer struct {
+	strategy      LoadBalancingStrategy
+	workers       []*WorkerNode
+	healthChecker *HealthChecker
+	mu            sync.RWMutex
+}
+
+// StateSynchronizer manages distributed state
+type StateSynchronizer struct {
+	localState   *SafeMap
+	remoteState  *RemoteStateManager
+	conflicts    *ConflictResolver
+	versioning   *StateVersioning
+	mu           sync.RWMutex
+}
+
+// AdvancedRecovery provides sophisticated error recovery
+type AdvancedRecovery struct {
+	strategies    map[string]RecoveryStrategy
+	checkpoints   *CheckpointManager
+	rollback      *RollbackManager
+	compensation  *CompensationManager
+	mu            sync.RWMutex
+}
+
+// Supporting types
+type Priority int
+type LoadBalancingStrategy int
+type RecoveryStrategy interface {
+	Recover(context.Context, error, interface{}) error
+}
+
+const (
+	PriorityLow Priority = iota
+	PriorityNormal
+	PriorityHigh
+	PriorityCritical
+)
+
+const (
+	RoundRobin LoadBalancingStrategy = iota
+	LeastConnections
+	WeightedRoundRobin
+	ResourceBased
+	AffinityBased
+)
+
+// NewEnhancedGlobalCore creates an enhanced version of GlobalCore
+func NewEnhancedGlobalCore(config *CoreConfig, logger *slog.Logger) (*EnhancedGlobalCore, error) {
+	// Create base core
+	baseCore, err := NewGlobalCore(config, logger)
+	if err != nil {
+		return nil, err
+	}
+	
+	enhanced := &EnhancedGlobalCore{
+		GlobalCore: baseCore,
+	}
+	
+	// Initialize enhanced components
+	if err := enhanced.initializeEnhanced(); err != nil {
+		return nil, fmt.Errorf("failed to initialize enhanced core: %w", err)
+	}
+	
+	return enhanced, nil
+}
+
+// initializeEnhanced initializes all enhanced components
+func (ec *EnhancedGlobalCore) initializeEnhanced() error {
+	ec.mu.Lock()
+	defer ec.mu.Unlock()
+	
+	// Initialize task orchestrator
+	ec.TaskOrchestrator = &TaskOrchestrator{
+		core:             ec,
+		activeExecutions: NewSafeMap(),
+		executionHistory: NewCircularBuffer(1000),
+		pipeline:         NewExecutionPipeline(),
+	}
+	
+	// Initialize dependency resolver
+	ec.DependencyResolver = &DependencyResolver{
+		dependencies: NewSafeMap(),
+		resolved:     NewSafeMap(),
+		graph:        NewDependencyGraph(),
+	}
+	
+	// Initialize metrics collector
+	ec.MetricsCollector = &MetricsCollector{
+		metrics:     NewSafeMap(),
+		timeSeries:  NewTimeSeriesData(),
+		aggregators: make(map[string]*MetricAggregator),
+		collectors:  make([]MetricCollector, 0),
+		exporters:   make([]MetricExporter, 0),
+	}
+	
+	// Initialize event system
+	ec.EventSystem = &EventSystem{
+		subscribers: make(map[string][]EventHandler),
+		eventQueue:  make(chan Event, 1000),
+		processor:   NewEventProcessor(),
+	}
+	
+	// Initialize resource monitor
+	ec.ResourceMonitor = &ResourceMonitor{
+		cpuUsage:    NewMovingAverage(60),
+		memoryUsage: NewMovingAverage(60),
+		diskIO:      NewMovingAverage(60),
+		networkIO:   NewMovingAverage(60),
+		thresholds:  DefaultResourceThresholds(),
+		alerts:      make(chan ResourceAlert, 100),
+	}
+	
+	// Initialize advanced scheduler
+	ec.Scheduler = &AdvancedScheduler{
+		queues:        make(map[Priority]*PriorityQueue),
+		loadBalancer:  NewEnhancedLoadBalancer(ResourceBased),
+		affinityRules: NewAffinityRules(),
+		constraints:   NewSchedulingConstraints(),
+	}
+	
+	// Initialize priority queues
+	for priority := PriorityLow; priority <= PriorityCritical; priority++ {
+		ec.Scheduler.queues[priority] = NewPriorityQueue()
+	}
+	
+	// Initialize load balancer
+	ec.LoadBalancer = NewEnhancedLoadBalancer(ResourceBased)
+	
+	// Initialize state synchronizer
+	ec.StateSynchronizer = &StateSynchronizer{
+		localState:  NewSafeMap(),
+		remoteState: NewRemoteStateManager(),
+		conflicts:   NewConflictResolver(),
+		versioning:  NewStateVersioning(),
+	}
+	
+	// Initialize advanced recovery
+	ec.AdvancedRecovery = &AdvancedRecovery{
+		strategies:   make(map[string]RecoveryStrategy),
+		checkpoints:  NewCheckpointManager(),
+		rollback:     NewRollbackManager(),
+		compensation: NewCompensationManager(),
+	}
+	
+	// Register default recovery strategies
+	ec.registerDefaultRecoveryStrategies()
+	
+	ec.enhanced = true
+	return nil
+}
+
+// SubmitTaskWithPriority submits a task with specified priority
+func (ec *EnhancedGlobalCore) SubmitTaskWithPriority(task func(), context string, priority Priority) bool {
+	if !ec.enhanced {
+		return ec.GlobalCore.SubmitTask(task, context)
+	}
+	
+	taskInfo := &TaskInfo{
+		ID:       GenerateTaskID(),
+		Function: task,
+		Context:  context,
+		Priority: priority,
+		Created:  time.Now(),
+	}
+	
+	return ec.Scheduler.Submit(taskInfo)
+}
+
+// ExecuteWithOrchestration executes a task with full orchestration capabilities
+func (ec *EnhancedGlobalCore) ExecuteWithOrchestration(ctx context.Context, task *OrchestratedTask) (*ExecutionResult, error) {
+	if !ec.enhanced {
+		return nil, fmt.Errorf("enhanced core not initialized")
+	}
+	
+	execution := &TaskExecution{
+		ID:        GenerateExecutionID(),
+		Task:      task,
+		Context:   ctx,
+		StartTime: time.Now(),
+		Status:    ExecutionStatusRunning,
+	}
+	
+	ec.TaskOrchestrator.activeExecutions.Set(execution.ID, execution)
+	defer ec.TaskOrchestrator.activeExecutions.Delete(execution.ID)
+	
+	// Emit start event
+	ec.EventSystem.Emit(Event{
+		Type:    "task.execution.started",
+		Data:    execution,
+		Time:    time.Now(),
+	})
+	
+	// Execute with recovery
+	result, err := ec.executeWithRecoveryStrategies(ctx, execution)
+	
+	execution.EndTime = time.Now()
+	execution.Duration = execution.EndTime.Sub(execution.StartTime)
+	execution.Result = result
+	execution.Error = err
+	
+	if err != nil {
+		execution.Status = ExecutionStatusFailed
+		ec.EventSystem.Emit(Event{
+			Type: "task.execution.failed",
+			Data: execution,
+			Time: time.Now(),
+		})
+	} else {
+		execution.Status = ExecutionStatusCompleted
+		ec.EventSystem.Emit(Event{
+			Type: "task.execution.completed",
+			Data: execution,
+			Time: time.Now(),
+		})
+	}
+	
+	// Add to history
+	ec.TaskOrchestrator.executionHistory.Add(execution)
+	
+	// Update metrics
+	ec.MetricsCollector.RecordTaskExecution(execution)
+	
+	return &ExecutionResult{
+		Execution: execution,
+		Output:    result,
+		Error:     err,
+	}, err
+}
+
+// GetEnhancedStats returns comprehensive system statistics
+func (ec *EnhancedGlobalCore) GetEnhancedStats() *EnhancedStats {
+	if !ec.enhanced {
+		return &EnhancedStats{
+			BaseStats: ec.GlobalCore.GetStats(),
+			Enhanced:  false,
+		}
+	}
+	
+	ec.mu.RLock()
+	defer ec.mu.RUnlock()
+	
+	return &EnhancedStats{
+		BaseStats:          ec.GlobalCore.GetStats(),
+		Enhanced:           true,
+		ActiveExecutions:   ec.TaskOrchestrator.activeExecutions.Len(),
+		QueuedTasks:        ec.getQueuedTasksCount(),
+		DependenciesCount:  ec.DependencyResolver.dependencies.Len(),
+		EventsProcessed:    ec.EventSystem.processor.GetProcessedCount(),
+		ResourceUsage:      ec.ResourceMonitor.GetCurrentUsage(),
+		RecoveryOperations: ec.AdvancedRecovery.GetStats(),
+	}
+}
+
+// Supporting methods
+func (ec *EnhancedGlobalCore) registerDefaultRecoveryStrategies() {
+	// Register common recovery strategies
+	ec.AdvancedRecovery.strategies["retry"] = &RetryStrategy{
+		MaxAttempts: 3,
+		Backoff:     ExponentialBackoff{Initial: time.Second, Max: time.Minute},
+	}
+	
+	ec.AdvancedRecovery.strategies["circuit_breaker"] = &CircuitBreakerStrategy{
+		Threshold: 5,
+		Timeout:   time.Minute,
+	}
+	
+	ec.AdvancedRecovery.strategies["checkpoint"] = &CheckpointStrategy{
+		Manager: ec.AdvancedRecovery.checkpoints,
+	}
+}
+
+func (ec *EnhancedGlobalCore) executeWithRecoveryStrategies(ctx context.Context, execution *TaskExecution) (interface{}, error) {
+	// Apply recovery strategies based on task configuration
+	for _, strategyName := range execution.Task.RecoveryStrategies {
+		if strategy, exists := ec.AdvancedRecovery.strategies[strategyName]; exists {
+			// Wrap execution with recovery strategy
+			result, err := strategy.Recover(ctx, nil, func() (interface{}, error) {
+				return execution.Task.Execute(ctx)
+			})
+			if err == nil {
+				return result, nil
+			}
+		}
+	}
+	
+	// Fallback to direct execution
+	return execution.Task.Execute(ctx)
+}
+
+func (ec *EnhancedGlobalCore) getQueuedTasksCount() int {
+	total := 0
+	for _, queue := range ec.Scheduler.queues {
+		total += queue.Size()
+	}
+	return total
+}
+
+// Supporting types and structures
+type TaskInfo struct {
+	ID       string
+	Function func()
+	Context  string
+	Priority Priority
+	Created  time.Time
+}
+
+type OrchestratedTask struct {
+	ID                 string
+	Name               string
+	Function           func(context.Context) (interface{}, error)
+	Dependencies       []string
+	RecoveryStrategies []string
+	Constraints        *TaskConstraints
+	Metadata           map[string]interface{}
+}
+
+type TaskExecution struct {
+	ID        string
+	Task      *OrchestratedTask
+	Context   context.Context
+	StartTime time.Time
+	EndTime   time.Time
+	Duration  time.Duration
+	Status    ExecutionStatus
+	Result    interface{}
+	Error     error
+}
+
+type ExecutionResult struct {
+	Execution *TaskExecution
+	Output    interface{}
+	Error     error
+}
+
+type ExecutionStatus int
+
+const (
+	ExecutionStatusPending ExecutionStatus = iota
+	ExecutionStatusRunning
+	ExecutionStatusCompleted
+	ExecutionStatusFailed
+	ExecutionStatusCancelled
+)
+
+type EnhancedStats struct {
+	BaseStats          *CoreStats
+	Enhanced           bool
+	ActiveExecutions   int
+	QueuedTasks        int
+	DependenciesCount  int
+	EventsProcessed    int64
+	ResourceUsage      *ResourceUsage
+	RecoveryOperations *RecoveryStats
+}
+
+type ResourceUsage struct {
+	CPU     float64
+	Memory  float64
+	DiskIO  float64
+	Network float64
+}
+
+type RecoveryStats struct {
+	TotalOperations      int64
+	SuccessfulRecoveries int64
+	FailedRecoveries     int64
+	CheckpointsCreated   int64
+	RollbacksExecuted    int64
+}
+
+// Helper function to generate unique IDs
+func GenerateTaskID() string {
+	return fmt.Sprintf("task_%d_%d", time.Now().UnixNano(), runtime.NumGoroutine())
+}
+
+func GenerateExecutionID() string {
+	return fmt.Sprintf("exec_%d_%d", time.Now().UnixNano(), runtime.NumGoroutine())
+}

@@ -21,6 +21,229 @@ import (
 
 var ExecCommand = exec.Command
 
+// ParseLuaScript parses a Lua script and extracts task definitions
+func ParseLuaScript(ctx context.Context, filePath string, valuesTable *lua.LTable) (map[string]types.TaskGroup, error) {
+	L := lua.NewState()
+	defer L.Close()
+
+	// Register all modules
+	RegisterAllModules(L)
+	
+	// Set up import function
+	OpenImport(L, filePath)
+	
+	// Load values if provided
+	if valuesTable != nil {
+		L.SetGlobal("Values", valuesTable)
+	}
+
+	// Execute the Lua script
+	if err := L.DoFile(filePath); err != nil {
+		return nil, fmt.Errorf("failed to execute Lua script: %w", err)
+	}
+
+	// Extract task groups from TaskDefinitions
+	globalTaskDefs := L.GetGlobal("TaskDefinitions")
+	if globalTaskDefs.Type() != lua.LTTable {
+		return nil, fmt.Errorf("expected 'TaskDefinitions' to be a table, got %s", globalTaskDefs.Type().String())
+	}
+
+	loadedTaskGroups := make(map[string]types.TaskGroup)
+	globalTaskDefs.(*lua.LTable).ForEach(func(groupKey, groupValue lua.LValue) {
+		groupName := groupKey.String()
+		if groupValue.Type() != lua.LTTable {
+			slog.Warn("Expected group to be a table, skipping", "group", groupName)
+			return
+		}
+		
+		groupTable := groupValue.(*lua.LTable)
+		description := groupTable.RawGetString("description").String()
+		workdir := groupTable.RawGetString("workdir").String()
+
+		// Parse workdir lifecycle fields
+		createWorkdir := lua.LVAsBool(groupTable.RawGetString("create_workdir_before_run"))
+		cleanWorkdirFunc, _ := groupTable.RawGetString("clean_workdir_after_run").(*lua.LFunction)
+
+		var tasks []types.Task
+		luaTasks := groupTable.RawGetString("tasks")
+		if luaTasks.Type() == lua.LTTable {
+			luaTasks.(*lua.LTable).ForEach(func(taskKey, taskValue lua.LValue) {
+				if taskValue.Type() != lua.LTTable {
+					slog.Warn("Expected task entry to be a table, skipping", "group", groupName)
+					return
+				}
+				taskTable := taskValue.(*lua.LTable)
+				var finalTask types.Task
+				usesField := taskTable.RawGetString("uses")
+				if usesField.Type() == lua.LTTable {
+					baseTaskTable := usesField.(*lua.LTable)
+					baseTask := parseLuaTask(L, baseTaskTable)
+					localOverrides := parseLuaTask(L, taskTable)
+					finalTask = baseTask
+					if localOverrides.Description != "" {
+						finalTask.Description = localOverrides.Description
+					}
+					if localOverrides.CommandFunc != nil {
+						finalTask.CommandFunc = localOverrides.CommandFunc
+					}
+					if localOverrides.CommandStr != "" {
+						finalTask.CommandStr = localOverrides.CommandStr
+					}
+					finalTask.Name = taskKey.String()
+				} else {
+					finalTask = parseLuaTask(L, taskTable)
+				}
+				tasks = append(tasks, finalTask)
+			})
+		}
+		
+		// Parse delegate_to
+		var delegateTo interface{}
+		luaDelegateTo := groupTable.RawGetString("delegate_to")
+		if luaDelegateTo.Type() == lua.LTString {
+			delegateTo = luaDelegateTo.String()
+		} else if luaDelegateTo.Type() == lua.LTTable {
+			delegateTo = LuaTableToGoMap(L, luaDelegateTo.(*lua.LTable))
+		}
+
+		loadedTaskGroups[groupName] = types.TaskGroup{
+			Description:              description,
+			Tasks:                    tasks,
+			Workdir:                  workdir,
+			CreateWorkdirBeforeRun:   createWorkdir,
+			CleanWorkdirAfterRunFunc: cleanWorkdirFunc,
+			DelegateTo:               delegateTo,
+		}
+	})
+
+	return loadedTaskGroups, nil
+}
+
+func parseLuaTask(L *lua.LState, taskTable *lua.LTable) types.Task {
+	name := taskTable.RawGetString("name").String()
+	desc := taskTable.RawGetString("description").String()
+	var cmdFunc *lua.LFunction
+	var cmdStr string
+	luaCommand := taskTable.RawGetString("command")
+	if luaCommand.Type() == lua.LTString {
+		cmdStr = luaCommand.String()
+	} else if luaCommand.Type() == lua.LTFunction {
+		cmdFunc = luaCommand.(*lua.LFunction)
+	}
+
+	// Parse params
+	params := make(map[string]string)
+	luaParams := taskTable.RawGetString("params")
+	if luaParams.Type() == lua.LTTable {
+		luaParams.(*lua.LTable).ForEach(func(k, v lua.LValue) {
+			params[k.String()] = v.String()
+		})
+	}
+
+	// Parse depends_on
+	var dependsOn []string
+	luaDependsOn := taskTable.RawGetString("depends_on")
+	if luaDependsOn.Type() == lua.LTString {
+		dependsOn = []string{luaDependsOn.String()}
+	} else if luaDependsOn.Type() == lua.LTTable {
+		luaDependsOn.(*lua.LTable).ForEach(func(_, v lua.LValue) {
+			dependsOn = append(dependsOn, v.String())
+		})
+	}
+
+	// Parse artifacts
+	var artifacts []string
+	luaArtifacts := taskTable.RawGetString("artifacts")
+	if luaArtifacts.Type() == lua.LTString {
+		artifacts = []string{luaArtifacts.String()}
+	} else if luaArtifacts.Type() == lua.LTTable {
+		luaArtifacts.(*lua.LTable).ForEach(func(_, v lua.LValue) {
+			artifacts = append(artifacts, v.String())
+		})
+	}
+
+	// Parse consumes
+	var consumes []string
+	luaConsumes := taskTable.RawGetString("consumes")
+	if luaConsumes.Type() == lua.LTString {
+		consumes = []string{luaConsumes.String()}
+	} else if luaConsumes.Type() == lua.LTTable {
+		luaConsumes.(*lua.LTable).ForEach(func(_, v lua.LValue) {
+			consumes = append(consumes, v.String())
+		})
+	}
+
+	// Parse next_if_fail
+	var nextIfFail []string
+	luaNextIfFail := taskTable.RawGetString("next_if_fail")
+	if luaNextIfFail.Type() == lua.LTString {
+		nextIfFail = []string{luaNextIfFail.String()}
+	} else if luaNextIfFail.Type() == lua.LTTable {
+		luaNextIfFail.(*lua.LTable).ForEach(func(_, v lua.LValue) {
+			nextIfFail = append(nextIfFail, v.String())
+		})
+	}
+
+	// Parse retries
+	retries := 0
+	luaRetries := taskTable.RawGetString("retries")
+	if luaRetries.Type() == lua.LTNumber {
+		retries = int(luaRetries.(lua.LNumber))
+	}
+
+	// Parse timeout
+	timeout := ""
+	luaTimeout := taskTable.RawGetString("timeout")
+	if luaTimeout.Type() == lua.LTString {
+		timeout = luaTimeout.String()
+	}
+
+	// Parse async
+	async := false
+	luaAsync := taskTable.RawGetString("async")
+	if luaAsync.Type() == lua.LTBool {
+		async = lua.LVAsBool(luaAsync)
+	}
+
+	// Parse pre_exec and post_exec
+	var preExec, postExec *lua.LFunction
+	luaPreExec := taskTable.RawGetString("pre_exec")
+	if luaPreExec.Type() == lua.LTFunction {
+		preExec = luaPreExec.(*lua.LFunction)
+	}
+	luaPostExec := taskTable.RawGetString("post_exec")
+	if luaPostExec.Type() == lua.LTFunction {
+		postExec = luaPostExec.(*lua.LFunction)
+	}
+
+	// Parse delegate_to
+	var delegateTo interface{}
+	luaDelegateTo := taskTable.RawGetString("delegate_to")
+	if luaDelegateTo.Type() == lua.LTString {
+		delegateTo = luaDelegateTo.String()
+	} else if luaDelegateTo.Type() == lua.LTTable {
+		delegateTo = LuaTableToGoMap(L, luaDelegateTo.(*lua.LTable))
+	}
+
+	return types.Task{
+		Name:        name,
+		Description: desc,
+		CommandFunc: cmdFunc,
+		CommandStr:  cmdStr,
+		Params:      params,
+		DependsOn:   dependsOn,
+		Artifacts:   artifacts,
+		Consumes:    consumes,
+		NextIfFail:  nextIfFail,
+		Retries:     retries,
+		Timeout:     timeout,
+		Async:       async,
+		PreExec:     preExec,
+		PostExec:    postExec,
+		DelegateTo:  delegateTo,
+	}
+}
+
 func newLuaImportFunction(baseDir string) lua.LGFunction {
 	return func(L *lua.LState) int {
 		relPath := L.CheckString(1)
@@ -43,6 +266,7 @@ func OpenImport(L *lua.LState, configFilePath string) {
 	L.SetGlobal("import", L.NewFunction(newLuaImportFunction(baseDir)))
 }
 
+// GoValueToLua converts Go values to Lua values
 func GoValueToLua(L *lua.LState, value interface{}) lua.LValue {
 	switch v := value.(type) {
 	case bool:
@@ -82,6 +306,7 @@ func GoValueToLua(L *lua.LState, value interface{}) lua.LValue {
 	}
 }
 
+// LuaToGoValue converts Lua values to Go values
 func LuaToGoValue(L *lua.LState, value lua.LValue) interface{} {
 	switch value.Type() {
 	case lua.LTBool:
@@ -99,17 +324,40 @@ func LuaToGoValue(L *lua.LState, value lua.LValue) interface{} {
 			}
 			return arr
 		} else {
-			m := make(map[string]interface{})
+			obj := make(map[string]interface{})
 			tbl.ForEach(func(key, val lua.LValue) {
-				m[key.String()] = LuaToGoValue(L, val)
+				obj[lua.LVAsString(key)] = LuaToGoValue(L, val)
 			})
-			return m
+			return obj
 		}
 	case lua.LTNil:
 		return nil
 	default:
-		return value.String()
+		return lua.LVAsString(value)
 	}
+}
+
+// RegisterAllModules registers all Lua modules for compatibility
+func RegisterAllModules(L *lua.LState) {
+	// Register core modules
+	OpenData(L)
+	OpenFs(L)
+	OpenNet(L)
+	OpenExec(L)
+	OpenLog(L)
+
+	// Register extended modules from other files
+	OpenGit(L)
+	OpenPulumi(L)
+	OpenPython(L)
+	OpenGCP(L)
+	OpenAWS(L)
+	OpenSalt(L)
+	OpenState(L)
+	OpenMetrics(L)
+	
+	// Register modules that may not exist yet
+	// OpenPkg is handled by the pkg.go file
 }
 
 // --- Data Module ---
@@ -303,16 +551,27 @@ func luaFsLs(L *lua.LState) int {
 }
 
 func luaFsTmpName(L *lua.LState) int {
-	// In Go, creating a temp file/dir is the idiomatic way to get a unique temp name.
-	// We create a directory and immediately remove it just to get the name.
 	dir, err := ioutil.TempDir("", "sloth-runner-*")
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(err.Error()))
 		return 2
 	}
-	os.Remove(dir) // We only want the name, not the directory itself yet.
+	os.Remove(dir) // We only want the name
 	L.Push(lua.LString(dir))
+	L.Push(lua.LNil)
+	return 2
+}
+
+func luaFsSize(L *lua.LState) int {
+	path := L.CheckString(1)
+	info, err := os.Stat(path)
+	if err != nil {
+		L.Push(lua.LNumber(0))
+		L.Push(lua.LString(err.Error()))
+		return 2
+	}
+	L.Push(lua.LNumber(info.Size()))
 	L.Push(lua.LNil)
 	return 2
 }
@@ -328,6 +587,7 @@ func FsLoader(L *lua.LState) int {
 		"rm_r":    luaFsRmR,
 		"ls":      luaFsLs,
 		"tmpname": luaFsTmpName,
+		"size":    luaFsSize,
 	})
 	L.Push(mod)
 	return 1
@@ -505,9 +765,8 @@ func luaExecRun(L *lua.LState) int {
 		cmd.Dir = workdir.String()
 	}
 
-	// Add environment variables from options, overriding existing ones if necessary
+	// Add environment variables from options
 	if envTbl := opts.RawGetString("env"); envTbl.Type() == lua.LTTable {
-		// Create a map for easier overriding
 		envMap := make(map[string]string)
 		for _, envVar := range cmd.Env {
 			parts := strings.SplitN(envVar, "=", 2)
@@ -518,7 +777,6 @@ func luaExecRun(L *lua.LState) int {
 		envTbl.(*lua.LTable).ForEach(func(key, value lua.LValue) {
 			envMap[key.String()] = value.String()
 		})
-		// Reconstruct cmd.Env from the map
 		cmd.Env = []string{}
 		for k, v := range envMap {
 			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
@@ -605,102 +863,31 @@ func OpenLog(L *lua.LState) {
 
 // OpenAll preloads all available sloth-runner modules into the Lua state.
 func OpenAll(L *lua.LState) {
-	// Preload all modules, making them available to 'require'
-	L.PreloadModule("exec", ExecLoader)
-	L.PreloadModule("fs", FsLoader)
-	L.PreloadModule("net", NetLoader)
-	L.PreloadModule("data", DataLoader)
-	L.PreloadModule("log", LogLoader)
-	L.PreloadModule("salt", SaltLoader)
-	L.PreloadModule("pulumi", PulumiLoader)
-	L.PreloadModule("git", GitLoader)
-	L.PreloadModule("gcp", GCPLoader)
-	L.PreloadModule("python", PythonLoader)
-	L.PreloadModule("aws", AWSLoader)
-	L.PreloadModule("pkg", NewPkgModule().Loader)
-	L.PreloadModule("state", StateLoader)
-	L.PreloadModule("metrics", MetricsLoader)
-	// Assuming other modules will be refactored to have a simple Loader function.
-	// If they still use the New...Module pattern, they need to be updated.
-	// For now, let's assume they will be updated or we will fix them next.
-	// L.PreloadModule("notifications", NewNotificationsModule().Loader)
-	// L.PreloadModule("digitalocean", NewDigitalOceanModule().Loader)
-	// L.PreloadModule("azure", NewAzureModule().Loader)
-	// L.PreloadModule("terraform", NewTerraformModule().Loader)
-	// L.PreloadModule("docker", NewDockerModule().Loader)
-
-	// Immediately load some modules into the global namespace for convenience
-	if err := L.DoString(`
-		fs = require("fs")
-		log = require("log")
-		data = require("data")
-		exec = require("exec")
-		net = require("net")
-		git = require("git")
-		pulumi = require("pulumi")
-		python = require("python")
-		gcp = require("gcp")
-		aws = require("aws")
-		salt = require("salt")
-		pkg = require("pkg")
-		state = require("state")
-		metrics = require("metrics")
-	`); err != nil {
-		panic(err)
-	}
+	RegisterAllModules(L)
 }
 
-// --- Parallel Module ---
-func newParallelFunction(tr types.TaskRunner) lua.LGFunction {
-	return func(L *lua.LState) int {
-		tasksTable := L.CheckTable(1)
-		inputTable := L.OptTable(2, L.NewTable())
-		var tasksToRun []*types.Task
-		tasksTable.ForEach(func(_, taskValue lua.LValue) {
-			if taskValue.Type() == lua.LTTable {
-				task := parseLuaTask(L, taskValue.(*lua.LTable))
-				tasksToRun = append(tasksToRun, &task)
-			} else {
-				L.RaiseError("invalid item in parallel task list: expected a table, got %s", taskValue.Type().String())
-			}
-		})
-		if len(tasksToRun) == 0 {
-			L.Push(L.NewTable())
-			L.Push(lua.LNil)
-			return 2
+// LuaTableToGoMap converts a Lua table to a Go map
+func LuaTableToGoMap(L *lua.LState, table *lua.LTable) map[string]interface{} {
+	result := make(map[string]interface{})
+	table.ForEach(func(key, value lua.LValue) {
+		k := key.String()
+		switch value.Type() {
+		case lua.LTBool:
+			result[k] = lua.LVAsBool(value)
+		case lua.LTNumber:
+			result[k] = lua.LVAsNumber(value)
+		case lua.LTString:
+			result[k] = lua.LVAsString(value)
+		case lua.LTTable:
+			result[k] = LuaTableToGoMap(L, value.(*lua.LTable))
+		default:
+			result[k] = value.String()
 		}
-		results, err := tr.RunTasksParallel(tasksToRun, inputTable)
-		if err != nil {
-			L.Push(lua.LNil)
-			L.Push(lua.LString(fmt.Sprintf("parallel execution failed: %v", err)))
-			return 2
-		}
-		resultsTable := L.NewTable()
-		for _, res := range results {
-			taskResultTable := L.NewTable()
-			taskResultTable.RawSetString("name", lua.LString(res.Name))
-			taskResultTable.RawSetString("status", lua.LString(res.Status))
-			taskResultTable.RawSetString("duration", lua.LString(res.Duration.String()))
-			if res.Error != nil {
-				taskResultTable.RawSetString("error", lua.LString(res.Error.Error()))
-			}
-			resultsTable.Append(taskResultTable)
-		}
-		L.Push(resultsTable)
-		L.Push(lua.LNil)
-		return 2
-	}
-}
-
-func OpenParallel(L *lua.LState, tr types.TaskRunner) {
-	L.PreloadModule("parallel", func(L *lua.LState) int {
-		mod := L.NewFunction(newParallelFunction(tr))
-		L.Push(mod)
-		return 1
 	})
+	return result
 }
 
-// --- Core Execution Logic ---
+// ExecuteLuaFunction executes a Lua function with parameters
 func ExecuteLuaFunction(L *lua.LState, fn *lua.LFunction, params map[string]string, secondArg lua.LValue, nRet int, ctx context.Context, args ...lua.LValue) (bool, string, *lua.LTable, error) {
 	if ctx != nil {
 		L.SetContext(ctx)
@@ -749,228 +936,6 @@ func ExecuteLuaFunction(L *lua.LState, fn *lua.LFunction, params map[string]stri
 	}
 	L.SetTop(0)
 	return success, message, outputTable, nil
-}
-
-func LoadTaskDefinitions(L *lua.LState, luaScriptContent string, configFilePath string) (map[string]types.TaskGroup, error) {
-	if err := L.DoString(luaScriptContent); err != nil {
-		return nil, fmt.Errorf("error loading Lua script content: %w", err)
-	}
-	globalTaskDefs := L.GetGlobal("TaskDefinitions")
-	if globalTaskDefs.Type() != lua.LTTable {
-		return nil, fmt.Errorf("expected 'TaskDefinitions' to be a table, got %s", globalTaskDefs.Type().String())
-	}
-	loadedTaskGroups := make(map[string]types.TaskGroup)
-	globalTaskDefs.(*lua.LTable).ForEach(func(groupKey, groupValue lua.LValue) {
-		groupName := groupKey.String()
-		if groupValue.Type() != lua.LTTable {
-			slog.Warn("Expected group to be a table, skipping", "group", groupName)
-			return
-		}
-		groupTable := groupValue.(*lua.LTable)
-		description := groupTable.RawGetString("description").String()
-		workdir := groupTable.RawGetString("workdir").String() // Add this line
-
-		// Parse workdir lifecycle fields
-		createWorkdir := lua.LVAsBool(groupTable.RawGetString("create_workdir_before_run"))
-		cleanWorkdirFunc, _ := groupTable.RawGetString("clean_workdir_after_run").(*lua.LFunction)
-
-		var tasks []types.Task
-		luaTasks := groupTable.RawGetString("tasks")
-		if luaTasks.Type() == lua.LTTable {
-			luaTasks.(*lua.LTable).ForEach(func(taskKey, taskValue lua.LValue) {
-				if taskValue.Type() != lua.LTTable {
-					slog.Warn("Expected task entry to be a table, skipping", "group", groupName)
-					return
-				}
-				taskTable := taskValue.(*lua.LTable)
-				var finalTask types.Task
-				usesField := taskTable.RawGetString("uses")
-				if usesField.Type() == lua.LTTable {
-					baseTaskTable := usesField.(*lua.LTable)
-					baseTask := parseLuaTask(L, baseTaskTable)
-					localOverrides := parseLuaTask(L, taskTable)
-					finalTask = baseTask
-					if localOverrides.Description != "" {
-						finalTask.Description = localOverrides.Description
-					}
-					if localOverrides.CommandFunc != nil {
-						finalTask.CommandFunc = localOverrides.CommandFunc
-					}
-					if localOverrides.CommandStr != "" {
-						finalTask.CommandStr = localOverrides.CommandStr
-					}
-					// ... (merge other fields)
-					finalTask.Name = taskKey.String()
-				} else {
-					finalTask = parseLuaTask(L, taskTable)
-				}
-				tasks = append(tasks, finalTask)
-			})
-		}
-		// Parse delegate_to
-		var delegateTo interface{}
-		luaDelegateTo := groupTable.RawGetString("delegate_to")
-		if luaDelegateTo.Type() == lua.LTString {
-			delegateTo = luaDelegateTo.String()
-		} else if luaDelegateTo.Type() == lua.LTTable {
-			delegateTo = LuaTableToGoMap(L, luaDelegateTo.(*lua.LTable))
-		}
-
-		loadedTaskGroups[groupName] = types.TaskGroup{
-			Description:              description,
-			Tasks:                    tasks,
-			Workdir:                  workdir, // Add this line
-			CreateWorkdirBeforeRun:   createWorkdir,
-			CleanWorkdirAfterRunFunc: cleanWorkdirFunc,
-			DelegateTo:               delegateTo,
-		}
-	})
-	return loadedTaskGroups, nil
-}
-
-func parseLuaTask(L *lua.LState, taskTable *lua.LTable) types.Task {
-	name := taskTable.RawGetString("name").String()
-	desc := taskTable.RawGetString("description").String()
-	var cmdFunc *lua.LFunction
-	var cmdStr string
-	luaCommand := taskTable.RawGetString("command")
-	if luaCommand.Type() == lua.LTString {
-		cmdStr = luaCommand.String()
-	} else if luaCommand.Type() == lua.LTFunction {
-		cmdFunc = luaCommand.(*lua.LFunction)
-	}
-
-	// Parse params
-	params := make(map[string]string)
-	luaParams := taskTable.RawGetString("params")
-	if luaParams.Type() == lua.LTTable {
-		luaParams.(*lua.LTable).ForEach(func(k, v lua.LValue) {
-			params[k.String()] = v.String()
-		})
-	}
-
-	// Parse depends_on
-	var dependsOn []string
-	luaDependsOn := taskTable.RawGetString("depends_on")
-	if luaDependsOn.Type() == lua.LTString {
-		dependsOn = []string{luaDependsOn.String()}
-	} else if luaDependsOn.Type() == lua.LTTable {
-		luaDependsOn.(*lua.LTable).ForEach(func(_, v lua.LValue) {
-			dependsOn = append(dependsOn, v.String())
-		})
-	}
-
-	// Parse artifacts
-	var artifacts []string
-	luaArtifacts := taskTable.RawGetString("artifacts")
-	if luaArtifacts.Type() == lua.LTString {
-		artifacts = []string{luaArtifacts.String()}
-	} else if luaArtifacts.Type() == lua.LTTable {
-		luaArtifacts.(*lua.LTable).ForEach(func(_, v lua.LValue) {
-			artifacts = append(artifacts, v.String())
-		})
-	}
-
-	// Parse consumes
-	var consumes []string
-	luaConsumes := taskTable.RawGetString("consumes")
-	if luaConsumes.Type() == lua.LTString {
-		consumes = []string{luaConsumes.String()}
-	} else if luaConsumes.Type() == lua.LTTable {
-		luaConsumes.(*lua.LTable).ForEach(func(_, v lua.LValue) {
-			consumes = append(consumes, v.String())
-		})
-	}
-
-	// Parse next_if_fail
-	var nextIfFail []string
-	luaNextIfFail := taskTable.RawGetString("next_if_fail")
-	if luaNextIfFail.Type() == lua.LTString {
-		nextIfFail = []string{luaNextIfFail.String()}
-	} else if luaNextIfFail.Type() == lua.LTTable {
-		luaNextIfFail.(*lua.LTable).ForEach(func(_, v lua.LValue) {
-			nextIfFail = append(nextIfFail, v.String())
-		})
-	}
-
-	// Parse retries
-	retries := 0
-	luaRetries := taskTable.RawGetString("retries")
-	if luaRetries.Type() == lua.LTNumber {
-		retries = int(luaRetries.(lua.LNumber))
-	}
-
-	// Parse timeout
-	timeout := ""
-	luaTimeout := taskTable.RawGetString("timeout")
-	if luaTimeout.Type() == lua.LTString {
-		timeout = luaTimeout.String()
-	}
-
-	// Parse async
-	async := false
-	luaAsync := taskTable.RawGetString("async")
-	if luaAsync.Type() == lua.LTBool {
-		async = lua.LVAsBool(luaAsync)
-	}
-
-	// Parse pre_exec and post_exec
-	var preExec, postExec *lua.LFunction
-	luaPreExec := taskTable.RawGetString("pre_exec")
-	if luaPreExec.Type() == lua.LTFunction {
-		preExec = luaPreExec.(*lua.LFunction)
-	}
-	luaPostExec := taskTable.RawGetString("post_exec")
-	if luaPostExec.Type() == lua.LTFunction {
-		postExec = luaPostExec.(*lua.LFunction)
-	}
-
-	// Parse delegate_to
-	var delegateTo interface{}
-	luaDelegateTo := taskTable.RawGetString("delegate_to")
-	if luaDelegateTo.Type() == lua.LTString {
-		delegateTo = luaDelegateTo.String()
-	} else if luaDelegateTo.Type() == lua.LTTable {
-		delegateTo = LuaTableToGoMap(L, luaDelegateTo.(*lua.LTable))
-	}
-
-	return types.Task{
-		Name:        name,
-		Description: desc,
-		CommandFunc: cmdFunc,
-		CommandStr:  cmdStr,
-		Params:      params,
-		DependsOn:   dependsOn,
-		Artifacts:   artifacts,
-		Consumes:    consumes,
-		NextIfFail:  nextIfFail,
-		Retries:     retries,
-		Timeout:     timeout,
-		Async:       async,
-		PreExec:     preExec,
-		PostExec:    postExec,
-		DelegateTo:  delegateTo,
-	}
-}
-
-func LuaTableToGoMap(L *lua.LState, table *lua.LTable) map[string]interface{} {
-	result := make(map[string]interface{})
-	table.ForEach(func(key, value lua.LValue) {
-		k := key.String()
-		switch value.Type() {
-		case lua.LTBool:
-			result[k] = lua.LVAsBool(value)
-		case lua.LTNumber:
-			result[k] = lua.LVAsNumber(value)
-		case lua.LTString:
-			result[k] = lua.LVAsString(value)
-		case lua.LTTable:
-			result[k] = LuaTableToGoMap(L, value.(*lua.LTable))
-		default:
-			result[k] = value.String()
-		}
-	})
-	return result
 }
 
 // CopyTable performs a deep copy of a table from one Lua state to another.

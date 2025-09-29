@@ -2,20 +2,19 @@ package modules
 
 import (
 	"github.com/chalkan3/sloth-runner/internal/luainterface"
-	"github.com/chalkan3/sloth-runner/internal/modules"
 	"github.com/yuin/gopher-lua"
 )
 
 // LegacyModule wraps existing luainterface modules to work with the new system
 type LegacyModule struct {
-	*modules.BaseModule
+	*BaseModule
 	loaderFunc func(*lua.LState) int
 }
 
 // NewLegacyModule creates a module wrapper for existing code
-func NewLegacyModule(info modules.ModuleInfo, loaderFunc func(*lua.LState) int) *LegacyModule {
+func NewLegacyModule(info ModuleInfo, loaderFunc func(*lua.LState) int) *LegacyModule {
 	return &LegacyModule{
-		BaseModule: modules.NewBaseModule(info),
+		BaseModule: NewBaseModule(info),
 		loaderFunc: loaderFunc,
 	}
 }

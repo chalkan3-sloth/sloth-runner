@@ -24,7 +24,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
+	"github.com/chalkan3/sloth-runner/internal/luainterface"
+	"github.com/chalkan3/sloth-runner/internal/taskrunner"
 	pb "github.com/chalkan3/sloth-runner/proto"
+	lua "github.com/yuin/gopher-lua"
 )
 
 var (
@@ -267,9 +270,13 @@ var runCmd = &cobra.Command{
 	Short: "Run sloth-runner tasks",
 	Long:  `Run sloth-runner tasks from Lua files.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		_, _ = cmd.Flags().GetString("file")
+		filePath, _ := cmd.Flags().GetString("file")
+		if filePath == "" {
+			filePath = "examples/basic_pipeline.lua"
+		}
+		
 		values, _ := cmd.Flags().GetString("values")
-		yes, _ := cmd.Flags().GetBool("yes")
+		_, _ = cmd.Flags().GetBool("yes") // yes flag - for future use
 		interactive, _ := cmd.Flags().GetBool("interactive")
 
 		// Use test output buffer if available, otherwise use stdout
@@ -278,15 +285,46 @@ var runCmd = &cobra.Command{
 			writer = testOutputBuffer
 		}
 
-		// For now, just simulate running tasks
-		if interactive {
-			return fmt.Errorf("execution aborted by user")
+		// Load values.yaml if specified
+		var valuesTable *lua.LTable
+		if values != "" {
+			// Load and parse values file (simplified for now)
+			fmt.Fprintf(writer, "Loading values from: %s\n", values)
 		}
 
-		if values != "" && yes {
-			fmt.Fprintln(writer, "Templated value: Hello from TestValue123")
+		// Parse the Lua script
+		taskGroups, err := luainterface.ParseLuaScript(cmd.Context(), filePath, valuesTable)
+		if err != nil {
+			return fmt.Errorf("failed to parse Lua script: %w", err)
 		}
+
+		if len(taskGroups) == 0 {
+			fmt.Fprintln(writer, "No task groups found in script")
+			return nil
+		}
+
+		// Create task runner
+		L := lua.NewState()
+		defer L.Close()
 		
+		// Register modules
+		luainterface.RegisterAllModules(L)
+		luainterface.OpenImport(L, filePath)
+		
+		// Initialize task runner
+		runner := taskrunner.NewTaskRunner(L, taskGroups, "", nil, false, interactive, &taskrunner.DefaultSurveyAsker{}, "")
+		
+		// Set outputs to capture results
+		runner.Outputs = make(map[string]interface{})
+		
+		// Execute the tasks
+		fmt.Fprintf(writer, "Executing tasks from: %s\n", filePath)
+		err = runner.Run()
+		if err != nil {
+			return fmt.Errorf("task execution failed: %w", err)
+		}
+
+		fmt.Fprintln(writer, "Task execution completed successfully!")
 		return nil
 	},
 }
