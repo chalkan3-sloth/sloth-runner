@@ -81,6 +81,9 @@ type TaskRunner struct {
 	// Core integration
 	globalCore *core.GlobalCore
 	logger     *slog.Logger
+	
+	// Pulumi-style output (optional)
+	pulumiOutput interface{} // Will be *output.PulumiStyleOutput when set
 }
 
 func NewTaskRunner(L *lua.LState, groups map[string]types.TaskGroup, targetGroup string, targetTasks []string, dryRun bool, interactive bool, asker SurveyAsker, luaScript string) *TaskRunner {
@@ -116,6 +119,11 @@ func (tr *TaskRunner) Export(data map[string]interface{}) {
 	for key, value := range data {
 		tr.Exports[key] = value
 	}
+}
+
+// SetPulumiOutput sets the Pulumi-style output formatter
+func (tr *TaskRunner) SetPulumiOutput(output interface{}) {
+	tr.pulumiOutput = output
 }
 
 func (tr *TaskRunner) executeTaskWithRetries(t *types.Task, inputFromDependencies *lua.LTable, mu *sync.Mutex, completedTasks map[string]bool, taskOutputs map[string]*lua.LTable, runningTasks map[string]bool, session *types.SharedSession, groupName string) error {

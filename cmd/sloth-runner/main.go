@@ -25,6 +25,8 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
+	"github.com/chalkan3-sloth/sloth-runner/internal/output"
+	"github.com/chalkan3-sloth/sloth-runner/internal/scaffolding"
 	"github.com/chalkan3-sloth/sloth-runner/internal/taskrunner"
 	"github.com/chalkan3-sloth/sloth-runner/internal/ui"
 	pb "github.com/chalkan3-sloth/sloth-runner/proto"
@@ -348,7 +350,7 @@ var schedulerDeleteCmd = &cobra.Command{
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run sloth-runner tasks",
-	Long:  `Run sloth-runner tasks from Lua files.`,
+	Long:  `Run sloth-runner tasks from Lua files with enhanced Pulumi-style output.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		filePath, _ := cmd.Flags().GetString("file")
 		if filePath == "" {
@@ -358,11 +360,18 @@ var runCmd = &cobra.Command{
 		values, _ := cmd.Flags().GetString("values")
 		_, _ = cmd.Flags().GetBool("yes") // yes flag - for future use
 		interactive, _ := cmd.Flags().GetBool("interactive")
+		pulumiStyle, _ := cmd.Flags().GetBool("pulumi-style")
 
 		// Use test output buffer if available, otherwise use stdout
 		writer := cmd.OutOrStdout()
 		if testOutputBuffer != nil {
 			writer = testOutputBuffer
+		}
+
+		// Initialize Pulumi-style output if requested
+		var pulumiOutput *output.PulumiStyleOutput
+		if pulumiStyle {
+			pulumiOutput = output.NewPulumiStyleOutput()
 		}
 
 		// Load values.yaml if specified
@@ -375,11 +384,18 @@ var runCmd = &cobra.Command{
 		// Parse the Lua script
 		taskGroups, err := luainterface.ParseLuaScript(cmd.Context(), filePath, valuesTable)
 		if err != nil {
+			if pulumiOutput != nil {
+				pulumiOutput.Error(fmt.Sprintf("Failed to parse Lua script: %v", err))
+			}
 			return fmt.Errorf("failed to parse Lua script: %w", err)
 		}
 
 		if len(taskGroups) == 0 {
-			fmt.Fprintln(writer, "No task groups found in script")
+			if pulumiOutput != nil {
+				pulumiOutput.Warning("No task groups found in script")
+			} else {
+				fmt.Fprintln(writer, "No task groups found in script")
+			}
 			return nil
 		}
 
@@ -397,14 +413,42 @@ var runCmd = &cobra.Command{
 		// Set outputs to capture results
 		runner.Outputs = make(map[string]interface{})
 		
+		// Set Pulumi-style output if enabled
+		if pulumiOutput != nil {
+			runner.SetPulumiOutput(pulumiOutput)
+			
+			// Get workflow name from first task group
+			var workflowName string
+			for name := range taskGroups {
+				workflowName = name
+				break
+			}
+			pulumiOutput.WorkflowStart(workflowName, "Executing workflow")
+		}
+		
 		// Execute the tasks
-		fmt.Fprintf(writer, "Executing tasks from: %s\n", filePath)
+		if !pulumiStyle {
+			fmt.Fprintf(writer, "Executing tasks from: %s\n", filePath)
+		}
+		
+		startTime := time.Now()
 		err = runner.Run()
+		duration := time.Since(startTime)
+		
 		if err != nil {
+			if pulumiOutput != nil {
+				pulumiOutput.WorkflowFailure("workflow", duration, err)
+			}
 			return fmt.Errorf("task execution failed: %w", err)
 		}
 
-		fmt.Fprintln(writer, "Task execution completed successfully!")
+		if pulumiOutput != nil {
+			taskCount := len(runner.Results)
+			pulumiOutput.WorkflowSuccess("workflow", duration, taskCount)
+		} else {
+			fmt.Fprintln(writer, "Task execution completed successfully!")
+		}
+		
 		return nil
 	},
 }
@@ -726,6 +770,46 @@ var agentStopCmd = &cobra.Command{
 	},
 }
 
+// Workflow command and subcommands
+var workflowCmd = &cobra.Command{
+	Use:   "workflow",
+	Short: "Manage workflows and projects",
+	Long:  `The workflow command provides subcommands to create, list, and manage sloth-runner workflows.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
+}
+
+var workflowInitCmd = &cobra.Command{
+	Use:   "init [name]",
+	Short: "Initialize a new workflow project",
+	Long:  `Initialize a new workflow project from a template. Similar to 'pulumi new' or 'terraform init'.`,
+	Args:  cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var workflowName string
+		if len(args) > 0 {
+			workflowName = args[0]
+		}
+
+		templateName, _ := cmd.Flags().GetString("template")
+		interactive, _ := cmd.Flags().GetBool("interactive")
+
+		scaffolder := scaffolding.NewWorkflowScaffolder()
+		return scaffolder.InitWorkflow(workflowName, templateName, interactive)
+	},
+}
+
+var workflowListTemplatesCmd = &cobra.Command{
+	Use:   "list-templates",
+	Short: "List available workflow templates",
+	Long:  `List all available workflow templates that can be used with 'workflow init'.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		scaffolder := scaffolding.NewWorkflowScaffolder()
+		scaffolder.ListTemplates()
+		return nil
+	},
+}
+
 type agentServer struct {
 	pb.UnimplementedAgentServer
 	grpcServer *grpc.Server
@@ -935,6 +1019,16 @@ func init() {
 	runCmd.Flags().StringP("values", "v", "", "Path to the values file")
 	runCmd.Flags().Bool("yes", false, "Skip confirmation prompts")
 	runCmd.Flags().Bool("interactive", false, "Run in interactive mode")
+	runCmd.Flags().Bool("pulumi-style", true, "Use Pulumi-style output formatting")
+
+	// Workflow command and subcommands
+	rootCmd.AddCommand(workflowCmd)
+	workflowCmd.AddCommand(workflowInitCmd)
+	workflowCmd.AddCommand(workflowListTemplatesCmd)
+	
+	// Workflow init command flags
+	workflowInitCmd.Flags().StringP("template", "t", "", "Template to use (basic, cicd, infrastructure, microservices, data-pipeline)")
+	workflowInitCmd.Flags().BoolP("interactive", "i", false, "Run in interactive mode")
 
 	// Version command
 	rootCmd.AddCommand(versionCmd)

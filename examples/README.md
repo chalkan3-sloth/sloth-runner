@@ -1,26 +1,29 @@
-# 🦥 Sloth Runner Examples - Revolutionary Modern DSL
+# 🦥 Sloth Runner Examples - Modern DSL
 
-Esta pasta contém uma coleção abrangente de exemplos que demonstram as capacidades **revolucionárias** do Sloth Runner, incluindo funcionalidades disruptivas como AI consciousness, quantum computing, multiverse execution, e VR control.
+Esta pasta contém uma coleção abrangente de exemplos que demonstram as capacidades do Sloth Runner, incluindo funcionalidades como distributed execution, state management, monitoring, e integração com cloud providers.
 
-## 🌌 **Ultimate Revolutionary Demo** ⭐ SHOWCASE!
+## 🚀 **Exemplos Práticos**
 
-**🚀 [ultimate_revolutionary_demo.lua](./ultimate_revolutionary_demo.lua)** - O exemplo definitivo que demonstra TODAS as funcionalidades disruptivas trabalhando juntas:
+### 📊 **Production Ready Examples**
 
-- **🤖 AI Consciousness**: IA com consciência própria que toma decisões autônomas
-- **⚛️ Quantum Computing**: Otimização usando computação quântica
-- **🌌 Multiverse Execution**: Execução através de universos paralelos
-- **🎮 VR Control**: Controle de infraestrutura em realidade virtual
-- **🧬 Bio-Evolution**: Algoritmos evolutivos inspirados em biologia
-- **🔗 Blockchain Verification**: Verificação imutável com contratos inteligentes
-- **🔮 Time-Travel Debugging**: Debug viajando no tempo
-- **🔄 GitOps Native**: Workflows Git nativos com IA
+**🔄 [gitops_kubernetes_advanced.lua](./gitops_kubernetes_advanced.lua)** - Pipeline completo GitOps com Kubernetes:
+- **🌐 Distributed Execution**: Execução distribuída através de agents
+- **💾 State Management**: Gerenciamento de estado persistente
+- **📊 Monitoring**: Métricas e alertas integrados
+- **🔄 CI/CD Pipeline**: Pipeline completo de deploy
+- **🛡️ Security**: mTLS e RBAC integrados
+
+**🐍 [ai_powered_pipeline.lua](./ai_powered_pipeline.lua)** - Pipeline inteligente com analytics:
+- **📈 Predictive Analytics**: Análise preditiva de performance
+- **🎯 Adaptive Optimization**: Otimização automática de recursos
+- **🔄 Self-Healing**: Auto-recovery de falhas
+- **📊 Real-time Monitoring**: Monitoramento em tempo real
 
 ```bash
-# Execute o demo revolucionário
-./sloth-runner run -f examples/ultimate_revolutionary_demo.lua
+# Execute exemplos práticos
+./sloth-runner run -f examples/gitops_kubernetes_advanced.lua
+./sloth-runner run -f examples/ai_powered_pipeline.lua
 ```
-
-**⚠️ Aviso**: Este exemplo pode causar mudanças na percepção da realidade! 😄
 
 ---
 
@@ -48,617 +51,160 @@ local build_task = task("build_application")
     :timeout("5m")
     :retries(3, "exponential")
     :artifacts({"app"})
-    :on_success(function(params, output)
-        log.info("Build completado com sucesso!")
-    end)
+    :tags({"build", "application"})
     :build()
 
--- 📋 Definição de Workflow Moderna
+-- 📋 Definição de Workflow Declarativo
 workflow.define("ci_pipeline", {
-    description = "Pipeline CI/CD - Modern DSL",
+    description = "Pipeline CI/CD completo",
     version = "2.0.0",
-    
     metadata = {
-        author = "DevOps Team",
-        tags = {"ci", "build", "deploy"}
+        team = "devops",
+        environment = "production"
     },
     
-    tasks = { build_task },
+    tasks = {
+        build_task,
+        test_task,
+        deploy_task
+    },
     
-    config = {
-        timeout = "30m",
-        retry_policy = "exponential"
-    }
+    on_success = function(results)
+        log.info("✅ Pipeline executado com sucesso!")
+        notify.slack("Pipeline CI/CD concluído", results)
+    end,
+    
+    on_failure = function(error, context)
+        log.error("❌ Falha no pipeline: " .. error.message)
+        notify.slack("Pipeline falhou", { error = error, context = context })
+    end
 })
-```
-
-## 🌌 **Revolutionary Features Examples** ⭐ DISRUPTIVE!
-
-Exemplos das funcionalidades mais inovadoras e disruptivas do Sloth Runner:
-
-### 🚀 **Ultimate Demo**
-- **[ultimate_revolutionary_demo.lua](./ultimate_revolutionary_demo.lua)** - Demonstração completa de TODAS as funcionalidades revolucionárias trabalhando juntas
-
-### 🤖 **AI Consciousness**
-- **[ai_intelligence_showcase.lua](./ai_intelligence_showcase.lua)** - IA consciente com tomada de decisão autônoma
-- **[simple_ai_demo.lua](./simple_ai_demo.lua)** - Exemplo simples de otimização por IA
-
-### ⚛️ **Quantum Computing**
-- **[quantum_optimization_demo.lua](./quantum_optimization_demo.lua)** - Otimização usando algoritmos quânticos
-- **[quantum_entanglement_sync.lua](./quantum_entanglement_sync.lua)** - Sincronização quântica
-
-### 🌌 **Multiverse Execution**
-- **[multiverse_deployment.lua](./multiverse_deployment.lua)** - Deploy através de universos paralelos
-- **[quantum_consensus.lua](./quantum_consensus.lua)** - Consenso quântico multiversal
-
-### 🎮 **VR & Metaverse**
-- **[vr_infrastructure_control.lua](./vr_infrastructure_control.lua)** - Controle de infraestrutura em VR
-- **[metaverse_datacenter.lua](./metaverse_datacenter.lua)** - Datacenter virtual imersivo
-
-### 🧬 **Bio-Inspired Computing**
-- **[bio_evolution_workflow.lua](./bio_evolution_workflow.lua)** - Workflows que evoluem biologicamente
-- **[dna_storage_example.lua](./dna_storage_example.lua)** - Armazenamento em DNA
-
-### 🔗 **Blockchain Integration**
-- **[blockchain_verification.lua](./blockchain_verification.lua)** - Verificação imutável com blockchain
-- **[smart_contracts_automation.lua](./smart_contracts_automation.lua)** - Automação com contratos inteligentes
-
-### 🔮 **Time-Travel Debugging**
-- **[timetravel_debugging.lua](./timetravel_debugging.lua)** - Debug viajando no tempo
-- **[temporal_analysis.lua](./temporal_analysis.lua)** - Análise temporal de problemas
-
-```bash
-# Execute os exemplos revolucionários
-./sloth-runner run -f examples/ultimate_revolutionary_demo.lua
-./sloth-runner run -f examples/ai_intelligence_showcase.lua
-./sloth-runner run -f examples/vr_infrastructure_control.lua
 ```
 
 ---
 
-## 📁 Estrutura dos Exemplos Modernizados
+## 📂 **Estrutura dos Exemplos**
 
-### 🟢 [`beginner/`](./beginner/) - Exemplos para Iniciantes
-**✅ 100% Modern DSL**
-- ✨ Hello World com Modern DSL
-- 🔄 Workflows lineares básicos
-- 📊 Gerenciamento de estado simples
-- 🛠️ Ferramentas básicas modernizadas
+### 🌟 **Exemplos Destacados**
 
-**Exemplos destacados:**
-- `hello-world.lua` - Hello World com Modern DSL
-- `http-basics.lua` - HTTP requests com circuit breakers
-- `state-basics.lua` - State management moderno
-- `docker-basics.lua` - Docker com validação avançada
+| Exemplo | Descrição | Complexidade | Recursos |
+|---------|-----------|--------------|----------|
+| [**simple_ai_demo.lua**](./simple_ai_demo.lua) | Demo básico com analytics | ⭐ Básico | Analytics, Monitoring |
+| [**gitops_native_demo.lua**](./gitops_native_demo.lua) | GitOps workflow | ⭐⭐ Intermediário | Git, State, Notifications |
+| [**gitops_kubernetes_advanced.lua**](./gitops_kubernetes_advanced.lua) | K8s + GitOps avançado | ⭐⭐⭐ Avançado | K8s, GitOps, Distributed |
+| [**ai_powered_pipeline.lua**](./ai_powered_pipeline.lua) | Pipeline com IA | ⭐⭐⭐ Avançado | Analytics, Prediction, Optimization |
 
-### 🟡 [`intermediate/`](./intermediate/) - Exemplos Intermediários  
-**✅ Modern DSL Puro**
-- 🌐 Integração com APIs usando circuit breakers
-- 🐳 Automação Docker com retry strategies
-- ☁️ Operações na nuvem com error handling
-- 🔄 Workflows condicionais avançados
-- ⚡ Execução paralela moderna
+### 🔧 **Exemplos por Categoria**
 
-**Exemplos destacados:**
-- `api-integration.lua` - APIs com resilience patterns
-- `multi-container.lua` - Docker multi-container
-- `parallel-processing.lua` - Processamento paralelo moderno
+#### 📊 **Analytics & Intelligence**
+- **[simple_ai_demo.lua](./simple_ai_demo.lua)**: Demonstração básica de analytics
+- **[ai_powered_pipeline.lua](./ai_powered_pipeline.lua)**: Pipeline com análise preditiva
+- **[test_ai_module.lua](./test_ai_module.lua)**: Teste dos módulos de IA
 
-### 🔴 [`advanced/`](./advanced/) - Exemplos Avançados
-**✅ Modern DSL com recursos enterprise**
-- 🏗️ Arquiteturas distribuídas
-- 🛡️ Reliability patterns e circuit breakers
-- 🔐 Gerenciamento de segredos
-- 📊 Monitoramento e métricas avançadas
-- 🚀 Pipelines CI/CD complexos
+#### 🔄 **GitOps & CI/CD**
+- **[gitops_native_demo.lua](./gitops_native_demo.lua)**: Workflow GitOps básico
+- **[gitops_kubernetes_advanced.lua](./gitops_kubernetes_advanced.lua)**: GitOps avançado com K8s
+- **[test_gitops_basic.lua](./test_gitops_basic.lua)**: Teste básico do GitOps
 
-### 🌍 [`real-world/`](./real-world/) - Casos de Uso Reais
-**✅ Modern DSL em produção**
-- 🚀 Deploy de aplicações com Modern DSL
-- 🏗️ Infraestrutura como código
-- 📦 Build e release pipelines modernos
-- 🔄 Data processing workflows avançados
-
-## 🚀 Como Executar os Exemplos Modernos
-
-### Executar Exemplos
-```bash
-# 🟢 Exemplos para iniciantes
-./sloth-runner run -f examples/beginner/hello-world.lua
-./sloth-runner run -f examples/basic_pipeline.lua
-
-# 🟡 Exemplos intermediários  
-./sloth-runner run -f examples/parallel_execution.lua
-./sloth-runner run -f examples/conditional_execution.lua
-
-# 🔴 Exemplos avançados
-./sloth-runner run -f examples/state_management_demo.lua
-
-# 🌍 Casos reais
-./sloth-runner run -f examples/real-world/nodejs-cicd.lua
-```
-
-### Validar Sintaxe
-```bash
-# Validar sintaxe Modern DSL
-./sloth-runner validate -f my-workflow.lua
-
-# Listar workflows com metadata
-./sloth-runner list -f examples/ --format modern
-```
-
-## 📋 Status da Migração - COMPLETA!
-
-### ✅ **100% Migrados para Modern DSL**
-- `basic_pipeline.lua` - Pipeline de dados com 3 tarefas ✅
-- `simple_state_test.lua` - Operações de estado ✅
-- `exec_test.lua` - Execução de comandos ✅
-- `data_test.lua` - Serialização JSON/YAML ✅
-- `parallel_execution.lua` - Execução paralela ✅
-- `conditional_execution.lua` - Lógica condicional ✅
-- **Todos os 75+ arquivos migrados** ✅
-
-### 🧹 **Legacy Format Removido**
-- ❌ Nenhum `TaskDefinitions` permanece
-- ✅ Apenas Modern DSL nos exemplos ativos
-- 💾 Backups preservados para referência
-- 🎯 Sintaxe limpa e consistente
-
-## 🎯 Recursos da Modern DSL nos Exemplos
-
-### 🔧 **Task Definition API**
-```lua
-local my_task = task("task_name")
-    :description("Task description")
-    :command(function(params, deps) ... end)
-    :timeout("30s")
-    :retries(3, "exponential")
-    :depends_on({"other_task"})
-    :artifacts({"output.txt"})
-    :on_success(function(params, output) ... end)
-    :on_failure(function(params, error) ... end)
-    :build()
-```
-
-### 📋 **Workflow Definition API**
-```lua
-workflow.define("workflow_name", {
-    description = "Workflow description",
-    version = "2.0.0",
-    
-    metadata = {
-        author = "Developer",
-        tags = {"tag1", "tag2"},
-        created_at = os.date()
-    },
-    
-    tasks = { task1, task2, task3 },
-    
-    config = {
-        timeout = "30m",
-        retry_policy = "exponential",
-        max_parallel_tasks = 4
-    },
-    
-    on_start = function() ... end,
-    on_complete = function(success, results) ... end
-})
-```
-
-### ⚡ **Enhanced Features**
-```lua
--- Circuit Breaker
-circuit.protect("external_api", function()
-    return net.http_get("https://api.example.com")
-end)
-
--- Async Operations
-async.parallel({
-    task1 = function() return exec.run("build frontend") end,
-    task2 = function() return exec.run("build backend") end
-}, {max_workers = 2, timeout = "10m"})
-
--- Performance Monitoring
-perf.measure("operation_name", function()
-    return database.query("SELECT * FROM users")
-end)
-```
-
-## 🎓 Aprendizado Progressivo
-
-### 1. **Iniciantes → Modern DSL**
-```bash
-# Comece aqui
-examples/beginner/hello-world.lua       # Hello World moderno
-examples/basic_pipeline.lua             # Pipeline básico
-examples/simple_state_test.lua          # State management
-```
-
-### 2. **Intermediário → Recursos Avançados**
-```bash
-# Continue aqui  
-examples/parallel_execution.lua         # Execução paralela
-examples/conditional_execution.lua      # Lógica condicional
-examples/retries_and_timeout.lua       # Resilience patterns
-```
-
-### 3. **Avançado → Enterprise Features**
-```bash
-# Domine aqui
-examples/state_management_demo.lua      # State avançado
-examples/advanced/reliability-patterns.lua  # Patterns enterprise
-examples/real-world/nodejs-cicd.lua     # Casos reais
-```
-
-## 📊 Estatísticas da Migração - FINALIZADA
-
-| Métrica | Valor | Status |
-|---------|-------|--------|
-| **📁 Total de arquivos** | 75+ arquivos .lua | ✅ Migrados |
-| **🧹 TaskDefinitions removidos** | 100% removidos | ✅ Completo |
-| **🎯 Modern DSL apenas** | 100% dos exemplos | ✅ Puro |
-| **💾 Backups criados** | Para todos os arquivos | ✅ Segurança |
-| **🔄 Sintaxe consistente** | Modern DSL only | ✅ Limpo |
-
-## 🎉 Benefícios da Migração Completa
-
-### ✅ **Vantagens da Modern DSL**
-- 🎯 **Sintaxe Única**: Apenas um formato para aprender
-- 🔍 **Mais Legível**: Código mais claro e intuitivo
-- 🛡️ **Mais Seguro**: Melhor validação e detecção de erros
-- ⚡ **Mais Poderoso**: Recursos avançados built-in
-- 📚 **Mais Fácil**: Documentação focada em um formato
-
-### 🏆 **Resultados Alcançados**
-- ✅ Todos os exemplos modernizados
-- ✅ Código legacy removido
-- ✅ Documentação atualizada
-- ✅ Sintaxe consistente
-- ✅ Funcionalidades aprimoradas
+#### 🎯 **Recursos Específicos**
+- **[ai_intelligence_showcase.lua](./ai_intelligence_showcase.lua)**: Showcase de inteligência
+- **[iac_integration_showcase.lua](./iac_integration_showcase.lua)**: Integração IaC
+- **[unified_fluent_workflow.lua](./unified_fluent_workflow.lua)**: Workflow fluente unificado
 
 ---
 
-**🎯 Sloth Runner agora usa APENAS Modern DSL! Explore os exemplos modernizados e descubra o poder da nova sintaxe! 🚀**
+## 🎯 **Como Usar os Exemplos**
 
-## 📁 Estrutura dos Exemplos Modernizados
-
-### 🟢 [`beginner/`](./beginner/) - Exemplos para Iniciantes
-**✅ Totalmente migrados para Modern DSL**
-- ✨ Hello World com Modern DSL
-- 🔄 Workflows lineares básicos
-- 📊 Gerenciamento de estado simples
-- 🛠️ Ferramentas básicas modernizadas
-
-**Exemplos destacados:**
-- `hello-world.lua` - Hello World com Modern DSL
-- `http-basics.lua` - HTTP requests com circuit breakers
-- `state-basics.lua` - State management moderno
-- `docker-basics.lua` - Docker com validação avançada
-
-### 🟡 [`intermediate/`](./intermediate/) - Exemplos Intermediários  
-**✅ Estrutura Modern DSL implementada**
-- 🌐 Integração com APIs usando circuit breakers
-- 🐳 Automação Docker com retry strategies
-- ☁️ Operações na nuvem com error handling
-- 🔄 Workflows condicionais avançados
-- ⚡ Execução paralela moderna
-
-**Exemplos destacados:**
-- `api-integration.lua` - APIs com resilience patterns
-- `multi-container.lua` - Docker multi-container
-- `parallel-processing.lua` - Processamento paralelo moderno
-
-### 🔴 [`advanced/`](./advanced/) - Exemplos Avançados
-**✅ Modern DSL com recursos enterprise**
-- 🏗️ Arquiteturas distribuídas
-- 🛡️ Reliability patterns e circuit breakers
-- 🔐 Gerenciamento de segredos
-- 📊 Monitoramento e métricas avançadas
-- 🚀 Pipelines CI/CD complexos
-
-**Exemplos destacados:**
-- `reliability-patterns.lua` - Padrões de confiabilidade
-- `microservices-deploy.lua` - Deploy de microserviços
-- `enterprise-cicd.lua` - CI/CD enterprise
-
-### 🌍 [`real-world/`](./real-world/) - Casos de Uso Reais
-**✅ Exemplos práticos modernizados**
-- 🚀 Deploy de aplicações com Modern DSL
-- 🏗️ Infraestrutura como código
-- 📦 Build e release pipelines modernos
-- 🔄 Data processing workflows avançados
-- 🏥 Health checks e monitoring
-
-**Exemplos destacados:**
-- `nodejs-cicd.lua` - CI/CD Node.js completo
-- `kubernetes-deploy.lua` - Deploy Kubernetes
-- `data-pipeline.lua` - Pipeline de dados moderno
-
-### 🔌 [`integrations/`](./integrations/) - Integrações Modernizadas
-**✅ Integrações com Modern DSL**
-- ☁️ AWS, Azure, GCP com error handling
-- 🐳 Docker & Kubernetes com resilience
-- 📊 Bancos de dados com connection pooling
-- 📧 Notificações com retry logic
-- 🔧 Ferramentas DevOps modernizadas
-
-## 🚀 Como Executar os Exemplos Modernos
-
-### Requisitos
+### 1. **📥 Preparação**
 ```bash
-# Instalar Sloth Runner (versão com Modern DSL)
-curl -sSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/main/install.sh | bash
+# Clone o repositório
+git clone https://github.com/chalkan3-sloth/sloth-runner.git
+cd sloth-runner
 
-# Ou compilar do código fonte
-go install github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner@latest
-```
-
-### Executar Exemplos
-```bash
-# 🟢 Exemplos para iniciantes
-./sloth-runner run -f examples/beginner/hello-world.lua
-./sloth-runner run -f examples/basic_pipeline.lua
-
-# 🟡 Exemplos intermediários  
-./sloth-runner run -f examples/parallel_execution.lua
-./sloth-runner run -f examples/conditional_execution.lua
-
-# 🔴 Exemplos avançados
-./sloth-runner run -f examples/advanced/reliability-patterns.lua
-./sloth-runner run -f examples/state_management_demo.lua
-
-# 🌍 Casos reais
-./sloth-runner run -f examples/real-world/nodejs-cicd.lua
-```
-
-### Validar e Migrar
-```bash
-# Validar sintaxe Modern DSL
-./sloth-runner validate -f my-workflow.lua
-
-# Migrar de legacy para Modern DSL
-./sloth-runner migrate -f legacy-workflow.lua -o modern-workflow.lua
-
-# Listar workflows com metadata
-./sloth-runner list -f examples/ --format modern
-```
-
-## 📋 Status da Migração
-
-### ✅ **Totalmente Migrados (Funcionando)**
-- `basic_pipeline.lua` - Pipeline de dados com 3 tarefas
-- `simple_state_test.lua` - Operações de estado
-- `exec_test.lua` - Execução de comandos  
-- `data_test.lua` - Serialização JSON/YAML
-- `parallel_execution.lua` - Execução paralela
-- `conditional_execution.lua` - Lógica condicional
-- `retries_and_timeout.lua` - Retry e timeout
-- `artifact_example.lua` - Gerenciamento de artefatos
-
-### 🔄 **Estrutura Modern DSL Adicionada**
-- Todos os 75 arquivos .lua nos examples/
-- 44 arquivos com placeholder Modern DSL
-- 44 backups criados para segurança
-- 124 marcadores Modern DSL adicionados
-
-## 🎯 Recursos da Modern DSL nos Exemplos
-
-### 🔧 **Task Definition API**
-```lua
-local my_task = task("task_name")
-    :description("Task description")
-    :command(function(params, deps) ... end)
-    :timeout("30s")
-    :retries(3, "exponential")
-    :depends_on({"other_task"})
-    :artifacts({"output.txt"})
-    :on_success(function(params, output) ... end)
-    :on_failure(function(params, error) ... end)
-    :build()
-```
-
-### 📋 **Workflow Definition API**
-```lua
-workflow.define("workflow_name", {
-    description = "Workflow description",
-    version = "2.0.0",
-    
-    metadata = {
-        author = "Developer",
-        tags = {"tag1", "tag2"},
-        created_at = os.date()
-    },
-    
-    tasks = { task1, task2, task3 },
-    
-    config = {
-        timeout = "30m",
-        retry_policy = "exponential",
-        max_parallel_tasks = 4
-    },
-    
-    on_start = function() ... end,
-    on_complete = function(success, results) ... end
-})
-```
-
-### ⚡ **Enhanced Features**
-```lua
--- Circuit Breaker
-circuit.protect("external_api", function()
-    return net.http_get("https://api.example.com")
-end)
-
--- Async Operations
-async.parallel({
-    task1 = function() return exec.run("build frontend") end,
-    task2 = function() return exec.run("build backend") end
-}, {max_workers = 2, timeout = "10m"})
-
--- Performance Monitoring
-perf.measure("operation_name", function()
-    return database.query("SELECT * FROM users")
-end)
-```
-
-## 🎓 Aprendizado Progressivo
-
-### 1. **Iniciantes → Modern DSL**
-```bash
-# Comece aqui
-examples/beginner/hello-world.lua       # Hello World moderno
-examples/basic_pipeline.lua             # Pipeline básico
-examples/simple_state_test.lua          # State management
-```
-
-### 2. **Intermediário → Recursos Avançados**
-```bash
-# Continue aqui  
-examples/parallel_execution.lua         # Execução paralela
-examples/conditional_execution.lua      # Lógica condicional
-examples/retries_and_timeout.lua       # Resilience patterns
-```
-
-### 3. **Avançado → Enterprise Features**
-```bash
-# Domine aqui
-examples/state_management_demo.lua      # State avançado
-examples/advanced/reliability-patterns.lua  # Patterns enterprise
-examples/real-world/nodejs-cicd.lua     # Casos reais
-```
-
-## 🛠️ Ferramentas de Migração
-
-### Script Automático
-```bash
-# Migrar todos os exemplos
-./migrate_examples.sh
-
-# Resultado:
-# ✅ 44 arquivos migrados automaticamente
-# 📄 44 backups criados
-# 🔄 Estrutura Modern DSL adicionada
-# 📊 Relatório completo gerado
-```
-
-### Migração Manual
-```bash
-# Para scripts específicos
-./sloth-runner migrate -f old-script.lua -o new-script.lua --format modern-dsl
-```
-
-## 📊 Estatísticas da Migração
-
-| Métrica | Valor | Status |
-|---------|-------|--------|
-| **📁 Total de arquivos** | 75 arquivos .lua | ✅ Processados |
-| **✅ Migrados automaticamente** | 44 arquivos | ✅ Completo |
-| **🎯 Migrados manualmente** | 8 exemplos principais | ✅ Completo |
-| **💾 Backups criados** | 44 backups | ✅ Segurança |
-| **🔄 Compatibilidade legacy** | 100% | ✅ Preservada |
-
-## 🎉 Próximos Passos
-
-1. **🚀 Explore exemplos modernos**: Comece com `basic_pipeline.lua`
-2. **🔧 Teste Modern DSL**: Crie seus próprios workflows
-3. **📚 Leia documentação**: Consulte `/docs/modern-dsl/`
-4. **🔄 Migre gradualmente**: Converta workflows existentes
-5. **🤝 Contribua**: Adicione novos exemplos Modern DSL
-
----
-
-**🎯 A nova era do Sloth Runner começou! Explore os exemplos modernizados e descubra o poder da Modern DSL! 🚀**
-./install.sh
-
-# Ou compilar do código fonte
+# Compile o Sloth Runner
 go build -o sloth-runner ./cmd/sloth-runner
 ```
 
-### Execução Básica
+### 2. **🚀 Execução Básica**
 ```bash
-# Executar um exemplo específico
-sloth-runner -f examples/beginner/hello-world.lua
+# Execute um exemplo simples
+./sloth-runner run -f examples/simple_ai_demo.lua
 
-# Executar com parâmetros
-sloth-runner -f examples/intermediate/http-api.lua -p "{'api_key': 'your-key'}"
+# Execute com verbose para debug
+./sloth-runner run -f examples/gitops_native_demo.lua --verbose
 
-# Modo debug para ver detalhes
-sloth-runner -f examples/advanced/retry-patterns.lua --debug
+# Execute com parâmetros customizados
+./sloth-runner run -f examples/ai_powered_pipeline.lua --param environment=staging
 ```
 
-### Sistema de Help Integrado
-```lua
--- Dentro de qualquer script
-help()                    -- Ajuda geral
-help.modules()           -- Lista todos os módulos disponíveis
-help.module("http")      -- Help do módulo HTTP
-help.search("docker")    -- Busca por funcionalidades
-help.examples("http")    -- Exemplos do módulo HTTP
+### 3. **🔧 Modificação dos Exemplos**
+```bash
+# Copie um exemplo como base
+cp examples/simple_ai_demo.lua my_workflow.lua
+
+# Edite conforme necessário
+vim my_workflow.lua
+
+# Execute seu workflow customizado
+./sloth-runner run -f my_workflow.lua
 ```
-
-## 📚 Exemplos por Módulo
-
-### 🌐 HTTP Client
-- [`beginner/http-basics.lua`](./beginner/http-basics.lua) - GET/POST básicos
-- [`intermediate/api-integration.lua`](./intermediate/api-integration.lua) - Integração com API
-- [`advanced/http-reliability.lua`](./advanced/http-reliability.lua) - Retry e circuit breaker
-
-### 🐳 Docker
-- [`beginner/docker-basics.lua`](./beginner/docker-basics.lua) - Build e run básicos
-- [`intermediate/multi-container.lua`](./intermediate/multi-container.lua) - Multi-container setup
-- [`advanced/docker-compose.lua`](./advanced/docker-compose.lua) - Orchestration completa
-
-### ☁️ Cloud Providers
-- [`intermediate/aws-s3.lua`](./intermediate/aws-s3.lua) - Operações S3
-- [`intermediate/gcp-storage.lua`](./intermediate/gcp-storage.lua) - Google Cloud Storage
-- [`advanced/multi-cloud.lua`](./advanced/multi-cloud.lua) - Deploy multi-cloud
-
-### 💾 State Management
-- [`beginner/state-basics.lua`](./beginner/state-basics.lua) - Operações básicas de estado
-- [`intermediate/distributed-state.lua`](./intermediate/distributed-state.lua) - Estado distribuído
-- [`advanced/state-patterns.lua`](./advanced/state-patterns.lua) - Padrões avançados
-
-## 🎯 Exemplos por Caso de Uso
-
-### 🚀 CI/CD Pipelines
-- [`real-world/nodejs-cicd.lua`](./real-world/nodejs-cicd.lua) - Pipeline Node.js completo
-- [`real-world/go-microservice.lua`](./real-world/go-microservice.lua) - Deploy de microserviço Go
-- [`real-world/frontend-deploy.lua`](./real-world/frontend-deploy.lua) - Deploy de aplicação React
-
-### 🏗️ Infrastructure as Code
-- [`real-world/terraform-aws.lua`](./real-world/terraform-aws.lua) - Infraestrutura AWS
-- [`real-world/pulumi-kubernetes.lua`](./real-world/pulumi-kubernetes.lua) - Deploy Kubernetes
-- [`real-world/monitoring-stack.lua`](./real-world/monitoring-stack.lua) - Stack de monitoramento
-
-### 📊 Data Processing
-- [`real-world/etl-pipeline.lua`](./real-world/etl-pipeline.lua) - Pipeline ETL
-- [`real-world/data-validation.lua`](./real-world/data-validation.lua) - Validação de dados
-- [`real-world/backup-restore.lua`](./real-world/backup-restore.lua) - Backup e restore
-
-## 💡 Dicas para Aprender
-
-1. **Comece pelo Básico**: Inicie pelos exemplos em `beginner/`
-2. **Use o Help**: `help()` é seu melhor amigo
-3. **Experimente**: Modifique os exemplos para entender melhor
-4. **Debug Mode**: Use `--debug` para ver o que acontece internamente
-5. **Combine Módulos**: Os exemplos avançados mostram como combinar funcionalidades
-
-## 🤝 Contribuindo
-
-Quer adicionar um exemplo? Siga estas diretrizes:
-
-1. **Escolha a Categoria Certa**: beginner, intermediate, advanced, real-world, integrations
-2. **Documente Bem**: Comentários claros e README quando necessário
-3. **Teste Tudo**: Certifique-se que o exemplo funciona
-4. **Siga o Padrão**: Use a estrutura similar aos exemplos existentes
-
-## 📞 Suporte
-
-- 📚 **Documentação**: [docs/](../docs/)
-- 🐛 **Issues**: [GitHub Issues](https://github.com/chalkan3-sloth/sloth-runner/issues)
-- 💬 **Discussões**: [GitHub Discussions](https://github.com/chalkan3-sloth/sloth-runner/discussions)
-- 📧 **Email**: support@sloth-runner.dev
 
 ---
 
-**Happy Automating! 🦥✨**
+## 📚 **Recursos de Aprendizagem**
+
+### 🎓 **Para Iniciantes**
+1. Comece com **[simple_ai_demo.lua](./simple_ai_demo.lua)** - exemplo mais simples
+2. Entenda a sintaxe Modern DSL no código
+3. Execute e observe os logs de saída
+4. Modifique valores e re-execute para experimentar
+
+### 🏗️ **Para Desenvolvedores**
+1. Analise **[gitops_kubernetes_advanced.lua](./gitops_kubernetes_advanced.lua)** - exemplo complexo
+2. Estude os padrões de error handling e retry
+3. Observe como state management é usado
+4. Implemente seus próprios workflows baseados nos exemplos
+
+### 🚀 **Para DevOps**
+1. Use **[ai_powered_pipeline.lua](./ai_powered_pipeline.lua)** como base para CI/CD
+2. Adapte para sua infraestrutura específica
+3. Configure alertas e monitoramento
+4. Implemente estratégias de deployment
+
+---
+
+## 🤝 **Contribuindo com Exemplos**
+
+Tem um exemplo interessante? Contribua!
+
+1. **📝 Crie seu exemplo** seguindo a Modern DSL
+2. **📋 Adicione documentação** inline no código
+3. **✅ Teste completamente** antes de submeter
+4. **📧 Abra um PR** com descrição detalhada
+
+### 📐 **Padrões para Novos Exemplos**
+- Use **exclusivamente Modern DSL**
+- Inclua **comentários explicativos**
+- Adicione **error handling apropriado**
+- Demonstre **pelo menos 2-3 recursos** do Sloth Runner
+- Seja **prático e realista** (evite ficção científica)
+
+---
+
+## 🔗 **Links Úteis**
+
+- 📖 [Documentação Completa](../docs/)
+- 🧠 [Core Concepts](../docs/en/core-concepts.md)
+- ⚡ [Quick Start](../docs/en/quick-start.md)
+- 🎯 [Advanced Features](../docs/en/advanced-features.md)
+- 🤖 [AI Features](../docs/en/ai-features.md)
+
+---
+
+## 🆘 **Suporte & Ajuda**
+
+- 🐛 [Issues](https://github.com/chalkan3-sloth/sloth-runner/issues)
+- 💬 [Discussions](https://github.com/chalkan3-sloth/sloth-runner/discussions)
+- 📧 Email: support@sloth-runner.dev
+
+**Happy Automating! 🦥🚀**
