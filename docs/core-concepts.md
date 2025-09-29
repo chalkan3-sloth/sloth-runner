@@ -1,10 +1,10 @@
 # Core Concepts - Modern DSL
 
-This document explains the fundamental concepts of Sloth-Runner using the **Modern DSL**, helping you understand how tasks are defined and executed with the new fluent API.
+This document explains the fundamental concepts of Sloth-Runner using the **Modern DSL**, helping you understand how tasks are defined and executed with the fluent API.
 
 ## Modern DSL Task Definition
 
-Tasks in Sloth-Runner are now defined using the **Modern DSL** fluent API, which provides a more intuitive and powerful way to create workflows.
+Tasks in Sloth-Runner are defined using the **Modern DSL** fluent API, which provides an intuitive and powerful way to create workflows.
 
 ### Task Builder Pattern
 
@@ -48,6 +48,17 @@ workflow.define("workflow_name", {
     on_start = function()
         log.info("Starting workflow...")
         return true
+    end,
+    
+    on_complete = function(success, results)
+        if success then
+            log.info("✅ Workflow completed successfully!")
+        else
+            log.error("❌ Workflow failed!")
+        end
+        return true
+    end
+})
     end,
     
     on_complete = function(success, results)
