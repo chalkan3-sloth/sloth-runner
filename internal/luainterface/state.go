@@ -73,10 +73,10 @@ func (s *StateModule) luaStateSet(L *lua.LState) int {
 	key := L.CheckString(1)
 	value := L.CheckAny(2)
 	
-	// Convert Lua value to Go interface{}
-	goValue := luaValueToGo(value)
+	// Convert Lua value to string (StateManager expects strings)
+	valueStr := luaValueToString(value)
 	
-	err := s.stateManager.Set(key, goValue)
+	err := s.stateManager.Set(key, valueStr)
 	if err != nil {
 		L.Push(lua.LBool(false))
 		L.Push(lua.LString(err.Error()))
@@ -91,14 +91,14 @@ func (s *StateModule) luaStateSet(L *lua.LState) int {
 func (s *StateModule) luaStateGet(L *lua.LState) int {
 	key := L.CheckString(1)
 	
-	value, err := s.stateManager.Get(key)
+	valueStr, err := s.stateManager.Get(key)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(err.Error()))
 		return 2
 	}
 	
-	L.Push(goValueToLua(L, value))
+	L.Push(stringToLua(valueStr))
 	return 1
 }
 
@@ -228,6 +228,28 @@ func (s *StateModule) luaStateSetWithTTL(L *lua.LState) int {
 }
 
 // Helper functions to convert between Lua and Go values
+
+// luaValueToString converts a Lua value to string
+func luaValueToString(value lua.LValue) string {
+	switch v := value.(type) {
+	case lua.LString:
+		return string(v)
+	case lua.LNumber:
+		return fmt.Sprintf("%g", float64(v))
+	case lua.LBool:
+		return fmt.Sprintf("%t", bool(v))
+	case *lua.LNilType:
+		return ""
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+// stringToLua converts a string to Lua value
+func stringToLua(str string) lua.LValue {
+	return lua.LString(str)
+}
+
 func luaValueToGo(value lua.LValue) interface{} {
 	switch v := value.(type) {
 	case lua.LString:
