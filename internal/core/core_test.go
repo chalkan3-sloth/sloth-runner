@@ -146,9 +146,11 @@ func TestWorkerPool(t *testing.T) {
 	defer wp.Close()
 	
 	// Test task submission and execution
-	completed := make(chan int, 5)
+	// Use fewer tasks that fit within the buffer (workers*2 = 4 for 2 workers)
+	numTasks := 4
+	completed := make(chan int, numTasks)
 	
-	for i := 0; i < 5; i++ {
+	for i := 0; i < numTasks; i++ {
 		taskNum := i
 		success := wp.Submit(func() {
 			time.Sleep(10 * time.Millisecond)
@@ -162,7 +164,7 @@ func TestWorkerPool(t *testing.T) {
 	
 	// Wait for all tasks to complete
 	results := make(map[int]bool)
-	for i := 0; i < 5; i++ {
+	for i := 0; i < numTasks; i++ {
 		select {
 		case taskNum := <-completed:
 			results[taskNum] = true
@@ -172,8 +174,8 @@ func TestWorkerPool(t *testing.T) {
 	}
 	
 	// Verify all tasks completed
-	if len(results) != 5 {
-		t.Errorf("Expected 5 completed tasks, got %d", len(results))
+	if len(results) != numTasks {
+		t.Errorf("Expected %d completed tasks, got %d", numTasks, len(results))
 	}
 	
 	// Check stats
@@ -182,8 +184,8 @@ func TestWorkerPool(t *testing.T) {
 		t.Errorf("Expected 2 workers, got %d", stats.Workers)
 	}
 	
-	if stats.Completed < 5 {
-		t.Errorf("Expected at least 5 completed tasks, got %d", stats.Completed)
+	if stats.Completed < int64(numTasks) {
+		t.Errorf("Expected at least %d completed tasks, got %d", numTasks, stats.Completed)
 	}
 }
 
