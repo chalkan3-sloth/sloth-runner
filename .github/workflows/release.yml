@@ -57,7 +57,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v5
         with:
           version: '~> v2'
-          args: release --clean --verbose --skip-validate
+          args: release --clean --verbose --allow-dirty
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CGO_ENABLED: 1
