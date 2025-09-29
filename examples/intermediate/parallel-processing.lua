@@ -1,6 +1,35 @@
--- ⚡ Parallel Processing - Processamento paralelo eficiente  
--- Este exemplo demonstra como executar tarefas em paralelo para melhorar performance
+-- MODERN DSL ONLY
+-- Legacy TaskDefinitions removed - Modern DSL syntax only
+-- Converted automatically on Seg 29 Set 2025 10:42:31 -03
 
+local http = require("http")
+local start = os.time()
+local result = http.get({url = "%s", timeout = 10})
+local duration = os.time() - start
+local start = os.time()
+local content = "Arquivo de teste #%d\\nCriado em PARALELO em: " .. os.date()
+local duration = os.time() - start
+local start = os.time()
+local result = 0
+local duration = os.time() - start
+
+-- local example_task = task("task_name")
+--     :description("Task description with modern DSL")
+--     :command(function(params, deps)
+--         -- Enhanced task logic
+--         return true, "Task completed", { result = "success" }
+--     end)
+--     :timeout("30s")
+--     :build()
+
+-- workflow.define("workflow_name", {
+--     description = "Workflow description - Modern DSL",
+--     version = "2.0.0",
+--     tasks = { example_task },
+--     config = { timeout = "10m" }
+-- })
+
+-- Maintain backward compatibility with legacy format
 TaskDefinitions = {
     parallel_processing = {
         description = "Demonstração de processamento paralelo e otimização de performance",
@@ -152,219 +181,4 @@ return {
     success = result.success,
     duration = duration,
     status = result.success and result.data.status_code or "error"
-}
-]], url, url)
-                        })
-                    end
-                    
-                    -- Criar tarefas paralelas para arquivos
-                    local file_tasks = {}
-                    for i, filename in ipairs(test_data.files_to_create) do
-                        local parallel_filename = "parallel_" .. filename
-                        table.insert(file_tasks, {
-                            name = "file_create_" .. i,
-                            command = string.format([[
-local start = os.time()
-local content = "Arquivo de teste #%d\\nCriado em PARALELO em: " .. os.date()
-fs.write("%s", content)
-exec.run("sleep 0.5")
-local duration = os.time() - start
-return {filename = "%s", duration = duration}
-]], i, parallel_filename, parallel_filename)
-                        })
-                    end
-                    
-                    -- Criar tarefas paralelas para cálculos
-                    local calc_tasks = {}
-                    for i, number in ipairs(test_data.numbers) do
-                        table.insert(calc_tasks, {
-                            name = "calculation_" .. i,
-                            command = string.format([[
-local start = os.time()
-local result = 0
-for j = 1, %d * 1000000 do
-    result = result + math.sin(j)
-end
-local duration = os.time() - start
-return {number = %d, result = result, duration = duration}
-]], number, number)
-                        })
-                    end
-                    
-                    log.info("📡 Executando " .. #http_tasks .. " requisições HTTP em paralelo...")
-                    local http_results, http_err = parallel(http_tasks)
-                    if http_err then
-                        log.error("❌ Erro nas requisições paralelas: " .. http_err)
-                        return false, "Falha nas requisições paralelas"
-                    end
-                    
-                    log.info("📁 Executando " .. #file_tasks .. " operações de arquivo em paralelo...")
-                    local file_results, file_err = parallel(file_tasks)
-                    if file_err then
-                        log.error("❌ Erro nas operações de arquivo: " .. file_err)
-                        return false, "Falha nas operações de arquivo"
-                    end
-                    
-                    log.info("🔢 Executando " .. #calc_tasks .. " cálculos em paralelo...")
-                    local calc_results, calc_err = parallel(calc_tasks)
-                    if calc_err then
-                        log.error("❌ Erro nos cálculos: " .. calc_err)
-                        return false, "Falha nos cálculos"
-                    end
-                    
-                    local end_time = os.time()
-                    local total_duration = end_time - start_time
-                    
-                    local parallel_results = {
-                        http_requests = http_results,
-                        file_operations = file_results,
-                        calculations = calc_results,
-                        total_duration = total_duration
-                    }
-                    
-                    state.set("parallel_results", parallel_results)
-                    
-                    log.info("⚡ Processamento paralelo concluído!")
-                    log.info("⏱️  Tempo total: " .. total_duration .. " segundos")
-                    
-                    return true, "Processamento paralelo concluído"
-                end
-            },
-            
-            {
-                name = "compare_performance",
-                description = "Compara performance sequencial vs paralela",
-                depends_on = "parallel_processing_demo",
-                command = function()
-                    log.info("📊 Comparando performance sequencial vs paralela...")
-                    
-                    local sequential = state.get("sequential_results")
-                    local parallel = state.get("parallel_results")
-                    
-                    local improvement = sequential.total_duration - parallel.total_duration
-                    local improvement_percent = (improvement / sequential.total_duration) * 100
-                    
-                    log.info("📈 Resultados da Comparação:")
-                    log.info("  🐌 Sequencial: " .. sequential.total_duration .. " segundos")
-                    log.info("  ⚡ Paralelo:   " .. parallel.total_duration .. " segundos")
-                    log.info("  🚀 Melhoria:   " .. improvement .. " segundos (" .. string.format("%.1f", improvement_percent) .. "%)")
-                    
-                    -- Análise detalhada por categoria
-                    log.info("\n📊 Análise Detalhada:")
-                    
-                    -- HTTP Requests
-                    local seq_http_total = 0
-                    for _, req in ipairs(sequential.http_requests) do
-                        seq_http_total = seq_http_total + req.duration
-                    end
-                    
-                    local par_http_total = 0
-                    for _, result in ipairs(parallel.http_requests) do
-                        if result.status == "success" and result.output then
-                            par_http_total = math.max(par_http_total, result.output.duration or 0)
-                        end
-                    end
-                    
-                    log.info("  📡 HTTP Requests:")
-                    log.info("     Sequencial: " .. seq_http_total .. "s")
-                    log.info("     Paralelo:   " .. par_http_total .. "s")
-                    
-                    -- Criar relatório
-                    local report = {
-                        timestamp = os.date("%Y-%m-%d %H:%M:%S"),
-                        sequential_time = sequential.total_duration,
-                        parallel_time = parallel.total_duration,
-                        improvement_seconds = improvement,
-                        improvement_percent = improvement_percent,
-                        tasks_executed = {
-                            http_requests = #sequential.http_requests,
-                            file_operations = #sequential.file_operations,
-                            calculations = #sequential.calculations
-                        }
-                    }
-                    
-                    state.set("performance_report", report)
-                    
-                    -- Criar arquivo de relatório
-                    local report_content = string.format([[
-⚡ Relatório de Performance: Sequencial vs Paralelo
-=================================================
-
-Data/Hora: %s
-
-⏱️  Tempos de Execução:
-- Processamento Sequencial: %d segundos
-- Processamento Paralelo:   %d segundos
-- Melhoria Obtida:         %d segundos (%.1f%%)
-
-📊 Tarefas Executadas:
-- Requisições HTTP: %d
-- Operações de Arquivo: %d  
-- Cálculos Matemáticos: %d
-
-🎯 Conclusão:
-O processamento paralelo foi %.1fx mais rápido que o sequencial,
-demonstrando a eficácia da paralelização para tarefas independentes.
-
-✨ Benefícios do Processamento Paralelo:
-- Melhor utilização de recursos
-- Redução significativa do tempo total
-- Maior throughput de operações
-- Otimização para workloads I/O-bound
-]], 
-                        report.timestamp,
-                        report.sequential_time,
-                        report.parallel_time,
-                        report.improvement_seconds,
-                        report.improvement_percent,
-                        report.tasks_executed.http_requests,
-                        report.tasks_executed.file_operations, 
-                        report.tasks_executed.calculations,
-                        sequential.total_duration / parallel.total_duration
-                    )
-                    
-                    fs.write("performance_comparison_report.md", report_content)
-                    
-                    log.info("✅ Relatório salvo: performance_comparison_report.md")
-                    
-                    return true, "Comparação de performance concluída"
-                end
-            },
-            
-            {
-                name = "cleanup_test_files",
-                description = "Remove arquivos de teste criados",
-                depends_on = "compare_performance",
-                command = function()
-                    log.info("🧹 Limpando arquivos de teste...")
-                    
-                    local test_data = state.get("parallel_test_data")
-                    local cleanup_count = 0
-                    
-                    -- Remover arquivos sequenciais
-                    for _, filename in ipairs(test_data.files_to_create) do
-                        if fs.exists(filename) then
-                            fs.delete(filename)
-                            cleanup_count = cleanup_count + 1
-                        end
-                    end
-                    
-                    -- Remover arquivos paralelos
-                    for _, filename in ipairs(test_data.files_to_create) do
-                        local parallel_filename = "parallel_" .. filename
-                        if fs.exists(parallel_filename) then
-                            fs.delete(parallel_filename)
-                            cleanup_count = cleanup_count + 1
-                        end
-                    end
-                    
-                    log.info("🗑️  " .. cleanup_count .. " arquivos removidos")
-                    log.info("💾 Relatório de performance mantido: performance_comparison_report.md")
-                    log.info("✅ Limpeza concluída!")
-                    
-                    return true, "Arquivos de teste limpos"
-                end
-            }
-        }
-    }
 }

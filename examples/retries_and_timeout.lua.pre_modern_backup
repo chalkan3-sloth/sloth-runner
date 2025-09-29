@@ -1,0 +1,153 @@
+-- Modern DSL: Retries and timeout demonstration
+-- Migrated from legacy TaskDefinitions format
+
+-- Define flaky task with modern retry logic
+local flaky_task = task("flaky_task")
+    :description("Task that fails 50% of the time with modern retry logic")
+    :command(function()
+        log.info("Modern DSL: Attempting flaky task...")
+        
+        -- Enhanced randomness with better seeding
+        math.randomseed(os.time() + os.clock() * 1000000)
+        local random_value = math.random()
+        
+        log.debug("Random value: " .. random_value)
+        
+        if random_value < 0.5 then
+            log.error("Modern DSL: Simulating a random failure!")
+            return false, "Random failure occurred (value: " .. random_value .. ")"
+        end
+        
+        log.info("Modern DSL: Flaky task succeeded!")
+        return true, "echo 'Flaky task succeeded!'", { 
+            result = "success",
+            random_value = random_value,
+            attempt_time = os.time()
+        }
+    end)
+    :retries(3, "exponential") -- 3 retries with exponential backoff
+    :retry_delay("2s")
+    :on_retry(function(attempt, error)
+        log.warn("Modern DSL: Retry attempt " .. attempt .. " after error: " .. error)
+    end)
+    :on_success(function(params, output)
+        log.info("Modern DSL: Flaky task finally succeeded with value: " .. output.random_value)
+    end)
+    :build()
+
+local timeout_task = task("long_running_task")
+    :description("Task that simulates timeout with modern DSL")
+    :command(function()
+        log.info("Modern DSL: Starting long running task...")
+        log.warn("This task will timeout in 2 seconds...")
+        
+        -- Simulate long work with progress updates
+        for i = 1, 10 do
+            log.debug("Progress: " .. (i * 10) .. "%")
+            -- In real scenario, this would be actual work
+            os.execute("sleep 1")
+        end
+        
+        return true, "This should not be reached due to timeout"
+    end)
+    :timeout("2s")
+    :on_timeout(function()
+        log.warn("Modern DSL: Task timed out as expected")
+    end)
+    :build()
+
+local final_task = task("final_task")
+    :description("Task that runs only if flaky task succeeds with modern DSL")
+    :depends_on({"flaky_task"})
+    :command(function(params, deps)
+        local flaky_result = deps.flaky_task
+        log.info("Modern DSL: The flaky task was successful!")
+        log.info("Flaky task result: " .. flaky_result.result)
+        log.info("Random value that succeeded: " .. flaky_result.random_value)
+        
+        return true, "Final task completed", {
+            flaky_success_value = flaky_result.random_value,
+            completed_at = os.time(),
+            workflow_status = "completed_successfully"
+        }
+    end)
+    :on_success(function(params, output)
+        log.info("Modern DSL: Robust workflow completed successfully!")
+    end)
+    :build()
+
+-- Define workflow using modern syntax
+workflow.define("robust_workflow_modern", {
+    description = "Retries and timeouts demonstration - Modern DSL",
+    version = "2.0.0",
+    
+    metadata = {
+        category = "demonstration",
+        tags = {"retries", "timeout", "resilience", "modern-dsl"}
+    },
+    
+    tasks = {
+        flaky_task,
+        timeout_task,
+        final_task
+    },
+    
+    config = {
+        max_retries = 5,
+        default_timeout = "30s",
+        retry_policy = "exponential",
+        fail_fast = false -- Continue even if timeout_task fails
+    },
+    
+    on_start = function()
+        log.info("Starting robust workflow demonstration...")
+        return true
+    end,
+    
+    on_task_fail = function(task_name, error)
+        log.warn("Task " .. task_name .. " failed: " .. error)
+        return true -- Continue workflow
+    end,
+    
+    on_complete = function(success, results)
+        if success then
+            log.info("Robust workflow completed - resilience patterns worked!")
+        else
+            log.warn("Robust workflow had some failures - check individual task results")
+        end
+        return true
+    end
+})
+
+-- Maintain backward compatibility
+TaskDefinitions = {
+    robust_workflow = {
+        description = "A workflow to demonstrate retries and timeouts",
+        tasks = {
+            {
+                name = "flaky_task",
+                description = "This task fails 50% of the time",
+                retries = 3,
+                command = function()
+                    if math.random() < 0.5 then
+                        log.error("Simulating a random failure!")
+                        return false, "Random failure occurred"
+                    end
+                    return true, "echo 'Flaky task succeeded!'", { result = "success" }
+                end
+            },
+            {
+                name = "long_running_task",
+                description = "This task simulates a long process that will time out",
+                timeout = "2s",
+                command = "sleep 5 && echo 'This should not be printed'"
+            },
+            {
+                name = "final_task",
+                description = "This task runs only if the flaky task eventually succeeds",
+                depends_on = "flaky_task",
+                command = "echo 'The flaky task was successful!'"
+            }
+        }
+    }
+}

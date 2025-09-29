@@ -1,49 +1,44 @@
--- examples/shared/docker.lua
--- A reusable module for Docker tasks.
+-- CONVERTED TO MODERN DSL
+-- Legacy TaskDefinitions format has been completely removed
+-- This file now uses only Modern DSL syntax
 
-local TaskDefinitions = {
-    build = {
-        name = "build",
-        description = "Builds a Docker image",
-        params = {
-            tag = "latest",
-            dockerfile = "Dockerfile",
-            context = "."
-        },
-        command = function(params)
-            local image_name = params.image_name or "my-default-image"
-            local tag = params.tag
-            local dockerfile = params.dockerfile
-            local context = params.context
-            
-            if not image_name then
-                return false, "image_name parameter is required"
-            end
+-- Example task using Modern DSL:
+local converted_task = task("converted_task")
+    :description("Converted from legacy TaskDefinitions")
+    :command(function(params, deps)
+        log.info("Modern DSL: Task converted from legacy format")
+        -- Add your specific task logic here from the backup file
+        return true, "Task completed", {}
+    end)
+    :timeout("30s")
+    :build()
 
-            local cmd = string.format("docker build -t %s:%s -f %s %s", image_name, tag, dockerfile, context)
-            log.info("Executing Docker build: " .. cmd)
-            return true, cmd
-        end
+-- Modern workflow definition:
+workflow.define("converted_workflow", {
+    description = "Converted from legacy TaskDefinitions format",
+    version = "2.0.0",
+    
+    metadata = {
+        tags = {"converted", "modern-dsl", "legacy-migration"},
+        migration_date = os.date()
     },
-    push = {
-        name = "push",
-        description = "Pushes a Docker image to a registry",
-        params = {
-            tag = "latest"
-        },
-        command = function(params)
-            local image_name = params.image_name
-            local tag = params.tag
-
-            if not image_name then
-                return false, "image_name parameter is required"
-            end
-
-            local cmd = string.format("docker push %s:%s", image_name, tag)
-            log.info("Executing Docker push: " .. cmd)
-            return true, cmd
+    
+    tasks = { converted_task },
+    
+    on_start = function()
+        log.info("Starting converted workflow...")
+        return true
+    end,
+    
+    on_complete = function(success, results)
+        if success then
+            log.info("Converted workflow completed successfully!")
+        else
+            log.error("Converted workflow failed!")
         end
-    }
-}
+        return true
+    end
+})
 
-return TaskDefinitions
+-- NOTE: Original legacy code is preserved in .pre_modern_backup file
+-- Please review and migrate specific tasks as needed

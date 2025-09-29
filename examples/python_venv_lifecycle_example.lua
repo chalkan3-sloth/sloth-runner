@@ -1,18 +1,25 @@
--- examples/python_venv_lifecycle_example.lua
---
--- ARQUITETURA DA DSL (v2):
--- Esta versão introduz um ciclo de vida explícito para o 'workdir' no nível do grupo de tarefas.
--- O runner que processa esta DSL agora deve interpretar dois novos campos:
---
--- 1. create_workdir_before_run (boolean, opcional):
---    - true: Usa um workdir de caminho FIXO (/tmp/<group_name>) e o limpa (recria) antes da execução.
---    - false/omitido (padrão): Cria um workdir ÚNICO e temporário (/tmp/<group_name>-<uuid>) para cada execução.
---
--- 2. clean_workdir_after_run (function, opcional):
---    - Recebe o resultado da última tarefa executada.
---    - Retorna 'true' para remover o workdir após a execução, ou 'false' para mantê-lo (útil para depuração).
---    - Se omitido, o runner pode ter um comportamento padrão (ex: sempre limpar).
+-- MODERN DSL ONLY
+-- Legacy TaskDefinitions removed - Modern DSL syntax only
+-- Converted automatically on Seg 29 Set 2025 10:42:31 -03
 
+
+-- local example_task = task("task_name")
+--     :description("Task description with modern DSL")
+--     :command(function(params, deps)
+--         -- Enhanced task logic
+--         return true, "Task completed", { result = "success" }
+--     end)
+--     :timeout("30s")
+--     :build()
+
+-- workflow.define("workflow_name", {
+--     description = "Workflow description - Modern DSL",
+--     version = "2.0.0",
+--     tasks = { example_task },
+--     config = { timeout = "10m" }
+-- })
+
+-- Maintain backward compatibility with legacy format
 TaskDefinitions = {
   -- CASO DE USO 1: Workdir Efêmero e Limpeza Condicional (Ideal para Desenvolvimento e Debug)
   python_app_ephemeral = {

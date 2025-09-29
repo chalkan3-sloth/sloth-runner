@@ -1,92 +1,137 @@
--- Define a task group
-TaskDefinitions = {
-    my_exec_group = {
-        description = "A group for testing exec commands",
-        tasks = {
-            {
-                name = "print_template_vars",
-                description = "Prints template variables passed from Go",
-                command = function(params, input)
-                    local env = "{{.Env}}"
-                    local is_prod = {{.IsProduction}}
-                    local shards = {}
-                    {{- range .Shards }}
-                    table.insert(shards, {{.}})
-                    {{- end }}
+-- MODERN DSL ONLY: Exec Module Testing
+-- Legacy TaskDefinitions removed - Modern DSL syntax only
 
-                    log.info("Environment: " .. env)
-                    log.warn("Is Production: " .. tostring(is_prod))
-                    log.debug("Shards: " .. table.concat(shards, ", "))
-                    log.error("This is a test error message from Lua.")
+-- Task 1: Print template variables
+local template_vars_task = task("print_template_vars")
+    :description("Prints template variables with modern DSL")
+    :command(function(params, input)
+        local env = "{{.Env}}"
+        local is_prod = {{.IsProduction}}
+        local shards = {}
+        {{- range .Shards }}
+        table.insert(shards, {{.}})
+        {{- end }}
 
-                    return true, "Template variables printed", nil
-                end,
-                async = false,
-                depends_on = {},
-            },
-            {
-                name = "run_echo_command",
-                description = "Runs a simple echo command using exec.run",
-                command = function(params, input)
-                    local result = exec.run("echo 'Hello from exec!'")
-                    if not result.success then
-                        return false, "Command failed: " .. result.stderr
-                    else
-                        return true, "Command executed successfully", {stdout = result.stdout, stderr = result.stderr}
-                    end
-                end,
-                async = false,
-                depends_on = {"print_template_vars"}, -- Added dependency
-            },
-            {
-                name = "list_files",
-                description = "Lists files in the current directory using exec.run",
-                command = function(params, input)
-                    local result = exec.run("ls -l")
-                    if not result.success then
-                        return false, "ls command failed: " .. result.stderr
-                    else
-                        return true, "ls command executed successfully", {stdout = result.stdout, stderr = result.stderr}
-                    end
-                end,
-                async = false,
-                depends_on = {"run_echo_command"},
-            },
-            {
-                name = "another_task_in_exec_group",
-                description = "Another task in the exec group",
-                command = function(params, input)
-                    log.info("Running another_task_in_exec_group")
-                    return true, "another_task_in_exec_group completed", nil
-                end,
-                async = false,
-                depends_on = {},
-            },
-        },
+        log.info("🌍 Environment: " .. env)
+        log.warn("🏭 Is Production: " .. tostring(is_prod))
+        log.debug("🔢 Shards: " .. table.concat(shards, ", "))
+        log.error("⚠️  This is a test error message from Lua.")
+
+        return true, "Template variables printed", {
+            environment = env,
+            production = is_prod,
+            shard_count = #shards
+        }
+    end)
+    :timeout("30s")
+    :build()
+
+-- Task 2: Echo command test
+local echo_task = task("run_echo_command")
+    :description("Runs echo command using exec.run with modern DSL")
+    :depends_on({"print_template_vars"})
+    :command(function(params, deps)
+        log.info("🔊 Running echo command...")
+        local result = exec.run("echo 'Hello from modern exec!'")
+        
+        if not result.success then
+            return false, "Command failed: " .. result.stderr
+        else
+            log.info("✅ Echo command output: " .. result.stdout)
+            return true, "Command executed successfully", {
+                stdout = result.stdout, 
+                stderr = result.stderr,
+                execution_time = os.time()
+            }
+        end
+    end)
+    :build()
+
+-- Task 3: List files test
+local list_files_task = task("list_files")
+    :description("Lists files using exec.run with modern DSL")
+    :depends_on({"run_echo_command"})
+    :command(function(params, deps)
+        log.info("📁 Listing files...")
+        local result = exec.run("ls -la")
+        
+        if not result.success then
+            return false, "ls command failed: " .. result.stderr
+        else
+            log.info("✅ Files listed successfully")
+            return true, "ls command executed successfully", {
+                stdout = result.stdout, 
+                stderr = result.stderr,
+                file_count = string.match(result.stdout, "(%d+)") or "unknown"
+            }
+        end
+    end)
+    :build()
+
+-- Task 4: Additional exec test
+local additional_exec_task = task("additional_exec_test")
+    :description("Additional exec module testing")
+    :command(function(params, deps)
+        log.info("🔧 Running additional exec test...")
+        
+        -- Test multiple commands
+        local date_result = exec.run("date")
+        local whoami_result = exec.run("whoami")
+        
+        if date_result.success and whoami_result.success then
+            log.info("📅 Current date: " .. date_result.stdout)
+            log.info("👤 Current user: " .. whoami_result.stdout)
+            
+            return true, "Additional tests completed", {
+                date = date_result.stdout,
+                user = whoami_result.stdout,
+                test_count = 2
+            }
+        else
+            return false, "Some commands failed"
+        end
+    end)
+    :build()
+
+-- Define exec testing workflow
+workflow.define("exec_module_test", {
+    description = "Comprehensive exec module testing - Modern DSL",
+    version = "2.0.0",
+    
+    metadata = {
+        category = "testing",
+        tags = {"exec", "commands", "modern-dsl"},
+        author = "Sloth Runner Team"
     },
-    my_new_group = {
-        description = "A new group for testing filtering",
-        tasks = {
-            {
-                name = "new_task_1",
-                description = "First task in the new group",
-                command = function(params, input)
-                    log.info("Running new_task_1")
-                    return true, "new_task_1 completed", nil
-                end,
-                async = false,
-                depends_on = {},
-            },
-            {
-                name = "new_task_2",
-                description = "Second task in the new group, depends on new_task_1",
-                command = function(params, input)
-                    log.info("Running new_task_2")
-                    return true, "new_task_2 completed", nil
-                end,
-                async = false,
-                depends_on = {"new_task_1"},
-            },
-        },
+    
+    tasks = {
+        template_vars_task,
+        echo_task,
+        list_files_task,
+        additional_exec_task
     },
-}
+    
+    config = {
+        max_parallel_tasks = 2,
+        timeout = "10m",
+        retry_policy = "linear"
+    },
+    
+    on_start = function()
+        log.info("🚀 Starting exec module test suite...")
+        return true
+    end,
+    
+    on_complete = function(success, results)
+        if success then
+            log.info("✅ All exec tests passed!")
+            log.info("📊 Test results summary:")
+            for task_name, result in pairs(results) do
+                log.info("  " .. task_name .. ": " .. (result.test_count or "1") .. " tests")
+            end
+        else
+            log.error("❌ Some exec tests failed!")
+        end
+        return true
+    end
+})

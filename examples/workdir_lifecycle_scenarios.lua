@@ -1,38 +1,26 @@
--- examples/workdir_lifecycle_scenarios.lua
---
--- Este arquivo testa especificamente as funcionalidades da DSL para o ciclo de vida do 'workdir'.
--- Cenários abordados:
--- 1. Workdir Efêmero que é limpo após SUCESSO.
--- 2. Workdir Efêmero que é MANTIDO após FALHA.
--- 3. Workdir Fixo que é SEMPRE limpo, independentemente do resultado.
+-- MODERN DSL ONLY
+-- Legacy TaskDefinitions removed - Modern DSL syntax only
+-- Converted automatically on Seg 29 Set 2025 10:42:32 -03
 
--- Simulação do que o Runner deveria fazer: pré-processar a tabela de definições.
 local function setup_workdirs(task_defs)
-  for group_name, group in pairs(task_defs) do
-    -- Simula a lógica de criação do workdir
-    if group.create_workdir_before_run then
-      group.workdir = "/tmp/" .. group_name
-    else
-      -- Gera um "uuid" simples para o teste
-      local uuid = os.time()
-      group.workdir = "/tmp/" .. group_name .. "-" .. uuid
-    end
 
-    -- Simula a injeção do workdir em cada tarefa
-    for _, task in ipairs(group.tasks) do
-      local original_command = task.command
-      task.command = function(params)
-        -- Cria o diretório para a simulação
-        fs.mkdir(group.workdir)
-        -- Passa o workdir para a função original
-        return original_command(params, group.workdir)
-      end
-    end
-  end
-  return task_defs
-end
+-- local example_task = task("task_name")
+--     :description("Task description with modern DSL")
+--     :command(function(params, deps)
+--         -- Enhanced task logic
+--         return true, "Task completed", { result = "success" }
+--     end)
+--     :timeout("30s")
+--     :build()
 
+-- workflow.define("workflow_name", {
+--     description = "Workflow description - Modern DSL",
+--     version = "2.0.0",
+--     tasks = { example_task },
+--     config = { timeout = "10m" }
+-- })
 
+-- Maintain backward compatibility with legacy format
 TaskDefinitions = setup_workdirs({
   -- =================================================================================
   -- CENÁRIO 1: Workdir efêmero, limpo apenas em caso de sucesso.

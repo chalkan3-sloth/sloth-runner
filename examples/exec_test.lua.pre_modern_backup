@@ -1,0 +1,238 @@
+-- Modern DSL: Exec module testing
+-- Migrated from legacy TaskDefinitions format
+
+-- Define tasks using modern fluent API
+local template_vars_task = task("print_template_vars")
+    :description("Prints template variables with modern DSL")
+    :command(function(params, input)
+        local env = "{{.Env}}"
+        local is_prod = {{.IsProduction}}
+        local shards = {}
+        {{- range .Shards }}
+        table.insert(shards, {{.}})
+        {{- end }}
+
+        log.info("Environment: " .. env)
+        log.warn("Is Production: " .. tostring(is_prod))
+        log.debug("Shards: " .. table.concat(shards, ", "))
+        log.error("This is a test error message from Lua.")
+
+        return true, "Template variables printed", {
+            environment = env,
+            production = is_prod,
+            shard_count = #shards
+        }
+    end)
+    :async(false)
+    :build()
+
+local echo_task = task("run_echo_command")
+    :description("Runs echo command using exec.run with modern DSL")
+    :depends_on({"print_template_vars"})
+    :command(function(params, input)
+        log.info("Modern DSL: Running echo command...")
+        local result = exec.run("echo 'Hello from modern exec!'")
+        
+        if not result.success then
+            return false, "Command failed: " .. result.stderr
+        else
+            log.info("Echo command output: " .. result.stdout)
+            return true, "Command executed successfully", {
+                stdout = result.stdout, 
+                stderr = result.stderr,
+                execution_time = os.time()
+            }
+        end
+    end)
+    :async(false)
+    :build()
+
+local list_files_task = task("list_files")
+    :description("Lists files using exec.run with modern DSL")
+    :depends_on({"run_echo_command"})
+    :command(function(params, input)
+        log.info("Modern DSL: Listing files...")
+        local result = exec.run("ls -la")
+        
+        if not result.success then
+            return false, "ls command failed: " .. result.stderr
+        else
+            log.info("Files listed successfully")
+            return true, "ls command executed successfully", {
+                stdout = result.stdout, 
+                stderr = result.stderr,
+                file_count = string.match(result.stdout, "(%d+)") or "unknown"
+            }
+        end
+    end)
+    :async(false)
+    :build()
+
+local another_task = task("another_task_in_exec_group")
+    :description("Another task in the exec group with modern DSL")
+    :command(function(params, input)
+        log.info("Modern DSL: Running another_task_in_exec_group")
+        return true, "another_task_in_exec_group completed", {
+            completed_at = os.time(),
+            status = "success"
+        }
+    end)
+    :async(false)
+    :build()
+
+-- New group tasks
+local new_task_1 = task("new_task_1")
+    :description("First task in the new group with modern DSL")
+    :command(function(params, input)
+        log.info("Modern DSL: Running new_task_1")
+        return true, "new_task_1 completed", {
+            task_id = "new_task_1",
+            completed_at = os.time()
+        }
+    end)
+    :async(false)
+    :build()
+
+local new_task_2 = task("new_task_2")
+    :description("Second task depends on new_task_1 with modern DSL")
+    :depends_on({"new_task_1"})
+    :command(function(params, input)
+        log.info("Modern DSL: Running new_task_2")
+        return true, "new_task_2 completed", {
+            task_id = "new_task_2",
+            completed_at = os.time(),
+            depends_on = "new_task_1"
+        }
+    end)
+    :async(false)
+    :build()
+
+-- Define workflows using modern syntax
+workflow.define("exec_test_modern", {
+    description = "Exec module testing - Modern DSL",
+    version = "2.0.0",
+    
+    metadata = {
+        category = "testing",
+        tags = {"exec", "testing", "modern-dsl"}
+    },
+    
+    tasks = {
+        template_vars_task,
+        echo_task,
+        list_files_task,
+        another_task
+    },
+    
+    config = {
+        max_parallel_tasks = 2,
+        timeout = "10m"
+    }
+})
+
+workflow.define("new_group_modern", {
+    description = "New group for testing filtering - Modern DSL",
+    version = "2.0.0",
+    
+    tasks = {
+        new_task_1,
+        new_task_2
+    },
+    
+    config = {
+        timeout = "5m"
+    }
+})
+
+-- Maintain backward compatibility
+TaskDefinitions = {
+    my_exec_group = {
+        description = "A group for testing exec commands",
+        tasks = {
+            {
+                name = "print_template_vars",
+                description = "Prints template variables passed from Go",
+                command = function(params, input)
+                    local env = "{{.Env}}"
+                    local is_prod = {{.IsProduction}}
+                    local shards = {}
+                    {{- range .Shards }}
+                    table.insert(shards, {{.}})
+                    {{- end }}
+
+                    log.info("Environment: " .. env)
+                    log.warn("Is Production: " .. tostring(is_prod))
+                    log.debug("Shards: " .. table.concat(shards, ", "))
+                    log.error("This is a test error message from Lua.")
+
+                    return true, "Template variables printed", nil
+                end,
+                async = false,
+                depends_on = {},
+            },
+            {
+                name = "run_echo_command",
+                description = "Runs a simple echo command using exec.run",
+                command = function(params, input)
+                    local result = exec.run("echo 'Hello from exec!'")
+                    if not result.success then
+                        return false, "Command failed: " .. result.stderr
+                    else
+                        return true, "Command executed successfully", {stdout = result.stdout, stderr = result.stderr}
+                    end
+                end,
+                async = false,
+                depends_on = {"print_template_vars"},
+            },
+            {
+                name = "list_files",
+                description = "Lists files in the current directory using exec.run",
+                command = function(params, input)
+                    local result = exec.run("ls -l")
+                    if not result.success then
+                        return false, "ls command failed: " .. result.stderr
+                    else
+                        return true, "ls command executed successfully", {stdout = result.stdout, stderr = result.stderr}
+                    end
+                end,
+                async = false,
+                depends_on = {"run_echo_command"},
+            },
+            {
+                name = "another_task_in_exec_group",
+                description = "Another task in the exec group",
+                command = function(params, input)
+                    log.info("Running another_task_in_exec_group")
+                    return true, "another_task_in_exec_group completed", nil
+                end,
+                async = false,
+                depends_on = {},
+            },
+        },
+    },
+    my_new_group = {
+        description = "A new group for testing filtering",
+        tasks = {
+            {
+                name = "new_task_1",
+                description = "First task in the new group",
+                command = function(params, input)
+                    log.info("Running new_task_1")
+                    return true, "new_task_1 completed", nil
+                end,
+                async = false,
+                depends_on = {},
+            },
+            {
+                name = "new_task_2",
+                description = "Second task in the new group, depends on new_task_1",
+                command = function(params, input)
+                    log.info("Running new_task_2")
+                    return true, "new_task_2 completed", nil
+                end,
+                async = false,
+                depends_on = {"new_task_1"},
+            },
+        },
+    },
+}

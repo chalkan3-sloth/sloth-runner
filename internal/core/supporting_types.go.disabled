@@ -1,0 +1,629 @@
+package core
+
+import (
+	"context"
+	"log/slog"
+	"sync"
+	"time"
+)
+
+// Missing types and supporting structures for enhanced core
+
+// CircularBuffer provides a thread-safe circular buffer implementation
+type CircularBuffer struct {
+	buffer   []interface{}
+	size     int
+	index    int
+	count    int
+	mu       sync.RWMutex
+}
+
+// NewCircularBuffer creates a new circular buffer with specified size
+func NewCircularBuffer(size int) *CircularBuffer {
+	return &CircularBuffer{
+		buffer: make([]interface{}, size),
+		size:   size,
+	}
+}
+
+// Add adds an item to the circular buffer
+func (cb *CircularBuffer) Add(item interface{}) {
+	cb.mu.Lock()
+	defer cb.mu.Unlock()
+	
+	cb.buffer[cb.index] = item
+	cb.index = (cb.index + 1) % cb.size
+	
+	if cb.count < cb.size {
+		cb.count++
+	}
+}
+
+// Get retrieves all items from the buffer
+func (cb *CircularBuffer) Get() []interface{} {
+	cb.mu.RLock()
+	defer cb.mu.RUnlock()
+	
+	result := make([]interface{}, cb.count)
+	for i := 0; i < cb.count; i++ {
+		idx := (cb.index - cb.count + i + cb.size) % cb.size
+		result[i] = cb.buffer[idx]
+	}
+	return result
+}
+
+// ExecutionPipeline manages task execution pipeline
+type ExecutionPipeline struct {
+	stages []PipelineStage
+	mu     sync.RWMutex
+}
+
+// NewExecutionPipeline creates a new execution pipeline
+func NewExecutionPipeline() *ExecutionPipeline {
+	return &ExecutionPipeline{
+		stages: make([]PipelineStage, 0),
+	}
+}
+
+type PipelineStage struct {
+	Name     string
+	Tasks    []string
+	Parallel bool
+}
+
+// DependencyGraph represents task dependencies
+type DependencyGraph struct {
+	nodes map[string]*GraphNode
+	edges map[string][]string
+	mu    sync.RWMutex
+}
+
+// NewDependencyGraph creates a new dependency graph
+func NewDependencyGraph() *DependencyGraph {
+	return &DependencyGraph{
+		nodes: make(map[string]*GraphNode),
+		edges: make(map[string][]string),
+	}
+}
+
+type GraphNode struct {
+	ID           string
+	Dependencies []string
+	Dependents   []string
+}
+
+// TimeSeriesData manages time-based metrics
+type TimeSeriesData struct {
+	dataPoints []DataPoint
+	retention  time.Duration
+	mu         sync.RWMutex
+}
+
+// NewTimeSeriesData creates a new time series data container
+func NewTimeSeriesData() *TimeSeriesData {
+	return &TimeSeriesData{
+		dataPoints: make([]DataPoint, 0),
+		retention:  24 * time.Hour, // Default 24 hours retention
+	}
+}
+
+type DataPoint struct {
+	Timestamp time.Time
+	Value     float64
+	Labels    map[string]string
+}
+
+// MetricAggregator aggregates metrics over time
+type MetricAggregator struct {
+	name        string
+	aggregation AggregationType
+	window      time.Duration
+	values      []float64
+	mu          sync.RWMutex
+}
+
+type AggregationType int
+
+const (
+	AggregationSum AggregationType = iota
+	AggregationAverage
+	AggregationMin
+	AggregationMax
+	AggregationCount
+)
+
+// MetricCollector interface for collecting metrics
+type MetricCollector interface {
+	Collect() []Metric
+}
+
+// MetricExporter interface for exporting metrics
+type MetricExporter interface {
+	Export(metrics []Metric) error
+}
+
+type Metric struct {
+	Name      string
+	Value     float64
+	Labels    map[string]string
+	Timestamp time.Time
+}
+
+// Event represents system events
+type Event struct {
+	Type      string
+	Data      interface{}
+	Time      time.Time
+	Source    string
+	Metadata  map[string]interface{}
+}
+
+// EventHandler handles events
+type EventHandler interface {
+	Handle(event Event) error
+}
+
+// EventProcessor processes events asynchronously
+type EventProcessor struct {
+	handlers map[string][]EventHandler
+	queue    chan Event
+	workers  int
+	mu       sync.RWMutex
+}
+
+// NewEventProcessor creates a new event processor
+func NewEventProcessor() *EventProcessor {
+	return &EventProcessor{
+		handlers: make(map[string][]EventHandler),
+		queue:    make(chan Event, 1000),
+		workers:  4,
+	}
+}
+
+// GetProcessedCount returns the number of processed events
+func (ep *EventProcessor) GetProcessedCount() int64 {
+	// Implementation would track processed events
+	return 0
+}
+
+// MovingAverage calculates moving average over a window
+type MovingAverage struct {
+	values []float64
+	window int
+	index  int
+	count  int
+	sum    float64
+	mu     sync.RWMutex
+}
+
+// NewMovingAverage creates a new moving average calculator
+func NewMovingAverage(window int) *MovingAverage {
+	return &MovingAverage{
+		values: make([]float64, window),
+		window: window,
+	}
+}
+
+// Add adds a value to the moving average
+func (ma *MovingAverage) Add(value float64) {
+	ma.mu.Lock()
+	defer ma.mu.Unlock()
+	
+	if ma.count == ma.window {
+		ma.sum -= ma.values[ma.index]
+	} else {
+		ma.count++
+	}
+	
+	ma.values[ma.index] = value
+	ma.sum += value
+	ma.index = (ma.index + 1) % ma.window
+}
+
+// Average returns the current moving average
+func (ma *MovingAverage) Average() float64 {
+	ma.mu.RLock()
+	defer ma.mu.RUnlock()
+	
+	if ma.count == 0 {
+		return 0
+	}
+	return ma.sum / float64(ma.count)
+}
+
+// ResourceThresholds defines system resource thresholds
+type ResourceThresholds struct {
+	CPUWarning     float64
+	CPUCritical    float64
+	MemoryWarning  float64
+	MemoryCritical float64
+	DiskWarning    float64
+	DiskCritical   float64
+}
+
+// DefaultResourceThresholds returns default thresholds
+func DefaultResourceThresholds() *ResourceThresholds {
+	return &ResourceThresholds{
+		CPUWarning:     70.0,
+		CPUCritical:    90.0,
+		MemoryWarning:  80.0,
+		MemoryCritical: 95.0,
+		DiskWarning:    85.0,
+		DiskCritical:   95.0,
+	}
+}
+
+// ResourceAlert represents a resource threshold alert
+type ResourceAlert struct {
+	Type        string
+	Resource    string
+	CurrentValue float64
+	Threshold   float64
+	Severity    AlertSeverity
+	Timestamp   time.Time
+}
+
+type AlertSeverity int
+
+const (
+	AlertInfo AlertSeverity = iota
+	AlertWarning
+	AlertCritical
+)
+
+// PriorityQueue implements a priority queue for tasks
+type PriorityQueue struct {
+	items []PriorityItem
+	mu    sync.RWMutex
+}
+
+// NewPriorityQueue creates a new priority queue
+func NewPriorityQueue() *PriorityQueue {
+	return &PriorityQueue{
+		items: make([]PriorityItem, 0),
+	}
+}
+
+type PriorityItem struct {
+	Task     interface{}
+	Priority int
+	Index    int
+}
+
+// Size returns the queue size
+func (pq *PriorityQueue) Size() int {
+	pq.mu.RLock()
+	defer pq.mu.RUnlock()
+	return len(pq.items)
+}
+
+// Enhanced load balancer for tasks
+type EnhancedLoadBalancer struct {
+	strategy LoadBalancingStrategy
+	workers  []*WorkerNode
+	mu       sync.RWMutex
+}
+
+// NewLoadBalancer creates a new load balancer
+func NewLoadBalancer(strategy LoadBalancingStrategy) *EnhancedLoadBalancer {
+	return &EnhancedLoadBalancer{
+		strategy: strategy,
+		workers:  make([]*WorkerNode, 0),
+	}
+}
+
+type WorkerNode struct {
+	ID          string
+	Address     string
+	Capacity    int
+	CurrentLoad int
+	Healthy     bool
+}
+
+// AffinityRules defines task-to-worker affinity rules
+type AffinityRules struct {
+	rules map[string]AffinityRule
+	mu    sync.RWMutex
+}
+
+// NewAffinityRules creates new affinity rules
+func NewAffinityRules() *AffinityRules {
+	return &AffinityRules{
+		rules: make(map[string]AffinityRule),
+	}
+}
+
+type AffinityRule struct {
+	TaskPattern    string
+	WorkerSelector map[string]string
+	Weight         int
+}
+
+// SchedulingConstraints defines scheduling constraints
+type SchedulingConstraints struct {
+	resourceLimits map[string]ResourceLimit
+	policies       []SchedulingPolicy
+	mu             sync.RWMutex
+}
+
+// NewSchedulingConstraints creates new scheduling constraints
+func NewSchedulingConstraints() *SchedulingConstraints {
+	return &SchedulingConstraints{
+		resourceLimits: make(map[string]ResourceLimit),
+		policies:       make([]SchedulingPolicy, 0),
+	}
+}
+
+type ResourceLimit struct {
+	CPU    string
+	Memory string
+	Disk   string
+}
+
+type SchedulingPolicy struct {
+	Name      string
+	Condition string
+	Action    string
+}
+
+// HealthChecker monitors worker health
+type HealthChecker struct {
+	checkInterval time.Duration
+	timeout       time.Duration
+	mu            sync.RWMutex
+}
+
+// RemoteStateManager manages distributed state
+type RemoteStateManager struct {
+	endpoints []string
+	mu        sync.RWMutex
+}
+
+// NewRemoteStateManager creates new remote state manager
+func NewRemoteStateManager() *RemoteStateManager {
+	return &RemoteStateManager{
+		endpoints: make([]string, 0),
+	}
+}
+
+// ConflictResolver resolves state conflicts
+type ConflictResolver struct {
+	strategy ConflictResolutionStrategy
+	mu       sync.RWMutex
+}
+
+// NewConflictResolver creates new conflict resolver
+func NewConflictResolver() *ConflictResolver {
+	return &ConflictResolver{
+		strategy: ConflictLastWriterWins,
+	}
+}
+
+type ConflictResolutionStrategy int
+
+const (
+	ConflictLastWriterWins ConflictResolutionStrategy = iota
+	ConflictMerge
+	ConflictManual
+)
+
+// StateVersioning manages state versions
+type StateVersioning struct {
+	versions map[string][]StateVersion
+	mu       sync.RWMutex
+}
+
+// NewStateVersioning creates new state versioning
+func NewStateVersioning() *StateVersioning {
+	return &StateVersioning{
+		versions: make(map[string][]StateVersion),
+	}
+}
+
+type StateVersion struct {
+	Version   int
+	Timestamp time.Time
+	Data      interface{}
+	Checksum  string
+}
+
+// CheckpointManager manages execution checkpoints
+type CheckpointManager struct {
+	checkpoints map[string]Checkpoint
+	mu          sync.RWMutex
+}
+
+// NewCheckpointManager creates new checkpoint manager
+func NewCheckpointManager() *CheckpointManager {
+	return &CheckpointManager{
+		checkpoints: make(map[string]Checkpoint),
+	}
+}
+
+type Checkpoint struct {
+	ID        string
+	Timestamp time.Time
+	State     interface{}
+	Metadata  map[string]interface{}
+}
+
+// RollbackManager manages rollback operations
+type RollbackManager struct {
+	operations []RollbackOperation
+	mu         sync.RWMutex
+}
+
+// NewRollbackManager creates new rollback manager
+func NewRollbackManager() *RollbackManager {
+	return &RollbackManager{
+		operations: make([]RollbackOperation, 0),
+	}
+}
+
+type RollbackOperation struct {
+	ID          string
+	Type        string
+	Target      string
+	Timestamp   time.Time
+	Compensate  func() error
+}
+
+// CompensationManager manages compensation actions
+type CompensationManager struct {
+	actions map[string]CompensationAction
+	mu      sync.RWMutex
+}
+
+// NewCompensationManager creates new compensation manager
+func NewCompensationManager() *CompensationManager {
+	return &CompensationManager{
+		actions: make(map[string]CompensationAction),
+	}
+}
+
+type CompensationAction func(context interface{}) error
+
+// TaskConstraints defines task execution constraints
+type TaskConstraints struct {
+	Resources    map[string]string
+	Affinity     map[string]string
+	Tolerations  []string
+	NodeSelector map[string]string
+}
+
+// EnhancedCoreStats represents comprehensive core statistics
+type EnhancedCoreStats struct {
+	Uptime      time.Duration
+	Performance EnhancedPerformanceStats
+	WorkerPool  WorkerPoolStats
+	ErrorCount  int64
+}
+
+// EnhancedPerformanceStats represents performance metrics
+type EnhancedPerformanceStats struct {
+	GoroutineCount    int
+	MemoryUsage       EnhancedMemoryStats
+	PeakMemoryUsage   int64
+	TaskExecutions    int64
+}
+
+// EnhancedMemoryStats represents memory usage statistics
+type EnhancedMemoryStats struct {
+	Alloc       int64
+	TotalAlloc  int64
+	Sys         int64
+	NumGC       int64
+}
+
+// Advanced strategies and recovery types
+type RetryStrategy struct {
+	MaxAttempts int
+	Backoff     BackoffStrategy
+}
+
+type BackoffStrategy interface {
+	Next(attempt int) time.Duration
+}
+
+type ExponentialBackoff struct {
+	Initial time.Duration
+	Max     time.Duration
+}
+
+func (eb ExponentialBackoff) Next(attempt int) time.Duration {
+	duration := time.Duration(float64(eb.Initial) * (2.0 * float64(attempt)))
+	if duration > eb.Max {
+		duration = eb.Max
+	}
+	return duration
+}
+
+type CircuitBreakerStrategy struct {
+	Threshold int
+	Timeout   time.Duration
+}
+
+func (cbs *CircuitBreakerStrategy) Recover(ctx context.Context, err error, operation interface{}) error {
+	// Implementation would handle circuit breaker recovery
+	return nil
+}
+
+type CheckpointStrategy struct {
+	Manager *CheckpointManager
+}
+
+func (cs *CheckpointStrategy) Recover(ctx context.Context, err error, operation interface{}) error {
+	// Implementation would handle checkpoint-based recovery
+	return nil
+}
+
+// Additional helper methods and initialization functions
+func (ec *EnhancedGlobalCore) GetCircuitBreaker(name string) *CircuitBreaker {
+	if cb, exists := ec.CircuitBreakers[name]; exists {
+		return cb
+	}
+	// Create new circuit breaker if not exists
+	cb := NewCircuitBreaker(name, ec.Config.CircuitBreakerMaxFailures, ec.Config.CircuitBreakerResetTime)
+	ec.CircuitBreakers[name] = cb
+	return cb
+}
+
+func (ec *EnhancedGlobalCore) SubmitTask(task func(), context string) bool {
+	return ec.WorkerPool.Submit(task)
+}
+
+func (ec *EnhancedGlobalCore) ExecuteWithRecovery(operation func() error, context string) error {
+	return ec.AdvancedRecovery.Execute(operation, context)
+}
+
+func (ar *AdvancedRecovery) Execute(operation func() error, context string) error {
+	// Implementation would execute operation with recovery strategies
+	return operation()
+}
+
+func (ar *AdvancedRecovery) GetStats() *RecoveryStats {
+	return &RecoveryStats{
+		TotalOperations:      0,
+		SuccessfulRecoveries: 0,
+		FailedRecoveries:     0,
+		CheckpointsCreated:   0,
+		RollbacksExecuted:    0,
+	}
+}
+
+func (rm *ResourceMonitor) GetCurrentUsage() *ResourceUsage {
+	return &ResourceUsage{
+		CPU:     rm.cpuUsage.Average(),
+		Memory:  rm.memoryUsage.Average(),
+		DiskIO:  rm.diskIO.Average(),
+		Network: rm.networkIO.Average(),
+	}
+}
+
+func (mc *MetricsCollector) RecordTaskExecution(execution interface{}) {
+	// Implementation would record task execution metrics
+}
+
+// Enhanced global core management
+var enhancedGlobalCore *EnhancedGlobalCore
+var enhancedGlobalCoreMutex sync.RWMutex
+
+func InitializeEnhancedGlobalCore(config *CoreConfig, logger *slog.Logger) error {
+	enhancedGlobalCoreMutex.Lock()
+	defer enhancedGlobalCoreMutex.Unlock()
+	
+	var err error
+	enhancedGlobalCore, err = NewEnhancedGlobalCore(config, logger)
+	if err != nil {
+		return err
+	}
+	
+	return enhancedGlobalCore.Start()
+}
+
+func GetEnhancedGlobalCore() *EnhancedGlobalCore {
+	enhancedGlobalCoreMutex.RLock()
+	defer enhancedGlobalCoreMutex.RUnlock()
+	
+	return enhancedGlobalCore
+}

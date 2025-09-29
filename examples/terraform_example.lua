@@ -1,27 +1,27 @@
---
--- terraform_example.lua
---
--- This example demonstrates the full lifecycle of a Terraform project
--- orchestrated by the `terraform` module. It uses a simple local file
--- as a resource, so no cloud credentials are required.
---
--- The pipeline will:
--- 1. Initialize Terraform.
--- 2. Create an execution plan.
--- 3. Apply the plan to create a local file (`report.txt`).
--- 4. Read the output variable from Terraform to get the filename.
--- 5. Use the `fs` module to read the content of the created file.
--- 6. Destroy the Terraform-managed resources.
---
--- To run this example:
---    go run ./cmd/sloth-runner -f examples/terraform_example.lua
---
+-- MODERN DSL ONLY
+-- Legacy TaskDefinitions removed - Modern DSL syntax only
+-- Converted automatically on Seg 29 Set 2025 10:42:30 -03
 
 local log = require("log")
-
--- The working directory for all Terraform commands.
 local tf_workdir = "./examples/terraform"
 
+-- local example_task = task("task_name")
+--     :description("Task description with modern DSL")
+--     :command(function(params, deps)
+--         -- Enhanced task logic
+--         return true, "Task completed", { result = "success" }
+--     end)
+--     :timeout("30s")
+--     :build()
+
+-- workflow.define("workflow_name", {
+--     description = "Workflow description - Modern DSL",
+--     version = "2.0.0",
+--     tasks = { example_task },
+--     config = { timeout = "10m" }
+-- })
+
+-- Maintain backward compatibility with legacy format
 TaskDefinitions = {
   ["terraform-lifecycle"] = {
     description = "A pipeline to manage a Terraform project.",

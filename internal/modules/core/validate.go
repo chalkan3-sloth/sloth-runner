@@ -8,18 +8,17 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/chalkan3/sloth-runner/internal/modules"
 	"github.com/yuin/gopher-lua"
 )
 
 // ValidateModule provides data validation and sanitization
 type ValidateModule struct {
-	*modules.BaseModule
+	*BaseModule
 }
 
 // NewValidateModule creates a new validation module
 func NewValidateModule() *ValidateModule {
-	info := modules.ModuleInfo{
+	info := ModuleInfo{
 		Name:        "validate",
 		Version:     "1.0.0",
 		Description: "Data validation and sanitization utilities",
@@ -29,7 +28,7 @@ func NewValidateModule() *ValidateModule {
 	}
 	
 	return &ValidateModule{
-		BaseModule: modules.NewBaseModule(info),
+		BaseModule: NewBaseModule(info),
 	}
 }
 
@@ -72,7 +71,7 @@ func (m *ValidateModule) luaValidateEmail(L *lua.LState) int {
 }
 
 // luaValidateURL validates URLs
-func (m *ValidateURL) luaValidateURL(L *lua.LState) int {
+func (m *ValidateModule) luaValidateURL(L *lua.LState) int {
 	urlStr := L.CheckString(1)
 	
 	parsedURL, err := url.Parse(urlStr)
@@ -145,7 +144,11 @@ func (m *ValidateModule) luaValidateRegex(L *lua.LState) int {
 	
 	regex, err := regexp.Compile(pattern)
 	if err != nil {
-		return modules.CreateErrorResponse(L, "invalid regex pattern", err.Error())
+		errorTable := L.NewTable()
+		errorTable.RawSetString("error", lua.LString("invalid regex pattern"))
+		errorTable.RawSetString("message", lua.LString(err.Error()))
+		L.Push(errorTable)
+		return 1
 	}
 	
 	isValid := regex.MatchString(value)
@@ -228,7 +231,11 @@ func (m *ValidateModule) luaValidateRange(L *lua.LState) int {
 	
 	value, err := strconv.ParseFloat(valueStr, 64)
 	if err != nil {
-		return modules.CreateErrorResponse(L, "invalid numeric value", err.Error())
+		errorTable := L.NewTable()
+		errorTable.RawSetString("error", lua.LString("invalid numeric value"))
+		errorTable.RawSetString("message", lua.LString(err.Error()))
+		L.Push(errorTable)
+		return 1
 	}
 	
 	var isValid = true

@@ -1,28 +1,27 @@
---
--- azure_example.lua
---
--- This example demonstrates how to use the azure module to manage
--- resources in your Azure subscription.
---
--- This pipeline assumes you have the `az` CLI installed and are logged in
--- via `az login`.
---
--- To run this example:
--- 1. Create a resource group in Azure for testing.
--- 2. (Optional) Create a VM inside that resource group.
--- 3. Set the `resource_group_to_delete` variable to the name of your test RG.
--- 4. Run the pipeline:
---    go run ./cmd/sloth-runner -f examples/azure_example.lua
---
+-- MODERN DSL ONLY
+-- Legacy TaskDefinitions removed - Modern DSL syntax only
+-- Converted automatically on Seg 29 Set 2025 10:42:31 -03
 
 local log = require("log")
-
--- Configuration --
--- The name of the Resource Group to list VMs from and then delete.
 local resource_group_to_delete = "my-sloth-runner-test-rg"
--------------------
 
+-- local example_task = task("task_name")
+--     :description("Task description with modern DSL")
+--     :command(function(params, deps)
+--         -- Enhanced task logic
+--         return true, "Task completed", { result = "success" }
+--     end)
+--     :timeout("30s")
+--     :build()
 
+-- workflow.define("workflow_name", {
+--     description = "Workflow description - Modern DSL",
+--     version = "2.0.0",
+--     tasks = { example_task },
+--     config = { timeout = "10m" }
+-- })
+
+-- Maintain backward compatibility with legacy format
 TaskDefinitions = {
   ["azure-management"] = {
     description = "A pipeline to list VMs and manage Azure Resource Groups.",
