@@ -1,149 +1,207 @@
--- MODERN DSL ONLY
--- Legacy TaskDefinitions removed - Modern DSL syntax only
--- Converted automatically on Seg 29 Set 2025 10:42:30 -03
+-- MODERN DSL ONLY - Parallel Execution Showcase
+-- Demonstrates advanced parallel processing capabilities
 
-local parallel_demo_task = task("run_in_parallel")
-local comparison_task = task("sequential_vs_parallel")
-
-local parallel_demo_task = task("run_in_parallel")
-local comparison_task = task("sequential_vs_parallel")
-local parallel_demo_task = task("run_in_parallel")
-    :description("Demonstrates parallel execution with modern DSL")
+-- Task 1: Fast CPU task
+local cpu_task = task("cpu_intensive")
+    :description("CPU-intensive task simulation")
     :command(function()
-        log.info("🚀 Modern DSL: Starting parallel execution demo")
+        log.info("💻 Starting CPU-intensive computation...")
+        
+        -- Simulate CPU work with performance monitoring
+        local result = perf.measure(function()
+            local sum = 0
+            for i = 1, 1000000 do
+                sum = sum + math.sqrt(i)
+            end
+            return sum
+        end)
+        
+        log.info("⚡ CPU task completed in " .. result.duration .. "ms")
+        return true, "CPU computation completed", {
+            computation_result = result.value,
+            duration_ms = result.duration,
+            operations = 1000000
+        }
+    end)
+    :timeout("30s")
+    :build()
 
-        -- Define sub-tasks for parallel execution using modern async patterns
+-- Task 2: IO-intensive task
+local io_task = task("io_intensive")
+    :description("IO-intensive file operations")
+    :command(function()
+        log.info("📁 Starting IO-intensive operations...")
+        
         local start_time = os.time()
-        log.info("Executing 3 tasks in parallel (2s, 4s, 6s sleep times)...")
-
-        -- Use modern async.parallel with enhanced features
-        local results, err = async.parallel({
-            short_task = function() 
-                log.info("Short task starting...")
-                local success, output = exec.run("echo 'Sub-task 1 starting...'; sleep 2; echo 'Sub-task 1 finished.'")
-                return { name = "Short sleep", duration = 2, success = success, output = output }
-            end,
-            medium_task = function() 
-                log.info("Medium task starting...")
-                local success, output = exec.run("echo 'Sub-task 2 starting...'; sleep 4; echo 'Sub-task 2 finished.'")
-                return { name = "Medium sleep", duration = 4, success = success, output = output }
-            end,
-            long_task = function() 
-                log.info("Long task starting...")
-                local success, output = exec.run("echo 'Sub-task 3 starting...'; sleep 6; echo 'Sub-task 3 finished.'")
-                return { name = "Long sleep", duration = 6, success = success, output = output }
-            end
-        }, {
-            max_workers = 3,
-            timeout = "10s",
-            fail_fast = false
-        })
-
-        local end_time = os.time()
-        local duration = end_time - start_time
         
-        log.info("✅ Parallel execution completed in " .. duration .. " seconds")
-        log.info("📊 Expected time: ~6 seconds (duration of longest task)")
-
-        if err then
-            log.error("❌ Parallel execution failed: " .. err)
-            return false, "Parallel execution failed"
-        end
-
-        -- Enhanced result processing
-        log.info("📋 Results from parallel execution:")
-        local success_count = 0
-        for task_name, result in pairs(results or {}) do
-            if result.success then
-                success_count = success_count + 1
-                log.info("  ✅ " .. result.name .. " - SUCCESS")
+        -- Simulate file operations
+        local files_created = {}
+        for i = 1, 5 do
+            local filename = "/tmp/sloth_test_" .. i .. ".txt"
+            local content = "Test data " .. i .. " created at " .. os.date()
+            
+            local success, err = fs.write(filename, content)
+            if success then
+                table.insert(files_created, filename)
+                log.info("📄 Created: " .. filename)
             else
-                log.error("  ❌ " .. result.name .. " - FAILED")
+                log.error("❌ Failed to create " .. filename .. ": " .. err)
             end
         end
-
-        local efficiency = math.floor((6 / duration) * 100)
         
-        return true, "Parallel execution demo completed successfully", {
-            total_duration = duration,
-            tasks_executed = 3,
-            successful_tasks = success_count,
-            parallel_efficiency = efficiency .. "%",
-            performance_score = efficiency >= 90 and "Excellent" or efficiency >= 70 and "Good" or "Needs Improvement"
+        local duration = os.time() - start_time
+        log.info("💾 IO operations completed in " .. duration .. " seconds")
+        
+        return true, "IO operations completed", {
+            files_created = files_created,
+            duration_seconds = duration,
+            file_count = #files_created
         }
     end)
-    :timeout("15s")
-    :retries(2, "linear")
-    :on_success(function(params, output)
-        log.info("🎉 Parallel demo completed!")
-        log.info("📈 Efficiency: " .. output.parallel_efficiency)
-        log.info("🏆 Performance: " .. output.performance_score)
-    end)
-    :on_failure(function(params, error)
-        log.error("🚨 Parallel demo failed: " .. error)
-    end)
+    :timeout("45s")
+    :artifacts({"*.txt"})
     :build()
-local comparison_task = task("sequential_vs_parallel")
-    :description("Compare sequential vs parallel execution")
-    :depends_on({"run_in_parallel"})
+
+-- Task 3: Network task
+local network_task = task("network_operations")
+    :description("Network operations with circuit breaker")
+    :command(function()
+        log.info("🌐 Starting network operations...")
+        
+        -- Use circuit breaker for external calls
+        local results = {}
+        
+        local api_result = circuit.protect("http_api", function()
+            -- Simulate HTTP call
+            log.info("📡 Making HTTP request...")
+            return {
+                status = 200,
+                data = {message = "API call successful", timestamp = os.time()},
+                response_time = math.random(100, 500)
+            }
+        end)
+        
+        table.insert(results, api_result)
+        log.info("✅ Network operations completed")
+        
+        return true, "Network operations successful", {
+            api_calls = #results,
+            total_response_time = api_result.response_time,
+            status = "success"
+        }
+    end)
+    :timeout("60s")
+    :retries(3, "exponential")
+    :build()
+
+-- Task 4: Parallel aggregator
+local aggregator_task = task("aggregate_results")
+    :description("Aggregates results from parallel tasks")
+    :depends_on({"cpu_intensive", "io_intensive", "network_operations"})
     :command(function(params, deps)
-        log.info("📊 Comparison Results:")
-        log.info("  ⏱️  Parallel execution time: " .. deps.run_in_parallel.total_duration .. "s")
-        log.info("  📈 Parallel efficiency: " .. deps.run_in_parallel.parallel_efficiency)
-        log.info("  🔄 Sequential would take: ~12s (2+4+6)")
+        log.info("📊 Aggregating results from parallel tasks...")
         
-        local time_saved = 12 - deps.run_in_parallel.total_duration
-        log.info("  💰 Time saved: " .. time_saved .. "s")
+        -- Collect all results
+        local aggregate = {
+            cpu_computation = deps.cpu_intensive.computation_result,
+            cpu_duration = deps.cpu_intensive.duration_ms,
+            files_created = deps.io_intensive.file_count,
+            io_duration = deps.io_intensive.duration_seconds,
+            network_calls = deps.network_operations.api_calls,
+            network_time = deps.network_operations.total_response_time,
+            aggregation_timestamp = os.time()
+        }
         
-        return true, "Comparison completed", {
-            parallel_time = deps.run_in_parallel.total_duration,
-            sequential_time = 12,
-            time_saved = time_saved,
-            efficiency_gain = math.floor((time_saved / 12) * 100) .. "%"
+        -- Calculate total processing time
+        local total_time = (deps.cpu_intensive.duration_ms or 0) + 
+                          ((deps.io_intensive.duration_seconds or 0) * 1000) + 
+                          (deps.network_operations.total_response_time or 0)
+        
+        aggregate.total_processing_time_ms = total_time
+        
+        log.info("📈 Aggregation completed:")
+        log.info("  Total processing time: " .. total_time .. "ms")
+        log.info("  Files created: " .. aggregate.files_created)
+        log.info("  Network calls: " .. aggregate.network_calls)
+        
+        return true, "Aggregation successful", aggregate
+    end)
+    :build()
+
+-- Task 5: Cleanup task
+local cleanup_task = task("cleanup")
+    :description("Cleanup temporary files")
+    :depends_on({"aggregate_results"})
+    :command(function(params, deps)
+        log.info("🧹 Starting cleanup operations...")
+        
+        -- Clean up test files
+        local cleaned_files = 0
+        local success, output = exec.run("rm -f /tmp/sloth_test_*.txt")
+        if success then
+            cleaned_files = deps.io_intensive.file_count or 0
+            log.info("✅ Cleaned " .. cleaned_files .. " temporary files")
+        else
+            log.warn("⚠️  Cleanup had issues: " .. output)
+        end
+        
+        return true, "Cleanup completed", {
+            files_cleaned = cleaned_files,
+            cleanup_time = os.time()
         }
     end)
     :build()
 
+-- Modern Workflow with Parallel Execution
 workflow.define("parallel_execution_demo", {
-    description = "Parallel execution demonstration - Modern DSL Only",
+    description = "Advanced parallel execution demonstration - Modern DSL",
     version = "2.0.0",
     
     metadata = {
-        category = "demonstration",
-        tags = {"parallel", "async", "performance", "modern-dsl"},
         author = "Sloth Runner Team",
-        complexity = "intermediate"
+        tags = {"parallel", "performance", "async", "modern-dsl"},
+        complexity = "intermediate",
+        estimated_duration = "2m"
     },
     
     tasks = {
-        parallel_demo_task,
-        comparison_task
+        cpu_task,
+        io_task,
+        network_task,
+        aggregator_task,
+        cleanup_task
     },
     
     config = {
-        timeout = "20m",
+        timeout = "10m",
         retry_policy = "exponential",
-        max_parallel_tasks = 2,
-        cleanup_on_failure = true
+        max_parallel_tasks = 3, -- Allow 3 tasks to run in parallel
+        fail_fast = false, -- Continue even if one parallel task fails
+        circuit_breaker = {
+            failure_threshold = 5,
+            recovery_timeout = "30s"
+        }
     },
     
     on_start = function()
-        log.info("🎬 Starting parallel execution demonstration...")
-        log.info("💡 This demo shows the power of async parallel processing")
+        log.info("🚀 Starting parallel execution demonstration...")
+        log.info("⚡ Tasks will run in parallel where possible")
         return true
     end,
     
     on_complete = function(success, results)
         if success then
             log.info("🎉 Parallel execution demo completed successfully!")
-            log.info("📊 Results summary:")
-            for task_name, result in pairs(results) do
-                if result.efficiency_gain then
-                    log.info("  💫 Efficiency gain: " .. result.efficiency_gain)
-                end
+            log.info("📊 Performance metrics collected")
+            
+            -- Display performance summary
+            if results.aggregate_results then
+                local total_time = results.aggregate_results.total_processing_time_ms
+                log.info("⏱️  Total processing time: " .. total_time .. "ms")
             end
         else
             log.error("❌ Parallel execution demo failed!")
+            log.warn("🔍 Check individual task results for details")
         end
         return true
     end

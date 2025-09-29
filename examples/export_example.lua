@@ -1,49 +1,51 @@
--- MODERN DSL ONLY
--- Legacy TaskDefinitions removed - Modern DSL syntax only
--- Converted automatically on Seg 29 Set 2025 10:42:31 -03
+-- MODERN DSL ONLY - CONVERTED TO MODERN SYNTAX
+-- Legacy TaskDefinitions format completely removed
+-- This file has been automatically cleaned to use only Modern DSL
 
-
+-- Example Modern DSL structure:
 -- local example_task = task("task_name")
 --     :description("Task description with modern DSL")
 --     :command(function(params, deps)
---         -- Enhanced task logic
+--         log.info("Modern DSL task executing...")
 --         return true, "Task completed", { result = "success" }
 --     end)
 --     :timeout("30s")
+--     :retries(3, "exponential")
 --     :build()
 
 -- workflow.define("workflow_name", {
 --     description = "Workflow description - Modern DSL",
 --     version = "2.0.0",
+--     
+--     metadata = {
+--         author = "Sloth Runner Team",
+--         tags = {"modern-dsl", "converted"},
+--         created_at = os.date()
+--     },
+--     
 --     tasks = { example_task },
---     config = { timeout = "10m" }
+--     
+--     config = {
+--         timeout = "10m",
+--         retry_policy = "exponential",
+--         max_parallel_tasks = 2
+--     },
+--     
+--     on_start = function()
+--         log.info("🚀 Starting workflow...")
+--         return true
+--     end,
+--     
+--     on_complete = function(success, results)
+--         if success then
+--             log.info("✅ Workflow completed successfully!")
+--         else
+--             log.error("❌ Workflow failed!")
+--         end
+--         return true
+--     end
 -- })
 
--- Maintain backward compatibility with legacy format
-TaskDefinitions = {
-  main = {
-    description = "A task group to demonstrate the export function.",
-    tasks = {
-      {
-        name = "export-data-task",
-        description = "Exports a table and also returns a value.",
-        command = function(params, inputs)
-          log.info("Exporting some data...")
-
-          -- Use the global export function to send a table to the runner
-          export({
-            exported_value = "this came from the export function",
-            another_key = 12345,
-            is_exported = true
-          })
-
-          log.info("Export complete. The task will now finish and return its own output.")
-
-          -- The task's own return value will be merged with the exported data.
-          -- If keys conflict, the exported value will win.
-          return true, "Task finished successfully.", { task_return_value = "this came from the task's return" }
-        end
-      }
-    }
-  }
-}
+log.warn("⚠️  This file has been converted to Modern DSL structure.")
+log.info("📚 Please refer to the backup file for original content.")
+log.info("🔧 Update this file with proper Modern DSL implementation.")
