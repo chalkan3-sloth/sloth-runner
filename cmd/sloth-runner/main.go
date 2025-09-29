@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"text/tabwriter"
 	"time"
@@ -367,6 +368,75 @@ var schedulerDeleteCmd = &cobra.Command{
 		fmt.Fprintf(writer, "Deleting scheduled task '%s'...\n", taskName)
 		fmt.Fprintf(writer, "Scheduled task '%s' deleted successfully.\n", taskName)
 		
+		return nil
+	},
+}
+
+// List command
+var listCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List tasks and task groups from a workflow file",
+	Long:  `List all task groups and their tasks with unique IDs from a workflow file.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		file, _ := cmd.Flags().GetString("file")
+		if file == "" {
+			return fmt.Errorf("workflow file is required (use -f or --file)")
+		}
+
+		// Parse the Lua script to get task groups
+		L := lua.NewState()
+		defer L.Close()
+		
+		// Open required modules
+		luainterface.OpenAll(L)
+		
+		// Parse script
+		ctx := context.Background()
+		taskGroups, err := luainterface.ParseLuaScript(ctx, file, nil)
+		if err != nil {
+			return fmt.Errorf("failed to parse workflow file: %w", err)
+		}
+
+		if len(taskGroups) == 0 {
+			pterm.Info.Println("No task groups found in the workflow file.")
+			return nil
+		}
+
+		// Display results
+		pterm.DefaultHeader.WithFullWidth(false).WithBackgroundStyle(pterm.NewStyle(pterm.BgBlue)).WithTextStyle(pterm.NewStyle(pterm.FgWhite)).Printf("Workflow Tasks and Groups")
+		pterm.Printf("\n")
+
+		for groupName, group := range taskGroups {
+			pterm.Printf("\n")
+			pterm.DefaultSection.WithLevel(2).Printf("Task Group: %s", groupName)
+			pterm.Printf("ID: %s\n", pterm.Gray(group.ID))
+			if group.Description != "" {
+				pterm.Printf("Description: %s\n", group.Description)
+			}
+			
+			if len(group.Tasks) > 0 {
+				pterm.Printf("\nTasks:\n")
+				w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+				fmt.Fprintln(w, "NAME\tID\tDESCRIPTION\tDEPENDS ON")
+				fmt.Fprintln(w, "----\t--\t-----------\t----------")
+				
+				for _, task := range group.Tasks {
+					dependsOn := strings.Join(task.DependsOn, ", ")
+					if dependsOn == "" {
+						dependsOn = "-"
+					}
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+						task.Name, 
+						pterm.Gray(task.ID[:8]+"..."), // Show shortened ID
+						task.Description, 
+						dependsOn)
+				}
+				w.Flush()
+			} else {
+				pterm.Printf("No tasks found in this group.\n")
+			}
+		}
+
 		return nil
 	},
 }
@@ -1397,6 +1467,10 @@ func init() {
 	runCmd.Flags().Bool("yes", false, "Skip confirmation prompts")
 	runCmd.Flags().Bool("interactive", false, "Run in interactive mode")
 	runCmd.Flags().StringP("output", "o", "basic", "Output style: basic, enhanced, rich, modern")
+
+	// List command
+	rootCmd.AddCommand(listCmd)
+	listCmd.Flags().StringP("file", "f", "", "Path to the Lua workflow file")
 
 	// Workflow command and subcommands
 	rootCmd.AddCommand(workflowCmd)
