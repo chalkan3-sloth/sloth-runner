@@ -1,14 +1,11 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/chalkan3/sloth-runner/internal/luainterface"
-	"github.com/chalkan3/sloth-runner/internal/types"
 	"github.com/pterm/pterm"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -361,7 +358,7 @@ func registerEnhancedModules(L *lua.LState) {
 	taskTable := L.NewTable()
 	taskTable.RawSetString("checkpoint", L.NewFunction(func(L *lua.LState) int {
 		name := L.CheckString(1)
-		state := L.OptTable(2, nil)
+		_ = L.OptTable(2, nil) // state parameter, currently unused
 		
 		pterm.Info.Printf("Creating checkpoint: %s\n", name)
 		
@@ -375,7 +372,7 @@ func registerEnhancedModules(L *lua.LState) {
 	workflowTable := L.NewTable()
 	workflowTable.RawSetString("define", L.NewFunction(func(L *lua.LState) int {
 		name := L.CheckString(1)
-		definition := L.CheckTable(2)
+		_ = L.CheckTable(2) // definition parameter, currently unused
 		
 		pterm.Info.Printf("Defining workflow: %s\n", name)
 		

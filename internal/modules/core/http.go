@@ -15,13 +15,13 @@ import (
 
 // HTTPModule provides HTTP client functionality
 type HTTPModule struct {
-	*BaseModule
+	info   CoreModuleInfo
 	client *http.Client
 }
 
 // NewHTTPModule creates a new HTTP module
 func NewHTTPModule() *HTTPModule {
-	info := ModuleInfo{
+	info := CoreModuleInfo{
 		Name:        "http",
 		Version:     "1.0.0",
 		Description: "HTTP client with advanced features including retries, timeouts, and response validation",
@@ -31,11 +31,16 @@ func NewHTTPModule() *HTTPModule {
 	}
 	
 	return &HTTPModule{
-		BaseModule: NewBaseModule(info),
+		info: info,
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
 	}
+}
+
+// Info returns module information
+func (h *HTTPModule) Info() CoreModuleInfo {
+	return h.info
 }
 
 // Loader returns the Lua loader function

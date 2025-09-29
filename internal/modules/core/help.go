@@ -7,65 +7,35 @@ import (
 	"github.com/yuin/gopher-lua"
 )
 
-// ModuleInfo represents module metadata
-type ModuleInfo struct {
-	Name         string
-	Version      string
-	Description  string
-	Author       string
-	Functions    []string
-	Examples     []string
-	Categories   []string
-	Category     string
-	Dependencies []string
-}
-
-// BaseModule provides common functionality for all modules
-type BaseModule struct {
-	info ModuleInfo
-}
-
-// NewBaseModule creates a new base module
-func NewBaseModule(info ModuleInfo) *BaseModule {
-	return &BaseModule{info: info}
-}
-
-// Info returns module information
-func (bm *BaseModule) Info() ModuleInfo {
-	return bm.info
-}
-
 // HelpModule provides interactive help and documentation
 type HelpModule struct {
-	*BaseModule
+	info CoreModuleInfo
 }
 
 // NewHelpModule creates a new help module
 func NewHelpModule() *HelpModule {
-	info := ModuleInfo{
+	info := CoreModuleInfo{
 		Name:        "help",
 		Version:     "1.0.0", 
 		Description: "Interactive help system for Sloth Runner modules",
 		Author:      "Sloth Runner Team",
 		Category:    "core",
 		Dependencies: []string{},
-		Functions: []string{
-			"help([topic]) - Show general help or help for specific topic",
-			"modules() - List all available modules",
-			"search(term) - Search modules and functions",
-			"examples([category]) - Show usage examples",
-		},
-		Examples: []string{
-			"help() -- Show general help",
-			"help('http') -- Show HTTP module help", 
-			"help.modules() -- List all modules",
-			"help.search('request') -- Search for request-related functions",
-		},
 	}
 	
 	return &HelpModule{
-		BaseModule: NewBaseModule(info),
+		info: info,
 	}
+}
+
+// Info returns module information
+func (hm *HelpModule) Info() CoreModuleInfo {
+	return hm.info
+}
+
+// Loader implements module loading functionality
+func (hm *HelpModule) Loader(L *lua.LState) int {
+	return hm.Load(L)
 }
 
 // Load registers the help module functions

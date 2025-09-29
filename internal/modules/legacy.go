@@ -25,9 +25,9 @@ func (m *LegacyModule) Loader(L *lua.LState) int {
 }
 
 // MigrateLegacyModules registers existing modules with the new system
-func MigrateLegacyModules(registry *modules.ModuleRegistry) error {
+func MigrateLegacyModules(registry *ModuleRegistry) error {
 	// Example: Migrate Docker module
-	dockerInfo := modules.ModuleInfo{
+	dockerInfo := ModuleInfo{
 		Name:        "docker",
 		Version:     "1.0.0",
 		Description: "Docker container management",
@@ -46,7 +46,7 @@ func MigrateLegacyModules(registry *modules.ModuleRegistry) error {
 	}
 	
 	// Example: Migrate State module
-	stateInfo := modules.ModuleInfo{
+	stateInfo := ModuleInfo{
 		Name:        "state",
 		Version:     "1.0.0", 
 		Description: "Persistent state management with SQLite backend",
@@ -65,7 +65,7 @@ func MigrateLegacyModules(registry *modules.ModuleRegistry) error {
 	}
 	
 	// Example: Migrate AWS module
-	awsInfo := modules.ModuleInfo{
+	awsInfo := ModuleInfo{
 		Name:        "aws",
 		Version:     "1.0.0",
 		Description: "Amazon Web Services integration",
