@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package agent;
 
-option go_package = "github.com/chalkan3/sloth-runner/proto";
+option go_package = "github.com/chalkan3-sloth/sloth-runner/proto";
 
 service Agent {
   rpc ExecuteTask(ExecuteTaskRequest) returns (ExecuteTaskResponse);

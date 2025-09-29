@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/chalkan3/sloth-runner/proto"
+	pb "github.com/chalkan3-sloth/sloth-runner/proto"
 	"github.com/pterm/pterm"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"

@@ -1,7 +1,7 @@
 package modules
 
 import (
-	"github.com/chalkan3/sloth-runner/internal/luainterface"
+	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
 	"github.com/yuin/gopher-lua"
 )
 

@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/chalkan3/sloth-runner/internal/runner"
-	"github.com/chalkan3/sloth-runner/internal/types"
+	"github.com/chalkan3-sloth/sloth-runner/internal/runner"
+	"github.com/chalkan3-sloth/sloth-runner/internal/types"
 	"github.com/pterm/pterm"
 	lua "github.com/yuin/gopher-lua"
 )

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/chalkan3/sloth-runner/internal/reliability"
+	"github.com/chalkan3-sloth/sloth-runner/internal/reliability"
 	lua "github.com/yuin/gopher-lua"
 )
 

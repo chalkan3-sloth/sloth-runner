@@ -4,7 +4,7 @@
 
 A next-generation flexible and extensible task runner application written in Go, powered by **Modern DSL** Lua scripting. `sloth-runner` allows you to define complex workflows, manage task dependencies, and integrate with external systems through an intuitive **Modern DSL**.
 
-[![Go CI](https://github.com/chalkan3/sloth-runner/actions/workflows/ci.yml/badge.svg)](https://github.com/chalkan3/sloth-runner/actions/workflows/ci.yml)
+[![Go CI](https://github.com/chalkan3-sloth/sloth-runner/actions/workflows/ci.yml/badge.svg)](https://github.com/chalkan3-sloth/sloth-runner/actions/workflows/ci.yml)
 
 ---
 
@@ -111,10 +111,10 @@ workflow.define("ci_pipeline", {
 ### 1. **Installation**
 ```bash
 # Download latest release
-curl -sSL https://raw.githubusercontent.com/chalkan3/sloth-runner/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/main/install.sh | bash
 
 # Or build from source
-go install github.com/chalkan3/sloth-runner/cmd/sloth-runner@latest
+go install github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner@latest
 ```
 
 ### 2. **Create Your First Modern Workflow**
@@ -268,7 +268,7 @@ Join us in the next generation of workflow automation! 🚀
 To install `sloth-runner` on your system, you can use the provided `install.sh` script. This script automatically detects your operating system and architecture, downloads the latest release from GitHub, and places the `sloth-runner` executable in `/usr/local/bin`.
 
 ```bash
-bash <(curl -sL https://raw.githubusercontent.com/chalkan3/sloth-runner/master/install.sh)
+bash <(curl -sL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/install.sh)
 ```
 
 **Note:** The `install.sh` script requires `sudo` privileges to move the executable to `/usr/local/bin`.
