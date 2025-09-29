@@ -151,6 +151,23 @@ extra:
 nav:
   - '🏠 Home': 'index.md'
   - '🚀 Quick Start': 'TUTORIAL.md'
+  - '📚 Core Documentation':
+    - '🛠️ Getting Started': 'getting-started.md'
+    - '🧠 Core Concepts': 'core-concepts.md'
+    - '🗂️ Stack Management': 'stack-management.md'
+    - '🎯 Advanced Features': 'advanced-features.md'
+    - '💾 State Module': 'state-module.md'
+  - '🌐 Enterprise Features':
+    - '🤖 Distributed Agents': 'distributed-agents.md'
+    - '🎨 Web Dashboard': 'web-dashboard.md'
+    - '🧠 AI/ML Integration': 'ai-integration.md'
+    - '⏰ Advanced Scheduler': 'advanced-scheduler.md'
+    - '☁️ Multi-Cloud Excellence': 'multi-cloud-excellence.md'
+  - '🧪 Development':
+    - '🧪 Testing': 'testing.md'
+    - '🔄 REPL': 'repl.md'
+    - '🌙 Lua API': 'LUA_API.md'
+    - '📝 Examples': 'EXAMPLES.md'
   - '🇺🇸 English':
     - '📚 Getting Started':
       - '🛠️ Installation': 'en/getting-started.md'
