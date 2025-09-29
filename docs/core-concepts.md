@@ -1,180 +1,214 @@
-# Conceitos Essenciais
+# Core Concepts - Modern DSL
 
-Este documento explica os conceitos fundamentais do Sloth-Runner, ajudando você a entender como as tarefas são definidas e executadas.
+This document explains the fundamental concepts of Sloth-Runner using the **Modern DSL**, helping you understand how tasks are defined and executed with the new fluent API.
 
-## Definição de Tarefas em Lua
+## Modern DSL Task Definition
 
-As tarefas no Sloth-Runner são definidas em arquivos Lua, tipicamente dentro de uma tabela global chamada `TaskDefinitions`. Esta tabela é um mapa onde as chaves são os nomes dos grupos de tarefas e os valores são tabelas de grupo.
+Tasks in Sloth-Runner are now defined using the **Modern DSL** fluent API, which provides a more intuitive and powerful way to create workflows.
 
-### Estrutura de um Grupo de Tarefas
+### Task Builder Pattern
 
-Cada grupo de tarefas possui:
-*   `description`: Uma descrição textual do grupo.
-*   `tasks`: Uma tabela contendo as definições das tarefas individuais.
-
-### Estrutura de uma Tarefa Individual
-
-Cada tarefa individual pode ter os seguintes campos:
-
-*   `name` (string): O nome único da tarefa dentro do seu grupo.
-*   `description` (string): Uma breve descrição do que a tarefa faz.
-*   `command` (string ou função Lua):
-    *   Se for uma `string`, será executada como um comando de shell.
-    *   Se for uma `função Lua`, esta função será executada. Ela pode receber `params` (parâmetros da tarefa) e `deps` (outputs de tarefas das quais ela depende). A função deve retornar `true` para sucesso, `false` para falha, e opcionalmente uma mensagem e uma tabela de outputs.
-*   `async` (booleano, opcional): Se `true`, a tarefa será executada assincronamente. Padrão é `false`.
-*   `pre_exec` (função Lua, opcional): Uma função Lua a ser executada antes do `command` principal da tarefa.
-*   `post_exec` (função Lua, opcional): Uma função Lua a ser executada após o `command` principal da tarefa.
-*   `depends_on` (string ou tabela de strings, opcional): Nomes de tarefas que devem ser concluídas com sucesso antes que esta tarefa possa ser executada.
-*   `retries` (número, opcional): O número de vezes que a tarefa será tentada novamente em caso de falha. Padrão é `0`.
-*   `timeout` (string, opcional): Uma duração (ex: "10s", "1m") após a qual a tarefa será terminada se ainda estiver em execução.
-*   `run_if` (string ou função Lua, opcional): A tarefa só será executada se esta condição for verdadeira. Pode ser um comando shell (código de saída 0 para sucesso) ou uma função Lua (retorna `true` para sucesso).
-*   `abort_if` (string ou função Lua, opcional): Se esta condição for verdadeira, toda a execução do workflow será abortada. Pode ser um comando shell (código de saída 0 para sucesso) ou uma função Lua (retorna `true` para sucesso).
-*   `next_if_fail` (string ou tabela de strings, opcional): Nomes de tarefas a serem executadas se esta tarefa falhar.
-*   `artifacts` (string ou tabela de strings, opcional): Um padrão de arquivo (glob) ou uma lista de padrões que especificam quais arquivos do `workdir` da tarefa devem ser salvos como artefatos após a execução bem-sucedida.
-*   `consumes` (string ou tabela de strings, opcional): O nome de um artefato (ou uma lista de nomes) de uma tarefa anterior que deve ser copiado para o `workdir` desta tarefa antes de sua execução.
-
-## Gerenciamento de Artefatos
-
-O Sloth-Runner permite que as tarefas compartilhem arquivos entre si através de um mecanismo de artefatos. Uma tarefa pode "produzir" um ou mais arquivos como artefatos, e tarefas subsequentes podem "consumir" esses artefatos.
-
-Isso é útil para pipelines de CI/CD, onde uma etapa de compilação pode gerar um binário (artefato), que é então usado por uma etapa de teste ou de implantação.
-
-### Como Funciona
-
-1.  **Produzindo Artefatos:** Adicione a chave `artifacts` à sua definição de tarefa. O valor pode ser um único padrão de arquivo (ex: `"report.txt"`) ou uma lista (ex: `{"*.log", "app.bin"}`). Após a tarefa ser executada com sucesso, o runner procurará por arquivos no `workdir` da tarefa que correspondam a esses padrões e os copiará para um armazenamento de artefatos compartilhado para a pipeline.
-
-2.  **Consumindo Artefatos:** Adicione a chave `consumes` à definição de outra tarefa (que normalmente `depends_on` da tarefa produtora). O valor deve ser o nome do arquivo do artefato que você deseja usar (ex: `"report.txt"`). Antes que esta tarefa seja executada, o runner copiará o artefato nomeado do armazenamento compartilhado para o `workdir` desta tarefa, tornando-o disponível para o `command`.
-
-### Exemplo de Artefatos
+Each task is created using the `task()` function and the fluent API:
 
 ```lua
-TaskDefinitions = {
-  ["ci-pipeline"] = {
-    description = "Demonstra o uso de artefatos.",
-    create_workdir_before_run = true,
-    tasks = {
-      {
-        name = "build",
-        description = "Cria um binário e o declara como um artefato.",
-        command = "echo 'binary_content' > app.bin",
-        artifacts = {"app.bin"}
-      },
-      {
-        name = "test",
-        description = "Consome o binário para executar testes.",
-        depends_on = "build",
-        consumes = {"app.bin"},
-        command = function(params)
-          -- Neste ponto, 'app.bin' existe no workdir desta tarefa
-          local content, err = fs.read(params.workdir .. "/app.bin")
-          if content == "binary_content" then
-            log.info("Artefato consumido com sucesso!")
-            return true
-          else
-            return false, "Conteúdo do artefato incorreto!"
-          end
-        end
-      }
-    }
-  }
-}
+local my_task = task("task_name")
+    :description("Task description")
+    :command(function(params, deps)
+        -- Task logic here
+        return true, "Success message", { output_data = "value" }
+    end)
+    :timeout("30s")
+    :retries(3, "exponential")
+    :build()
 ```
 
-📜 Defining Tasks in Lua
-Tasks are defined in Lua files, typically within a `TaskDefinitions` table. Each task can have a name, description, and a `command` (either a string for a shell command or a Lua function). For modular pipelines, tasks can declare dependencies using `depends_on` and receive outputs from previous tasks via the `inputs` table.
+### Workflow Definition Structure
 
-Here's an example using our GCP Hub-and-Spoke orchestration pipeline, demonstrating how tasks are chained and how data flows between them:
+Workflows are defined using `workflow.define()` with comprehensive configuration:
 
 ```lua
--- examples/gcp_pulumi_orchestration.lua
---
--- This pipeline demonstrates a complete, modular orchestration for deploying a GCP Hub and Spoke network.
+workflow.define("workflow_name", {
+    description = "Workflow description - Modern DSL",
+    version = "2.0.0",
+    
+    metadata = {
+        author = "Team Name",
+        tags = {"tag1", "tag2"},
+        created_at = os.date()
+    },
+    
+    tasks = { task1, task2, task3 },
+    
+    config = {
+        timeout = "30m",
+        retry_policy = "exponential",
+        max_parallel_tasks = 4
+    },
+    
+    on_start = function()
+        log.info("Starting workflow...")
+        return true
+    end,
+    
+    on_complete = function(success, results)
+        if success then
+            log.info("Workflow completed successfully!")
+        end
+        return true
+    end
+})
+```
 
-TaskDefinitions = {
-  gcp_deployment = {
-    description = "Orchestrates the deployment of a GCP Hub and Spoke architecture.",
-    tasks = {
-      {
-        name = "setup_workspace",
-        command = function()
-          log.info("Cleaning up previous run artifacts...")
-          fs.rm_r(values.paths.base_workdir)
-          fs.mkdir(values.paths.base_workdir)
-          return true, "Workspace cleaned and created."
-        end
-      },
-      {
-        name = "clone_hub_repo",
-        depends_on = "setup_workspace",
-        command = function()
-          log.info("Cloning Hub repository...")
-          local hub_repo = git.clone(values.repos.hub.url, values.repos.hub.path)
-          log.info("Hub repo cloned to: " .. hub_repo.path)
-          -- Return the cloned repository object to be used by dependent tasks
-          return true, "Hub repo cloned.", { repo = hub_repo }
-        end
-      },
-      {
-        name = "clone_spoke_repo",
-        depends_on = "setup_workspace",
-        command = function()
-          log.info("Cloning Spoke repository...")
-          local spoke_repo = git.clone(values.repos.spoke.url, values.repos.spoke.path)
-          log.info("Spoke repo cloned to: " .. spoke_repo.path)
-          -- Return the cloned repository object
-          return true, "Spoke repo cloned.", { repo = spoke_repo }
-        end
-      },
-      {
-        name = "setup_spoke_venv",
-        depends_on = "clone_spoke_repo", -- Depends on the spoke repo being cloned
-        command = function(inputs) -- Receives inputs from dependent tasks
-          log.info("Setting up Python venv for the host manager...")
-          local spoke_repo = inputs.clone_spoke_repo.repo -- Access the repo from the 'clone_spoke_repo' task's output
-          local spoke_venv = python.venv(values.paths.spoke_venv)
-            :create()
-            :pip("install setuptools")
-            :pip("install -r " .. spoke_repo.path .. "/requirements.txt")
-          log.info("Python venv for spoke is ready at: " .. values.paths.spoke_venv)
-          -- Return the venv object
-          return true, "Spoke venv created.", { venv = spoke_venv, repo = spoke_repo }
-        end
-      },
-      {
-        name = "deploy_hub_stack",
-        depends_on = "clone_hub_repo", -- Depends on the hub repo being cloned
-        command = function(inputs) -- Receives inputs from dependent tasks
-          log.info("Deploying GCP Hub Network...")
-          local hub_repo = inputs.clone_hub_repo.repo -- Access the repo from the 'clone_hub_repo' task's output
-          local hub_stack = pulumi.stack(values.pulumi.hub.stack_name, {
-            workdir = hub_repo.path,
-            login = values.pulumi.login_url
-          })
-          hub_stack:select():config_map(values.pulumi.hub.config)
-          local hub_result = hub_stack:up({ yes = true })
-          if not hub_result.success then
-            log.error("Hub stack deployment failed: " .. hub_result.stdout)
-            return false, "Hub stack deployment failed."
-          end
-          log.info("Hub stack deployed successfully.")
-          local hub_outputs = hub_stack:outputs()
-          -- Return the outputs of the hub stack
-          return true, "Hub stack deployed.", { outputs = hub_outputs }
-        end
-      },
-      {
-        name = "deploy_spoke_stack",
-        depends_on = { "setup_spoke_venv", "deploy_hub_stack" }, -- Depends on venv setup and hub deployment
-        command = function(inputs) -- Receives inputs from multiple dependent tasks
-          log.info("Deploying GCP Spoke Host...")
-          local spoke_repo = inputs.setup_spoke_venv.repo -- Access repo from venv setup task
-          local spoke_venv = inputs.setup_spoke_venv.venv -- Access venv from venv setup task
-          local hub_outputs = inputs.deploy_hub_stack.outputs -- Access hub outputs from hub deployment task
+## Task Properties and Methods
 
-          local spoke_stack = pulumi.stack(values.pulumi.spoke.stack_name, {
-            workdir = spoke_repo.path,
-            login = values.pulumi.login_url,
-            venv = spoke_venv
+Each task can use the following fluent API methods:
+
+### Basic Properties
+-   `:name(string)` - Task name (usually set in task() constructor)
+-   `:description(string)` - Brief description of what the task does
+-   `:command(function|string)` - Task execution logic:
+    -   `function(params, deps)` - Lua function with parameters and dependencies
+    -   `string` - Shell command to execute
+    
+### Execution Control
+-   `:timeout(string)` - Execution timeout (e.g., "10s", "1m", "30m")
+-   `:retries(number, strategy)` - Retry count and strategy ("exponential", "linear", "fixed")
+-   `:async(boolean)` - Whether to execute asynchronously
+-   `:depends_on(table)` - Array of task names this task depends on
+
+### Conditional Execution
+-   `:run_if(function|string)` - Execute only if condition is true
+-   `:abort_if(function|string)` - Abort entire workflow if condition is true
+-   `:condition(function)` - Advanced conditional logic
+
+### Lifecycle Hooks
+-   `:pre_hook(function)` - Execute before main command
+-   `:post_hook(function)` - Execute after main command  
+-   `:on_success(function)` - Execute on successful completion
+-   `:on_failure(function)` - Execute on failure
+-   `:on_timeout(function)` - Execute on timeout
+
+### Artifact Management
+-   `:artifacts(table)` - Files to save as artifacts after execution
+-   `:consumes(table)` - Artifacts from other tasks to consume
+
+### Advanced Features
+-   `:circuit_breaker(config)` - Circuit breaker configuration
+-   `:performance_monitoring(boolean)` - Enable performance tracking
+-   `:environment(table)` - Environment variables for task execution
+
+## Artifact Management
+
+Sloth-Runner allows tasks to share files through an artifact mechanism using the Modern DSL. A task can "produce" one or more files as artifacts, and subsequent tasks can "consume" those artifacts.
+
+This is useful for CI/CD pipelines where a build step might generate a binary (artifact) that is then used by a test or deployment step.
+
+### How It Works
+
+1.  **Producing Artifacts:** Use the `:artifacts()` method in your task definition. The value can be a single file pattern (e.g., `"report.txt"`) or a list (e.g., `{"*.log", "app.bin"}`). After the task completes successfully, the runner will look for files in the task's workdir that match these patterns and copy them to shared artifact storage.
+
+2.  **Consuming Artifacts:** Use the `:consumes()` method in another task definition (which typically `:depends_on()` the producer task). The value should be the artifact file name you want to use (e.g., `"report.txt"`). Before this task executes, the runner will copy the named artifact from shared storage to this task's workdir.
+
+### Modern DSL Artifact Example
+
+```lua
+-- Producer task that creates artifacts
+local build_task = task("build_app")
+    :description("Build application and create artifacts")
+    :command(function()
+        -- Build the application
+        local result = exec.run("go build -o myapp ./cmd/main.go")
+        if not result.success then
+            return false, "Build failed: " .. result.stderr
+        end
+        
+        -- Create a report file
+        fs.write_file("build-report.txt", "Build completed at " .. os.date())
+        
+        return true, "Build completed successfully", {
+            binary_size = fs.size("myapp"),
+            build_time = result.duration
+        }
+    end)
+    :artifacts({"myapp", "build-report.txt"}) -- These files will be saved as artifacts
+    :timeout("5m")
+    :build()
+
+-- Consumer task that uses artifacts
+local test_task = task("test_app")
+    :description("Test the built application")
+    :depends_on({"build_app"})
+    :consumes({"myapp", "build-report.txt"}) -- These artifacts will be available
+    :command(function(params, deps)
+        -- The artifacts are now available in the workdir
+        log.info("Testing application: myapp")
+        log.info("Build report: " .. fs.read_file("build-report.txt"))
+        
+        -- Run tests on the binary
+        local result = exec.run("./myapp --version")
+        return result.success, "Tests completed", {
+            version_output = result.stdout
+        }
+    end)
+    :build()
+
+-- Deploy task that also uses the binary
+local deploy_task = task("deploy_app")
+    :description("Deploy the built application")
+    :depends_on({"test_app"})
+    :consumes({"myapp"})
+    :command(function()
+        log.info("Deploying application...")
+        -- Copy binary to deployment location
+        local result = exec.run("cp myapp /usr/local/bin/")
+        return result.success, "Deployment completed"
+    end)
+    :build()
+
+-- Complete workflow
+workflow.define("ci_cd_pipeline", {
+    description = "CI/CD pipeline with artifact management",
+    version = "1.0.0",
+    
+    tasks = { build_task, test_task, deploy_task },
+    
+    config = {
+        create_workdir_before_run = true,
+        cleanup_artifacts_after = "7d"
+    }
+})
+```
+
+### Key Benefits
+
+- **🔄 Automatic Dependency Resolution**: Tasks automatically get the artifacts they need
+- **📦 Efficient Storage**: Artifacts are stored in a shared space, reducing duplication
+- **🧹 Automatic Cleanup**: Artifacts can be automatically cleaned up after a specified period
+- **📊 Rich Metadata**: Artifacts include metadata like creation time, size, and source task
+
+## Modern DSL vs Legacy Format
+
+The Modern DSL provides several advantages over the legacy TaskDefinitions format:
+
+| Feature | Legacy Format | Modern DSL |
+|---------|---------------|------------|
+| **Syntax** | Table-based, procedural | Fluent API, chainable |
+| **Type Safety** | Runtime discovery | Compile-time validation |
+| **Error Handling** | Basic | Enhanced with context |
+| **Metadata** | Limited | Rich, structured |
+| **Retry Logic** | Manual implementation | Built-in strategies |
+| **Dependencies** | Simple strings | Advanced with conditions |
+| **Lifecycle Hooks** | Basic pre/post | Rich event handling |
+| **Testing** | Manual | Integrated framework |
+
+## Next Steps
+
+- **📚 Learn More**: Check out the [Modern DSL Introduction](modern-dsl/introduction.md)
+- **🎯 API Reference**: See [Task Definition API](modern-dsl/task-api.md) for complete reference
+- **📝 Examples**: Browse [Examples](../examples/) for real-world Modern DSL workflows
+- **🔧 Migration**: Use [Migration Guide](modern-dsl/migration-guide.md) to convert existing workflows
+
+The Modern DSL represents the future of workflow automation in Sloth Runner - more powerful, intuitive, and maintainable!
           })
 
           local spoke_config = values.pulumi.spoke.config
