@@ -175,8 +175,8 @@ sloth-runner agent run agent-1 "deploy-script.sh"
 curl -L https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner-linux-amd64 -o sloth-runner
 chmod +x sloth-runner && sudo mv sloth-runner /usr/local/bin/
 
-# Create your first task
-echo 'TaskDefinitions = { hello = { tasks = { greet = { command = function() log.info("Hello World! 🚀") return true end } } } }' > hello.lua
+# Create your first Modern DSL task
+echo 'local hello_task = task("greet"):command(function() log.info("Hello Modern DSL! 🚀") return true end):build(); workflow.define("hello", { tasks = { hello_task } })' > hello.lua
 
 # Run it!
 sloth-runner run -f hello.lua
