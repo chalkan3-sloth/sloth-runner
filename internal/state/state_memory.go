@@ -6,22 +6,31 @@ package state
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
 
 // StateManager manages in-memory state when SQLite is not available
 type StateManager struct {
-	data map[string]interface{}
-	mu   sync.RWMutex
-	path string
+	data  map[string]interface{}
+	locks map[string]*lockInfo
+	mu    sync.RWMutex
+	path  string
+}
+
+// lockInfo represents a lock in memory
+type lockInfo struct {
+	holder    string
+	expiresAt time.Time
 }
 
 // NewStateManager creates a new in-memory state manager
 func NewStateManager(dbPath string) (*StateManager, error) {
 	return &StateManager{
-		data: make(map[string]interface{}),
-		path: dbPath,
+		data:  make(map[string]interface{}),
+		locks: make(map[string]*lockInfo),
+		path:  dbPath,
 	}, nil
 }
 
@@ -66,16 +75,20 @@ func (sm *StateManager) Exists(key string) (bool, error) {
 	return exists, nil
 }
 
-// List returns all keys
-func (sm *StateManager) List() ([]string, error) {
+// List returns all keys (signature compatible with SQLite version)
+func (sm *StateManager) List(prefix string) (map[string]string, error) {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
 	
-	keys := make([]string, 0, len(sm.data))
-	for key := range sm.data {
-		keys = append(keys, key)
+	result := make(map[string]string)
+	for key, value := range sm.data {
+		if prefix == "" || strings.HasPrefix(key, prefix) {
+			// Convert value to string
+			valueStr := fmt.Sprintf("%v", value)
+			result[key] = valueStr
+		}
 	}
-	return keys, nil
+	return result, nil
 }
 
 // Clear removes all keys
@@ -129,4 +142,116 @@ type StateStats struct {
 	TotalSize    int64  `json:"total_size"`
 	LastModified int64  `json:"last_modified"`
 	Backend      string `json:"backend"`
+}
+
+// StateMetadata contains metadata about a state entry
+type StateMetadata struct {
+	Key       string    `json:"key"`
+	Value     string    `json:"value"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// Lock holds a distributed lock (in-memory implementation)
+func (sm *StateManager) Lock(name string, holder string, timeout time.Duration) error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	
+	// Clean up expired locks
+	sm.cleanupExpiredLocks()
+	
+	// Check if lock already exists
+	if lock, exists := sm.locks[name]; exists {
+		return fmt.Errorf("lock '%s' is already held by '%s'", name, lock.holder)
+	}
+	
+	// Create new lock
+	sm.locks[name] = &lockInfo{
+		holder:    holder,
+		expiresAt: time.Now().Add(timeout),
+	}
+	
+	return nil
+}
+
+// Unlock releases a distributed lock
+func (sm *StateManager) Unlock(name string, holder string) error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	
+	lock, exists := sm.locks[name]
+	if !exists {
+		return fmt.Errorf("lock '%s' not found", name)
+	}
+	
+	if lock.holder != holder {
+		return fmt.Errorf("lock '%s' not held by '%s'", name, holder)
+	}
+	
+	delete(sm.locks, name)
+	return nil
+}
+
+// IsLocked checks if a lock is currently held
+func (sm *StateManager) IsLocked(name string) (bool, string, error) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	
+	// Clean up expired locks
+	sm.cleanupExpiredLocks()
+	
+	lock, exists := sm.locks[name]
+	if !exists {
+		return false, "", nil
+	}
+	
+	return true, lock.holder, nil
+}
+
+// cleanupExpiredLocks removes expired locks (must be called with lock held)
+func (sm *StateManager) cleanupExpiredLocks() {
+	now := time.Now()
+	for name, lock := range sm.locks {
+		if now.After(lock.expiresAt) {
+			delete(sm.locks, name)
+		}
+	}
+}
+
+// GetMetadata returns metadata about a key (simplified for memory implementation)
+func (sm *StateManager) GetMetadata(key string) (*StateMetadata, error) {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	
+	value, exists := sm.data[key]
+	if !exists {
+		return nil, fmt.Errorf("key not found: %s", key)
+	}
+	
+	// Convert value to string for metadata
+	valueStr := fmt.Sprintf("%v", value)
+	now := time.Now()
+	
+	return &StateMetadata{
+		Key:       key,
+		Value:     valueStr,
+		CreatedAt: now,
+		UpdatedAt: now,
+	}, nil
+}
+
+// WithLock executes a function while holding a lock
+func (sm *StateManager) WithLock(name string, holder string, timeout time.Duration, fn func() error) error {
+	if err := sm.Lock(name, holder, timeout); err != nil {
+		return err
+	}
+	
+	defer func() {
+		if unlockErr := sm.Unlock(name, holder); unlockErr != nil {
+			// Log the error but don't override the original error
+			fmt.Printf("Warning: failed to unlock '%s': %v\n", name, unlockErr)
+		}
+	}()
+
+	return fn()
 }
