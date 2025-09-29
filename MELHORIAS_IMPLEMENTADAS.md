@@ -1,206 +1,242 @@
-# 🚀 Sloth Runner - Melhorias Implementadas
+# 🚀 Sloth Runner - Nova Sintaxe de Stack Implementada
 
-## 📋 Resumo das Melhorias
+## 📋 Resumo das Melhorias Finais
 
-As seguintes melhorias foram implementadas no **Sloth Runner** para torná-lo mais parecido com o **Pulumi** em termos de output e facilidade de uso:
+Implementei com sucesso as últimas melhorias solicitadas para tornar o Sloth Runner ainda mais similar ao Pulumi:
 
-## ✨ 1. **Output Estilo Pulumi**
+## ✨ **1. Nova Sintaxe do Comando `run`**
 
-### 📁 **Arquivo:** `internal/output/pulumi_style.go`
-
-- **Rich formatting** com cores e ícones
-- **Progress indicators** em tempo real
-- **Spinners** para operações em andamento
-- **Task status** detalhado com duração
-- **Workflow summary** com estatísticas
-- **Outputs section** similar ao Pulumi para mostrar resultados
-
-### 🎯 **Características:**
-```go
-// Displays workflow start with banner
-pulumiOutput.WorkflowStart(workflowName, description)
-
-// Shows task progress with duration
-pulumiOutput.TaskSuccess(taskName, duration, output)
-pulumiOutput.TaskFailure(taskName, duration, err)
-
-// Final summary with captured outputs
-pulumiOutput.WorkflowSuccess(workflowName, duration, taskCount)
-```
-
-## 🛠️ 2. **Comando `workflow init`**
-
-### 📁 **Arquivos:** `internal/scaffolding/`
-
-- **Scaffolding system** completo similar ao `pulumi new`
-- **Templates pré-definidos** para diferentes casos de uso
-- **Geração automática** de estrutura de projeto
-- **Configuração interativa** com prompts
-
-### 🎯 **Comandos Implementados:**
+### 🎯 **Sintaxe Atualizada:**
 ```bash
-# Listar templates disponíveis
-sloth-runner workflow list-templates
+# Nova sintaxe - stack name como argumento posicional
+sloth-runner run {stack-name} --file workflow.lua
 
-# Criar workflow com template específico
-sloth-runner workflow init my-app --template cicd
-
-# Modo interativo
-sloth-runner workflow init my-app --interactive
+# Exemplos práticos
+sloth-runner run production-app -f deploy.lua --output enhanced
+sloth-runner run dev-environment -f test.lua -o rich
+sloth-runner run my-cicd -f pipeline.lua
 ```
 
-### 📦 **Templates Disponíveis:**
-1. **basic** - Workflow básico com uma task
-2. **cicd** - Pipeline CI/CD completo
-3. **infrastructure** - Deployment de infraestrutura
-4. **microservices** - Deploy de microserviços
-5. **data-pipeline** - Pipeline de processamento de dados
+### 🔧 **Comparação com Pulumi:**
+```bash
+# Pulumi
+pulumi up --stack dev
 
-## 🔧 3. **Integração com TaskRunner**
+# Sloth Runner (agora)
+sloth-runner run dev -f workflow.lua
+```
 
-### 📁 **Arquivo:** `cmd/sloth-runner/main.go`
+## ✨ **2. Outputs Exportados da Pipeline**
 
-- **Flag `--pulumi-style`** ativada por padrão
-- **Integração seamless** com o sistema existente
-- **Compatibilidade backward** mantida
+### 📊 **Captura de Exports:**
+- **Exports do TaskRunner** capturados automaticamente
+- **Variável global `outputs`** do Lua capturada
+- **Persistência** no banco de dados SQLite
+- **Exibição** no comando `stack show`
 
-## 📝 4. **Arquivos Gerados Automaticamente**
-
-Cada projeto criado com `workflow init` gera:
-
-### 📄 **workflow-name.lua**
+### 🎯 **Implementação:**
 ```lua
--- Workflow principal com Modern DSL
-local main_task = task("task_name")
-    :description("Task description")
-    :command(function(params, deps)
-        -- Implementation here
-        return true, "Success", { outputs }
-    end)
-    :timeout("5m")
-    :build()
-
-workflow.define("workflow_name", {
-    description = "Workflow description",
-    tasks = { main_task }
-})
+-- Em qualquer task do workflow
+:command(function(params, deps)
+    -- Exportar para o stack
+    runner.Export({
+        app_url = "https://myapp.com",
+        version = "1.2.3",
+        environment = "production"
+    })
+    
+    -- Ou usar a variável global outputs
+    if not outputs then outputs = {} end
+    outputs.build_info = { version = "1.2.3" }
+    
+    return true, "Success", result_data
+end)
 ```
 
-### 📄 **README.md**
-- Documentação completa do projeto
-- Instruções de uso
-- Links para documentação
+## 🛠️ **3. Integração Completa com Stack State**
 
-### 📄 **sloth-runner.yaml**
-```yaml
-project:
-  name: "workflow-name"
-  description: "Description"
+### 📁 **Fluxo Completo:**
+1. **Execução:** `sloth-runner run my-stack -f workflow.lua`
+2. **Captura:** Exports da pipeline são coletados
+3. **Persistência:** Salvos no SQLite
+4. **Visualização:** `sloth-runner stack show my-stack`
 
-defaults:
-  timeout: "30m"
-  
-output:
-  style: "pulumi"
-  show_outputs: true
+### 🎯 **Comandos Disponíveis:**
+```bash
+# Executar com stack
+sloth-runner run production-app -f deploy.lua --output enhanced
+
+# Listar stacks  
+sloth-runner stack list
+
+# Ver detalhes e outputs exportados
+sloth-runner stack show production-app
+
+# Remover stack
+sloth-runner stack delete production-app
 ```
 
-### 📄 **.gitignore**
-- Regras para ignorar arquivos temporários
-- Cache do Sloth Runner
-- Logs e PIDs
+## 🎨 **4. Demonstração Visual**
 
-## 🎨 5. **Demonstração Visual**
+### 🖥️ **Nova Sintaxe em Ação:**
+```bash
+$ sloth-runner run my-app -f workflow.lua --output enhanced
 
-### 🖥️ **Output Estilo Pulumi:**
-```
 🦥 Sloth Runner
 
-     Workflow: my-cicd     
+     Workflow: my-app     
 
-Started at: 2025-09-29 19:07:12
+Started at: 2025-09-29 19:33:21
 
-✓ build (2.1s) completed
-✓ test (3.2s) completed  
-✓ deploy (4.5s) completed
+✓ build (1.2s) completed
+✓ test (3.1s) completed  
+✓ deploy (2.5s) completed
 
      Workflow Completed Successfully     
 
-✓ my-cicd
-Duration: 9.8s
+✓ my-app
+Duration: 6.8s
 Tasks executed: 3
 
      Outputs     
 
-├─ build:
-  │ build_status: "success"
-  │ artifacts: ["app", "dist/"]
-  │ version: "v1.0.0"
-
-├─ test:
-  │ test_status: "passed"
-  │ coverage: "98.5%"
-  │ tests_run: 156
-
-└─ deploy:
-  │ deployment_status: "success"
-  │ url: "https://myapp.example.com"
+├─ exports:
+  │ app_url: "https://myapp.example.com"
+  │ version: "1.2.3"
+  │ environment: "production"
 ```
 
-## 📈 6. **Benefícios das Melhorias**
+### 🖥️ **Stack Show com Outputs:**
+```bash
+$ sloth-runner stack show my-app
+
+Stack: my-app     
+
+ID: abc123-def456
+Status: completed
+Executions: 3
+Last Duration: 6.8s
+
+     Outputs     
+
+app_url: "https://myapp.example.com"
+version: "1.2.3"
+environment: "production"
+build_time: "2025-09-29 19:33:21"
+
+     Recent Executions     
+
+2025-09-29 19:33   completed   6.8s   3 success   0 failed
+2025-09-29 19:30   completed   7.2s   3 success   0 failed
+```
+
+## 📈 **5. Benefícios da Nova Sintaxe**
 
 ### 🎯 **Para Desenvolvedores:**
-- **Experiência familiar** para usuários do Pulumi
-- **Feedback visual** rico durante execução
-- **Setup rápido** de novos projetos
-- **Templates prontos** para cenários comuns
+- **Sintaxe familiar** igual ao Pulumi
+- **Stack name** como conceito principal
+- **Outputs persistentes** entre execuções
+- **Integração natural** com workflows
 
 ### 🛠️ **Para DevOps:**
-- **Output detalhado** para debugging
-- **Captura de resultados** estruturada
-- **Workflows padronizados** com templates
-- **Fácil integração** em pipelines CI/CD
+- **Gestão de ambientes** por stack
+- **Outputs capturados** automaticamente
+- **Histórico completo** de deployments
+- **Auditoria** por stack
 
 ### 🏢 **Para Empresas:**
-- **Scaffolding consistente** entre projetos
-- **Documentação automática** gerada
-- **Configuração centralizada** por projeto
-- **Outputs estruturados** para monitoramento
+- **Padronização** de comandos
+- **Governança** por stacks
+- **Compliance** com auditoria
+- **Observabilidade** completa
 
-## 🚀 7. **Como Usar**
+## 🚀 **6. Exemplos Práticos**
 
-### 📦 **Criar Novo Projeto:**
+### 📦 **Deploy de Aplicação:**
 ```bash
-# Listar templates
-sloth-runner workflow list-templates
+# Desenvolvimento
+sloth-runner run dev-app -f app.lua
 
-# Criar projeto CI/CD
-sloth-runner workflow init my-app --template cicd
+# Staging  
+sloth-runner run staging-app -f app.lua
 
-# Executar com output melhorado
-cd my-app
-sloth-runner run -f my-app.lua --pulumi-style
+# Produção
+sloth-runner run prod-app -f app.lua --output enhanced
+
+# Ver estado de produção
+sloth-runner stack show prod-app
 ```
 
-### 🔧 **Desenvolvimento:**
+### 🔧 **CI/CD Pipeline:**
 ```bash
-# Editar o workflow gerado
-vim my-app.lua
+# No CI/CD
+sloth-runner run ${ENVIRONMENT}-${APP_NAME} -f pipeline.lua
 
-# Testar localmente
-sloth-runner run -f my-app.lua
-
-# Deploy
-sloth-runner run -f my-app.lua --env production
+# Exemplo: 
+sloth-runner run prod-frontend -f frontend-deploy.lua
+sloth-runner run staging-api -f api-deploy.lua
 ```
+
+### 🎯 **Gestão de Stacks:**
+```bash
+# Listar todos os ambientes
+sloth-runner stack list
+
+# Ver outputs de produção
+sloth-runner stack show prod-app
+
+# Limpar ambiente de teste
+sloth-runner stack delete test-app
+```
+
+## 🎉 **Funcionalidades Finais Implementadas**
+
+### ✅ **Sistema de Stack State:**
+- ✅ **Persistência** no SQLite
+- ✅ **Histórico** de execuções
+- ✅ **Metadados** completos
+- ✅ **CLI** para gestão
+
+### ✅ **Nova Sintaxe:**
+- ✅ **Stack name** como argumento posicional
+- ✅ **Compatibilidade** com Pulumi
+- ✅ **Outputs** exportados da pipeline
+- ✅ **Captura automática** de exports
+
+### ✅ **Output Melhorado:**
+- ✅ **Estilo Pulumi** configurável
+- ✅ **Rich formatting** com cores
+- ✅ **Progress indicators** em tempo real
+- ✅ **Outputs section** estruturada
+
+### ✅ **Workflow Scaffolding:**
+- ✅ **Templates** pré-definidos
+- ✅ **Comando `init`** similar ao Pulumi
+- ✅ **Estrutura** completa gerada
+- ✅ **Configuração** automática
+
+## 🎯 **Comparação Final com Pulumi**
+
+| Funcionalidade | Pulumi | Sloth Runner |
+|----------------|---------|--------------|
+| **Stack management** | ✅ | ✅ |
+| **Estado persistente** | ✅ | ✅ |
+| **Outputs exportados** | ✅ | ✅ |
+| **CLI intuitiva** | ✅ | ✅ |
+| **Sintaxe similar** | `pulumi up --stack name` | `sloth-runner run name -f file` |
+| **Project scaffolding** | ✅ | ✅ |
+| **Rich output** | ✅ | ✅ |
+| **Histórico completo** | ✅ | ✅ |
 
 ## 🎉 **Conclusão**
 
-As melhorias implementadas tornam o **Sloth Runner** muito mais similar ao **Pulumi** em termos de:
+O **Sloth Runner** agora oferece uma experiência completamente similar ao **Pulumi** com:
 
-- ✅ **User Experience** (output visual rico)
-- ✅ **Project Scaffolding** (comando `init` com templates)
-- ✅ **Structured Outputs** (captura e exibição de resultados)
-- ✅ **Developer Friendly** (setup rápido e padronizado)
+- ✅ **Sintaxe familiar** para usuários do Pulumi
+- ✅ **Stack management** completo com persistência
+- ✅ **Outputs exportados** da pipeline preservados
+- ✅ **Rich formatting** estilo Pulumi no output
+- ✅ **Project scaffolding** com templates prontos
+- ✅ **CLI intuitiva** para gestão de stacks
 
-Agora o Sloth Runner oferece uma experiência moderna e profissional, mantendo sua flexibilidade com Lua scripts enquanto adiciona a facilidade de uso que os desenvolvedores esperam de ferramentas modernas como Pulumi e Terraform.
+A ferramenta mantém toda a **flexibilidade dos scripts Lua** enquanto adiciona a **experiência profissional** e **gerenciamento de estado** que as equipes Enterprise esperam de ferramentas modernas como Pulumi e Terraform! 🚀
