@@ -17,6 +17,18 @@
 
 <div class="feature-grid">
   <div class="feature-card">
+    <div class="icon">🗂️</div>
+    <h3>Stack Management</h3>
+    <p>Pulumi-style stack management with persistent state, exported outputs, and execution history tracking.</p>
+    <ul>
+      <li>🔒 Persistent stack state with SQLite</li>
+      <li>📊 Exported outputs capture</li>
+      <li>📈 Complete execution history</li>
+      <li>🎯 Environment isolation</li>
+    </ul>
+  </div>
+
+  <div class="feature-card">
     <div class="icon">🌐</div>
     <h3>Distributed by Design</h3>
     <p>Native master-agent architecture with real-time streaming, automatic failover, and intelligent load balancing.</p>
@@ -42,12 +54,15 @@
   
   <div class="feature-card">
     <div class="icon">📊</div>
-    <h3>Comprehensive Monitoring</h3>
-    <p>Real-time metrics, health checks, and Prometheus-compatible endpoints for complete observability.</p>
+    <h3>Enhanced Output System</h3>
+    <p>Pulumi-style rich output formatting with configurable styles, progress indicators, and structured displays.</p>
     <ul>
-      <li>📈 System and custom metrics</li>
-      <li>🩺 Configurable health checks</li>
-      <li>🎯 Prometheus integration</li>
+      <li>🎨 Multiple output styles (basic, enhanced, rich, modern)</li>
+      <li>📈 Real-time progress indicators</li>
+      <li>🎯 Structured output sections</li>
+      <li>🌈 Rich color formatting</li>
+    </ul>
+  </div>
       <li>🚨 Real-time alerting</li>
     </ul>
   </div>
@@ -90,6 +105,48 @@
 </div>
 
 ## 🚀 **Practical Examples**
+
+### 🗂️ Stack Management with Pulumi-Style Output
+
+```bash
+# Create a new project from template
+sloth-runner workflow init my-cicd --template cicd
+
+# Deploy to development environment
+sloth-runner run dev-app -f my-cicd.lua --output enhanced
+
+# Deploy to production with stack persistence
+sloth-runner run prod-app -f my-cicd.lua -o rich
+
+# Check deployment status and outputs
+sloth-runner stack show prod-app
+```
+
+### 📊 Stack with Exported Outputs
+
+```lua
+local deploy_task = task("deploy")
+    :command(function(params, deps)
+        -- Deploy application
+        local result = exec.run("kubectl apply -f deployment.yaml")
+        
+        -- Export important outputs to stack
+        runner.Export({
+            app_url = "https://myapp.example.com",
+            version = "1.2.3",
+            environment = "production",
+            deployed_at = os.date(),
+            health_endpoint = "https://myapp.example.com/health"
+        })
+        
+        return true, result.stdout, { status = "deployed" }
+    end)
+    :build()
+
+workflow.define("production_deployment", {
+    tasks = { deploy_task }
+})
+```
 
 ### 📊 Distributed Deployment with Monitoring
 
