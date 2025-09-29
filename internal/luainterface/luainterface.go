@@ -14,10 +14,22 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/chalkan3-sloth/sloth-runner/internal/ai"
+	"github.com/chalkan3-sloth/sloth-runner/internal/gitops"
+	"github.com/chalkan3-sloth/sloth-runner/internal/state"
 	"github.com/chalkan3-sloth/sloth-runner/internal/types"
 	lua "github.com/yuin/gopher-lua"
 	"gopkg.in/yaml.v2"
 )
+
+// LuaInterface provides AI-enhanced Lua scripting capabilities
+type LuaInterface struct {
+	L              *lua.LState
+	aiIntelligence *ai.TaskIntelligence
+	aiConfig       *ai.AITaskConfig
+	stateManager   *state.StateManager
+	gitopsManager  *gitops.GitOpsManager
+}
 
 var ExecCommand = exec.Command
 
@@ -381,6 +393,13 @@ func RegisterAllModules(L *lua.LState) {
 	RegisterSecurityModule(L)
 	// RegisterQueueModule(L) // TODO: Fix this
 	RegisterObservabilityModule(L)
+	
+	// Register AI module
+	luaInterface := &LuaInterface{L: L}
+	luaInterface.registerAIModule()
+	
+	// Register GitOps module
+	luaInterface.registerGitOpsModule()
 	
 	// Register modules that may not exist yet
 	// OpenPkg is handled by the pkg.go file
