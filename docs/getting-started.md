@@ -41,6 +41,25 @@ sloth-runner stack show production-app
 sloth-runner stack delete old-environment
 ```
 
+### 🆔 Listagem de Tasks e Grupos (Novo)
+
+```bash
+# Listar tasks e grupos com IDs únicos
+sloth-runner list -f workflow.lua
+
+# Visualizar estrutura completa do workflow
+sloth-runner list -f pipeline.lua
+
+# Exemplo de saída organizada:
+# ## Task Group: deploy_group  
+# ID: e8e77f72-5cf4-4e98-adce-fc839846c24a
+# Tasks:
+# NAME     ID           DESCRIPTION             DEPENDS ON
+# build    a1c4fa46...  Build the application   -
+# test     d8dc4623...  Run tests               build
+# deploy   6253cb19...  Deploy to production    build, test
+```
+
 ## 🚀 Scaffolding de Projetos
 
 ### Criar Novo Projeto
