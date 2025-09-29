@@ -1,110 +1,54 @@
 # 🦥 Sloth Runner - Advanced Task Orchestration Platform
 
-<div class="hero">
-  <h1>🚀 Intelligent Task Orchestration</h1>
-  <p>A powerful, modern task runner with distributed execution, state management, and comprehensive monitoring capabilities.</p>
-  <div class="hero-badges">
-    <span class="badge distributed">🌐 Distributed</span>
-    <span class="badge state">💾 Stateful</span>
-    <span class="badge monitoring">📊 Observable</span>
-    <span class="badge enterprise">🏢 Enterprise Ready</span>
-  </div>
-  <a href="TUTORIAL/" class="btn primary">🚀 Get Started</a>
-  <a href="en/quick-start/" class="btn secondary">⚡ Quick Start</a>
-</div>
+> 🚀 A powerful, modern task runner with Pulumi-style stack management, distributed execution, and comprehensive monitoring capabilities.
 
-## 🌟 **Core Features**
+[![🌐 Distributed](https://img.shields.io/badge/🌐-Distributed-blue)](docs/distributed.md)
+[![💾 Stateful](https://img.shields.io/badge/💾-Stateful-green)](docs/stack-management.md)  
+[![📊 Observable](https://img.shields.io/badge/📊-Observable-orange)](docs/advanced-features.md)
+[![🏢 Enterprise Ready](https://img.shields.io/badge/🏢-Enterprise%20Ready-purple)](docs/enterprise-features.md)
 
-<div class="feature-grid">
-  <div class="feature-card">
-    <div class="icon">🗂️</div>
-    <h3>Stack Management</h3>
-    <p>Pulumi-style stack management with persistent state, exported outputs, and execution history tracking.</p>
-    <ul>
-      <li>🔒 Persistent stack state with SQLite</li>
-      <li>📊 Exported outputs capture</li>
-      <li>📈 Complete execution history</li>
-      <li>🎯 Environment isolation</li>
-    </ul>
-  </div>
+**Quick Links:** 
+[🚀 Get Started](TUTORIAL.md) | [⚡ Quick Start](en/quick-start.md) | [🗂️ Stack Management](stack-management.md)
 
-  <div class="feature-card">
-    <div class="icon">🌐</div>
-    <h3>Distributed by Design</h3>
-    <p>Native master-agent architecture with real-time streaming, automatic failover, and intelligent load balancing.</p>
-    <ul>
-      <li>🔗 gRPC-based agent communication</li>
-      <li>📡 Real-time command streaming</li>
-      <li>🔄 Automatic failover and recovery</li>
-      <li>⚖️ Intelligent load balancing</li>
-    </ul>
-  </div>
-  
-  <div class="feature-card">
-    <div class="icon">💾</div>
-    <h3>Advanced State Management</h3>
-    <p>Built-in SQLite-based persistent state with atomic operations, distributed locks, and TTL support.</p>
-    <ul>
-      <li>🔒 Distributed locking mechanisms</li>
-      <li>⚛️ Atomic operations support</li>
-      <li>⏰ TTL-based data expiration</li>
-      <li>🔍 Pattern-based queries</li>
-    </ul>
-  </div>
-  
-  <div class="feature-card">
-    <div class="icon">📊</div>
-    <h3>Enhanced Output System</h3>
-    <p>Pulumi-style rich output formatting with configurable styles, progress indicators, and structured displays.</p>
-    <ul>
-      <li>🎨 Multiple output styles (basic, enhanced, rich, modern)</li>
-      <li>📈 Real-time progress indicators</li>
-      <li>🎯 Structured output sections</li>
-      <li>🌈 Rich color formatting</li>
-    </ul>
-  </div>
-      <li>🚨 Real-time alerting</li>
-    </ul>
-  </div>
+---
 
-  <div class="feature-card">
-    <div class="icon">🔐</div>
-    <h3>Production Security</h3>
-    <p>mTLS authentication, RBAC authorization, audit logging, and compliance-ready security features.</p>
-    <ul>
-      <li>🔐 mTLS mutual authentication</li>
-      <li>👤 Role-based access control</li>
-      <li>📋 Comprehensive audit logging</li>
-      <li>✅ Compliance-ready features</li>
-    </ul>
-  </div>
-  
-  <div class="feature-card">
-    <div class="icon">☁️</div>
-    <h3>Multi-Cloud Ready</h3>
-    <p>Native integrations with AWS, GCP, Azure, and on-premises infrastructure for hybrid deployments.</p>
-    <ul>
-      <li>☁️ AWS, GCP, Azure support</li>
-      <li>🏢 On-premises integration</li>
-      <li>🔄 Hybrid cloud orchestration</li>
-      <li>🌊 DigitalOcean support</li>
-    </ul>
-  </div>
-  
-  <div class="feature-card">
-    <div class="icon">⚡</div>
-    <h3>High Performance</h3>
-    <p>Parallel execution, circuit breakers, and intelligent resource optimization for maximum throughput.</p>
-    <ul>
-      <li>🔄 Parallel task execution</li>
-      <li>⚡ Circuit breaker patterns</li>
-      <li>🎯 Resource optimization</li>
-      <li>📊 Performance analytics</li>
-    </ul>
-  </div>
-</div>
+## 🌟 Core Features
 
-## 🚀 **Practical Examples**
+### 🗂️ Stack Management
+**Pulumi-style stack management** with persistent state, exported outputs, and execution history tracking.
+
+- 🔒 **Persistent stack state** with SQLite
+- 📊 **Exported outputs capture** from pipeline
+- 📈 **Complete execution history** tracking
+- 🎯 **Environment isolation** by stack
+
+### 🌐 Distributed by Design
+**Native master-agent architecture** with real-time streaming, automatic failover, and intelligent load balancing.
+
+- 🔗 **gRPC-based** agent communication
+- 📡 **Real-time** command streaming
+- 🔄 **Automatic failover** and recovery
+- ⚖️ **Intelligent load** balancing
+
+### 💾 Advanced State Management
+**Built-in SQLite-based** persistent state with atomic operations, distributed locks, and TTL support.
+
+- 🔒 **Distributed locking** mechanisms
+- ⚛️ **Atomic operations** support
+- ⏰ **TTL-based** data expiration
+- 🔍 **Pattern-based** queries
+
+### 📊 Enhanced Output System
+**Pulumi-style rich output** formatting with configurable styles, progress indicators, and structured displays.
+
+- 🎨 **Multiple output styles** (basic, enhanced, rich, modern)
+- 📈 **Real-time progress** indicators
+- 🎯 **Structured output** sections
+- 🌈 **Rich color** formatting
+
+---
+
+## 🚀 Quick Start Examples
 
 ### 🗂️ Stack Management with Pulumi-Style Output
 
@@ -146,6 +90,36 @@ local deploy_task = task("deploy")
 workflow.define("production_deployment", {
     tasks = { deploy_task }
 })
+```
+
+---
+
+## 📊 CLI Commands Overview
+
+### Stack Management
+```bash
+# Execute with stack persistence (NEW SYNTAX)
+sloth-runner run {stack-name} --file workflow.lua
+
+# Manage stacks
+sloth-runner stack list                    # List all stacks
+sloth-runner stack show production-app     # Show stack details
+sloth-runner stack delete old-env          # Delete stack
+```
+
+### Project Scaffolding
+```bash
+# Create new projects
+sloth-runner workflow init my-app --template cicd
+sloth-runner workflow list-templates       # Available templates
+```
+
+### Output Styles
+```bash
+# Configurable output formatting
+sloth-runner run my-stack -f app.lua --output enhanced
+sloth-runner run my-stack -f app.lua -o rich
+sloth-runner run my-stack -f app.lua --output modern
 ```
 
 ### 📊 Distributed Deployment with Monitoring
