@@ -5,11 +5,13 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/google/uuid"
 	lua "github.com/yuin/gopher-lua"
 )
 
 // Task represents a single unit of work in the runner.
 type Task struct {
+	ID          string // Unique identifier for the task
 	Name        string
 	Description string
 	CommandFunc *lua.LFunction
@@ -34,12 +36,23 @@ type Task struct {
 
 // TaskGroup represents a collection of related tasks.
 type TaskGroup struct {
+	ID                       string // Unique identifier for the task group
 	Description              string
 	Tasks                    []Task
 	Workdir                  string
 	CreateWorkdirBeforeRun   bool
 	CleanWorkdirAfterRunFunc *lua.LFunction
 	DelegateTo               interface{} `yaml:"delegate_to"` // Can be map[string]Agent or string (default agent)
+}
+
+// GenerateTaskID generates a new UUID for a task
+func GenerateTaskID() string {
+	return uuid.New().String()
+}
+
+// GenerateTaskGroupID generates a new UUID for a task group
+func GenerateTaskGroupID() string {
+	return uuid.New().String()
 }
 
 // TaskResult holds the outcome of a single task execution.

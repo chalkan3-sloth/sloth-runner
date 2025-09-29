@@ -120,6 +120,7 @@ func ParseLuaScript(ctx context.Context, filePath string, valuesTable *lua.LTabl
 		}
 
 		loadedTaskGroups[groupName] = types.TaskGroup{
+			ID:                       types.GenerateTaskGroupID(), // Generate unique ID for the task group
 			Description:              description,
 			Tasks:                    tasks,
 			Workdir:                  workdir,
@@ -239,6 +240,7 @@ func parseLuaTask(L *lua.LState, taskTable *lua.LTable) types.Task {
 	}
 
 	return types.Task{
+		ID:          types.GenerateTaskID(), // Generate unique ID for the task
 		Name:        name,
 		Description: desc,
 		CommandFunc: cmdFunc,
