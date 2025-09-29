@@ -27,27 +27,61 @@ This example demonstrates how to use the `sloth-runner new` command with the `--
 -- examples/templated_task.lua
 --
 -- This file is generated using 'sloth-runner new' with the --set flag.
--- It demonstrates how to inject dynamic data into templates.
+-- It demonstrates how to inject dynamic data into templates using Modern DSL.
 
-Modern DSLs = {
-  ["templated-task"] = {
-    description = "A task group generated with dynamic data.",
-    tasks = {
-      {
-        name = "hello_task",
-        description = "An example task with a custom message.",
-        command = function(params)
-          local workdir = params.workdir
-          log.info("Running example task for group templated-task in: " .. workdir)
-          log.info("Custom message: This is a custom message from the CLI!")
-          local stdout, stderr, err = exec.command("echo 'Hello from sloth-runner!'")
-          if err then
-            log.error("Failed to run example task: " .. stderr)
-            return false, "Dummy task failed."
-          else
-            log.info("Example task completed successfully.")
-            print("Command output: " .. stdout)
-            return true, "Dummy task executed successfully."
+-- Define the hello task with Modern DSL
+local hello_task = task("hello_task")
+    :description("An example task with a custom message - Modern DSL")
+    :command(function(params)
+        local workdir = params.workdir or "."
+        log.info("Running Modern DSL task in: " .. workdir)
+        log.info("Custom message: This is a custom message from the CLI!")
+        
+        local result = exec.run("echo 'Hello from sloth-runner Modern DSL!'")
+        if not result.success then
+            log.error("Failed to run example task: " .. result.stderr)
+            return false, "Task failed", { error = result.stderr }
+        else
+            log.info("Example task completed successfully")
+            print("Command output: " .. result.stdout)
+            return true, "Task executed successfully", { 
+                output = result.stdout,
+                custom_message = "This is a custom message from the CLI!"
+            }
+        end
+    end)
+    :timeout("30s")
+    :build()
+
+-- Define workflow with Modern DSL
+workflow.define("templated-task", {
+    description = "A task group generated with dynamic data - Modern DSL",
+    version = "1.0.0",
+    
+    metadata = {
+        author = "Sloth Runner CLI",
+        tags = {"templated", "example", "modern-dsl"},
+        template_source = "simple"
+    },
+    
+    tasks = { hello_task },
+    
+    config = {
+        timeout = "5m"
+    },
+    
+    on_start = function()
+        log.info("🚀 Starting templated task workflow...")
+        return true
+    end,
+    
+    on_complete = function(success, results)
+        if success then
+            log.info("✅ Templated task workflow completed successfully!")
+        end
+        return true
+    end
+})
           end
         end
       }

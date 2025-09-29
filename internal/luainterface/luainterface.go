@@ -361,6 +361,11 @@ func RegisterAllModules(L *lua.LState) {
 	// Register Modern DSL
 	OpenModernDSL(L)
 	
+	// Register new enhanced modules
+	RegisterHTTPModule(L)
+	RegisterStringModule(L)
+	RegisterMathModule(L)
+	
 	// Register modules that may not exist yet
 	// OpenPkg is handled by the pkg.go file
 }
