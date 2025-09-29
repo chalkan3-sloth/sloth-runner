@@ -1,32 +1,68 @@
-# Conceitos Essenciais
+# Conceitos Essenciais - Modern DSL
 
-Este documento explica os conceitos fundamentais do `sloth-runner`, ajudando você a entender como definir e orquestrar fluxos de trabalho complexos.
+Este documento explica os conceitos fundamentais do `sloth-runner` usando a **Modern DSL**, ajudando você a entender como definir e orquestrar fluxos de trabalho complexos com a nova API fluente.
 
 ---
 
-## A Tabela `TaskDefinitions`
+## Visão Geral da Modern DSL
 
-O ponto de entrada para qualquer fluxo de trabalho do `sloth-runner` é um arquivo Lua que retorna uma tabela global chamada `TaskDefinitions`. Esta tabela é um dicionário onde cada chave é o nome de um **Grupo de Tarefas**.
+A Modern DSL substitui a abordagem legada `TaskDefinitions` por uma API mais intuitiva e fluente para definir fluxos de trabalho. Em vez de grandes estruturas de tabela, você agora usa métodos encadeáveis para construir tarefas e definir fluxos de trabalho de forma declarativa.
 
 ```lua
--- meu_pipeline.lua
-TaskDefinitions = {
-  -- Grupos de Tarefas são definidos aqui
-}
+-- meu_pipeline.lua - Modern DSL
+local minha_tarefa = task("nome_da_tarefa")
+    :description("Descrição da tarefa")
+    :command(function() ... end)
+    :build()
+
+workflow.define("nome_do_workflow", {
+    description = "Descrição do workflow - Modern DSL",
+    tasks = { minha_tarefa }
+})
 ```
 
 ---
 
-## Grupos de Tarefas
+## Definição de Tarefa com Modern DSL
 
-Um Grupo de Tarefas é uma coleção de tarefas relacionadas. Ele também pode definir propriedades que afetam todas as tarefas dentro dele.
+As tarefas agora são definidas usando a função `task()` e métodos da API fluente:
 
-**Propriedades do Grupo:**
+### Estrutura Básica de Tarefa
 
-*   `description` (string): Uma descrição do que o grupo faz.
-*   `tasks` (tabela): Uma lista de tabelas de tarefas individuais.
-*   `create_workdir_before_run` (booleano): Se `true`, um diretório de trabalho temporário é criado para o grupo antes que qualquer tarefa seja executada. Este diretório é passado para cada tarefa.
-*   `clean_workdir_after_run` (função): Uma função Lua que decide se o diretório de trabalho temporário deve ser excluído após a conclusão do grupo. Ela recebe o resultado final do grupo (`{success = true/false, ...}`). Retornar `true` exclui o diretório.
+```lua
+local minha_tarefa = task("nome_da_tarefa")
+    :description("O que esta tarefa faz")
+    :command(function(params, deps)
+        -- Lógica da tarefa aqui
+        return true, "Mensagem de sucesso", { dados_de_saida = "valor" }
+    end)
+    :timeout("5m")
+    :retries(3, "exponential")
+    :build()
+```
+
+### Métodos do Task Builder
+
+**Propriedades Principais:**
+*   `:description(string)` - Descrição legível da tarefa
+*   `:command(function|string)` - Lógica de execução da tarefa
+*   `:timeout(string)` - Tempo máximo de execução (ex: "10s", "5m", "1h")
+*   `:retries(number, strategy)` - Configuração de retry com estratégia ("exponential", "linear", "fixed")
+*   `:depends_on(array)` - Array de nomes de tarefas das quais esta tarefa depende
+
+**Recursos Avançados:**
+*   `:async(boolean)` - Habilitar execução assíncrona
+*   `:artifacts(array)` - Arquivos para salvar após execução bem-sucedida
+*   `:consumes(array)` - Artefatos de outras tarefas para usar
+*   `:run_if(function|string)` - Lógica de execução condicional
+*   `:abort_if(function|string)` - Condição para abortar todo o workflow
+
+**Hooks de Ciclo de Vida:**
+*   `:on_success(function)` - Executar quando a tarefa for bem-sucedida
+*   `:on_failure(function)` - Executar quando a tarefa falhar
+*   `:on_timeout(function)` - Executar quando a tarefa atingir timeout
+*   `:pre_hook(function)` - Executar antes do comando principal
+*   `:post_hook(function)` - Executar após o comando principal
 
 **Exemplo:**
 ```lua
