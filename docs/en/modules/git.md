@@ -93,7 +93,7 @@ command = function()
 
   -- 1. Clone the repository
   log.info("Cloning repository...")
-  local repo, err = git.clone("https://github.com/chalkan3/sloth-runner.git", repo_path)
+  local repo, err = git.clone("https://github.com/chalkan3-sloth/sloth-runner.git", repo_path)
   if err then
     return false, "Failed to clone: " .. err
   end

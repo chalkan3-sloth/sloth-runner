@@ -7,7 +7,7 @@ Welcome to Sloth-Runner! This guide will help you get started with the tool quic
 To install `sloth-runner` on your system, you can use the provided `install.sh` script. This script automatically detects your operating system and architecture, downloads the latest release from GitHub, and places the `sloth-runner` executable in `/usr/local/bin`.
 
 ```bash
-bash <(curl -sL https://raw.githubusercontent.com/chalkan3/sloth-runner/master/install.sh)
+bash <(curl -sL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/install.sh)
 ```
 
 **Note:** The `install.sh` script requires `sudo` privileges to move the executable to `/usr/local/bin`.
