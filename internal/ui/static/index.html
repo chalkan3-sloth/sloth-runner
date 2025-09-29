@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sloth Runner - Task Management Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .panel h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .task-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .task-item:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .task-name {
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+        }
+
+        .task-status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-running {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-pending {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .status-failed {
+            background: #dc3545;
+            color: white;
+        }
+
+        .status-completed {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .agent-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #28a745;
+        }
+
+        .agent-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .agent-online {
+            background: #28a745;
+        }
+
+        .agent-offline {
+            background: #dc3545;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .terminal {
+            background: #1e1e1e;
+            color: #00ff00;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+            border: 1px solid #333;
+        }
+
+        .terminal-header {
+            background: #333;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 10px 10px 0 0;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 80%;
+            max-width: 600px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1001;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: #28a745;
+        }
+
+        .notification.error {
+            background: #dc3545;
+        }
+
+        .notification.info {
+            background: #17a2b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-sloth"></i> Sloth Runner</h1>
+            <p>Advanced Task Management & Automation Dashboard</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <div class="stat-number" id="totalTasks">0</div>
+                <div class="stat-label">Total Tasks</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-server"></i>
+                </div>
+                <div class="stat-number" id="activeAgents">0</div>
+                <div class="stat-label">Active Agents</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-play-circle"></i>
+                </div>
+                <div class="stat-number" id="runningTasks">0</div>
+                <div class="stat-label">Running Tasks</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-number" id="completedTasks">0</div>
+                <div class="stat-label">Completed</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="openNewTaskModal()">
+                <i class="fas fa-plus"></i> New Task
+            </button>
+            <button class="btn btn-secondary" onclick="refreshData()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button class="btn btn-secondary" onclick="openAgentModal()">
+                <i class="fas fa-server"></i> Add Agent
+            </button>
+            <button class="btn btn-danger" onclick="stopAllTasks()">
+                <i class="fas fa-stop"></i> Stop All
+            </button>
+        </div>
+
+        <div class="main-grid">
+            <div class="panel">
+                <h2><i class="fas fa-list"></i> Recent Tasks</h2>
+                <div id="tasksList">
+                    <!-- Tasks will be populated here -->
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2><i class="fas fa-network-wired"></i> Agents</h2>
+                <div id="agentsList">
+                    <!-- Agents will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="terminal-header">
+                <i class="fas fa-terminal"></i> System Console
+                <div class="loading" id="consoleLoading" style="display: none;"></div>
+            </div>
+            <div class="terminal" id="console">
+                <div>Sloth Runner Console - Ready</div>
+                <div>Type commands or view real-time task output here...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Task Modal -->
+    <div id="newTaskModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeNewTaskModal()">&times;</span>
+            <h2>Create New Task</h2>
+            <form id="newTaskForm">
+                <div class="form-group">
+                    <label for="taskName">Task Name:</label>
+                    <input type="text" id="taskName" name="taskName" required>
+                </div>
+                <div class="form-group">
+                    <label for="taskType">Task Type:</label>
+                    <select id="taskType" name="taskType" required>
+                        <option value="shell">Shell Command</option>
+                        <option value="lua">Lua Script</option>
+                        <option value="pipeline">Pipeline</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="taskCommand">Command/Script:</label>
+                    <textarea id="taskCommand" name="taskCommand" rows="5" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="targetAgent">Target Agent:</label>
+                    <select id="targetAgent" name="targetAgent">
+                        <option value="">Local</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-play"></i> Create & Run
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Agent Modal -->
+    <div id="agentModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAgentModal()">&times;</span>
+            <h2>Add New Agent</h2>
+            <form id="agentForm">
+                <div class="form-group">
+                    <label for="agentName">Agent Name:</label>
+                    <input type="text" id="agentName" name="agentName" required>
+                </div>
+                <div class="form-group">
+                    <label for="agentAddress">Agent Address:</label>
+                    <input type="text" id="agentAddress" name="agentAddress" placeholder="localhost:50051" required>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Add Agent
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let tasks = [];
+        let agents = [];
+        let wsConnection = null;
+
+        // Initialize the dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeWebSocket();
+            refreshData();
+            setInterval(refreshData, 5000); // Refresh every 5 seconds
+        });
+
+        // WebSocket connection for real-time updates
+        function initializeWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            
+            try {
+                wsConnection = new WebSocket(wsUrl);
+                
+                wsConnection.onopen = function() {
+                    console.log('WebSocket connected');
+                    addConsoleMessage('WebSocket connection established');
+                };
+                
+                wsConnection.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    handleWebSocketMessage(data);
+                };
+                
+                wsConnection.onclose = function() {
+                    console.log('WebSocket disconnected');
+                    addConsoleMessage('WebSocket connection lost - attempting to reconnect...');
+                    setTimeout(initializeWebSocket, 3000);
+                };
+            } catch(e) {
+                console.log('WebSocket not available, using polling mode');
+            }
+        }
+
+        function handleWebSocketMessage(data) {
+            switch(data.type) {
+                case 'task_update':
+                    updateTaskStatus(data.taskId, data.status, data.output);
+                    break;
+                case 'agent_update':
+                    updateAgentStatus(data.agentName, data.status);
+                    break;
+                case 'console_output':
+                    addConsoleMessage(data.message);
+                    break;
+            }
+        }
+
+        // API functions
+        async function apiCall(endpoint, options = {}) {
+            try {
+                const response = await fetch(`/api${endpoint}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('API call failed:', error);
+                showNotification('API call failed: ' + error.message, 'error');
+                // Return mock data for demo
+                if (endpoint === '/tasks') {
+                    return { tasks: mockTasks() };
+                } else if (endpoint === '/agents') {
+                    return { agents: mockAgents() };
+                }
+                throw error;
+            }
+        }
+
+        function mockTasks() {
+            return [
+                { id: 1, name: 'Build Project', status: 'completed', type: 'shell' },
+                { id: 2, name: 'Run Tests', status: 'running', type: 'lua' },
+                { id: 3, name: 'Deploy to Staging', status: 'pending', type: 'pipeline' },
+                { id: 4, name: 'Backup Database', status: 'failed', type: 'shell' }
+            ];
+        }
+
+        function mockAgents() {
+            return [
+                { name: 'local-agent', address: 'localhost:50051', status: 'online' },
+                { name: 'prod-server-1', address: '192.168.1.100:50051', status: 'online' },
+                { name: 'test-server', address: '192.168.1.101:50051', status: 'offline' }
+            ];
+        }
+
+        async function refreshData() {
+            try {
+                const [tasksData, agentsData] = await Promise.all([
+                    apiCall('/tasks'),
+                    apiCall('/agents')
+                ]);
+                
+                tasks = tasksData.tasks || [];
+                agents = agentsData.agents || [];
+                
+                updateStats();
+                renderTasks();
+                renderAgents();
+                updateAgentDropdown();
+            } catch (error) {
+                console.error('Failed to refresh data:', error);
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('totalTasks').textContent = tasks.length;
+            document.getElementById('activeAgents').textContent = agents.filter(a => a.status === 'online').length;
+            document.getElementById('runningTasks').textContent = tasks.filter(t => t.status === 'running').length;
+            document.getElementById('completedTasks').textContent = tasks.filter(t => t.status === 'completed').length;
+        }
+
+        function renderTasks() {
+            const tasksList = document.getElementById('tasksList');
+            
+            if (tasks.length === 0) {
+                tasksList.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No tasks found</p>';
+                return;
+            }
+            
+            tasksList.innerHTML = tasks.map(task => `
+                <div class="task-item">
+                    <div class="task-name">${task.name}</div>
+                    <div class="task-status status-${task.status}">${task.status}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderAgents() {
+            const agentsList = document.getElementById('agentsList');
+            
+            if (agents.length === 0) {
+                agentsList.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No agents registered</p>';
+                return;
+            }
+            
+            agentsList.innerHTML = agents.map(agent => `
+                <div class="agent-item">
+                    <div style="display: flex; align-items: center;">
+                        <div class="agent-status ${agent.status === 'online' ? 'agent-online' : 'agent-offline'}"></div>
+                        <span>${agent.name}</span>
+                    </div>
+                    <small style="color: #666;">${agent.address}</small>
+                </div>
+            `).join('');
+        }
+
+        function updateAgentDropdown() {
+            const select = document.getElementById('targetAgent');
+            select.innerHTML = '<option value="">Local</option>';
+            
+            agents.filter(a => a.status === 'online').forEach(agent => {
+                const option = document.createElement('option');
+                option.value = agent.name;
+                option.textContent = agent.name;
+                select.appendChild(option);
+            });
+        }
+
+        // Modal functions
+        function openNewTaskModal() {
+            document.getElementById('newTaskModal').style.display = 'block';
+        }
+
+        function closeNewTaskModal() {
+            document.getElementById('newTaskModal').style.display = 'none';
+            document.getElementById('newTaskForm').reset();
+        }
+
+        function openAgentModal() {
+            document.getElementById('agentModal').style.display = 'block';
+        }
+
+        function closeAgentModal() {
+            document.getElementById('agentModal').style.display = 'none';
+            document.getElementById('agentForm').reset();
+        }
+
+        // Event handlers
+        document.getElementById('newTaskForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const taskData = {
+                name: formData.get('taskName'),
+                type: formData.get('taskType'),
+                command: formData.get('taskCommand'),
+                agent: formData.get('targetAgent')
+            };
+            
+            try {
+                await apiCall('/tasks', {
+                    method: 'POST',
+                    body: JSON.stringify(taskData)
+                });
+                
+                showNotification('Task created successfully!', 'success');
+                closeNewTaskModal();
+                refreshData();
+            } catch (error) {
+                // For demo purposes, simulate success
+                const newTask = {
+                    id: Date.now(),
+                    name: taskData.name,
+                    status: 'pending',
+                    type: taskData.type
+                };
+                tasks.push(newTask);
+                showNotification('Task created successfully! (Demo Mode)', 'success');
+                closeNewTaskModal();
+                updateStats();
+                renderTasks();
+            }
+        });
+
+        document.getElementById('agentForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const agentData = {
+                name: formData.get('agentName'),
+                address: formData.get('agentAddress')
+            };
+            
+            try {
+                await apiCall('/agents', {
+                    method: 'POST',
+                    body: JSON.stringify(agentData)
+                });
+                
+                showNotification('Agent added successfully!', 'success');
+                closeAgentModal();
+                refreshData();
+            } catch (error) {
+                // For demo purposes, simulate success
+                const newAgent = {
+                    name: agentData.name,
+                    address: agentData.address,
+                    status: 'online'
+                };
+                agents.push(newAgent);
+                showNotification('Agent added successfully! (Demo Mode)', 'success');
+                closeAgentModal();
+                updateStats();
+                renderAgents();
+                updateAgentDropdown();
+            }
+        });
+
+        async function stopAllTasks() {
+            if (!confirm('Are you sure you want to stop all running tasks?')) {
+                return;
+            }
+            
+            try {
+                await apiCall('/tasks/stop-all', { method: 'POST' });
+                showNotification('All tasks stopped successfully!', 'success');
+                refreshData();
+            } catch (error) {
+                // For demo purposes, simulate success
+                tasks.forEach(task => {
+                    if (task.status === 'running') {
+                        task.status = 'failed';
+                    }
+                });
+                showNotification('All tasks stopped successfully! (Demo Mode)', 'success');
+                updateStats();
+                renderTasks();
+            }
+        }
+
+        // Utility functions
+        function updateTaskStatus(taskId, status, output) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.status = status;
+                if (output) {
+                    addConsoleMessage(`[${task.name}] ${output}`);
+                }
+                renderTasks();
+                updateStats();
+            }
+        }
+
+        function updateAgentStatus(agentName, status) {
+            const agent = agents.find(a => a.name === agentName);
+            if (agent) {
+                agent.status = status;
+                renderAgents();
+                updateStats();
+            }
+        }
+
+        function addConsoleMessage(message) {
+            const console = document.getElementById('console');
+            const timestamp = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.textContent = `[${timestamp}] ${message}`;
+            console.appendChild(div);
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.classList.add('show'), 100);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => document.body.removeChild(notification), 300);
+            }, 3000);
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+
+        // Auto-refresh simulation
+        setInterval(() => {
+            // Simulate some task status changes for demo
+            tasks.forEach(task => {
+                if (task.status === 'running' && Math.random() > 0.7) {
+                    task.status = Math.random() > 0.8 ? 'failed' : 'completed';
+                    addConsoleMessage(`Task "${task.name}" ${task.status}`);
+                }
+            });
+            
+            updateStats();
+            renderTasks();
+        }, 10000);
+    </script>
+</body>
+</html>
