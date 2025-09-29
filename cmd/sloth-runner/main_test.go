@@ -441,11 +441,6 @@ TaskDefinitions = {
 */
 
 func TestEnhancedValuesTemplating(t *testing.T) {
-	// Skip this test when running without SQLite (macOS builds)
-	if testing.Short() {
-		t.Skip("Skipping TestEnhancedValuesTemplating in short mode")
-	}
-	
 	// Create a temporary directory for test artifacts
 	tmpDir, err := ioutil.TempDir("", "sloth-runner-test-")
 	assert.NoError(t, err)
@@ -485,6 +480,13 @@ workflow.define("templated_values_group", {
 	// Execute the run command (without values file for now)
 	output, err := executeCommand(rootCmd, "run", "-f", taskFilePath, "--yes")
 	output = stripAnsi(output)
+	
+	// If SQLite is not available (CGO_ENABLED=0), skip the assertion
+	if err != nil && strings.Contains(err.Error(), "go-sqlite3 requires cgo") {
+		t.Skip("Skipping test due to SQLite not being available (CGO_ENABLED=0)")
+		return
+	}
+	
 	assert.NoError(t, err)
 
 	// Assert that the output contains the templated value
