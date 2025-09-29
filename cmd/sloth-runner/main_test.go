@@ -441,6 +441,11 @@ TaskDefinitions = {
 */
 
 func TestEnhancedValuesTemplating(t *testing.T) {
+	// Skip this test when running without SQLite (macOS builds)
+	if testing.Short() {
+		t.Skip("Skipping TestEnhancedValuesTemplating in short mode")
+	}
+	
 	// Create a temporary directory for test artifacts
 	tmpDir, err := ioutil.TempDir("", "sloth-runner-test-")
 	assert.NoError(t, err)
