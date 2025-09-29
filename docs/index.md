@@ -3,8 +3,8 @@
 <div class="hero">
   <h1>🚀 The Modern Task Orchestration Platform</h1>
   <p>Powerful, flexible, and scalable task automation with Lua scripting, distributed agents, and enterprise-grade reliability.</p>
-  <a href="TUTORIAL.md" class="btn">🚀 Get Started</a>
-  <a href="en/quick-start.md" class="btn">⚡ Quick Start</a>
+  <a href="TUTORIAL/" class="btn">🚀 Get Started</a>
+  <a href="en/quick-start/" class="btn">⚡ Quick Start</a>
 </div>
 
 ## 🌟 **Why Choose Sloth Runner?**
@@ -192,6 +192,6 @@ sloth-runner run -f hello.lua
 <div class="hero">
   <h2>Ready to Transform Your Task Automation? 🚀</h2>
   <p>Join thousands of developers using Sloth Runner for reliable, scalable task orchestration</p>
-  <a href="en/quick-start.md" class="btn">Start Your Journey →</a>
+  <a href="en/quick-start/" class="btn">Start Your Journey →</a>
   <a href="https://github.com/chalkan3-sloth/sloth-runner" class="btn">View on GitHub →</a>
 </div>
