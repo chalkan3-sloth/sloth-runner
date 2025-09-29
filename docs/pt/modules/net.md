@@ -75,7 +75,7 @@ command = function()
   -- Exemplo de Download
   local download_path = "/tmp/sloth-runner-logo.svg"
   log.info("Baixando arquivo para " .. download_path)
-  local err = net.download("https://raw.githubusercontent.com/chalkan3/sloth-runner/master/assets/sloth-runner-logo.svg", download_path)
+  local err = net.download("https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/assets/sloth-runner-logo.svg", download_path)
   if err then
     log.error("Download falhou: " .. err)
     return false, "Download falhou"

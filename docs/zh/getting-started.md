@@ -7,7 +7,7 @@
 要在您的系统上安装 `sloth-runner`，您可以使用提供的 `install.sh` 脚本。此脚本会自动检测您的操作系统和架构，从 GitHub 下载最新版本，并将 `sloth-runner` 可执行文件放置在 `/usr/local/bin` 中。
 
 ```bash
-bash <(curl -sL https://raw.githubusercontent.com/chalkan3/sloth-runner/master/install.sh)
+bash <(curl -sL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/install.sh)
 ```
 
 **注意：** `install.sh` 脚本需要 `sudo` 权限才能将可执行文件移动到 `/usr/local/bin`。

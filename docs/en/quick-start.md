@@ -7,7 +7,7 @@ Get up and running with Sloth Runner in under 10 minutes! This guide will walk y
 ### **Option 1: Download Binary**
 ```bash
 # Download latest release
-curl -L https://github.com/chalkan3/sloth-runner/releases/latest/download/sloth-runner-linux-amd64 -o sloth-runner
+curl -L https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner-linux-amd64 -o sloth-runner
 chmod +x sloth-runner
 sudo mv sloth-runner /usr/local/bin/
 ```
@@ -15,7 +15,7 @@ sudo mv sloth-runner /usr/local/bin/
 ### **Option 2: Build from Source**
 ```bash
 # Clone repository
-git clone https://github.com/chalkan3/sloth-runner.git
+git clone https://github.com/chalkan3-sloth/sloth-runner.git
 cd sloth-runner
 
 # Build binary
@@ -416,8 +416,8 @@ curl http://192.168.1.100:8080/health
 - 💡 [Examples](../EXAMPLES.md)
 
 ### **Community**
-- 💬 [GitHub Discussions](https://github.com/chalkan3/sloth-runner/discussions)
-- 🐛 [Issue Tracker](https://github.com/chalkan3/sloth-runner/issues)
+- 💬 [GitHub Discussions](https://github.com/chalkan3-sloth/sloth-runner/discussions)
+- 🐛 [Issue Tracker](https://github.com/chalkan3-sloth/sloth-runner/issues)
 - 📧 [Email Support](mailto:support@sloth-runner.dev)
 
 ### **Quick Troubleshooting**

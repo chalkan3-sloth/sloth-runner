@@ -75,7 +75,7 @@ command = function()
   -- 下载示例
   local download_path = "/tmp/sloth-runner-logo.svg"
   log.info("正在下载文件到 " .. download_path)
-  local err = net.download("https://raw.githubusercontent.com/chalkan3/sloth-runner/master/assets/sloth-runner-logo.svg", download_path)
+  local err = net.download("https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/assets/sloth-runner-logo.svg", download_path)
   if err then
     log.error("下载失败: " .. err)
     return false, "下载失败"

@@ -99,7 +99,7 @@ Este exemplo demonstra como clonar um repositório, fazer um pull, simular uma a
 command = function(params)
     log.info("Iniciando exemplo de automação Git...")
 
-    local repo_url = "https://github.com/chalkan3/sloth-runner.git" -- Usando o próprio sloth-runner para exemplo
+    local repo_url = "https://github.com/chalkan3-sloth/sloth-runner.git" -- Usando o próprio sloth-runner para exemplo
     local repo_path = "./sloth-runner-checkout"
     local new_version = params.version or "v1.0.0-test" -- Versão de exemplo
     local repo
