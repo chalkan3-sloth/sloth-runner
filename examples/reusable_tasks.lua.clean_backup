@@ -1,0 +1,55 @@
+-- MODERN DSL ONLY
+-- Legacy TaskDefinitions removed - Modern DSL syntax only
+-- Converted automatically on Seg 29 Set 2025 10:42:30 -03
+
+local docker_tasks = import("shared/docker.lua")
+
+-- local example_task = task("task_name")
+--     :description("Task description with modern DSL")
+--     :command(function(params, deps)
+--         -- Enhanced task logic
+--         return true, "Task completed", { result = "success" }
+--     end)
+--     :timeout("30s")
+--     :build()
+
+-- workflow.define("workflow_name", {
+--     description = "Workflow description - Modern DSL",
+--     version = "2.0.0",
+--     tasks = { example_task },
+--     config = { timeout = "10m" }
+-- })
+
+-- Maintain backward compatibility with legacy format
+TaskDefinitions = {
+    app_deployment = {
+        description = "A workflow that builds and deploys an application using a reusable Docker module.",
+        tasks = {
+            -- Use the 'build' task from the imported module by referencing it.
+            -- Override its default parameters directly.
+            build = {
+                uses = docker_tasks.build,
+                description = "Build the main application Docker image",
+                params = {
+                    image_name = "my-app",
+                    tag = "v1.0.0",
+                    context = "./app"
+                }
+            },
+            
+            -- Define a new task that depends on the 'build' task defined above.
+            deploy = {
+                name = "deploy",
+                description = "Deploys the application",
+                depends_on = "build",
+                command = function(params)
+                    -- In a real scenario, this would use kubectl, helm, etc.
+                    local image_name = "my-app"
+                    local tag = "v1.0.0"
+                    log.info(string.format("Deploying image %s:%s", image_name, tag))
+                    return true, string.format("echo 'Deployed %s:%s'", image_name, tag)
+                end
+            }
+        }
+    }
+}

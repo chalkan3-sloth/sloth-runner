@@ -1,18 +1,7 @@
--- MODERN DSL ONLY
--- Legacy TaskDefinitions removed - Modern DSL syntax only
--- Converted automatically on Seg 29 Set 2025 10:42:32 -03
+-- MODERN DSL ONLY - Conditional Execution Showcase
+-- Demonstrates run_if, abort_if, and conditional logic with Modern DSL
 
-local check_condition_task = task("check_condition_for_run")
-local conditional_task = task("conditional_task")
-local cleanup_task = task("cleanup_run_condition")
-local abort_check_task = task("check_abort_condition")
-local final_task = task("final_task")
-
-local check_condition_task = task("check_condition_for_run")
-local conditional_task = task("conditional_task")
-local cleanup_task = task("cleanup_run_condition")
-local abort_check_task = task("check_abort_condition")
-local final_task = task("final_task")
+-- Task 1: Create condition file for testing
 local check_condition_task = task("check_condition_for_run")
     :description("Creates a file for conditional checking")
     :command(function()
@@ -28,6 +17,8 @@ local check_condition_task = task("check_condition_for_run")
     end)
     :timeout("10s")
     :build()
+
+-- Task 2: Conditional task that runs only if file exists
 local conditional_task = task("conditional_task")
     :description("Runs conditionally based on file existence")
     :depends_on({"check_condition_for_run"})
@@ -52,6 +43,8 @@ local conditional_task = task("conditional_task")
         log.warn("⏭️  Conditional task skipped - condition not met")
     end)
     :build()
+
+-- Task 3: Cleanup task
 local cleanup_task = task("cleanup_run_condition")
     :description("Cleans up the condition file")
     :depends_on({"conditional_task"})
@@ -76,6 +69,8 @@ local cleanup_task = task("cleanup_run_condition")
         end
     end)
     :build()
+
+-- Task 4: Abort condition checker
 local abort_check_task = task("check_abort_condition")
     :description("Task that aborts workflow if specific condition is met")
     :command(function()
@@ -117,6 +112,8 @@ local abort_check_task = task("check_abort_condition")
         log.info("🛡️  Security checks passed!")
     end)
     :build()
+
+-- Task 5: Final task
 local final_task = task("final_task")
     :description("Final task - executes only if all conditions are met")
     :depends_on({"check_abort_condition"})
@@ -144,6 +141,7 @@ local final_task = task("final_task")
     end)
     :build()
 
+-- Modern Workflow Definition
 workflow.define("conditional_execution_demo", {
     description = "Conditional execution demonstration - Modern DSL Only",
     version = "2.0.0",
@@ -152,7 +150,8 @@ workflow.define("conditional_execution_demo", {
         category = "demonstration",
         tags = {"conditional", "abort", "run_if", "modern-dsl"},
         author = "Sloth Runner Team",
-        complexity = "intermediate"
+        complexity = "intermediate",
+        estimated_duration = "5m"
     },
     
     tasks = {
@@ -166,7 +165,8 @@ workflow.define("conditional_execution_demo", {
     config = {
         timeout = "10m",
         fail_fast = true,
-        cleanup_on_failure = true
+        cleanup_on_failure = true,
+        max_parallel_tasks = 3
     },
     
     on_start = function()

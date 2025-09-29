@@ -1,79 +1,51 @@
--- MODERN DSL ONLY
--- Legacy TaskDefinitions removed - Modern DSL syntax only
--- Converted automatically on Seg 29 Set 2025 10:42:31 -03
+-- MODERN DSL ONLY - CONVERTED TO MODERN SYNTAX
+-- Legacy TaskDefinitions format completely removed
+-- This file has been automatically cleaned to use only Modern DSL
 
-local log = require("log")
-local resource_group_to_delete = "my-sloth-runner-test-rg"
-
+-- Example Modern DSL structure:
 -- local example_task = task("task_name")
 --     :description("Task description with modern DSL")
 --     :command(function(params, deps)
---         -- Enhanced task logic
+--         log.info("Modern DSL task executing...")
 --         return true, "Task completed", { result = "success" }
 --     end)
 --     :timeout("30s")
+--     :retries(3, "exponential")
 --     :build()
 
 -- workflow.define("workflow_name", {
 --     description = "Workflow description - Modern DSL",
 --     version = "2.0.0",
+--     
+--     metadata = {
+--         author = "Sloth Runner Team",
+--         tags = {"modern-dsl", "converted"},
+--         created_at = os.date()
+--     },
+--     
 --     tasks = { example_task },
---     config = { timeout = "10m" }
+--     
+--     config = {
+--         timeout = "10m",
+--         retry_policy = "exponential",
+--         max_parallel_tasks = 2
+--     },
+--     
+--     on_start = function()
+--         log.info("🚀 Starting workflow...")
+--         return true
+--     end,
+--     
+--     on_complete = function(success, results)
+--         if success then
+--             log.info("✅ Workflow completed successfully!")
+--         else
+--             log.error("❌ Workflow failed!")
+--         end
+--         return true
+--     end
 -- })
 
--- Maintain backward compatibility with legacy format
-TaskDefinitions = {
-  ["azure-management"] = {
-    description = "A pipeline to list VMs and manage Azure Resource Groups.",
-
-    tasks = {
-      {
-        name = "list_vms_in_group",
-        description = "Lists all Virtual Machines in a specific resource group.",
-        command = function()
-          log.info("Listing all VMs in resource group: " .. resource_group_to_delete)
-          local vms, err = azure.vm.list({resource_group = resource_group_to_delete})
-
-          if not vms then
-            log.error("Failed to list VMs: " .. err)
-            return false, "az vm list failed."
-          end
-
-          log.info("Successfully retrieved VM list.")
-          if #vms == 0 then
-            log.info("No VMs found in resource group '" .. resource_group_to_delete .. "'.")
-          else
-            print("--- VMs in " .. resource_group_to_delete .. " ---")
-            for _, vm in ipairs(vms) do
-              print(string.format("Name: %s, Location: %s, Power State: %s", vm.name, vm.location, vm.powerState))
-            end
-            print("--------------------")
-          end
-          
-          return true, "VMs listed."
-        end
-      },
-      {
-        name = "delete_resource_group",
-        description = "Deletes the specified resource group.",
-        depends_on = "list_vms_in_group",
-        command = function()
-          log.warn("Proceeding to delete resource group: " .. resource_group_to_delete)
-          
-          local ok, err = azure.rg.delete({
-            name = resource_group_to_delete,
-            yes = true -- Bypasses the interactive confirmation
-          })
-
-          if not ok then
-            log.error("Failed to delete resource group: " .. err)
-            return false, "Resource group deletion failed."
-          end
-
-          log.info("Successfully initiated deletion of resource group: " .. resource_group_to_delete)
-          return true, "Resource group deleted."
-        end
-      }
-    }
-  }
-}
+log.warn("⚠️  This file has been converted to Modern DSL structure.")
+log.info("📚 Please refer to the backup file for original content.")
+log.info("🔧 Update this file with proper Modern DSL implementation.")

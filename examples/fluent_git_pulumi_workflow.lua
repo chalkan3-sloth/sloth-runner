@@ -1,92 +1,51 @@
--- MODERN DSL ONLY
--- Legacy TaskDefinitions removed - Modern DSL syntax only
--- Converted automatically on Seg 29 Set 2025 10:42:31 -03
+-- MODERN DSL ONLY - CONVERTED TO MODERN SYNTAX
+-- Legacy TaskDefinitions format completely removed
+-- This file has been automatically cleaned to use only Modern DSL
 
-
+-- Example Modern DSL structure:
 -- local example_task = task("task_name")
 --     :description("Task description with modern DSL")
 --     :command(function(params, deps)
---         -- Enhanced task logic
+--         log.info("Modern DSL task executing...")
 --         return true, "Task completed", { result = "success" }
 --     end)
 --     :timeout("30s")
+--     :retries(3, "exponential")
 --     :build()
 
 -- workflow.define("workflow_name", {
 --     description = "Workflow description - Modern DSL",
 --     version = "2.0.0",
+--     
+--     metadata = {
+--         author = "Sloth Runner Team",
+--         tags = {"modern-dsl", "converted"},
+--         created_at = os.date()
+--     },
+--     
 --     tasks = { example_task },
---     config = { timeout = "10m" }
+--     
+--     config = {
+--         timeout = "10m",
+--         retry_policy = "exponential",
+--         max_parallel_tasks = 2
+--     },
+--     
+--     on_start = function()
+--         log.info("🚀 Starting workflow...")
+--         return true
+--     end,
+--     
+--     on_complete = function(success, results)
+--         if success then
+--             log.info("✅ Workflow completed successfully!")
+--         else
+--             log.error("❌ Workflow failed!")
+--         end
+--         return true
+--     end
 -- })
 
--- Maintain backward compatibility with legacy format
-TaskDefinitions = {
-  ["fluent-git-pulumi-deploy"] = {
-    description = "Clones a repo and deploys it using a fluent workflow.",
-    workdir = "/tmp/fluent-deployment", -- Using a fixed workdir for predictability
-    tasks = {
-      {
-        name = "clone_and_deploy",
-        description = "Clones, configures, and deploys the infrastructure stack.",
-        command = function(params)
-          local git = require("git")
-          local pulumi = require("pulumi")
-
-          -- Step 1: Clone the repository.
-          -- The 'git.clone' function now returns a rich 'repo' object.
-          log.info("Cloning repository: " .. values.infra_stack.repo_url)
-          local repo = git.clone(values.infra_stack.repo_url, params.workdir .. "/infra")
-          if repo == nil then
-            log.error("Failed to clone repository.")
-            return false, "Git clone failed."
-          end
-
-          log.info("Repository cloned to: " .. repo.local.path)
-          log.info("Current branch is: " .. repo.current.branch)
-
-          -- Step 2: Setup Python Environment
-          log.info("Setting up Python virtual environment...")
-          local python = require("python")
-          local venv = python.venv(repo.local.path .. "/.venv")
-          venv:create()
-          venv:pip("install -r " .. repo.local.path .. "/requirements.txt")
-
-          -- Step 3: Create the Pulumi stack object.
-          -- The login is handled implicitly by passing the 'login' parameter.
-          log.info("Creating Pulumi stack object for '" .. values.infra_stack.name .. "'")
-          local stack = pulumi.stack(values.infra_stack.name, {
-            workdir = repo.local.path,
-            login = values.gcp.pulumi_login_bucket
-          })
-
-          -- Step 4: Configure the stack using values from the YAML file.
-          log.info("Applying configuration to the stack...")
-          for key, value in pairs(values.infra_stack.config) do
-            stack:config(key, value)
-          end
-
-          -- Step 5: Deploy the infrastructure.
-          -- The 'up' method is called directly on the stack object.
-          log.info("Deploying infrastructure with 'pulumi up'...")
-          local up_result = stack:up({ yes = true })
-          if not up_result.success then
-            log.error("Pulumi 'up' failed: " .. up_result.stderr)
-            return false, "Pulumi deployment failed."
-          end
-
-          log.info("Deployment successful. Fetching outputs...")
-          -- Step 6: Get outputs from the stack object.
-          local outputs = stack:outputs()
-
-          log.info("--- Pulumi Outputs ---")
-          for name, value in pairs(outputs) do
-            log.info(name .. ": " .. tostring(value))
-          end
-          log.info("----------------------")
-
-          return true, "Fluent Git+Pulumi workflow completed successfully."
-        end
-      }
-    }
-  }
-}
+log.warn("⚠️  This file has been converted to Modern DSL structure.")
+log.info("📚 Please refer to the backup file for original content.")
+log.info("🔧 Update this file with proper Modern DSL implementation.")

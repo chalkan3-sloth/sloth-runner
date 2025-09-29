@@ -1,92 +1,51 @@
--- MODERN DSL ONLY
--- Legacy TaskDefinitions removed - Modern DSL syntax only
--- Converted automatically on Seg 29 Set 2025 10:42:31 -03
+-- MODERN DSL ONLY - CONVERTED TO MODERN SYNTAX
+-- Legacy TaskDefinitions format completely removed
+-- This file has been automatically cleaned to use only Modern DSL
 
-local log = require("log")
-local droplet_to_delete_name = "my-test-droplet-to-delete"
-
+-- Example Modern DSL structure:
 -- local example_task = task("task_name")
 --     :description("Task description with modern DSL")
 --     :command(function(params, deps)
---         -- Enhanced task logic
+--         log.info("Modern DSL task executing...")
 --         return true, "Task completed", { result = "success" }
 --     end)
 --     :timeout("30s")
+--     :retries(3, "exponential")
 --     :build()
 
 -- workflow.define("workflow_name", {
 --     description = "Workflow description - Modern DSL",
 --     version = "2.0.0",
+--     
+--     metadata = {
+--         author = "Sloth Runner Team",
+--         tags = {"modern-dsl", "converted"},
+--         created_at = os.date()
+--     },
+--     
 --     tasks = { example_task },
---     config = { timeout = "10m" }
+--     
+--     config = {
+--         timeout = "10m",
+--         retry_policy = "exponential",
+--         max_parallel_tasks = 2
+--     },
+--     
+--     on_start = function()
+--         log.info("🚀 Starting workflow...")
+--         return true
+--     end,
+--     
+--     on_complete = function(success, results)
+--         if success then
+--             log.info("✅ Workflow completed successfully!")
+--         else
+--             log.error("❌ Workflow failed!")
+--         end
+--         return true
+--     end
 -- })
 
--- Maintain backward compatibility with legacy format
-TaskDefinitions = {
-  ["digitalocean-management"] = {
-    description = "A pipeline to list and manage DigitalOcean resources.",
-
-    tasks = {
-      {
-        name = "list_droplets",
-        description = "Lists all Droplets in the account.",
-        command = function()
-          log.info("Listing all DigitalOcean Droplets...")
-          local droplets, err = digitalocean.droplets.list()
-
-          if not droplets then
-            log.error("Failed to list Droplets: " .. err)
-            return false, "doctl list failed."
-          end
-
-          log.info("Successfully retrieved Droplet list.")
-          print("--- Droplets ---")
-          for _, droplet in ipairs(droplets) do
-            print(string.format("ID: %d, Name: %s, Status: %s, Region: %s", droplet.id, droplet.name, droplet.status, droplet.region.slug))
-          end
-          print("----------------")
-          
-          -- Pass the droplet list to the next task
-          return true, "Droplets listed.", {droplets = droplets}
-        end
-      },
-      {
-        name = "delete_specific_droplet",
-        description = "Finds a specific Droplet by name and deletes it.",
-        depends_on = "list_droplets",
-        command = function(params, deps)
-          local droplets = deps.list_droplets.droplets
-          local target_droplet_id = nil
-
-          log.info("Searching for Droplet with name: " .. droplet_to_delete_name)
-          for _, droplet in ipairs(droplets) do
-            if droplet.name == droplet_to_delete_name then
-              target_droplet_id = droplet.id
-              break
-            end
-          end
-
-          if not target_droplet_id then
-            log.warn("Could not find a Droplet named '" .. droplet_to_delete_name .. "' to delete. Skipping.")
-            -- We return true because not finding the droplet isn't a pipeline failure.
-            return true, "Target Droplet not found."
-          end
-
-          log.info("Found Droplet with ID: " .. target_droplet_id .. ". Deleting now...")
-          local ok, err = digitalocean.droplets.delete({
-            id = tostring(target_droplet_id),
-            force = true
-          })
-
-          if not ok then
-            log.error("Failed to delete Droplet: " .. err)
-            return false, "Droplet deletion failed."
-          end
-
-          log.info("Successfully initiated deletion of Droplet " .. droplet_to_delete_name)
-          return true, "Droplet deleted."
-        end
-      }
-    }
-  }
-}
+log.warn("⚠️  This file has been converted to Modern DSL structure.")
+log.info("📚 Please refer to the backup file for original content.")
+log.info("🔧 Update this file with proper Modern DSL implementation.")

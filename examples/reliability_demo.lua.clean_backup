@@ -1,0 +1,423 @@
+-- MODERN DSL ONLY
+-- Legacy TaskDefinitions removed - Modern DSL syntax only
+-- Converted automatically on Seg 29 Set 2025 10:42:31 -03
+
+
+-- local example_task = task("task_name")
+--     :description("Task description with modern DSL")
+--     :command(function(params, deps)
+--         -- Enhanced task logic
+--         return true, "Task completed", { result = "success" }
+--     end)
+--     :timeout("30s")
+--     :build()
+
+-- workflow.define("workflow_name", {
+--     description = "Workflow description - Modern DSL",
+--     version = "2.0.0",
+--     tasks = { example_task },
+--     config = { timeout = "10m" }
+-- })
+
+-- Maintain backward compatibility with legacy format
+TaskDefinitions = {
+    reliability_demo = {
+        description = "Comprehensive demonstration of enterprise reliability features",
+        tasks = {
+            -- Task 1: Basic Retry Logic
+            basic_retry_demo = {
+                name = "basic_retry_demo",
+                description = "Demonstrates basic retry functionality",
+                command = function()
+                    log.info("=== Basic Retry Demo ===")
+                    
+                    local attempt_count = 0
+                    
+                    -- Simple retry with exponential backoff
+                    local result = reliability.retry(3, 1, function()
+                        attempt_count = attempt_count + 1
+                        log.info("Attempt " .. attempt_count)
+                        
+                        -- Simulate failure on first two attempts
+                        if attempt_count < 3 then
+                            return nil, "Simulated failure " .. attempt_count
+                        end
+                        
+                        return "Success on attempt " .. attempt_count
+                    end)
+                    
+                    if result then
+                        log.info("Retry result: " .. result)
+                    else
+                        log.error("All retry attempts failed")
+                    end
+                    
+                    return true, "Basic retry demo completed"
+                end,
+            },
+            
+            -- Task 2: Advanced Retry Configuration
+            advanced_retry_demo = {
+                name = "advanced_retry_demo",
+                description = "Demonstrates advanced retry configuration",
+                depends_on = "basic_retry_demo",
+                command = function()
+                    log.info("=== Advanced Retry Demo ===")
+                    
+                    local config = {
+                        max_attempts = 5,
+                        initial_delay = 0.5,  -- 500ms
+                        max_delay = 10,       -- 10 seconds max
+                        strategy = reliability.strategy.EXPONENTIAL_BACKOFF,
+                        multiplier = 1.5,
+                        jitter = true,
+                        on_retry = function(attempt, delay, error)
+                            log.warn("Retry attempt " .. attempt .. " after " .. delay .. "s delay. Error: " .. error)
+                        end
+                    }
+                    
+                    local attempt_count = 0
+                    
+                    local result = reliability.retry_with_config(config, function()
+                        attempt_count = attempt_count + 1
+                        
+                        -- Simulate network-like failures
+                        if attempt_count <= 3 then
+                            local errors = {
+                                "Connection timeout",
+                                "Network unreachable", 
+                                "Service temporarily unavailable"
+                            }
+                            return nil, errors[attempt_count]
+                        end
+                        
+                        return {
+                            data = "Retrieved data successfully",
+                            attempts = attempt_count,
+                            timestamp = os.time()
+                        }
+                    end)
+                    
+                    if result then
+                        log.info("Advanced retry result: " .. data.to_json(result))
+                    end
+                    
+                    return true, "Advanced retry demo completed"
+                end,
+            },
+            
+            -- Task 3: Circuit Breaker Demo
+            circuit_breaker_demo = {
+                name = "circuit_breaker_demo", 
+                description = "Demonstrates circuit breaker pattern",
+                depends_on = "advanced_retry_demo",
+                command = function()
+                    log.info("=== Circuit Breaker Demo ===")
+                    
+                    local cb_config = {
+                        max_failures = 3,
+                        timeout = 5,  -- 5 seconds
+                        success_threshold = 2,
+                        on_state_change = function(from_state, to_state)
+                            log.info("Circuit breaker state changed: " .. from_state .. " -> " .. to_state)
+                        end
+                    }
+                    
+                    -- Simulate service calls that will fail initially
+                    local call_count = 0
+                    
+                    -- First, cause failures to open the circuit
+                    for i = 1, 4 do
+                        call_count = call_count + 1
+                        
+                        local result, error = reliability.circuit_breaker("external_service", cb_config, function()
+                            log.info("Making service call #" .. call_count)
+                            
+                            -- Simulate failures for first 6 calls
+                            if call_count <= 6 then
+                                return nil, "Service unavailable (call " .. call_count .. ")"
+                            end
+                            
+                            return "Service call successful (call " .. call_count .. ")"
+                        end)
+                        
+                        if result then
+                            log.info("Call " .. i .. " result: " .. result)
+                        else
+                            log.error("Call " .. i .. " failed: " .. (error or "unknown error"))
+                        end
+                        
+                        -- Small delay between calls
+                        exec.run("sleep 0.1")
+                    end
+                    
+                    -- Check circuit breaker stats
+                    local stats = reliability.get_circuit_stats("external_service")
+                    if stats then
+                        log.info("Circuit breaker stats: " .. data.to_json(stats))
+                    end
+                    
+                    return true, "Circuit breaker demo completed"
+                end,
+            },
+            
+            -- Task 4: State-Backed Failure Tracking
+            state_backed_reliability = {
+                name = "state_backed_reliability",
+                description = "Demonstrates using state for failure tracking across runs",
+                depends_on = "circuit_breaker_demo",
+                command = function()
+                    log.info("=== State-Backed Reliability Demo ===")
+                    
+                    -- Track failures in persistent state
+                    local service_name = "critical_service"
+                    local failure_key = "failures:" .. service_name
+                    local success_key = "successes:" .. service_name
+                    
+                    -- Get current failure count
+                    local current_failures = tonumber(state.get(failure_key, "0"))
+                    log.info("Current failure count for " .. service_name .. ": " .. current_failures)
+                    
+                    -- Simulate service call with state tracking
+                    local simulate_call = function()
+                        local random_fail = math.random(1, 100) <= 30 -- 30% failure rate
+                        
+                        if random_fail then
+                            -- Increment failure counter atomically
+                            local new_failures = state.increment(failure_key, 1)
+                            log.warn("Service call failed. Total failures: " .. new_failures)
+                            
+                            -- If too many failures, return error
+                            if new_failures >= 5 then
+                                return nil, "Service degraded - too many failures"
+                            end
+                            
+                            return nil, "Temporary service failure"
+                        else
+                            -- Reset failure counter on success and increment success counter
+                            state.set(failure_key, "0")
+                            local successes = state.increment(success_key, 1)
+                            log.info("Service call successful. Total successes: " .. successes)
+                            return "Service response data"
+                        end
+                    end
+                    
+                    -- Try multiple calls with state-based circuit breaking
+                    for i = 1, 8 do
+                        log.info("Service call attempt " .. i)
+                        
+                        local current_failures = tonumber(state.get(failure_key, "0"))
+                        
+                        if current_failures >= 5 then
+                            log.error("Service circuit opened due to persistent failures")
+                            break
+                        end
+                        
+                        local result, error = simulate_call()
+                        
+                        if result then
+                            log.info("Call " .. i .. " successful: " .. result)
+                        else
+                            log.error("Call " .. i .. " failed: " .. (error or "unknown"))
+                        end
+                        
+                        exec.run("sleep 0.2")
+                    end
+                    
+                    -- Show final statistics
+                    local final_failures = state.get(failure_key, "0")
+                    local final_successes = state.get(success_key, "0")
+                    
+                    log.info("Final statistics:")
+                    log.info("  Failures: " .. final_failures)
+                    log.info("  Successes: " .. final_successes)
+                    
+                    return true, "State-backed reliability demo completed"
+                end,
+            },
+            
+            -- Task 5: Distributed Lock with Retry
+            distributed_lock_demo = {
+                name = "distributed_lock_demo",
+                description = "Demonstrates distributed locking with retry logic",
+                depends_on = "state_backed_reliability", 
+                command = function()
+                    log.info("=== Distributed Lock with Retry Demo ===")
+                    
+                    local resource_name = "critical_resource"
+                    local lock_name = "lock:" .. resource_name
+                    
+                    -- Simulate competing for a lock with retry
+                    local retry_config = {
+                        max_attempts = 5,
+                        initial_delay = 0.5,
+                        strategy = reliability.strategy.LINEAR_BACKOFF,
+                        multiplier = 1.2,
+                        on_retry = function(attempt, delay, error)
+                            log.warn("Lock acquisition retry " .. attempt .. " in " .. delay .. "s")
+                        end
+                    }
+                    
+                    local result = reliability.retry_with_config(retry_config, function()
+                        -- Try to acquire lock with short timeout
+                        local acquired = state.try_lock(lock_name, 2) -- 2 second timeout
+                        
+                        if not acquired then
+                            return nil, "Lock is held by another process"
+                        end
+                        
+                        log.info("Lock acquired, performing critical work...")
+                        
+                        -- Simulate critical work
+                        local work_start = os.time()
+                        exec.run("sleep 1")
+                        local work_end = os.time()
+                        
+                        -- Update work statistics in state
+                        local work_count = state.increment("work_counter", 1)
+                        local total_time = state.increment("total_work_time", work_end - work_start)
+                        
+                        log.info("Work completed. Session #" .. work_count .. ", Total time: " .. total_time .. "s")
+                        
+                        -- Release lock
+                        local released = state.unlock(lock_name)
+                        if released then
+                            log.info("Lock released successfully")
+                        else
+                            log.warn("Failed to release lock (may have expired)")
+                        end
+                        
+                        return {
+                            work_session = work_count,
+                            duration = work_end - work_start,
+                            total_sessions = work_count
+                        }
+                    end)
+                    
+                    if result then
+                        log.info("Critical section completed: " .. data.to_json(result))
+                    else
+                        log.error("Failed to acquire lock after all retries")
+                    end
+                    
+                    return true, "Distributed lock demo completed"
+                end,
+            },
+            
+            -- Task 6: Combined Reliability Patterns
+            combined_patterns_demo = {
+                name = "combined_patterns_demo",
+                description = "Demonstrates combining multiple reliability patterns",
+                depends_on = "distributed_lock_demo",
+                command = function()
+                    log.info("=== Combined Reliability Patterns Demo ===")
+                    
+                    -- Scenario: Deploy with circuit breaker, retry, and state tracking
+                    local deployment_id = "deploy_" .. os.time()
+                    
+                    -- Circuit breaker for deployment service
+                    local cb_config = {
+                        max_failures = 2,
+                        timeout = 3,
+                        success_threshold = 1,
+                        on_state_change = function(from, to)
+                            state.append("deployment_events", 
+                                "CB state change: " .. from .. " -> " .. to .. " at " .. os.time(), 
+                                "\n")
+                        end
+                    }
+                    
+                    -- Retry config for deployment steps
+                    local retry_config = {
+                        max_attempts = 3,
+                        initial_delay = 1,
+                        strategy = reliability.strategy.EXPONENTIAL_BACKOFF,
+                        multiplier = 2.0,
+                        on_retry = function(attempt, delay, error)
+                            state.append("deployment_events",
+                                "Retry " .. attempt .. " in " .. delay .. "s: " .. error,
+                                "\n")
+                        end
+                    }
+                    
+                    -- Deployment steps with combined reliability patterns
+                    local deployment_steps = {
+                        "validate_config",
+                        "backup_current", 
+                        "deploy_new_version",
+                        "run_health_checks",
+                        "switch_traffic"
+                    }
+                    
+                    state.set("deployment_status:" .. deployment_id, "started")
+                    
+                    local step_results = {}
+                    
+                    for i, step in ipairs(deployment_steps) do
+                        log.info("Executing deployment step: " .. step)
+                        
+                        -- Execute with circuit breaker protection and retry
+                        local result = reliability.retry_with_config(retry_config, function()
+                            return reliability.circuit_breaker("deployment_service", cb_config, function()
+                                
+                                -- Simulate step execution with some failure probability
+                                local success_rate = 0.7 + (i * 0.05) -- Later steps more likely to succeed
+                                local random = math.random()
+                                
+                                if random > success_rate then
+                                    return nil, step .. " failed (random: " .. random .. ")"
+                                end
+                                
+                                -- Simulate work time
+                                local work_time = math.random(1, 3)
+                                exec.run("sleep " .. work_time)
+                                
+                                return {
+                                    step = step,
+                                    duration = work_time,
+                                    success = true,
+                                    timestamp = os.time()
+                                }
+                            end)
+                        end)
+                        
+                        if result then
+                            log.info("Step '" .. step .. "' completed successfully")
+                            step_results[step] = result
+                            
+                            -- Update progress in state
+                            local progress = math.floor((i / #deployment_steps) * 100)
+                            state.set("deployment_progress:" .. deployment_id, progress)
+                            
+                        else
+                            log.error("Step '" .. step .. "' failed after all retries")
+                            state.set("deployment_status:" .. deployment_id, "failed_at_" .. step)
+                            
+                            -- Log failure details
+                            state.append("deployment_events",
+                                "DEPLOYMENT FAILED at step: " .. step .. " at " .. os.time(),
+                                "\n")
+                            
+                            return false, "Deployment failed at step: " .. step
+                        end
+                    end
+                    
+                    -- Mark deployment as successful
+                    state.set("deployment_status:" .. deployment_id, "completed")
+                    state.set("deployment_progress:" .. deployment_id, 100)
+                    
+                    -- Log final results
+                    log.info("Deployment " .. deployment_id .. " completed successfully!")
+                    log.info("Step results: " .. data.to_json(step_results))
+                    
+                    -- Show deployment events log
+                    local events = state.get("deployment_events", "No events recorded")
+                    log.info("Deployment Events Log:")
+                    log.info(events)
+                    
+                    return true, "Combined reliability patterns demo completed"
+                end,
+            }
+        }
+    }
+}

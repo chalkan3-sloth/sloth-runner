@@ -186,14 +186,20 @@ workflow.define("hello_world", {
 
 ---
 
-## 🌟 Examples Showcase
+## 🌟 **Modern DSL Examples - Complete Collection**
 
-### 🟢 **Beginner Examples**
+### 🟢 **Beginner Examples** - 100% Modern DSL
 ```bash
-# Modern hello world
+# Hello World with Modern DSL
 ./sloth-runner run -f examples/beginner/hello-world.lua
 
-# Basic data processing
+# Simple state management
+./sloth-runner run -f examples/simple_state_test.lua
+
+# Basic exec module testing
+./sloth-runner run -f examples/exec_test.lua
+
+# Simple pipeline processing
 ./sloth-runner run -f examples/basic_pipeline.lua
 ```
 
@@ -202,14 +208,29 @@ workflow.define("hello_world", {
 # Parallel execution with modern async
 ./sloth-runner run -f examples/parallel_execution.lua
 
-# Circuit breaker patterns
+# Conditional execution and logic
 ./sloth-runner run -f examples/conditional_execution.lua
+
+# Enhanced pipeline with modern features
+./sloth-runner run -f examples/basic_pipeline_modern.lua
+
+# Terraform infrastructure management
+./sloth-runner run -f examples/terraform_example.lua
 ```
 
 ### 🔴 **Advanced Examples**
 ```bash
-# Enterprise CI/CD pipeline
-./sloth-runner run -f examples/advanced/ci-cd-modern.lua
+# Advanced state management
+./sloth-runner run -f examples/state_management_demo.lua
+
+# Enterprise reliability patterns
+./sloth-runner run -f examples/reliability_demo.lua
+```
+
+### 🌍 **Real-World Examples**
+```bash
+# Complete CI/CD pipeline
+./sloth-runner run -f examples/real-world/nodejs-cicd.lua
 
 # Microservices deployment
 ./sloth-runner run -f examples/real-world/microservices-deploy.lua
