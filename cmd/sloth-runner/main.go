@@ -26,6 +26,7 @@ import (
 
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
 	"github.com/chalkan3-sloth/sloth-runner/internal/taskrunner"
+	"github.com/chalkan3-sloth/sloth-runner/internal/ui"
 	pb "github.com/chalkan3-sloth/sloth-runner/proto"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -101,6 +102,72 @@ var versionCmd = &cobra.Command{
 		fmt.Printf("sloth-runner version %s\n", version)
 		fmt.Printf("Git commit: %s\n", commit)
 		fmt.Printf("Build date: %s\n", date)
+	},
+}
+
+var uiCmd = &cobra.Command{
+	Use:   "ui",
+	Short: "Start the web-based UI dashboard",
+	Long:  `Starts a web-based dashboard for managing tasks, agents, and monitoring the sloth-runner system.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		port, _ := cmd.Flags().GetInt("port")
+		daemon, _ := cmd.Flags().GetBool("daemon")
+		debug, _ := cmd.Flags().GetBool("debug")
+
+		if debug {
+			pterm.DefaultLogger.Level = pterm.LogLevelDebug
+			slog.SetDefault(slog.New(pterm.NewSlogHandler(&pterm.DefaultLogger)))
+			pterm.Debug.Println("Debug mode enabled for UI server.")
+		}
+
+		if daemon {
+			pidFile := filepath.Join(".", "sloth-runner-ui.pid")
+			if _, err := os.Stat(pidFile); err == nil {
+				pidBytes, err := os.ReadFile(pidFile)
+				if err == nil {
+					pid, _ := strconv.Atoi(string(pidBytes))
+					if process, err := os.FindProcess(pid); err == nil {
+						if err := processSignal(process, syscall.Signal(0)); err == nil {
+							cmd.Printf("UI server is already running with PID %d.\n", pid)
+							return nil
+						}
+					}
+				}
+				os.Remove(pidFile)
+			}
+
+			command := execCommand(os.Args[0], "ui", "--port", strconv.Itoa(port))
+			stdoutFile, err := os.OpenFile("ui.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+			if err != nil {
+				return fmt.Errorf("failed to open ui.log for stdout: %w", err)
+			}
+			defer stdoutFile.Close()
+			command.Stdout = stdoutFile
+
+			stderrFile, err := os.OpenFile("ui.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+			if err != nil {
+				return fmt.Errorf("failed to open ui.log for stderr: %w", err)
+			}
+			defer stderrFile.Close()
+			command.Stderr = stderrFile
+
+			if err := command.Start(); err != nil {
+				return fmt.Errorf("failed to start UI server process: %w", err)
+			}
+
+			if err := os.WriteFile(pidFile, []byte(strconv.Itoa(command.Process.Pid)), 0644); err != nil {
+				return fmt.Errorf("failed to write PID file: %w", err)
+			}
+
+			cmd.Printf("UI server started with PID %d.\n", command.Process.Pid)
+			cmd.Printf("Access the dashboard at: http://localhost:%d\n", port)
+			return nil
+		}
+
+		server := ui.NewServer()
+		pterm.Success.Printf("Starting Sloth Runner UI Dashboard on port %d\n", port)
+		pterm.Info.Printf("Open your browser and navigate to: http://localhost:%d\n", port)
+		return server.Start(port)
 	},
 }
 
@@ -871,6 +938,12 @@ func init() {
 
 	// Version command
 	rootCmd.AddCommand(versionCmd)
+
+	// UI command
+	rootCmd.AddCommand(uiCmd)
+	uiCmd.Flags().IntP("port", "p", 8080, "The port for the UI server to listen on")
+	uiCmd.Flags().Bool("daemon", false, "Run the UI server as a daemon")
+	uiCmd.Flags().Bool("debug", false, "Enable debug logging for the UI server")
 }
 
 func Execute() error {
