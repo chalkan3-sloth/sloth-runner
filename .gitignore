@@ -4,8 +4,6 @@
 *.so
 *.dylib
 *.o
-*.mod
-*.sum
 *.test
 *.prof
 
@@ -31,12 +29,33 @@ node_modules/
 # Build outputs
 dist/
 build/
+artifacts/
 
 # Environment variables
 .env
 .env.*
 
-# Specific to sloth-runner
-sloth-runner-arm64
-sloth-runner-minimal-arm64
-master.log
+# Temporary files
+*.tmp
+*.temp
+.cache/
+.sloth-cache/
+
+# Documentation build
+site/
+
+# Binary outputs
+sloth-runner
+sloth-runner.exe
+sloth-runner-*
+
+# Test coverage
+coverage.out
+coverage.html
+
+# Release artifacts
+releases/
+
+# Local testing
+test_output/
+temp/

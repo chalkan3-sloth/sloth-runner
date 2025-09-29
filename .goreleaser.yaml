@@ -33,6 +33,30 @@ release:
   draft: false
   prerelease: auto
   footer: |
+    ## 🦥 Sloth Runner Enterprise Edition
+
+    ### 📦 Downloads
+    
+    Choose the appropriate binary for your platform:
+    - **Linux AMD64**: `sloth-runner_v{{ .Version }}_linux_amd64.tar.gz` (with SQLite support)
+    - **macOS AMD64**: `sloth-runner_v{{ .Version }}_darwin_amd64.tar.gz` (SQLite disabled)
+    - **macOS ARM64**: `sloth-runner_v{{ .Version }}_darwin_arm64.tar.gz` (SQLite disabled)
+    
+    ### 🚀 Quick Install
+    ```bash
+    # Linux/macOS
+    curl -L https://github.com/chalkan3/sloth-runner/releases/latest/download/sloth-runner_v{{ .Version }}_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/').tar.gz | tar xz
+    chmod +x sloth-runner
+    sudo mv sloth-runner /usr/local/bin/
+    ```
+    
+    ### 📚 Documentation
+    - [📖 Getting Started](https://chalkan3.github.io/sloth-runner/en/quick-start/)
+    - [🌐 Multilingual Docs](https://chalkan3.github.io/sloth-runner/)
+    - [💾 State Management](https://chalkan3.github.io/sloth-runner/en/modules/state/)
+    - [📊 Metrics & Monitoring](https://chalkan3.github.io/sloth-runner/en/modules/metrics/)
+
+    **Full Changelog**: https://github.com/chalkan3/sloth-runner/compare/{{ .PreviousTag }}...{{ .Tag }}
 
 builds:
   - id: linux-amd64
@@ -91,9 +115,6 @@ archives:
 checksum:
   name_template: "{{ .ProjectName }}_v{{ .Version }}_checksums.txt"
 
-snapshot:
-  version_template: "{{ .ProjectName }}_snapshot_{{ .Version }}_{{ .ShortCommit }}"
-
 changelog:
   sort: asc
   use: github
@@ -112,37 +133,3 @@ changelog:
       order: 1
     - title: Others
       order: 999
-
-release:
-  github:
-    owner: chalkan3
-    name: sloth-runner
-  name_template: "🚀 sloth-runner v{{ .Version }}"
-  mode: replace
-  draft: false
-  prerelease: auto
-  footer: |
-    ## 🦥 Sloth Runner Enterprise Edition
-
-    ### 📦 Downloads
-    
-    Choose the appropriate binary for your platform:
-    - **Linux AMD64**: `sloth-runner_v{{ .Version }}_linux_amd64.tar.gz` (with SQLite support)
-    - **macOS AMD64**: `sloth-runner_v{{ .Version }}_darwin_amd64.tar.gz` (SQLite disabled)
-    - **macOS ARM64**: `sloth-runner_v{{ .Version }}_darwin_arm64.tar.gz` (SQLite disabled)
-    
-    ### 🚀 Quick Install
-    ```bash
-    # Linux/macOS
-    curl -L https://github.com/chalkan3/sloth-runner/releases/latest/download/sloth-runner_v{{ .Version }}_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/').tar.gz | tar xz
-    chmod +x sloth-runner
-    sudo mv sloth-runner /usr/local/bin/
-    ```
-    
-    ### 📚 Documentation
-    - [📖 Getting Started](https://chalkan3.github.io/sloth-runner/en/quick-start/)
-    - [🌐 Multilingual Docs](https://chalkan3.github.io/sloth-runner/)
-    - [💾 State Management](https://chalkan3.github.io/sloth-runner/en/modules/state/)
-    - [📊 Metrics & Monitoring](https://chalkan3.github.io/sloth-runner/en/modules/metrics/)
-
-    **Full Changelog**: https://github.com/chalkan3/sloth-runner/compare/{{ .PreviousTag }}...{{ .Tag }}

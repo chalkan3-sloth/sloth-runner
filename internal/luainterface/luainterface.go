@@ -349,11 +349,15 @@ func RegisterAllModules(L *lua.LState) {
 
 	// Register extended modules from other files
 	OpenGit(L)
-	OpenPulumi(L)
 	OpenPython(L)
 	OpenGCP(L)
 	OpenAWS(L)
-	OpenSalt(L)
+	
+	// Register advanced infrastructure modules
+	L.PreloadModule("salt", NewSaltModule().Loader)
+	L.PreloadModule("pulumi", NewPulumiModule().Loader)
+	L.PreloadModule("terraform", NewTerraformModule().Loader)
+	
 	// Register state module
 	L.PreloadModule("state", StateLoader)
 	OpenMetrics(L)
