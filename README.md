@@ -221,6 +221,12 @@ sloth-runner run -f workflow.lua        # Execute workflows
 sloth-runner run --interactive          # Interactive task selection
 sloth-runner ui                         # Start web dashboard
 
+# 🆔 NEW: Stack Management (Pulumi-style)
+sloth-runner run my-stack -f workflow.lua --output enhanced  # Run with stack
+sloth-runner stack list                                      # List all stacks  
+sloth-runner stack show my-stack                            # Show stack details
+sloth-runner list -f workflow.lua                          # List tasks with IDs
+
 # Distributed execution
 sloth-runner master                     # Start master server
 sloth-runner agent start --name agent1  # Start agent
