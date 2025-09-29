@@ -354,7 +354,8 @@ func RegisterAllModules(L *lua.LState) {
 	OpenGCP(L)
 	OpenAWS(L)
 	OpenSalt(L)
-	OpenState(L)
+	// Register state module
+	L.PreloadModule("state", StateLoader)
 	OpenMetrics(L)
 	
 	// Register Modern DSL
