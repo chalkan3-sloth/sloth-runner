@@ -50,7 +50,7 @@ You can make your `values.yaml` files more dynamic by using Go template syntax t
 
     ```lua
     -- my_task.lua
-    TaskDefinitions = {
+    Modern DSLs = {
       my_group = {
         tasks = {
           {

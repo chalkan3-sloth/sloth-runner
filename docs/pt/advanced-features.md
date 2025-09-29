@@ -50,7 +50,7 @@ O `sloth-runner` processa o `values.yaml` como um modelo Go, disponibilizando qu
 
     ```lua
     -- my_task.lua
-    TaskDefinitions = {
+    Modern DSLs = {
       my_group = {
         tasks = {
           {

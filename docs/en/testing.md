@@ -10,7 +10,7 @@ You can run a test file using the `sloth-runner test` command. It requires two m
 sloth-runner test -w <path_to_workflow.lua> -f <path_to_test_file.lua>
 ```
 
--   `-w, --workflow`: Specifies the path to the main `TaskDefinitions` file that you want to test.
+-   `-w, --workflow`: Specifies the path to the main `Modern DSLs` file that you want to test.
 -   `-f, --file`: Specifies the path to your test file.
 
 ## Writing Tests

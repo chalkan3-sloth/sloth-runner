@@ -92,7 +92,7 @@ command = function()
     return true, "Comandos da API fluente do Salt e 'ls -la' executados com sucesso."
 end
 
-TaskDefinitions = {
+Modern DSLs = {
     test_fluent_salt = {
         description = "Demonstrates using the 'salt' module for SaltStack orchestration.",
         tasks = {

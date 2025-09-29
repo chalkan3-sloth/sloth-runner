@@ -52,7 +52,7 @@ Valida a sintaxe e a estrutura de um arquivo de tarefas Lua.
 **Uso:** `sloth-runner validate [flags]`
 
 **Descrição:**
-O comando `validate` verifica um arquivo de tarefas Lua quanto a erros de sintaxe e garante que a tabela `TaskDefinitions` esteja corretamente estruturada.
+O comando `validate` verifica um arquivo de tarefas Lua quanto a erros de sintaxe e garante que a tabela `Modern DSLs` esteja corretamente estruturada.
 
 **Flags:**
 

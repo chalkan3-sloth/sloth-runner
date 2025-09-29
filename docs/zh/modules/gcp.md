@@ -25,7 +25,7 @@
 ```lua
 -- examples/gcp_cli_example.lua
 
-TaskDefinitions = {
+Modern DSLs = {
   main = {
     description = "一个列出 GCP 计算实例的任务。",
     tasks = {

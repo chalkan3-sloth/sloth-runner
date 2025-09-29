@@ -28,7 +28,7 @@
 ```lua
 -- examples/exec_module_example.lua
 
-TaskDefinitions = {
+Modern DSLs = {
   main = {
     description = "一个演示 exec 模块的任务。",
     tasks = {

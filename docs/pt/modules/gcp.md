@@ -25,7 +25,7 @@ Este exemplo define uma tarefa que lista todas as instâncias do Compute Engine 
 ```lua
 -- examples/gcp_cli_example.lua
 
-TaskDefinitions = {
+Modern DSLs = {
   main = {
     description = "Uma tarefa para listar instâncias de computação do GCP.",
     tasks = {

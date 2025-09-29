@@ -6,7 +6,7 @@ This document explains the fundamental concepts of `sloth-runner` using the **Mo
 
 ## Modern DSL Overview
 
-The Modern DSL replaces the legacy `TaskDefinitions` approach with a more intuitive, fluent API for defining workflows. Instead of large table structures, you now use chainable methods to build tasks and define workflows declaratively.
+The Modern DSL replaces the legacy `Modern DSLs` approach with a more intuitive, fluent API for defining workflows. Instead of large table structures, you now use chainable methods to build tasks and define workflows declaratively.
 
 ```lua
 -- my_pipeline.lua - Modern DSL
@@ -66,7 +66,7 @@ local my_task = task("task_name")
 
 **Example:**
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
   my_group = {
     description = "A group that manages its own temporary directory.",
     create_workdir_before_run = true,
@@ -149,7 +149,7 @@ This is useful for CI/CD pipelines where a build step might generate a binary (t
 ### Artifacts Example
 
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
   ["ci-pipeline"] = {
     description = "Demonstrates the use of artifacts.",
     create_workdir_before_run = true,
@@ -196,7 +196,7 @@ Loads another Lua file and returns the value it returns. This is the primary mec
 -- Import a module that returns a table of task definitions
 local docker_tasks = import("shared/docker.lua")
 
-TaskDefinitions = {
+Modern DSLs = {
   main = {
     tasks = {
       {

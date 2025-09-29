@@ -1,6 +1,6 @@
 # 📚 Modern DSL Migration Guide
 
-This guide helps you migrate from the legacy `TaskDefinitions` format to the new Modern DSL syntax.
+This guide helps you migrate from the legacy `Modern DSLs` format to the new Modern DSL syntax.
 
 ## 🎯 Migration Strategy
 
@@ -8,7 +8,7 @@ This guide helps you migrate from the legacy `TaskDefinitions` format to the new
 
 #### Legacy Format Structure
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
     workflow_name = {
         description = "Workflow description",
         tasks = {
@@ -202,7 +202,7 @@ local enhanced_task = task("enhanced_deploy")
 
 **Before (Legacy):**
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
     ci_pipeline = {
         description = "CI/CD Pipeline",
         tasks = { task1, task2, task3 }
@@ -305,7 +305,7 @@ end
 
 **Before (Legacy):**
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
     microservice_deployment = {
         description = "Deploy microservice to Kubernetes",
         tasks = {

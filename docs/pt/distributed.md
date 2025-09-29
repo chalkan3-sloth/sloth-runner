@@ -15,10 +15,10 @@ Para executar uma tarefa em um agente remoto, você precisa especificar o campo 
 
 ### 1. Delegar a um Agente no Nível do Grupo de Tarefas
 
-Você pode definir o agente diretamente dentro do seu grupo `TaskDefinitions` usando o campo `delegate_to`. Todas as tarefas dentro deste grupo serão então delegadas a este agente, a menos que sejam substituídas por um `delegate_to` específico da tarefa.
+Você pode definir o agente diretamente dentro do seu grupo `Modern DSLs` usando o campo `delegate_to`. Todas as tarefas dentro deste grupo serão então delegadas a este agente, a menos que sejam substituídas por um `delegate_to` específico da tarefa.
 
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
   my_distributed_group = {
     description = "Um grupo de tarefas com tarefas distribuídas.",
     delegate_to = { address = "localhost:50051" }, -- Define o agente para todo o grupo
@@ -42,7 +42,7 @@ TaskDefinitions = {
 Alternativamente, você pode especificar o campo `delegate_to` diretamente em uma tarefa individual. Isso substituirá qualquer delegação em nível de grupo ou permitirá a execução remota ad-hoc.
 
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
   my_group = {
     description = "Um grupo de tarefas com uma tarefa remota específica.",
     tasks = {

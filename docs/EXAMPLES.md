@@ -29,7 +29,7 @@ This example demonstrates how to use the `sloth-runner new` command with the `--
 -- This file is generated using 'sloth-runner new' with the --set flag.
 -- It demonstrates how to inject dynamic data into templates.
 
-TaskDefinitions = {
+Modern DSLs = {
   ["templated-task"] = {
     description = "A task group generated with dynamic data.",
     tasks = {

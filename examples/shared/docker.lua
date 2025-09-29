@@ -1,44 +1,84 @@
--- CONVERTED TO MODERN DSL
--- Legacy TaskDefinitions format has been completely removed
--- This file now uses only Modern DSL syntax
+-- MODERN DSL ONLY - Converted from legacy Modern DSLs format
+-- Converted from legacy Modern DSL format
+-- Category: general, Complexity: basic
 
--- Example task using Modern DSL:
-local converted_task = task("converted_task")
-    :description("Converted from legacy TaskDefinitions")
+-- Main task using Modern DSL
+local main_task = task("docker_task")
+    :description("Converted from legacy Modern DSLs format")
     :command(function(params, deps)
-        log.info("Modern DSL: Task converted from legacy format")
-        -- Add your specific task logic here from the backup file
-        return true, "Task completed", {}
+        log.info("🚀 Executing docker with Modern DSL...")
+        
+        -- TODO: Replace with actual implementation from original file
+        -- Original logic should be migrated here
+        
+        return true, "Task completed successfully", {
+            task_name = "docker",
+            execution_time = os.time(),
+            status = "success"
+        }
     end)
-    :timeout("30s")
+    :timeout("5m")
+    :retries(2, "exponential")
+    :on_success(function(params, output)
+        log.info("✅ docker task completed successfully")
+    end)
+    :on_failure(function(params, error)
+        log.error("❌ docker task failed: " .. error)
+    end)
     :build()
 
--- Modern workflow definition:
-workflow.define("converted_workflow", {
-    description = "Converted from legacy TaskDefinitions format",
+-- Additional tasks can be added here following the same pattern
+-- local secondary_task = task("docker_secondary")
+--     :description("Secondary task for docker")
+--     :depends_on({"docker_task"})
+--     :command(function(params, deps)
+--         -- Secondary logic here
+--         return true, "Secondary task completed", {}
+--     end)
+--     :build()
+
+-- Modern Workflow Definition
+workflow.define("docker_workflow", {
+    description = "Converted from legacy Modern DSLs format - Modern DSL",
     version = "2.0.0",
     
     metadata = {
-        tags = {"converted", "modern-dsl", "legacy-migration"},
-        migration_date = os.date()
+        author = "Sloth Runner Team",
+        category = "general",
+        complexity = "basic",
+        tags = {"docker", "modern-dsl", "general"},
+        created_at = os.date(),
+        migrated_from = "Modern DSL format"
     },
     
-    tasks = { converted_task },
+    tasks = {
+        main_task
+        -- Add additional tasks here
+    },
+    
+    config = {
+        timeout = "15m",
+        retry_policy = "exponential",
+        max_parallel_tasks = 2,
+        cleanup_on_failure = true
+    },
     
     on_start = function()
-        log.info("Starting converted workflow...")
+        log.info("🚀 Starting docker workflow...")
         return true
     end,
     
     on_complete = function(success, results)
         if success then
-            log.info("Converted workflow completed successfully!")
+            log.info("✅ docker workflow completed successfully!")
         else
-            log.error("Converted workflow failed!")
+            log.error("❌ docker workflow failed!")
         end
         return true
     end
 })
 
--- NOTE: Original legacy code is preserved in .pre_modern_backup file
--- Please review and migrate specific tasks as needed
+-- Migration Note:
+-- This file has been converted from legacy Modern DSL format to Modern DSL
+-- TODO: Review and implement the original logic in the Modern DSL structure above
+-- Original backup saved as docker.lua.backup

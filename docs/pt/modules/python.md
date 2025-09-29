@@ -51,7 +51,7 @@ Este exemplo demonstra um ciclo de vida completo: criar um ambiente virtual, ins
 ```lua
 -- examples/python_venv_lifecycle_example.lua
 
-TaskDefinitions = {
+Modern DSLs = {
   main = {
     description = "Uma tarefa para demonstrar o ciclo de vida de um venv Python.",
     create_workdir_before_run = true, -- Usa um diretório de trabalho temporário

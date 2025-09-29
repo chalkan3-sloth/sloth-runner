@@ -57,7 +57,7 @@ Create your first Lua task file:
 ```bash
 # Create a simple task file
 cat > hello-world.lua << 'EOF'
-TaskDefinitions = {
+Modern DSLs = {
     hello_world = {
         description = "My first Sloth Runner task",
         tasks = {
@@ -206,7 +206,7 @@ wait
 
 ```lua
 -- Create state-demo.lua
-TaskDefinitions = {
+Modern DSLs = {
     state_demo = {
         description = "Demonstrate state management capabilities",
         tasks = {
@@ -309,7 +309,7 @@ sloth-runner run -f state-demo.lua
 
 ```lua
 -- Create metrics-demo.lua  
-TaskDefinitions = {
+Modern DSLs = {
     metrics_demo = {
         description = "Demonstrate metrics and monitoring",
         tasks = {

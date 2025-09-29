@@ -4,13 +4,13 @@
 
 ---
 
-## `TaskDefinitions` 表
+## `Modern DSLs` 表
 
-任何 `sloth-runner` 工作流的入口点都是一个返回名为 `TaskDefinitions` 的全局 Lua 表的 Lua 文件。此表是一个字典，其中每个键都是一个 **任务组** 名称。
+任何 `sloth-runner` 工作流的入口点都是一个返回名为 `Modern DSLs` 的全局 Lua 表的 Lua 文件。此表是一个字典，其中每个键都是一个 **任务组** 名称。
 
 ```lua
 -- my_pipeline.lua
-TaskDefinitions = {
+Modern DSLs = {
   -- 在此处定义任务组
 }
 ```
@@ -30,7 +30,7 @@ TaskDefinitions = {
 
 **示例:**
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
   my_group = {
     description = "一个管理自己临时目录的组。",
     create_workdir_before_run = true,
@@ -113,7 +113,7 @@ Sloth-Runner 允许任务通过工件机制相互共享文件。一个任务可�
 ### 工件示例
 
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
   ["ci-pipeline"] = {
     description = "演示工件的使用。",
     create_workdir_before_run = true,
@@ -160,7 +160,7 @@ TaskDefinitions = {
 -- 导入一个返回任务定义表的模块
 local docker_tasks = import("shared/docker.lua")
 
-TaskDefinitions = {
+Modern DSLs = {
   main = {
     tasks = {
       {
