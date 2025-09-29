@@ -23,6 +23,7 @@ func NewPulumiModule() *PulumiModule {
 func (mod *PulumiModule) Loader(L *lua.LState) int {
 	pulumiTable := L.NewTable()
 	L.SetFuncs(pulumiTable, map[string]lua.LGFunction{
+		"stack":           mod.pulumiStack,
 		"new_stack":       mod.pulumiNewStack,
 		"select_stack":    mod.pulumiSelectStack,
 		"list_stacks":     mod.pulumiListStacks,
@@ -50,6 +51,11 @@ func (mod *PulumiModule) Loader(L *lua.LState) int {
 	})
 	L.Push(pulumiTable)
 	return 1
+}
+
+// pulumiStack creates or selects a Pulumi stack (alias for new_stack)
+func (mod *PulumiModule) pulumiStack(L *lua.LState) int {
+	return mod.pulumiNewStack(L)
 }
 
 // pulumiNewStack creates a new Pulumi stack
@@ -742,4 +748,10 @@ func (mod *PulumiModule) executePulumiCommand(workdir string, env map[string]str
 		}
 		return "", fmt.Errorf("pulumi command timed out after %v", timeout)
 	}
+}
+
+// PulumiLoader loads the pulumi module for Lua
+func PulumiLoader(L *lua.LState) int {
+	mod := NewPulumiModule()
+	return mod.Loader(L)
 }

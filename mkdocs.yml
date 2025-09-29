@@ -1,5 +1,5 @@
-site_name: 🦥 Sloth Runner - Enterprise Task Orchestration Platform
-site_description: 'A powerful, flexible, and scalable task orchestration platform built with Go and Lua. Features state management, distributed agents, real-time monitoring, and enterprise-grade reliability.'
+site_name: 🦥 Sloth Runner - AI-Powered GitOps Task Orchestration Platform
+site_description: 'The world''s first AI-powered task orchestration platform with native GitOps capabilities. Features intelligent optimization, predictive analytics, automated deployments, and enterprise-grade reliability.'
 site_author: 'Sloth Runner Team'
 site_url: 'https://sloth-runner.dev'
 
@@ -156,11 +156,34 @@ nav:
       - '🛠️ Installation': 'en/getting-started.md'
       - '🧠 Core Concepts': 'en/core-concepts.md'
       - '⚡ Quick Tutorial': 'en/quick-start.md'
+    - '🌟 Revolutionary Features':
+      - '🤖 AI-Powered Intelligence': 'en/ai-features.md'
+      - '🔄 GitOps Native': 'en/gitops-features.md'
+      - '🧬 Modern DSL': 'en/modern-dsl.md'
+      - '🏢 Enterprise Features': 'en/enterprise-features.md'
+      - '⚛️ Quantum Computing': 'en/quantum-features.md'
+      - '🎮 Metaverse & VR Control': 'en/metaverse-features.md'
+      - '🌌 Multiverse Execution': 'en/multiverse-features.md'
+      - '🧬 Bio-Inspired Computing': 'en/bio-features.md'
+      - '🔗 Blockchain Integration': 'en/blockchain-features.md'
     - '📖 User Guide':
       - '💻 CLI Commands': 'en/CLI.md'
       - '🔄 Interactive REPL': 'en/repl.md'
       - '🎯 Advanced Features': 'en/advanced-features.md'
       - '📝 Examples': 'en/advanced-examples.md'
+    - '🤖 AI Intelligence':
+      - '🧠 AI Overview': 'en/ai/overview.md'
+      - '⚡ Smart Optimization': 'en/ai/optimization.md'
+      - '🔮 Failure Prediction': 'en/ai/prediction.md'
+      - '📊 Performance Analytics': 'en/ai/analytics.md'
+      - '🎯 Best Practices': 'en/ai/best-practices.md'
+    - '🔄 GitOps Workflows':
+      - '🌊 GitOps Overview': 'en/gitops/overview.md'
+      - '🚀 Quick Setup': 'en/gitops/quick-setup.md'
+      - '🔍 Diff & Preview': 'en/gitops/diff-preview.md'
+      - '🛡️ Rollback Strategies': 'en/gitops/rollback.md'
+      - '🏢 Multi-Environment': 'en/gitops/multi-env.md'
+      - '☸️ Kubernetes Integration': 'en/gitops/kubernetes.md'
     - '🌐 Distributed System':
       - '🏗️ Master-Agent Architecture': 'en/master-agent-architecture.md'
       - '🤖 Agent Management': 'en/agent-management.md'
@@ -171,6 +194,15 @@ nav:
     - '🔧 API & Modules':
       - '🌙 Lua API Overview': 'en/lua-api-overview.md'
       - '📦 Built-in Modules':
+        - '🤖 AI Intelligence': 'en/modules/ai.md'
+        - '🔄 GitOps': 'en/modules/gitops.md'
+        - '⚛️ Quantum Computing': 'en/modules/quantum.md'
+        - '🌌 Multiverse': 'en/modules/multiverse.md'
+        - '🎮 Metaverse & VR': 'en/modules/metaverse.md'
+        - '🧬 Bio Computing': 'en/modules/bio.md'
+        - '🔗 Blockchain': 'en/modules/blockchain.md'
+        - '🔮 Time Travel': 'en/modules/timetravel.md'
+        - '🤖 Autonomous': 'en/modules/autonomous.md'
         - '💾 State Management': 'en/modules/state.md'
         - '📊 Metrics & Monitoring': 'en/modules/metrics.md'
         - '⚡ Exec': 'en/modules/exec.md'
