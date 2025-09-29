@@ -1,29 +1,465 @@
 [English](./README.md) | [Português](./README.pt.md) | [中文](./README.zh.md)
 
-# 🦥 Sloth Runner 🚀
+# 🦥 Sloth Runner
 
-A next-generation flexible and extensible task runner application written in Go, powered by **Modern DSL** Lua scripting. `sloth-runner` allows you to define complex workflows, manage task dependencies, and integrate with external systems through an intuitive **Modern DSL**.
+A **modern task orchestration platform** built with Go and powered by **Lua scripting**. Sloth Runner provides a fluent Modern DSL for defining complex workflows, distributed execution capabilities, and comprehensive automation tools for DevOps teams.
+
+**Sloth Runner** simplifies task automation with its intuitive Lua-based DSL, distributed master-agent architecture, and extensive built-in modules for common DevOps operations.
 
 [![Go CI](https://github.com/chalkan3-sloth/sloth-runner/actions/workflows/ci.yml/badge.svg)](https://github.com/chalkan3-sloth/sloth-runner/actions/workflows/ci.yml)
+[![Go Version](https://img.shields.io/badge/Go-1.24+-blue.svg)](https://golang.org/)
+[![Lua Powered](https://img.shields.io/badge/Lua-Powered-purple.svg)](https://www.lua.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
 ---
 
-## ✨ Key Features
+## ✨ **Key Features**
 
-### 🎯 **Modern DSL (Domain Specific Language) - Only**
-*   **🔮 Fluent API:** Define tasks using intuitive, chainable methods
-*   **📋 Workflow Definition:** Declarative workflow configuration with metadata
-*   **🔄 Enhanced Features:** Built-in retry strategies, circuit breakers, and advanced patterns
-*   **🛡️ Type Safety:** Better validation and error detection
-*   **📊 Rich Metadata:** Comprehensive task and workflow information
-*   **🧹 Clean Syntax:** Single, consistent syntax (legacy format removed)
+### 🎯 **Modern DSL (Domain Specific Language)**
+*Clean, powerful Lua-based syntax for complex workflows*
 
-### 🏗️ **Core Capabilities**
-*   **📜 Modern DSL Only:** Clean, powerful syntax without legacy baggage
-*   **🔗 Advanced Dependency Management:** Smart dependency resolution with conditional execution
-*   **⚡ Enhanced Async Execution:** Parallel task execution with modern async patterns
-*   **🪝 Lifecycle Hooks:** Rich pre/post-execution hooks with enhanced error handling
-*   **🎯 Circuit Breakers:** Built-in resilience patterns for external dependencies
+```lua
+-- Define tasks with fluent API
+local build_task = task("build_application")
+    :description("Build the Go application")
+    :command(function(params, deps)
+        log.info("🔨 Building application...")
+        return exec.run("go build -o app ./cmd/main.go")
+    end)
+    :timeout("5m")
+    :retries(3, "exponential")
+    :on_success(function(params, output)
+        log.info("✅ Build completed successfully!")
+    end)
+    :build()
+
+-- Define workflows with metadata
+workflow.define("ci_pipeline", {
+    description = "Continuous Integration Pipeline",
+    version = "1.0.0",
+    tasks = { build_task, test_task, deploy_task },
+    
+    config = {
+        timeout = "30m",
+        max_parallel_tasks = 3
+    }
+})
+```
+
+### 🌐 **Distributed Master-Agent Architecture**
+*Scale task execution across multiple machines*
+
+- **Master Server:** Central orchestration and control
+- **Agents:** Lightweight workers on remote machines  
+- **gRPC Communication:** Reliable, high-performance communication
+- **Load Balancing:** Intelligent task distribution
+- **Health Monitoring:** Real-time agent status tracking
+
+### 💾 **Advanced State Management**
+*Persistent state with SQLite backend and advanced features*
+
+```lua
+-- Persistent state operations
+state.set("deployment_count", 1, 3600) -- TTL of 1 hour
+local count = state.increment("deployment_count")
+
+-- Atomic operations
+state.compare_swap("status", "deploying", "deployed")
+
+-- Distributed locks
+state.with_lock("deployment_lock", function()
+    -- Critical section - only one task can execute this
+    return deploy_application()
+end, 30) -- 30 second timeout
+```
+
+### 🔧 **Rich Lua Module Ecosystem**
+*Comprehensive built-in modules for common operations*
+
+- **`exec`**: Execute shell commands with enhanced error handling
+- **`fs`**: File system operations with validation
+- **`net`**: HTTP client with retry and timeout support
+- **`data`**: JSON/YAML processing and validation
+- **`log`**: Structured logging with context
+- **`state`**: Persistent state management
+- **`async`**: Parallel execution and modern async patterns
+- **`utils`**: Configuration management and utilities
+
+## 🚀 **Quick Start**
+
+### Installation
+
+```bash
+# Install latest version
+curl -sSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/main/install.sh | bash
+
+# Or download from releases
+wget https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner-linux-amd64.tar.gz
+
+# Or build from source
+go install github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner@latest
+```
+
+### Hello World Example
+
+Create your first workflow with the Modern DSL:
+
+```lua
+-- hello-world.lua
+local hello_task = task("say_hello")
+    :description("Simple hello world demonstration")
+    :command(function(params)
+        log.info("🌟 Hello World from Sloth Runner!")
+        log.info("📅 Current time: " .. os.date())
+        
+        return true, "echo 'Hello, Modern Sloth Runner!'", {
+            message = "Hello World",
+            timestamp = os.time(),
+            status = "success"
+        }
+    end)
+    :timeout("30s")
+    :on_success(function(params, output)
+        log.info("✅ Hello World task completed successfully!")
+        log.info("💬 Message: " .. output.message)
+    end)
+    :build()
+
+-- Define the workflow
+workflow.define("hello_world_workflow", {
+    description = "Simple Hello World demonstration",
+    version = "1.0.0",
+    tasks = { hello_task },
+    
+    config = {
+        timeout = "5m",
+        max_parallel_tasks = 1
+    }
+})
+```
+
+```bash
+# Run the workflow
+./sloth-runner run -f hello-world.lua
+```
+
+### Basic Pipeline Example
+
+```lua
+-- pipeline.lua
+-- Task 1: Fetch data
+local fetch_data = task("fetch_data")
+    :description("Fetches raw data from an API")
+    :command(function(params)
+        log.info("🔄 Fetching data...")
+        return true, "echo 'Fetched raw data'", { 
+            raw_data = "api_data",
+            source = "external_api" 
+        }
+    end)
+    :timeout("30s")
+    :build()
+
+-- Task 2: Process data (depends on fetch_data)
+local process_data = task("process_data")
+    :description("Processes the fetched data")
+    :depends_on({"fetch_data"})
+    :command(function(params, deps)
+        local raw_data = deps.fetch_data.raw_data
+        log.info("🔧 Processing data: " .. raw_data)
+        
+        return true, "echo 'Processed data'", { 
+            processed_data = "processed_" .. raw_data 
+        }
+    end)
+    :build()
+
+-- Task 3: Store result
+local store_result = task("store_result")
+    :description("Stores the processed data")
+    :depends_on({"process_data"})
+    :command(function(params, deps)
+        local final_data = deps.process_data.processed_data
+        log.info("💾 Storing result: " .. final_data)
+        
+        -- Store in state for persistence
+        state.set("last_result", final_data, 3600) -- 1 hour TTL
+        
+        return true, "echo 'Data stored successfully'"
+    end)
+    :build()
+
+-- Define the complete pipeline
+workflow.define("data_pipeline", {
+    description = "Data Processing Pipeline",
+    version = "1.0.0",
+    tasks = { fetch_data, process_data, store_result },
+    
+    config = {
+        timeout = "10m",
+        max_parallel_tasks = 2
+    }
+})
+```
+
+### 🏢 **Enterprise & Production Features**
+*Production-ready capabilities for enterprise environments*
+
+- **🔒 Security:** RBAC, secrets management, and audit logging
+- **📊 Monitoring:** Metrics, health checks, and observability  
+- **⏰ Scheduler:** Cron-based with dependency-aware scheduling
+- **📦 Artifacts:** Versioned artifacts with metadata and retention
+- **🛡️ Reliability:** Circuit breakers and failure handling patterns
+- **🌐 Clustering:** Master-agent architecture with load balancing
+
+### 💻 **Modern CLI Interface**
+*Comprehensive command-line interface for all operations*
+
+```bash
+# Core commands
+sloth-runner run -f workflow.lua        # Execute workflows
+sloth-runner run --interactive          # Interactive task selection
+sloth-runner ui                         # Start web dashboard
+
+# Distributed execution
+sloth-runner master                     # Start master server
+sloth-runner agent start --name agent1  # Start agent
+sloth-runner agent list                 # List all agents
+sloth-runner agent run agent1 "command" # Execute on specific agent
+
+# Utilities
+sloth-runner scheduler enable           # Enable task scheduler
+sloth-runner scheduler list             # List scheduled tasks
+sloth-runner version                    # Show version information
+```
+
+## 🌟 **Advanced Examples**
+
+### Complete CI/CD Pipeline
+
+```lua
+-- ci-cd-pipeline.lua
+local test_task = task("run_tests")
+    :description("Run application tests")
+    :command(function(params, deps)
+        log.info("🧪 Running tests...")
+        local result = exec.run("go test ./...")
+        if not result.success then
+            return false, "Tests failed: " .. result.stderr
+        end
+        return true, result.stdout, { test_results = "passed" }
+    end)
+    :timeout("10m")
+    :build()
+
+local build_task = task("build_app")
+    :description("Build application")
+    :depends_on({"run_tests"})
+    :command(function(params, deps)
+        log.info("🔨 Building application...")
+        return exec.run("go build -o app ./cmd/main.go")
+    end)
+    :artifacts({"app"})
+    :build()
+
+local docker_task = task("build_docker")
+    :description("Build Docker image")
+    :depends_on({"build_app"})
+    :command(function(params, deps)
+        local tag = params.image_tag or "latest"
+        log.info("🐳 Building Docker image with tag: " .. tag)
+        
+        local result = exec.run("docker build -t myapp:" .. tag .. " .")
+        if result.success then
+            state.set("docker_image", "myapp:" .. tag, 86400) -- 24 hours
+        end
+        return result.success, result.stdout
+    end)
+    :build()
+
+local deploy_task = task("deploy_app")
+    :description("Deploy to production")
+    :depends_on({"build_docker"})
+    :run_if(function(params, deps)
+        -- Only deploy if all tests passed and image is built
+        return deps.run_tests.test_results == "passed" and 
+               state.exists("docker_image")
+    end)
+    :command(function(params, deps)
+        local image = state.get("docker_image")
+        log.info("🚀 Deploying image: " .. image)
+        
+        -- Deploy with rollback capability
+        local result = exec.run("kubectl set image deployment/myapp app=" .. image)
+        if result.success then
+            -- Wait for rollout
+            exec.run("kubectl rollout status deployment/myapp --timeout=300s")
+        end
+        return result.success, result.stdout
+    end)
+    :on_failure(function(params, error)
+        log.error("❌ Deployment failed, rolling back...")
+        exec.run("kubectl rollout undo deployment/myapp")
+    end)
+    :build()
+
+workflow.define("ci_cd_pipeline", {
+    description = "Complete CI/CD Pipeline",
+    version = "1.0.0",
+    
+    metadata = {
+        author = "DevOps Team",
+        tags = {"ci", "cd", "production"}
+    },
+    
+    tasks = { test_task, build_task, docker_task, deploy_task },
+    
+    config = {
+        timeout = "45m",
+        max_parallel_tasks = 2,
+        fail_fast = true
+    },
+    
+    on_complete = function(success, results)
+        if success then
+            log.info("🎉 CI/CD Pipeline completed successfully!")
+            -- Send notification
+            net.post("https://hooks.slack.com/webhook", {
+                text = "✅ Deployment successful for commit " .. (os.getenv("GIT_COMMIT") or "unknown")
+            })
+        else
+            log.error("❌ CI/CD Pipeline failed!")
+        end
+        return true
+    end
+})
+```
+
+### Distributed Task Execution
+
+```lua
+-- distributed-workflow.lua
+local web_deploy = task("deploy_web_servers")
+    :description("Deploy to web servers")
+    :agent_selector("web-server-*")  -- Select agents matching pattern
+    :command(function(params, deps)
+        log.info("🌐 Deploying to web server: " .. params.agent_name)
+        return exec.run("docker pull myapp:latest && docker-compose up -d")
+    end)
+    :parallel(true)  -- Run on all matching agents in parallel
+    :build()
+
+local db_migrate = task("run_db_migrations")
+    :description("Run database migrations")
+    :agent_selector("db-server-1")  -- Run only on specific agent
+    :command(function(params, deps)
+        log.info("🗄️ Running database migrations...")
+        return exec.run("./migrate.sh --env=production")
+    end)
+    :build()
+
+local health_check = task("verify_deployment")
+    :description("Verify deployment health")
+    :depends_on({"deploy_web_servers", "run_db_migrations"})
+    :command(function(params, deps)
+        log.info("🏥 Checking application health...")
+        
+        local health_url = "http://loadbalancer:8080/health"
+        local response = net.get(health_url, {timeout = 30})
+        
+        if response.status_code == 200 then
+            log.info("✅ Health check passed!")
+            return true, "Health check successful"
+        else
+            log.error("❌ Health check failed!")
+            return false, "Health check failed: " .. response.status_code
+        end
+    end)
+    :retries(3, "exponential")
+    :build()
+
+workflow.define("distributed_deployment", {
+    description = "Distributed Application Deployment",
+    version = "1.0.0",
+    tasks = { web_deploy, db_migrate, health_check },
+    
+    config = {
+        timeout = "30m",
+        require_all_agents = false  -- Continue even if some agents are offline
+    }
+})
+```
+
+## 📚 **Documentation**
+
+- **🚀 [Getting Started](docs/getting-started.md)** - Complete setup and first steps
+- **📖 [Modern DSL Reference](docs/LUA_API.md)** - Complete language and API reference  
+- **🏗️ [Architecture Guide](docs/distributed.md)** - Master-agent architecture details
+- **🧪 [Examples](docs/EXAMPLES.md)** - Real-world usage examples and patterns
+- **🔧 [Advanced Features](docs/advanced-features.md)** - Enterprise capabilities
+- **📊 [State Management](docs/state.md)** - Persistent state and data handling
+- **🛡️ [Security Guide](docs/security.md)** - RBAC, secrets, and audit logging
+- **📈 [Monitoring](docs/monitoring.md)** - Metrics, health checks, and observability
+
+## 🎯 **Why Choose Sloth Runner?**
+
+### 💡 **Developer Experience**
+- **📝 Clean, intuitive syntax** with Modern DSL fluent API
+- **🧪 Interactive development** with REPL and comprehensive testing
+- **📚 Extensive documentation** with real-world examples
+- **🔧 Rich ecosystem** of 15+ built-in Lua modules
+
+### 🏢 **Enterprise Ready**
+- **🔒 Production-grade security** with RBAC and secrets management
+- **📊 Comprehensive monitoring** with metrics and health checks
+- **🌐 Distributed architecture** with reliable master-agent topology  
+- **⚡ High performance** with parallel execution and state persistence
+
+### 🚀 **Modern Architecture**
+- **🎯 Modern DSL only** - no legacy syntax or backwards compatibility issues
+- **💾 Advanced state management** with SQLite persistence and TTL
+- **🔄 Intelligent retry logic** with exponential backoff and circuit breakers
+- **🪝 Rich lifecycle hooks** for comprehensive workflow control
+
+## 🤝 **Community & Support**
+
+- **📖 [Documentation](https://github.com/chalkan3-sloth/sloth-runner/tree/main/docs)** - Comprehensive guides and references
+- **🐛 [Issue Tracker](https://github.com/chalkan3-sloth/sloth-runner/issues)** - Report bugs and request features
+- **💡 [Discussions](https://github.com/chalkan3-sloth/sloth-runner/discussions)** - Ideas and general discussions
+- **🏢 [Enterprise Support](mailto:enterprise@sloth-runner.dev)** - Commercial support and services
+
+## 📈 **Project Status**
+
+### ✅ **Current Features (Stable)**
+- ✅ Modern DSL with fluent API
+- ✅ Distributed master-agent architecture
+- ✅ Advanced state management with SQLite
+- ✅ Rich Lua module ecosystem (exec, fs, net, data, log, etc.)
+- ✅ Enterprise features (RBAC, monitoring, scheduling)
+- ✅ Comprehensive CLI interface
+- ✅ Template system and scaffolding tools
+
+### 🚧 **In Development**
+- 🔄 Enhanced web UI with real-time monitoring
+- 🔄 Additional cloud provider integrations
+- 🔄 Advanced workflow visualization
+- 🔄 Performance optimizations
+
+### 🔮 **Planned Features**
+- 📋 Workflow versioning and rollback
+- 🔗 Integration with popular CI/CD platforms
+- 📊 Advanced analytics and reporting
+- 🎯 Custom plugin system
+
+## 📄 **License**
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+**🦥 Sloth Runner** - *Modern task orchestration made simple*
+
+*Built with ❤️ by the Sloth Runner Team*
 
 ### 🌟 **Modern DSL Examples**
 
@@ -188,7 +624,9 @@ workflow.define("hello_world", {
 
 ## 🌟 **Modern DSL Examples - Complete Collection**
 
-### 🟢 **Beginner Examples** - 100% Modern DSL
+## 📁 **Example Workflows**
+
+### 🟢 **Beginner Examples**
 ```bash
 # Hello World with Modern DSL
 ./sloth-runner run -f examples/beginner/hello-world.lua
@@ -238,7 +676,7 @@ workflow.define("hello_world", {
 
 ---
 
-## 🤝 Contributing
+## 🤝 **Contributing**
 
 We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for:
 - Modern DSL development guidelines
@@ -248,539 +686,4 @@ We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md)
 
 ---
 
-## 🎉 What's New in Modern DSL
 
-- **🎯 Fluent API**: Intuitive, chainable task definitions
-- **📋 Workflow Metadata**: Rich workflow information and versioning
-- **🔄 Enhanced Retry**: Built-in exponential backoff and circuit breakers
-- **⚡ Async Patterns**: Modern parallel execution and timeouts
-- **📊 Monitoring**: Integrated performance metrics and observability
-- **🛡️ Type Safety**: Better validation and error prevention
-- **🎨 Better UX**: More readable and maintainable code
-- **🧹 Clean Syntax**: Single, powerful syntax without legacy overhead
-
-Join us in the next generation of workflow automation! 🚀
-
-## 🚀 Getting Started
-
-### Installation
-
-To install `sloth-runner` on your system, you can use the provided `install.sh` script. This script automatically detects your operating system and architecture, downloads the latest release from GitHub, and places the `sloth-runner` executable in `/usr/local/bin`.
-
-```bash
-bash <(curl -sL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/install.sh)
-```
-
-**Note:** The `install.sh` script requires `sudo` privileges to move the executable to `/usr/local/bin`.
-
-### Basic Usage
-
-To run a Lua task file:
-
-```bash
-sloth-runner run -f examples/basic_pipeline.lua
-```
-
-To list the tasks in a file:
-
-```bash
-sloth-runner list -f examples/basic_pipeline.lua
-```
-
----
-
-## 📜 Defining Tasks in Modern DSL
-
-Tasks are defined using the Modern DSL builder pattern within workflows. Each task uses the fluent API with methods like `:description()`, `:command()`, `:timeout()`, `:depends_on()`, etc.
-
-Example (`examples/basic_pipeline.lua`):
-
-```lua
--- Import reusable tasks from another file. The path is relative.
-local docker_tasks = import("examples/shared/docker.lua")
-
--- Task 1: Fetch data with modern async execution
-local fetch_data = task("fetch_data")
-    :description("Fetches raw data from an API")
-    :command(function(params)
-        log.info("🔄 Fetching data...")
-        -- Simulates an API call with circuit breaker protection
-        return circuit.protect("external_api", function()
-            return true, "echo 'Fetched raw data'", { raw_data = "api_data" }
-        end)
-    end)
-    :async(true)
-    :timeout("30s")
-    :retries(3, "exponential")
-    :build()
-
--- Task 2: Flaky task with enhanced retry logic
-local flaky_task = task("flaky_task")
-    :description("This task fails intermittently and will retry")
-    :command(function()
-        if math.random() > 0.5 then
-            log.info("✅ Flaky task succeeded.")
-            return true, "echo 'Success!'"
-        else
-            log.error("❌ Flaky task failed, will retry...")
-            return false, "Random failure"
-        end
-    end)
-    :retries(3, "exponential")
-    :on_failure(function(params, error)
-        log.warn("Retry attempt failed: " .. error)
-    end)
-    :build()
-
--- Task 3: Process data with dependency injection
-local process_data = task("process_data")
-    :description("Processes the fetched data")
-    :depends_on({"fetch_data", "flaky_task"})
-    :command(function(params, deps)
-        local raw_data = deps.fetch_data.raw_data
-        log.info("🔧 Processing data: " .. raw_data)
-        return true, "echo 'Processed data'", { 
-            processed_data = "processed_" .. raw_data 
-        }
-    end)
-    :build()
-
--- Task 4: Long-running task with timeout
-local long_running_task = task("long_running_task")
-    :description("A task that will be terminated if it runs too long")
-    :command("echo 'Starting long task...'; sleep 10; echo 'This will not be printed.';")
-    :timeout("5s")
-    :on_timeout(function()
-        log.warn("⏰ Task timed out as expected")
-    end)
-    :build()
-
--- Task 5: Cleanup task with conditional execution
-local cleanup_on_fail = task("cleanup_on_fail")
-    :description("Runs only if the long-running task fails")
-    :depends_on({"long_running_task"})
-    :run_if(function(params, deps)
-        return not deps.long_running_task.success
-    end)
-    :command("echo 'Cleanup task executed due to previous failure.'")
-    :build()
-
--- Task 6: Reusable task usage
-local build_image = task("build_image")
-    :description("Builds the application's Docker image")
-    :command(function()
-        return docker_tasks.build({
-            image_name = "my-awesome-app",
-            tag = "v1.2.3",
-            context = "./app_context"
-        })
-    end)
-    :artifacts({"docker-image"})
-    :build()
-
--- Task 7: Conditional deployment
-local conditional_deploy = task("conditional_deploy")
-    :description("Deploys the application only if the build artifact exists")
-    :depends_on({"build_image"})
-    :run_if("test -f ./app_context/artifact.txt")
-    :command("echo 'Deploying application...'")
-    :build()
-
--- Task 8: Gatekeeper with abort condition
-local gatekeeper_check = task("gatekeeper_check")
-    :description("Aborts the workflow if a critical condition is not met")
-    :command("echo 'This command will not be executed if aborted.'")
-    :abort_if(function(params, deps)
-        -- Lua function condition
-        log.warn("🛡️  Checking gatekeeper condition...")
-        if params.force_proceed ~= "true" then
-            log.error("❌ Gatekeeper check failed. Aborting workflow.")
-            return true -- Abort
-        end
-        return false -- Do not abort
-    end)
-    :build()
-
--- Define the complete workflow
-workflow.define("full_pipeline_demo", {
-    description = "A comprehensive pipeline demonstrating various features - Modern DSL",
-    version = "2.0.0",
-    
-    metadata = {
-        author = "Sloth Runner Team",
-        tags = {"demo", "comprehensive", "modern-dsl"},
-        complexity = "advanced"
-    },
-    
-    tasks = {
-        fetch_data,
-        flaky_task,
-        process_data,
-        long_running_task,
-        cleanup_on_fail,
-        build_image,
-        conditional_deploy,
-        gatekeeper_check
-    },
-    
-    config = {
-        timeout = "30m",
-        retry_policy = "exponential",
-        max_parallel_tasks = 3,
-        fail_fast = false
-    },
-    
-    on_start = function()
-        log.info("🚀 Starting comprehensive pipeline demo...")
-        return true
-    end,
-    
-    on_complete = function(success, results)
-        if success then
-            log.info("🎉 Comprehensive pipeline completed successfully!")
-        else
-            log.error("❌ Pipeline failed - check individual task results")
-        end
-        return true
-    end
-})
-```
-```
-
----
-
-## 🌐 Master-Agent Architecture
-
-`sloth-runner` is designed with a master-agent architecture to facilitate distributed task execution. This allows you to orchestrate and run tasks across multiple remote machines from a central control point.
-
-### Core Concepts
-
-*   **Master Server:** The central component that manages agents and orchestrates tasks.
-*   **Agent:** A lightweight process that runs on a remote machine, executes tasks, and reports status.
-*   **Communication:** Master and agents communicate using gRPC.
-
-### Installation and Startup
-
-#### 1. Start the Master Server
-
-On your local machine or a designated control server, start the `sloth-runner` master:
-
-```bash
-go run ./cmd/sloth-runner master -p 50053 --daemon
-```
-
-#### 2. Start the Agents
-
-On each remote machine, start the `sloth-runner` agent, ensuring you provide a unique name and the correct master address:
-
-```bash
-sloth-runner agent start --name <agent_name> --master <master_ip>:<master_port> --port <agent_port> --bind-address <agent_ip> --daemon
-```
-
-*   `--name`: A unique name for the agent (e.g., `web-server-1`).
-*   `--master`: The address of the master server.
-*   `--port`: The port for the agent to listen on.
-*   `--bind-address`: The agent's accessible IPv4 address.
-*   `--daemon`: Runs the agent as a background process.
-
-### Agent Management
-
-#### Listing Agents
-
-Use `sloth-runner agent list` to view all registered agents and their status:
-
-```bash
-go run ./cmd/sloth-runner agent list
-```
-
-**Example Output:**
-
-```
-AGENT NAME     ADDRESS              STATUS            LAST HEARTBEAT
-------------   ----------           ------            --------------
-agent2         192.168.1.17:50052   Active   1758984185
-agent1         192.168.1.16:50051   Active   1758984183
-```
-
-#### Running Commands on Agents
-
-Execute commands on a specific agent using `sloth-runner agent run`:
-
-```bash
-go run ./cmd/sloth-runner agent run agent1 'echo "Hello from agent1 on $(hostname)"'
-```
-
-**Example Output:**
-
-```
-┌─  SUCCESS  Command Execution Result on agent1 ──────────┐
-|  SUCCESS  Command executed successfully!                |
-|  INFO  Command: echo "Hello from agent1 on $(hostname)" |
-| # Stdout:                                               |
-| Hello from agent1 on ladyguica                          |
-|                                                         |
-|                                                         |
-└─────────────────────────────────────────────────────────┘
-```
-
-#### Stopping Agents
-
-Gracefully stop a remote agent using `sloth-runner agent stop`:
-
-```bash
-go run ./cmd/sloth-runner agent stop <agent_name>
-```
-
----
-
-## 📄 Templates
-
-`sloth-runner` provides several templates to quickly scaffold new task definition files.
-
-| Template Name      | Description                                                                    |
-| :----------------- | :----------------------------------------------------------------------------- |
-| `simple`           | Generates a single group with a 'hello world' task. Ideal for getting started. |
-| `python`           | Creates a pipeline to set up a Python environment, install dependencies, and run a script. |
-| `parallel`         | Demonstrates how to run multiple tasks concurrently.                           |
-| `python-pulumi`    | Pipeline to deploy Pulumi infrastructure managed with Python.                  |
-| `python-pulumi-salt` | Provisions infrastructure with Pulumi and configures it using SaltStack.       |
-| `git-python-pulumi` | CI/CD Pipeline: Clones a repo, sets up the environment, and deploys with Pulumi. |
-| `dummy`            | Generates a dummy task that does nothing.                                      |
-
----
-
-## 💻 CLI Commands
-
-`sloth-runner` provides a simple and powerful command-line interface.
-
-### `sloth-runner run`
-
-Executes tasks defined in a Lua template file.
-
-**Usage:** `sloth-runner run [flags]`
-
-**Description:**
-The run command executes tasks defined in a Lua template file.
-You can specify the file, environment variables, and target specific tasks or groups.
-
-**Flags:**
-
-*   `-f, --file string`: Path to the Lua task configuration template file (default: "examples/basic_pipeline.lua")
-*   `-e, --env string`: Environment for the tasks (e.g., Development, Production) (default: "Development")
-*   `-p, --prod`: Set to true for production environment (default: false)
-*   `--shards string`: Comma-separated list of shard numbers (e.g., 1,2,3) (default: "1,2,3")
-*   `-t, --tasks string`: Comma-separated list of specific tasks to run (e.g., task1,task2)
-*   `-g, --group string`: Run tasks only from a specific task group
-*   `-v, --values string`: Path to a YAML file with values to be passed to Lua tasks
-*   `-d, --dry-run`: Simulate the execution of tasks without actually running them (default: false)
-*   `--return`: Return the output of the target tasks as JSON (default: false)
-*   `-y, --yes`: Bypass interactive task selection and run all tasks (default: false)
-
-### `sloth-runner list`
-
-Lists all available task groups and tasks.
-
-**Usage:** `sloth-runner list [flags]`
-
-**Description:**
-The list command displays all task groups and their respective tasks, along with their descriptions and dependencies.
-
-**Flags:**
-
-*   `-f, --file string`: Path to the Lua task configuration template file (default: "examples/basic_pipeline.lua")
-*   `-e, --env string`: Environment for the tasks (e.g., Development, Production) (default: "Development")
-*   `-p, --prod`: Set to true for production environment (default: false)
-*   `--shards string`: Comma-separated list of shard numbers (e.g., 1,2,3) (default: "1,2,3")
-*   `-v, --values string`: Path to a YAML file with values to be passed to Lua tasks
-
-### `sloth-runner validate`
-
-Validates the syntax and structure of a Lua task file.
-
-**Usage:** `sloth-runner validate [flags]`
-
-**Description:**
-The validate command checks a Lua task file for syntax errors and ensures that the Modern DSL workflow structure is correctly formatted.
-
-**Flags:**
-
-*   `-f, --file string`: Path to the Lua task configuration template file (default: "examples/basic_pipeline.lua")
-*   `-e, --env string`: Environment for the tasks (e.g., Development, Production) (default: "Development")
-*   `-p, --prod`: Set to true for production environment (default: false)
-*   `--shards string`: Comma-separated list of shard numbers (e.g., 1,2,3) (default: "1,2,3")
-*   `-v, --values string`: Path to a YAML file with values to be passed to Lua tasks
-
-### `sloth-runner test`
-
-Executes a Lua test file for a task workflow.
-
-**Usage:** `sloth-runner test -w <workflow-file> -f <test-file>`
-
-**Description:**
-The test command runs a specified Lua test file against a workflow.
-Inside the test file, you can use the 'test' and 'assert' modules to validate task behaviors.
-
-**Flags:**
-
-*   `-f, --file string`: Path to the Lua test file (required)
-*   `-w, --workflow string`: Path to the Lua workflow file to be tested (required)
-
-### `sloth-runner repl`
-
-Starts an interactive REPL session.
-
-**Usage:** `sloth-runner repl [flags]`
-
-**Description:**
-The repl command starts an interactive Read-Eval-Print Loop that allows you
-to execute Lua code and interact with all the built-in sloth-runner modules.
-You can optionally load a workflow file to have its context available.
-
-**Flags:**
-
-*   `-f, --file string`: Path to a Lua workflow file to load into the REPL session
-
-### `sloth-runner scheduler`
-
-Manages the background task scheduler.
-
-**Usage:** `sloth-runner scheduler [command]`
-
-**Description:**
-The scheduler command provides subcommands to enable, disable, list, and delete the sloth-runner background task scheduler.
-
-#### `sloth-runner scheduler enable`
-
-Starts the sloth-runner scheduler in the background.
-
-**Usage:** `sloth-runner scheduler enable [flags]`
-
-**Description:**
-The enable command starts the sloth-runner scheduler as a persistent background process.
-It will monitor and execute tasks defined in the scheduler configuration file.
-
-**Flags:**
-
-*   `-c, --scheduler-config string`: Path to the scheduler configuration file (default: "scheduler.yaml")
-
-#### `sloth-runner scheduler disable`
-
-Stops the running sloth-runner scheduler.
-
-**Usage:** `sloth-runner scheduler disable`
-
-**Description:**
-The disable command stops the background sloth-runner scheduler process.
-
-#### `sloth-runner scheduler list`
-
-Lists all scheduled tasks.
-
-**Usage:** `sloth-runner scheduler list [flags]`
-
-**Description:**
-The list command displays all scheduled tasks defined in the scheduler configuration file.
-
-**Flags:**
-
-*   `-c, --scheduler-config string`: Path to the scheduler configuration file (default: "scheduler.yaml")
-
-#### `sloth-runner scheduler delete <task_name>`
-
-Deletes a specific scheduled task.
-
-**Usage:** `sloth-runner scheduler delete <task_name> [flags]`
-
-**Description:**
-The delete command removes a specific scheduled task from the scheduler configuration file.
-
-**Arguments:**
-
-*   `<task_name>`: The name of the scheduled task to delete.
-
-**Flags:**
-
-*   `-c, --scheduler-config string`: Path to the scheduler configuration file (default: "scheduler.yaml")
-
-### Agent Commands
-
-*   `sloth-runner agent start [-p <port>]`: Starts the sloth-runner in agent mode.
-*   `sloth-runner agent list`: Lists all registered agents.
-*   `sloth-runner agent run <agent_name> <command>`: Executes a command on a remote agent.
-*   `sloth-runner agent stop <agent_name>`: Stops a remote agent.
-
-### `sloth-runner version`
-
-Print the version number of sloth-runner.
-
-**Usage:** `sloth-runner version`
-
-**Description:**
-All software has versions. This is sloth-runner's
-
-### `sloth-runner template list`
-
-Lists all available templates.
-
-**Usage:** `sloth-runner template list`
-
-**Description:**
-Displays a table of all available templates that can be used with the 'new' command.
-
-### `sloth-runner new <group-name>`
-
-Generates a new task definition file from a template.
-
-**Usage:** `sloth-runner new <group-name> [flags]`
-
-**Description:**
-The new command creates a boilerplate Lua task definition file.
-You can choose from different templates and specify an output file.
-Run 'sloth-runner template list' to see all available templates.
-
-**Arguments:**
-
-*   `<group-name>`: The name of the task group to generate.
-
-**Flags:**
-
-*   `-o, --output string`: Output file path (default: stdout)
-*   `-t, --template string`: Template to use. See `template list` for options. (default: "simple")
-*   `--set key=value`: Pass key-value pairs to the template for dynamic content generation.
-
-### `sloth-runner check dependencies`
-
-Checks for required external CLI tools.
-
-**Usage:** `sloth-runner check dependencies`
-
-**Description:**
-Verifies that all external command-line tools used by the various modules (e.g., docker, aws, doctl) are installed and available in the system's PATH.
-
----
-
-## 🚀 Advanced Features
-
-`sloth-runner` also includes several advanced features for more complex workflows and development scenarios.
-
-*   **Interactive Task Runner:** Step through tasks one by one for debugging and development.
-*   **Enhanced `values.yaml` Templating:** Use Go template syntax to inject environment variables into your `values.yaml` files for dynamic configurations.
-
-For detailed information on these and other advanced features, refer to the [Advanced Features documentation](./docs/advanced-features.md).
-
----
-
-## ⚙️ Lua API
-
-`sloth-runner` exposes several Go functionalities as Lua modules, allowing your tasks to interact with the system and external services.
-
-*   **`exec` module:** Execute shell commands.
-*   **`fs` module:** Perform file system operations.
-*   **`net` module:** Make HTTP requests and download files.
-*   **`data` module:** Parse and serialize data in JSON and YAML format.
-*   **`log` module:** Log messages with different severity levels.
-*   **`salt` module:** Execute SaltStack commands.
-
-For detailed API usage, please refer to the examples in the `/examples` directory.
-# Test pipeline fix
-# Test pipeline fix
