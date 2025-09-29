@@ -19,3 +19,6 @@ mkdocs-material[recommended]>=9.0.0
 # Additional utilities
 Pillow>=10.0.0
 cairosvg>=2.7.0
+
+# Fix any missing multilang plugin dependencies
+mkdocs-static-i18n>=1.0.0
