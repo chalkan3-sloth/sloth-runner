@@ -16,9 +16,11 @@ jobs:
   test-builds:
     name: Test Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+      fail-fast: false
         
     steps:
       - name: Checkout
@@ -27,7 +29,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24.0'
+          go-version: '1.23'
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -51,7 +53,8 @@ jobs:
       - name: Install system dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
-          choco install sqlite
+          # Use Go's built-in SQLite or pure-go implementation
+          echo "Using Go's built-in SQLite support"
 
       - name: Install Go dependencies
         run: go mod tidy

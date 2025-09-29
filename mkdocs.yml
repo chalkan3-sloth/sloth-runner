@@ -14,7 +14,6 @@ copyright: 'Copyright &copy; 2024 Sloth Runner Team. All rights reserved.'
 # Theme
 theme:
   name: material
-  custom_dir: overrides
   favicon: assets/favicon.png
   logo: assets/logo.png
   palette:
@@ -98,8 +97,8 @@ markdown_extensions:
   - pymdownx.tasklist:
       custom_checkbox: true
   - pymdownx.emoji:
-      emoji_index: !!python/name:materialx.emoji.twemoji
-      emoji_generator: !!python/name:materialx.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - attr_list
   - md_in_html
   - admonition
@@ -289,5 +288,4 @@ nav:
       - '🤝 贡献': 'zh/contributing.md'
 
 # Docs directory
-docs_dir: docs
 docs_dir: docs
