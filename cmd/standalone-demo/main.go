@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/chalkan3/sloth-runner/internal/luainterface"
+	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
 	"github.com/pterm/pterm"
 	lua "github.com/yuin/gopher-lua"
 )

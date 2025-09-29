@@ -4,7 +4,7 @@
 
 一个用 Go 编写、由 Lua 脚本驱动的灵活且可扩展的任务运行器应用程序。`sloth-runner` 允许您通过简单的 Lua 脚本定义复杂的工作流、管理任务依赖关系以及与外部系统集成。
 
-[![Go CI](https://github.com/chalkan3/sloth-runner/actions/workflows/ci.yml/badge.svg)](https://github.com/chalkan3/sloth-runner/actions/workflows/ci.yml)
+[![Go CI](https://github.com/chalkan3-sloth/sloth-runner/actions/workflows/ci.yml/badge.svg)](https://github.com/chalkan3-sloth/sloth-runner/actions/workflows/ci.yml)
 
 ---
 
@@ -51,7 +51,7 @@
 要在您的系统上安装 `sloth-runner`，您可以使用提供的 `install.sh` 脚本。该脚本会自动检测您的操作系统和架构，从 GitHub 下载最新的发布版本，并将 `sloth-runner` 可执行文件放置在 `/usr/local/bin` 中。
 
 ```bash
-bash <(curl -sL https://raw.githubusercontent.com/chalkan3/sloth-runner/master/install.sh)
+bash <(curl -sL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/install.sh)
 ```
 
 **注意:** `install.sh` 脚本需要 `sudo` 权限才能将可执行文件移动到 `/usr/local/bin`。

@@ -1,8 +1,8 @@
 package taskrunner
 
 import (
-	"github.com/chalkan3/sloth-runner/internal/luainterface"
-	"github.com/chalkan3/sloth-runner/internal/types"
+	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
+	"github.com/chalkan3-sloth/sloth-runner/internal/types"
 )
 
 // NewSharedSession creates and starts a new persistent shell session.

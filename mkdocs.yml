@@ -4,8 +4,8 @@ site_author: 'Sloth Runner Team'
 site_url: 'https://sloth-runner.dev'
 
 # Repository
-repo_name: 'chalkan3/sloth-runner'
-repo_url: 'https://github.com/chalkan3/sloth-runner'
+repo_name: 'chalkan3-sloth/sloth-runner'
+repo_url: 'https://github.com/chalkan3-sloth/sloth-runner'
 edit_uri: 'edit/main/docs/'
 
 # Copyright
@@ -118,7 +118,7 @@ extra:
   homepage: https://sloth-runner.dev
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/chalkan3/sloth-runner
+      link: https://github.com/chalkan3-sloth/sloth-runner
       name: GitHub Repository
     - icon: fontawesome/brands/docker
       link: https://hub.docker.com/r/slothrunner/sloth-runner
@@ -145,7 +145,7 @@ extra:
           data: 0
           note: >-
             Thanks for your feedback! Help us improve this page by
-            <a href="https://github.com/chalkan3/sloth-runner/issues/new/?title=[Feedback]+{title}+-+{url}" target="_blank" rel="noopener">telling us what you need</a>.
+            <a href="https://github.com/chalkan3-sloth/sloth-runner/issues/new/?title=[Feedback]+{title}+-+{url}" target="_blank" rel="noopener">telling us what you need</a>.
 
 # Navigation
 nav:

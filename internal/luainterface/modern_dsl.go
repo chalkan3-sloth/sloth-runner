@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/chalkan3/sloth-runner/internal/core"
+	"github.com/chalkan3-sloth/sloth-runner/internal/core"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -189,6 +189,9 @@ builders:     make(map[string]*TaskBuilder),
 
 // RegisterModernDSL registers the modern DSL with a Lua state
 func (m *ModernDSL) RegisterModernDSL(L *lua.LState) {
+	// Setup metatables first
+	m.setupMetatables(L)
+	
 	// Core DSL functions
 	m.registerTaskDefinition(L)
 	m.registerWorkflowDefinition(L)
@@ -202,6 +205,140 @@ func (m *ModernDSL) RegisterModernDSL(L *lua.LState) {
 	m.registerCircuitBreaker(L)
 	m.registerResourceManagement(L)
 	m.registerSecurityPolicies(L)
+}
+
+// setupMetatables creates the metatables for DSL objects
+func (m *ModernDSL) setupMetatables(L *lua.LState) {
+	// TaskBuilder metatable
+	taskBuilderMt := L.NewTypeMetatable("TaskBuilder")
+	L.SetField(taskBuilderMt, "__index", L.NewFunction(m.taskBuilderIndex))
+	
+	// WorkflowBuilder metatable
+	workflowBuilderMt := L.NewTypeMetatable("WorkflowBuilder")
+	L.SetField(workflowBuilderMt, "__index", L.NewFunction(m.workflowBuilderIndex))
+}
+
+// taskBuilderIndex handles method calls on TaskBuilder objects
+func (m *ModernDSL) taskBuilderIndex(L *lua.LState) int {
+	ud := L.CheckUserData(1)
+	key := L.CheckString(2)
+	
+	builder, ok := ud.Value.(*TaskBuilder)
+	if !ok {
+		L.ArgError(1, "TaskBuilder expected")
+		return 0
+	}
+	
+	switch key {
+	case "description":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			desc := L.CheckString(2) // Argument position 2 (1 is self)
+			builder.definition.Description = desc
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "command":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			cmd := L.CheckAny(2) // Argument position 2 (1 is self)
+			builder.definition.Command = cmd
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "timeout":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			timeoutStr := L.CheckString(2) // Argument position 2 (1 is self)
+			if duration, err := time.ParseDuration(timeoutStr); err == nil {
+				builder.definition.Timeout = duration
+			}
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "depends_on":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			_ = L.CheckAny(2) // deps variable - simplified for now
+			// Handle dependencies - simplified for now
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "on_success":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			_ = L.CheckAny(2) // hook function - simplified for now
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "on_failure":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			_ = L.CheckAny(2) // hook function - simplified for now
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "pre_hook":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			_ = L.CheckAny(2) // hook function - simplified for now
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "post_hook":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			_ = L.CheckAny(2) // hook function - simplified for now
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "retries":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			_ = L.CheckAny(2) // retries config - simplified for now
+			_ = L.CheckAny(3) // strategy - simplified for now
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "async":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			_ = L.CheckBool(2) // async flag - simplified for now
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "artifacts":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			_ = L.CheckAny(2) // artifacts - simplified for now
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "on_timeout":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			_ = L.CheckAny(2) // timeout handler - simplified for now
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "run_if":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			_ = L.CheckAny(2) // condition - simplified for now
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "abort_if":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			_ = L.CheckAny(2) // abort condition - simplified for now
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "build":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			// Return the built task definition
+			taskUd := L.NewUserData()
+			taskUd.Value = builder.definition
+			L.Push(taskUd)
+			return 1
+		}))
+	default:
+		L.Push(lua.LNil)
+	}
+	return 1
+}
+
+// workflowBuilderIndex handles method calls on WorkflowBuilder objects
+func (m *ModernDSL) workflowBuilderIndex(L *lua.LState) int {
+	// Simplified implementation
+	return 0
 }
 
 // Core registration methods
@@ -443,7 +580,60 @@ func NewTaskRegistry() *TaskRegistry {
 }
 
 // Placeholder implementations for DSL functions
-func (m *ModernDSL) workflowDefineFunc(L *lua.LState) int      { return 0 }
+func (m *ModernDSL) workflowDefineFunc(L *lua.LState) int {
+	workflowName := L.CheckString(1)
+	workflowConfig := L.CheckTable(2)
+	
+	// Get existing TaskDefinitions table or create it
+	taskDefs := L.GetGlobal("TaskDefinitions")
+	if taskDefs.Type() != lua.LTTable {
+		taskDefs = L.NewTable()
+		L.SetGlobal("TaskDefinitions", taskDefs)
+	}
+	
+	// Create group structure compatible with legacy parser
+	groupTable := L.NewTable()
+	
+	// Set description
+	if desc := workflowConfig.RawGetString("description"); desc != lua.LNil {
+		groupTable.RawSetString("description", desc)
+	}
+	
+	// Convert Modern DSL tasks to legacy format
+	if tasksValue := workflowConfig.RawGetString("tasks"); tasksValue.Type() == lua.LTTable {
+		tasksTable := L.NewTable()
+		taskIndex := 1
+		
+		tasksValue.(*lua.LTable).ForEach(func(_, taskValue lua.LValue) {
+			if taskValue.Type() == lua.LTUserData {
+				taskUD := taskValue.(*lua.LUserData)
+				if taskDef, ok := taskUD.Value.(*TaskDefinition); ok {
+					// Create legacy task structure
+					legacyTask := L.NewTable()
+					legacyTask.RawSetString("name", lua.LString(taskDef.Name))
+					legacyTask.RawSetString("description", lua.LString(taskDef.Description))
+					
+					// Convert command
+					if taskDef.Command != nil {
+						if luaValue, ok := taskDef.Command.(lua.LValue); ok {
+							legacyTask.RawSetString("command", luaValue)
+						}
+					}
+					
+					tasksTable.RawSetInt(taskIndex, legacyTask)
+					taskIndex++
+				}
+			}
+		})
+		
+		groupTable.RawSetString("tasks", tasksTable)
+	}
+	
+	// Add group to TaskDefinitions
+	taskDefs.(*lua.LTable).RawSetString(workflowName, groupTable)
+	
+	return 0
+}
 func (m *ModernDSL) workflowParallelFunc(L *lua.LState) int    { return 0 }
 func (m *ModernDSL) workflowSequenceFunc(L *lua.LState) int    { return 0 }
 func (m *ModernDSL) workflowConditionalFunc(L *lua.LState) int { return 0 }
@@ -472,3 +662,26 @@ func (m *ModernDSL) resourceReleaseFunc(L *lua.LState) int     { return 0 }
 func (m *ModernDSL) resourceUsageFunc(L *lua.LState) int       { return 0 }
 func (m *ModernDSL) securitySandboxFunc(L *lua.LState) int     { return 0 }
 func (m *ModernDSL) securityPolicyFunc(L *lua.LState) int      { return 0 }
+
+// Global Modern DSL instance
+var globalModernDSL *ModernDSL
+var modernDSLOnce sync.Once
+
+// OpenModernDSL initializes the Modern DSL for a Lua state
+func OpenModernDSL(L *lua.LState) {
+	// Create a singleton ModernDSL instance
+	modernDSLOnce.Do(func() {
+		globalModernDSL = &ModernDSL{
+			taskRegistry: &TaskRegistry{
+				tasks:       make(map[string]*TaskDefinition),
+				groups:      make(map[string]*TaskGroup),
+				templates:   make(map[string]*TaskTemplate),
+				validators:  make(map[string]TaskValidator),
+			},
+			builders:     make(map[string]*TaskBuilder),
+		}
+	})
+	
+	// Register the Modern DSL functions
+	globalModernDSL.RegisterModernDSL(L)
+}

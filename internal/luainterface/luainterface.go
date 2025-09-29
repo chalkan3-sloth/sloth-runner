@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/chalkan3/sloth-runner/internal/types"
+	"github.com/chalkan3-sloth/sloth-runner/internal/types"
 	lua "github.com/yuin/gopher-lua"
 	"gopkg.in/yaml.v2"
 )
@@ -35,6 +35,7 @@ func ParseLuaScript(ctx context.Context, filePath string, valuesTable *lua.LTabl
 	// Load values if provided
 	if valuesTable != nil {
 		L.SetGlobal("Values", valuesTable)
+		L.SetGlobal("values", valuesTable) // Also set lowercase for compatibility
 	}
 
 	// Execute the Lua script
@@ -45,7 +46,7 @@ func ParseLuaScript(ctx context.Context, filePath string, valuesTable *lua.LTabl
 	// Extract task groups from TaskDefinitions
 	globalTaskDefs := L.GetGlobal("TaskDefinitions")
 	if globalTaskDefs.Type() != lua.LTTable {
-		return nil, fmt.Errorf("expected 'TaskDefinitions' to be a table, got %s", globalTaskDefs.Type().String())
+		return nil, fmt.Errorf("no valid task definitions found. Expected 'TaskDefinitions' table (legacy) or workflows defined with Modern DSL")
 	}
 
 	loadedTaskGroups := make(map[string]types.TaskGroup)
@@ -355,6 +356,9 @@ func RegisterAllModules(L *lua.LState) {
 	OpenSalt(L)
 	OpenState(L)
 	OpenMetrics(L)
+	
+	// Register Modern DSL
+	OpenModernDSL(L)
 	
 	// Register modules that may not exist yet
 	// OpenPkg is handled by the pkg.go file

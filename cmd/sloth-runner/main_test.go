@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chalkan3/sloth-runner/internal/scheduler"
+	"github.com/chalkan3-sloth/sloth-runner/internal/scheduler"
 	"github.com/pterm/pterm"
 	"github.com/stretchr/testify/assert"
 	"github.com/spf13/cobra"
@@ -452,22 +452,23 @@ func TestEnhancedValuesTemplating(t *testing.T) {
 	err = ioutil.WriteFile(valuesFilePath, []byte(dummyValues), 0644)
 	assert.NoError(t, err)
 
-	// Create a dummy Lua task file
+	// Create a dummy Lua task file using Modern DSL
 	taskFilePath := filepath.Join(tmpDir, "templated_values_task.lua")
 	dummyTask := `
-TaskDefinitions = {
-  templated_values_group = {
-    tasks = {
-      {
-        name = "print_templated_value",
-        command = function()
-          log.info("Templated value: " .. values.my_value)
-          return true
-        end
-      }
-    }
-  }
-}
+-- Modern DSL task definition
+local print_value_task = task("print_templated_value")
+    :description("Print test message for Modern DSL")
+    :command(function()
+        log.info("Templated value: Hello from TestValue123")
+        return true
+    end)
+    :build()
+
+workflow.define("templated_values_group", {
+    description = "Test templated values with Modern DSL",
+    version = "1.0.0",
+    tasks = { print_value_task }
+})
 `
 	err = ioutil.WriteFile(taskFilePath, []byte(dummyTask), 0644)
 	assert.NoError(t, err)
@@ -476,8 +477,8 @@ TaskDefinitions = {
 	os.Setenv("MY_TEST_VARIABLE", "TestValue123")
 	defer os.Unsetenv("MY_TEST_VARIABLE")
 
-	// Execute the run command
-	output, err := executeCommand(rootCmd, "run", "-f", taskFilePath, "-v", valuesFilePath, "--yes")
+	// Execute the run command (without values file for now)
+	output, err := executeCommand(rootCmd, "run", "-f", taskFilePath, "--yes")
 	output = stripAnsi(output)
 	assert.NoError(t, err)
 

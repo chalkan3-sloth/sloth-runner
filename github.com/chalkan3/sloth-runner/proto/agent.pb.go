@@ -907,7 +907,7 @@ const file_proto_agent_proto_rawDesc = "" +
 	"ListAgents\x12\x18.agent.ListAgentsRequest\x1a\x19.agent.ListAgentsResponse\x12>\n" +
 	"\tStopAgent\x12\x17.agent.StopAgentRequest\x1a\x18.agent.StopAgentResponse\x12M\n" +
 	"\x0eExecuteCommand\x12\x1c.agent.ExecuteCommandRequest\x1a\x1b.agent.StreamOutputResponse0\x01\x12>\n" +
-	"\tHeartbeat\x12\x17.agent.HeartbeatRequest\x1a\x18.agent.HeartbeatResponseB(Z&github.com/chalkan3/sloth-runner/protob\x06proto3"
+	"\tHeartbeat\x12\x17.agent.HeartbeatRequest\x1a\x18.agent.HeartbeatResponseB(Z&github.com/chalkan3-sloth/sloth-runner/protob\x06proto3"
 
 var (
 	file_proto_agent_proto_rawDescOnce sync.Once

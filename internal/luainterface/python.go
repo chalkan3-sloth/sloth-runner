@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/chalkan3/sloth-runner/internal/types"
+	"github.com/chalkan3-sloth/sloth-runner/internal/types"
 	"github.com/yuin/gopher-lua"
 )
 
