@@ -39,6 +39,27 @@ sloth-runner stack show production-app
 sloth-runner stack delete old-environment
 ```
 
+### 🆔 Listar Tasks e Grupos (Novo)
+
+```bash
+# Listar todos os grupos e tasks com IDs únicos
+sloth-runner list -f workflow.lua
+
+# Exemplo de saída:
+# Workflow Tasks and Groups
+# 
+# ## Task Group: deploy_group
+# ID: e8e77f72-5cf4-4e98-adce-fc839846c24a
+# Description: Deployment tasks with IDs
+#
+# Tasks:
+# NAME     ID           DESCRIPTION             DEPENDS ON
+# ----     --           -----------             ----------
+# build    a1c4fa46...  Build the application   -
+# test     d8dc4623...  Run tests               build
+# deploy   6253cb19...  Deploy to production    build, test
+```
+
 ## 🎯 Conceitos Fundamentais
 
 ### Stack State
@@ -51,6 +72,28 @@ Cada stack mantém:
 - **Outputs exportados** da pipeline
 - **Histórico** de execuções
 - **Metadados** e configurações
+
+### 🆔 IDs Únicos de Tasks e Grupos
+
+**Novidade:** Cada task e task group agora possui **IDs únicos (UUID)** para rastreabilidade completa:
+
+#### Task IDs
+- **UUID único** gerado automaticamente para cada task
+- **Persistente** entre execuções
+- **Rastreável** durante debugging e logs
+- **Visível** no comando `sloth-runner list`
+
+#### Task Group IDs  
+- **UUID único** para cada grupo de tasks
+- **Identificação** clara de componentes do workflow
+- **Organização** hierárquica com IDs
+- **Debugging** facilitado com identificação precisa
+
+#### Benefícios dos IDs
+- 🔍 **Debugging melhorado** com identificação precisa
+- 📊 **Observabilidade** enhanced para Enterprise
+- 🎯 **Execução seletiva** por ID (futuro)
+- 📈 **Rastreabilidade** completa de execuções
 
 ### Ciclo de Vida
 

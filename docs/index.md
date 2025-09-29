@@ -21,6 +21,8 @@
 - 📊 **Exported outputs capture** from pipeline
 - 📈 **Complete execution history** tracking
 - 🎯 **Environment isolation** by stack
+- 🆔 **Unique task IDs** for enhanced traceability
+- 📋 **Task listing** with detailed relationship view
 
 ### 🌐 Distributed by Design
 **Native master-agent architecture** with real-time streaming, automatic failover, and intelligent load balancing.

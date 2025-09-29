@@ -89,3 +89,146 @@ workflow.define("templated-task", {
   }
 }
 ```
+
+---
+
+## Example 4: Exploring Workflows with Task IDs using List Command
+
+This example demonstrates how to use the new `sloth-runner list` command to inspect workflow structure, view task relationships, and explore unique IDs for debugging and observability.
+
+### **Creating a Sample Workflow**
+
+First, let's create a comprehensive workflow file to explore:
+
+```lua
+-- examples/id_demo.lua
+-- Demonstration of task IDs and workflow structure
+
+TaskDefinitions = {
+    -- Build and Deploy Pipeline
+    build_pipeline = {
+        description = "Build and deployment pipeline with unique IDs",
+        tasks = {
+            {
+                name = "setup",
+                description = "Setup build environment",
+                command = "echo 'Setting up build environment...'"
+            },
+            {
+                name = "compile",
+                description = "Compile the application",
+                command = "echo 'Compiling application...'",
+                depends_on = {"setup"}
+            },
+            {
+                name = "test",
+                description = "Run unit tests",
+                command = "echo 'Running tests...'",
+                depends_on = {"compile"}
+            },
+            {
+                name = "package",
+                description = "Package the application",
+                command = "echo 'Packaging application...'",
+                depends_on = {"compile", "test"}
+            }
+        }
+    },
+    
+    -- Deployment Group
+    deploy_pipeline = {
+        description = "Deployment tasks with environment management",
+        tasks = {
+            {
+                name = "deploy_staging",
+                description = "Deploy to staging environment",
+                command = "echo 'Deploying to staging...'",
+                depends_on = {"package"}
+            },
+            {
+                name = "integration_test",
+                description = "Run integration tests",
+                command = "echo 'Running integration tests...'",
+                depends_on = {"deploy_staging"}
+            },
+            {
+                name = "deploy_production",
+                description = "Deploy to production environment", 
+                command = "echo 'Deploying to production...'",
+                depends_on = {"integration_test"}
+            }
+        }
+    }
+}
+```
+
+### **Using the List Command**
+
+**1. Basic workflow inspection:**
+```bash
+sloth-runner list -f examples/id_demo.lua
+```
+
+**Expected output:**
+```
+Workflow Tasks and Groups
+
+## Task Group: build_pipeline
+ID: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+Description: Build and deployment pipeline with unique IDs
+
+Tasks:
+NAME     ID           DESCRIPTION                 DEPENDS ON
+----     --           -----------                 ----------
+setup    12345678...  Setup build environment     -
+compile  abcdef12...  Compile the application     setup
+test     98765432...  Run unit tests              compile
+package  fedcba09...  Package the application     compile, test
+
+## Task Group: deploy_pipeline  
+ID: f9e8d7c6-b5a4-3210-9876-543210fedcba
+Description: Deployment tasks with environment management
+
+Tasks:
+NAME                ID           DESCRIPTION                      DEPENDS ON
+----                --           -----------                      ----------
+deploy_staging      11223344...  Deploy to staging environment   package
+integration_test    55667788...  Run integration tests           deploy_staging
+deploy_production   99aabbcc...  Deploy to production             integration_test
+```
+
+### **Benefits of Task IDs**
+
+**🆔 Unique Identification:**
+- Each task and group has a persistent UUID
+- IDs remain consistent across executions
+- Perfect for debugging and observability
+
+**📊 Enhanced Debugging:**
+- Trace specific tasks in logs using IDs
+- Identify problematic tasks across multiple runs
+- Better correlation with monitoring systems
+
+**🔍 Workflow Inspection:**
+- Understand task relationships at a glance
+- Verify dependency chains before execution
+- Plan execution strategies based on structure
+
+### **Integration with Stack Management**
+
+**Run with stack and inspect:**
+```bash
+# Run the workflow with a stack
+sloth-runner run demo-stack -f examples/id_demo.lua --output enhanced
+
+# List stacks to see execution history
+sloth-runner stack list
+
+# Inspect the workflow structure
+sloth-runner list -f examples/id_demo.lua
+
+# View detailed stack information
+sloth-runner stack show demo-stack
+```
+
+This workflow demonstrates how task IDs integrate seamlessly with stack management, providing complete traceability from workflow definition to execution history.
