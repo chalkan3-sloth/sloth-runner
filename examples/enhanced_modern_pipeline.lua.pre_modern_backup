@@ -1,0 +1,512 @@
+-- Modern Enhanced DSL Example for Sloth Runner
+-- This demonstrates the improved TaskRunner, Core integration, and modern DSL syntax
+
+-- Import utilities and configurations
+local config = utils.config("app_config", "development")
+local db_secret = utils.secret("database_password")
+
+-- Define a modern task using the fluent builder API
+local build_task = task("build_application")
+    :description("Build the application with modern pipeline")
+    :command(function(params, deps)
+        log.info("Starting modern build process...")
+        
+        -- Use core system stats
+        local stats = core.stats()
+        log.info("Core stats", {
+            memory = stats.memory_alloc,
+            workers = stats.worker_active,
+            uptime = stats.uptime_seconds
+        })
+        
+        -- Execute with performance monitoring
+        local result, duration, err = perf.measure(function()
+            -- Parallel compilation with worker pool
+            local compile_results, compile_errors = async.parallel({
+                frontend = function()
+                    return exec.run("npm run build:frontend")
+                end,
+                backend = function()
+                    return exec.run("go build -o app ./cmd/server")
+                end,
+                assets = function()
+                    return exec.run("./scripts/build-assets.sh")
+                end
+            }, 3) -- max 3 workers
+            
+            if compile_errors then
+                return false, "Compilation failed: " .. table.concat(compile_errors, ", ")
+            end
+            
+            return true, "Build completed successfully", {
+                artifacts = {
+                    "app",
+                    "dist/",
+                    "assets/"
+                },
+                build_time = duration,
+                frontend_size = fs.size("dist/"),
+                backend_size = fs.size("app")
+            }
+        end, "build_application")
+        
+        log.info("Build completed", { duration = duration, errors = err })
+        return result, duration, err
+    end)
+    :depends_on({"prepare_environment", "install_dependencies"})
+    :async(true)
+    :timeout("10m")
+    :retries(2, "exponential")
+    :build()
+
+-- Define workflow with modern syntax
+workflow.define("ci_cd_pipeline", {
+    description = "Complete CI/CD pipeline with enhanced features",
+    version = "2.0.0",
+    
+    -- Pipeline stages
+    stages = {
+        {
+            name = "preparation",
+            tasks = chain({
+                "setup_workspace",
+                "validate_environment",
+                "load_secrets"
+            })
+        },
+        
+        {
+            name = "build_and_test",
+            tasks = workflow.parallel({
+                "build_application",
+                "run_tests",
+                "security_scan",
+                "quality_analysis"
+            }, {
+                max_workers = 4,
+                fail_fast = true,
+                timeout = "15m"
+            })
+        },
+        
+        {
+            name = "deployment",
+            condition = when("test.success && build.success")
+                :then("deploy_staging")
+                :else("notify_failure"),
+            
+            tasks = {
+                {
+                    name = "deploy_staging",
+                    command = function(params, deps)
+                        -- Use circuit breaker for external service
+                        local deploy_result, deploy_err = flow.circuit_breaker("deployment_service", function()
+                            return exec.run("kubectl apply -f k8s/staging/")
+                        end)
+                        
+                        if deploy_err then
+                            return false, "Deployment failed: " .. deploy_err
+                        end
+                        
+                        -- Create checkpoint for potential rollback
+                        task.checkpoint("pre_production_deploy", {
+                            staging_version = params.version,
+                            timestamp = os.time(),
+                            config = params.deploy_config
+                        })
+                        
+                        return true, "Staging deployment successful"
+                    end,
+                    
+                    saga = {
+                        compensation = function(ctx)
+                            log.warn("Rolling back staging deployment")
+                            return exec.run("kubectl rollout undo deployment/app -n staging")
+                        end
+                    }
+                }
+            }
+        }
+    },
+    
+    -- Enhanced error handling
+    error_handling = {
+        strategy = "retry_with_backoff",
+        max_attempts = 3,
+        
+        on_failure = function(ctx, error)
+            -- Advanced recovery with multiple strategies
+            local recovery_result, recovery_err = error.try(
+                function()
+                    -- Primary recovery: restart from last checkpoint
+                    local checkpoint = ctx.checkpoints["pre_production_deploy"]
+                    if checkpoint then
+                        return task.restore_checkpoint(checkpoint)
+                    end
+                    return false, "No checkpoint available"
+                end,
+                function(err)
+                    log.error("Primary recovery failed", err)
+                    -- Fallback: manual intervention notification
+                    return notifications.send({
+                        type = "critical",
+                        message = "Pipeline failed, manual intervention required",
+                        error = err,
+                        pipeline = ctx.pipeline_id
+                    })
+                end,
+                function()
+                    log.info("Recovery completed")
+                end
+            )
+            
+            return recovery_result, recovery_err
+        end
+    },
+    
+    -- Resource management
+    resources = {
+        cpu = {
+            request = "500m",
+            limit = "2000m"
+        },
+        memory = {
+            request = "1Gi",
+            limit = "4Gi"
+        },
+        disk = {
+            size = "20Gi",
+            type = "ssd"
+        }
+    },
+    
+    -- Security policies
+    security = {
+        rbac = {
+            roles = {"ci-runner", "deployer"},
+            service_account = "sloth-runner-sa"
+        },
+        
+        secrets = {
+            mount_path = "/etc/secrets",
+            keys = {"database_password", "api_key", "signing_cert"}
+        },
+        
+        network_policy = {
+            ingress = {
+                from = {"ci-namespace", "monitoring-namespace"}
+            },
+            egress = {
+                to = {"docker-registry", "kubernetes-api", "external-apis"}
+            }
+        }
+    }
+})
+
+-- Define enhanced task definitions using modern syntax
+TaskDefinitions = {
+    enhanced_pipeline = {
+        description = "Modern enhanced pipeline with advanced features",
+        version = "2.0.0",
+        
+        tasks = {
+            -- Environment setup with enhanced features
+            setup_workspace = define_task({
+                name = "setup_workspace",
+                description = "Set up workspace with enhanced capabilities",
+                version = "1.2.0",
+                category = "setup",
+                tags = {"infrastructure", "preparation"},
+                
+                command = function(params)
+                    -- Use modern template expansion
+                    local workspace_config = utils.template([[
+                        workspace:
+                          name: {{workspace_name}}
+                          environment: {{environment}}
+                          version: {{version}}
+                          features:
+                            - enhanced_logging
+                            - metrics_collection
+                            - distributed_tracing
+                    ]], {
+                        workspace_name = params.workspace or "default",
+                        environment = config,
+                        version = params.version or "latest"
+                    })
+                    
+                    -- Validate configuration
+                    local valid, validation_errors = validate.schema(workspace_config, {
+                        workspace = { type = "object", required = true },
+                        name = { type = "string", required = true },
+                        environment = { type = "string", required = true }
+                    })
+                    
+                    if not valid then
+                        return false, "Configuration validation failed: " .. table.concat(validation_errors, ", ")
+                    end
+                    
+                    -- Create workspace with enhanced monitoring
+                    local workspace_result = fs.create_directory(params.workspace_dir)
+                    if not workspace_result then
+                        return false, "Failed to create workspace directory"
+                    end
+                    
+                    -- Setup enhanced logging
+                    log.info("Workspace setup completed", {
+                        workspace = params.workspace,
+                        config = config,
+                        validation_passed = valid
+                    })
+                    
+                    return true, "echo 'Enhanced workspace setup completed'", {
+                        workspace_path = params.workspace_dir,
+                        config_applied = workspace_config,
+                        features_enabled = {"logging", "metrics", "tracing"}
+                    }
+                end,
+                
+                parameters = {
+                    workspace = {
+                        type = "string",
+                        required = false,
+                        default = "default",
+                        description = "Workspace name"
+                    },
+                    workspace_dir = {
+                        type = "string", 
+                        required = true,
+                        validation = {"path_exists"},
+                        description = "Workspace directory path"
+                    }
+                },
+                
+                resources = {
+                    cpu = { limit = "100m" },
+                    memory = { limit = "256Mi" },
+                    disk = { size = "1Gi" }
+                },
+                
+                timeout = "5m",
+                retries = {
+                    max_attempts = 2,
+                    strategy = "linear"
+                },
+                
+                hooks = {
+                    pre_execution = {
+                        {
+                            name = "validate_prerequisites",
+                            command = "test -d /tmp && test -w /tmp",
+                            type = "shell"
+                        }
+                    },
+                    
+                    post_execution = {
+                        {
+                            name = "cleanup_temp_files",
+                            command = function()
+                                return fs.remove_recursive("/tmp/workspace-setup-*")
+                            end,
+                            type = "lua"
+                        }
+                    },
+                    
+                    on_failure = {
+                        {
+                            name = "send_failure_notification",
+                            command = function(ctx, error)
+                                return notifications.send({
+                                    type = "warning",
+                                    title = "Workspace setup failed",
+                                    message = error,
+                                    context = ctx
+                                })
+                            end,
+                            type = "lua"
+                        }
+                    }
+                },
+                
+                outputs = {
+                    {
+                        name = "workspace_info",
+                        type = "json",
+                        path = "/tmp/workspace-info.json",
+                        persistent = true
+                    }
+                },
+                
+                artifacts = {
+                    {
+                        name = "workspace_logs",
+                        path = "/tmp/workspace-setup.log",
+                        type = "file",
+                        retention = "7d"
+                    }
+                }
+            }),
+            
+            -- Enhanced parallel task execution
+            parallel_processing = {
+                name = "parallel_processing",
+                description = "Demonstrate enhanced parallel processing capabilities",
+                
+                command = function(params, deps)
+                    -- Get system resource information
+                    local memory_info = perf.memory()
+                    local available_workers = math.min(core.stats().worker_active, memory_info.usage_percent < 80 and 8 or 4)
+                    
+                    log.info("Starting parallel processing", {
+                        available_workers = available_workers,
+                        memory_usage = memory_info.usage_percent
+                    })
+                    
+                    -- Execute tasks with dynamic worker allocation and circuit breaker
+                    local results, errors = async.parallel({
+                        data_processing = function()
+                            return flow.circuit_breaker("data_service", function()
+                                -- Simulate heavy data processing
+                                async.sleep(2000) -- 2 seconds
+                                return data.transform({
+                                    input = deps.setup_workspace.workspace_path,
+                                    output = "/tmp/processed_data",
+                                    format = "json"
+                                })
+                            end)
+                        end,
+                        
+                        file_operations = function()
+                            return flow.rate_limit(5, function() -- 5 ops per second
+                                local files = fs.list(deps.setup_workspace.workspace_path)
+                                local processed = {}
+                                
+                                for _, file in ipairs(files) do
+                                    local content = fs.read(file)
+                                    processed[file] = {
+                                        size = #content,
+                                        checksum = crypto.sha256(content)
+                                    }
+                                end
+                                
+                                return processed
+                            end)
+                        end,
+                        
+                        api_calls = function()
+                            -- Execute with retry logic
+                            return error.retry(function()
+                                return net.get("https://api.example.com/status", {
+                                    timeout = 5000,
+                                    headers = {
+                                        authorization = "Bearer " .. utils.secret("api_token")
+                                    }
+                                })
+                            end, 3, 1000, 2.0)
+                        end
+                        
+                    }, available_workers)
+                    
+                    if errors then
+                        log.error("Parallel processing encountered errors", errors)
+                        return false, "Parallel processing failed: " .. table.concat(errors, "; ")
+                    end
+                    
+                    -- Merge and validate results
+                    local merged_results = data.merge(results.data_processing, results.file_operations, true)
+                    merged_results.api_status = results.api_calls
+                    
+                    return true, "echo 'Enhanced parallel processing completed'", {
+                        processed_items = #merged_results,
+                        execution_time = perf.measure_current(),
+                        worker_utilization = available_workers,
+                        results = merged_results
+                    }
+                end,
+                
+                depends_on = {"setup_workspace"},
+                timeout = "10m",
+                async = true,
+                
+                circuit = {
+                    failure_threshold = 3,
+                    recovery_timeout = "60s",
+                    half_open_requests = 2
+                }
+            }
+        },
+        
+        -- Workflow-level configuration
+        configuration = {
+            environment = config,
+            feature_flags = {
+                enhanced_logging = true,
+                distributed_tracing = true,
+                performance_monitoring = true,
+                automatic_recovery = true
+            },
+            
+            observability = {
+                metrics = {
+                    enabled = true,
+                    interval = "30s",
+                    exporters = {"prometheus", "cloudwatch"}
+                },
+                
+                tracing = {
+                    enabled = true,
+                    sampler = "probabilistic",
+                    sample_rate = 0.1
+                },
+                
+                logging = {
+                    level = "info",
+                    format = "structured",
+                    outputs = ["stdout", "file:/tmp/sloth-runner.log"]
+                }
+            }
+        }
+    }
+}
+
+-- Export enhanced configuration for use by the runner
+return {
+    task_definitions = TaskDefinitions,
+    modern_features_enabled = true,
+    dsl_version = "2.0",
+    
+    -- Enhanced runner configuration
+    runner_config = {
+        max_concurrency = 16,
+        timeout_default = "15m",
+        retry_default = 3,
+        backoff_strategy = "exponential",
+        
+        dependency_resolution = "parallel",
+        cycle_detection = true,
+        lazy_loading = true,
+        
+        state_persistence = true,
+        state_store = "sqlite",
+        
+        enable_rollback = true,
+        checkpoint_interval = "5m",
+        compensation_enabled = true,
+        
+        enable_metrics = true,
+        enable_tracing = true,
+        enable_events = true,
+        metrics_interval = "30s",
+        
+        plugins_enabled = true,
+        plugin_search_paths = {"./plugins", "/usr/local/lib/sloth-plugins"},
+        
+        resource_limits = {
+            max_memory = "8Gi",
+            max_cpu = "4000m",
+            max_disk = "50Gi"
+        },
+        
+        optimization_level = "advanced"
+    }
+}

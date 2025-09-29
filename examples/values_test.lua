@@ -1,36 +1,212 @@
--- Define a task group for values.yaml integration examples
-TaskDefinitions = {
-    values_test_group = {
-        description = "Examples for accessing values from values.yaml",
-        tasks = {
-            {
-                name = "display_values",
-                description = "Displays values loaded from values.yaml",
-                command = function(params, input)
-                    log.info("Accessing values from values.yaml:")
+-- MODERN DSL ONLY
+-- Legacy TaskDefinitions removed - Modern DSL syntax only
+-- Converted automatically on Seg 29 Set 2025 10:42:32 -03
 
-                    if values then
-                        log.info("App Name: " .. values.app.name)
-                        log.info("App Version: " .. values.app.version)
-                        log.info("DB Host: " .. values.database.host)
-                        log.info("Feature A enabled: " .. tostring(values.features.featureA))
-                        log.info("First item in list: " .. values.list_of_items[1])
+local display_values_task = task("display_values")
+local validate_config_task = task("validate_config")
 
-                        -- Iterate over list_of_items
-                        log.info("List of items:")
-                        for i, item in ipairs(values.list_of_items) do
-                            log.info("  - " .. item)
-                        end
+local display_values_task = task("display_values")
+local validate_config_task = task("validate_config")
+local display_values_task = task("display_values")
+    :description("Displays values loaded from values.yaml with modern DSL")
+    :command(function(params, input)
+        log.info("Modern DSL: Accessing values from values.yaml...")
 
-                        return true, "Values displayed successfully", nil
-                    else
-                        log.error("Values table not found. Did you pass --values flag?")
-                        return false, "Values not loaded", nil
-                    end
-                end,
-                async = false,
-                depends_on = {},
-            },
-        },
+        -- Enhanced values processing with validation
+        if not values then
+            log.error("Modern DSL: Values table not found. Did you pass --values flag?")
+            return false, "Values not loaded - use --values flag to load values.yaml"
+        end
+
+        -- Validate required structure
+        local required_fields = {"app", "database", "features"}
+        for _, field in ipairs(required_fields) do
+            if not values[field] then
+                log.warn("Modern DSL: Missing field in values: " .. field)
+            end
+        end
+
+        -- Enhanced value display with error handling
+        local function safe_get(obj, path, default)
+            local keys = {}
+            for key in path:gmatch("[^.]+") do
+                table.insert(keys, key)
+            end
+            
+            local current = obj
+            for _, key in ipairs(keys) do
+                if type(current) == "table" and current[key] then
+                    current = current[key]
+                else
+                    return default
+                end
+            end
+            return current
+        end
+
+        -- Display values with enhanced formatting
+        log.info("=== Modern DSL: Application Configuration ===")
+        log.info("App Name: " .. safe_get(values, "app.name", "N/A"))
+        log.info("App Version: " .. safe_get(values, "app.version", "N/A"))
+        log.info("Environment: " .. safe_get(values, "app.environment", "development"))
+        
+        log.info("=== Modern DSL: Database Configuration ===")
+        log.info("DB Host: " .. safe_get(values, "database.host", "localhost"))
+        log.info("DB Port: " .. safe_get(values, "database.port", "5432"))
+        log.info("DB Name: " .. safe_get(values, "database.name", "app_db"))
+        
+        log.info("=== Modern DSL: Feature Flags ===")
+        log.info("Feature A enabled: " .. tostring(safe_get(values, "features.featureA", false)))
+        log.info("Feature B enabled: " .. tostring(safe_get(values, "features.featureB", false)))
+        log.info("Debug mode: " .. tostring(safe_get(values, "features.debug", false)))
+
+        -- Process lists with enhanced handling
+        local items = values.list_of_items or {}
+        if #items > 0 then
+            log.info("=== Modern DSL: Configuration Items ===")
+            log.info("First item in list: " .. (items[1] or "N/A"))
+            log.info("Total items: " .. #items)
+            
+            log.info("All items:")
+            for i, item in ipairs(items) do
+                log.info("  " .. i .. ". " .. tostring(item))
+            end
+        else
+            log.warn("Modern DSL: No items found in list_of_items")
+        end
+
+        -- Create summary
+        local summary = {
+            app_name = safe_get(values, "app.name", "unknown"),
+            app_version = safe_get(values, "app.version", "unknown"),
+            environment = safe_get(values, "app.environment", "development"),
+            total_items = #items,
+            features_enabled = 0
+        }
+        
+        -- Count enabled features
+        if values.features then
+            for _, enabled in pairs(values.features) do
+                if enabled == true then
+                    summary.features_enabled = summary.features_enabled + 1
+                end
+            end
+        end
+
+        return true, "Values displayed successfully", summary
+    end)
+    :validation(function(params)
+        -- Pre-execution validation
+        if not values then
+            return false, "Values must be loaded before execution"
+        end
+        return true
+    end)
+    :on_success(function(params, output)
+        log.info("Modern DSL: Configuration loaded for " .. output.app_name .. 
+                " v" .. output.app_version .. " (" .. output.environment .. ")")
+        log.info("Features enabled: " .. output.features_enabled)
+    end)
+    :build()
+local validate_config_task = task("validate_config")
+    :description("Validates loaded configuration with modern DSL")
+    :depends_on({"display_values"})
+    :command(function(params, deps)
+        log.info("Modern DSL: Validating configuration integrity...")
+        
+        local validation_results = {
+            valid = true,
+            errors = {},
+            warnings = {}
+        }
+        
+        -- Validate app configuration
+        if not values.app or not values.app.name or values.app.name == "" then
+            table.insert(validation_results.errors, "app.name is required")
+            validation_results.valid = false
+        end
+        
+        if not values.app.version or values.app.version == "" then
+            table.insert(validation_results.errors, "app.version is required")
+            validation_results.valid = false
+        end
+        
+        -- Validate database configuration
+        if not values.database or not values.database.host then
+            table.insert(validation_results.warnings, "database.host not specified, using default")
+        end
+        
+        -- Validate environment
+        local valid_envs = {"development", "staging", "production"}
+        local env = values.app and values.app.environment or "development"
+        local env_valid = false
+        for _, valid_env in ipairs(valid_envs) do
+            if env == valid_env then
+                env_valid = true
+                break
+            end
+        end
+        
+        if not env_valid then
+            table.insert(validation_results.warnings, "environment '" .. env .. "' is not standard")
+        end
+        
+        -- Report results
+        if #validation_results.errors > 0 then
+            log.error("Modern DSL: Configuration validation failed:")
+            for _, error in ipairs(validation_results.errors) do
+                log.error("  - " .. error)
+            end
+        end
+        
+        if #validation_results.warnings > 0 then
+            log.warn("Modern DSL: Configuration warnings:")
+            for _, warning in ipairs(validation_results.warnings) do
+                log.warn("  - " .. warning)
+            end
+        end
+        
+        if validation_results.valid then
+            log.info("Modern DSL: Configuration validation passed!")
+            return true, "Configuration is valid", validation_results
+        else
+            return false, "Configuration validation failed", validation_results
+        end
+    end)
+    :build()
+
+workflow.define("values_test_modern", {
+    description = "Values.yaml integration demonstration - Modern DSL",
+    version = "2.0.0",
+    
+    metadata = {
+        category = "configuration",
+        tags = {"values", "yaml", "config", "validation", "modern-dsl"}
     },
-}
+    
+    tasks = {
+        display_values_task,
+        validate_config_task
+    },
+    
+    config = {
+        timeout = "5m",
+        require_values = true
+    },
+    
+    pre_conditions = {
+        values_loaded = function()
+            return values ~= nil, "Values file must be loaded with --values flag"
+        end
+    },
+    
+    on_start = function()
+        log.info("Starting values integration demonstration...")
+        if values then
+            log.info("Values loaded successfully")
+        else
+            log.warn("No values loaded - some features may not work")
+        end
+        return true
+    end
+})

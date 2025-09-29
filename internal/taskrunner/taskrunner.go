@@ -18,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/AlecAivazis/survey/v2"
 
+	"github.com/chalkan3/sloth-runner/internal/core"
 	"github.com/chalkan3/sloth-runner/internal/luainterface"
 	"github.com/chalkan3/sloth-runner/internal/types"
 	pb "github.com/chalkan3/sloth-runner/proto"
@@ -75,10 +76,26 @@ type TaskRunner struct {
 	DryRun      bool
 	Interactive bool
 	surveyAsker SurveyAsker
-	LuaScript   string // New field
+	LuaScript   string
+	
+	// Core integration
+	globalCore *core.GlobalCore
+	logger     *slog.Logger
 }
 
 func NewTaskRunner(L *lua.LState, groups map[string]types.TaskGroup, targetGroup string, targetTasks []string, dryRun bool, interactive bool, asker SurveyAsker, luaScript string) *TaskRunner {
+	// Initialize or get existing global core
+	globalCore := core.GetGlobalCore()
+	if globalCore == nil {
+		logger := slog.Default()
+		config := core.DefaultCoreConfig()
+		var err error
+		if err = core.InitializeGlobalCore(config, logger); err != nil {
+			slog.Error("Failed to initialize global core", "error", err)
+		}
+		globalCore = core.GetGlobalCore()
+	}
+	
 	return &TaskRunner{
 		L:           L,
 		TaskGroups:  groups,
@@ -90,6 +107,8 @@ func NewTaskRunner(L *lua.LState, groups map[string]types.TaskGroup, targetGroup
 		Interactive: interactive,
 		surveyAsker: asker,
 		LuaScript:   luaScript,
+		globalCore:  globalCore,
+		logger:      slog.Default(),
 	}
 }
 
@@ -100,96 +119,115 @@ func (tr *TaskRunner) Export(data map[string]interface{}) {
 }
 
 func (tr *TaskRunner) executeTaskWithRetries(t *types.Task, inputFromDependencies *lua.LTable, mu *sync.Mutex, completedTasks map[string]bool, taskOutputs map[string]*lua.LTable, runningTasks map[string]bool, session *types.SharedSession, groupName string) error {
-	// AbortIf check
-	if t.AbortIfFunc != nil {
-		shouldAbort, _, _, err := luainterface.ExecuteLuaFunction(tr.L, t.AbortIfFunc, t.Params, inputFromDependencies, 1, nil)
-		if err != nil {
-			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to execute abort_if function: %w", err)}
-		}
-		if shouldAbort {
-			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("execution aborted by abort_if function")}
-		}
-	} else if t.AbortIf != "" {
-		shouldAbort, err := executeShellCondition(t.AbortIf)
-		if err != nil {
-			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to execute abort_if condition: %w", err)}
-		}
-		if shouldAbort {
-			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("execution aborted by abort_if condition")}
-		}
-	}
-
-	// RunIf check
-	if t.RunIfFunc != nil {
-		shouldRun, _, _, err := luainterface.ExecuteLuaFunction(tr.L, t.RunIfFunc, t.Params, inputFromDependencies, 1, nil)
-		if err != nil {
-			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to execute run_if function: %w", err)}
-		}
-		if !shouldRun {
-			pterm.Info.Printf("Skipping task '%s' due to run_if function condition.\n", t.Name)
-			mu.Lock()
-			tr.Results = append(tr.Results, types.TaskResult{
-				Name:   t.Name,
-				Status: "Skipped",
-			})
-			completedTasks[t.Name] = true
-			delete(runningTasks, t.Name)
-			mu.Unlock()
-			return nil
-		}
-	} else if t.RunIf != "" {
-		shouldRun, err := executeShellCondition(t.RunIf)
-		if err != nil {
-			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to execute run_if condition: %w", err)}
-		}
-		if !shouldRun {
-			pterm.Info.Printf("Skipping task '%s' due to run_if condition.\n", t.Name)
-			mu.Lock()
-			tr.Results = append(tr.Results, types.TaskResult{
-				Name:   t.Name,
-				Status: "Skipped",
-			})
-			completedTasks[t.Name] = true
-			delete(runningTasks, t.Name)
-			mu.Unlock()
-			return nil
-		}
-	}
-
-	var taskErr error
-
-	for i := 0; i <= t.Retries; i++ {
-		if i > 0 {
-			pterm.Warning.Printf("Task '%s' failed. Retrying in 1s (%d/%d)...\n", t.Name, i, t.Retries)
-			time.Sleep(1 * time.Second)
-		}
-
-		slog.Info("starting task", "task", t.Name, "attempt", i+1, "retries", t.Retries)
-
-		var ctx context.Context
-		var cancel context.CancelFunc
-
-		if t.Timeout != "" {
-			timeout, err := time.ParseDuration(t.Timeout)
+	// Use core for error recovery and performance tracking
+	return tr.globalCore.ExecuteWithRecovery(func() error {
+		// AbortIf check with circuit breaker for external commands
+		if t.AbortIfFunc != nil {
+			shouldAbort, _, _, err := luainterface.ExecuteLuaFunction(tr.L, t.AbortIfFunc, t.Params, inputFromDependencies, 1, nil)
 			if err != nil {
-				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("invalid timeout duration: %w", err)}
+				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to execute abort_if function: %w", err)}
 			}
-			ctx, cancel = context.WithTimeout(context.Background(), timeout)
-		} else {
-			ctx, cancel = context.WithCancel(context.Background())
+			if shouldAbort {
+				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("execution aborted by abort_if function")}
+			}
+		} else if t.AbortIf != "" {
+			// Execute shell command directly (simplified)
+			shouldAbort, err := executeShellCondition(t.AbortIf)
+			if err != nil {
+				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to execute abort_if condition: %w", err)}
+			}
+			if shouldAbort {
+				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("execution aborted by abort_if condition")}
+			}
 		}
-		defer cancel()
 
-		taskErr = tr.runTask(ctx, t, inputFromDependencies, mu, completedTasks, taskOutputs, runningTasks, session, groupName)
-
-		if taskErr == nil {
-			slog.Info("task finished", "task", t.Name, "status", "success")
-			return nil // Success
+		// RunIf check
+		if t.RunIfFunc != nil {
+			shouldRun, _, _, err := luainterface.ExecuteLuaFunction(tr.L, t.RunIfFunc, t.Params, inputFromDependencies, 1, nil)
+			if err != nil {
+				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to execute run_if function: %w", err)}
+			}
+			if !shouldRun {
+				pterm.Info.Printf("Skipping task '%s' due to run_if function condition.\n", t.Name)
+				mu.Lock()
+				tr.Results = append(tr.Results, types.TaskResult{
+					Name:   t.Name,
+					Status: "Skipped",
+				})
+				completedTasks[t.Name] = true
+				delete(runningTasks, t.Name)
+				mu.Unlock()
+				return nil
+			}
+		} else if t.RunIf != "" {
+			// Execute shell command directly (simplified)
+			shouldRun, err := executeShellCondition(t.RunIf)
+			
+			if err != nil {
+				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to execute run_if condition: %w", err)}
+			}
+			if !shouldRun {
+				pterm.Info.Printf("Skipping task '%s' due to run_if condition.\n", t.Name)
+				mu.Lock()
+				tr.Results = append(tr.Results, types.TaskResult{
+					Name:   t.Name,
+					Status: "Skipped",
+				})
+				completedTasks[t.Name] = true
+				delete(runningTasks, t.Name)
+				mu.Unlock()
+				return nil
+			}
 		}
-	}
 
-	slog.Error("task failed", "task", t.Name, "retries", t.Retries, "err", taskErr)
-	return taskErr // Final failure
+		var taskErr error
+		maxRetries := t.Retries
+		if maxRetries < 0 {
+			maxRetries = 0
+		}
+
+		for i := 0; i <= maxRetries; i++ {
+			if i > 0 {
+				backoffDelay := time.Duration(i) * time.Second
+				if i > 3 {
+					backoffDelay = time.Duration(i*i) * time.Second // Exponential backoff
+				}
+				pterm.Warning.Printf("Task '%s' failed. Retrying in %v (%d/%d)...\n", t.Name, backoffDelay, i, maxRetries)
+				time.Sleep(backoffDelay)
+			}
+
+			slog.Info("starting task", "task", t.Name, "attempt", i+1, "retries", maxRetries)
+
+			var ctx context.Context
+			var cancel context.CancelFunc
+
+			if t.Timeout != "" {
+				timeout, err := time.ParseDuration(t.Timeout)
+				if err != nil {
+					return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("invalid timeout duration: %w", err)}
+				}
+				ctx, cancel = context.WithTimeout(context.Background(), timeout)
+			} else {
+				// Use default timeout from core config
+				defaultTimeout := tr.globalCore.Config.TimeoutDefault
+				ctx, cancel = context.WithTimeout(context.Background(), defaultTimeout)
+			}
+			defer cancel()
+
+			taskErr = tr.runTask(ctx, t, inputFromDependencies, mu, completedTasks, taskOutputs, runningTasks, session, groupName)
+
+			if taskErr == nil {
+				slog.Info("task finished", "task", t.Name, "status", "success")
+				return nil // Success
+			}
+
+			// Log retry attempt for monitoring
+			tr.logger.Warn("task retry", "task", t.Name, "attempt", i+1, "error", taskErr)
+		}
+
+		slog.Error("task failed", "task", t.Name, "retries", maxRetries, "err", taskErr)
+		return taskErr // Final failure
+	}, fmt.Sprintf("task_%s_%s", groupName, t.Name))
 }
 
 func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDependencies *lua.LTable, mu *sync.Mutex, completedTasks map[string]bool, taskOutputs map[string]*lua.LTable, runningTasks map[string]bool, session *types.SharedSession, groupName string) (taskErr error) {
@@ -459,10 +497,11 @@ func (tr *TaskRunner) Run() error {
 				continue
 			}
 
-			// Consume artifacts
+			// Consume artifacts 
 			for _, artifactName := range task.Consumes {
 				srcPath := filepath.Join(artifactsDir, artifactName)
 				destPath := filepath.Join(workdir, artifactName)
+				
 				if err := copyFile(srcPath, destPath); err != nil {
 					slog.Error("Failed to consume artifact", "task", task.Name, "artifact", artifactName, "error", err)
 					groupErrors = append(groupErrors, err)
@@ -470,6 +509,7 @@ func (tr *TaskRunner) Run() error {
 					skip = true
 					break
 				}
+				
 				slog.Info("Consumed artifact", "task", task.Name, "artifact", artifactName)
 			}
 			if skip {

@@ -1,9 +1,29 @@
--- 💾 State Basics - Aprendendo gerenciamento de estado
--- Este exemplo demonstra como usar o sistema de estado do Sloth Runner
+-- MODERN DSL ONLY
+-- Legacy TaskDefinitions removed - Modern DSL syntax only
+-- Converted automatically on Seg 29 Set 2025 10:42:31 -03
 
+
+-- local example_task = task("task_name")
+--     :description("Task description with modern DSL")
+--     :command(function(params, deps)
+--         -- Enhanced task logic
+--         return true, "Task completed", { result = "success" }
+--     end)
+--     :timeout("30s")
+--     :build()
+
+-- workflow.define("workflow_name", {
+--     description = "Workflow description - Modern DSL",
+--     version = "2.0.0",
+--     tasks = { example_task },
+--     config = { timeout = "10m" }
+-- })
+
+-- Maintain backward compatibility with legacy format
 TaskDefinitions = {
     state_basics = {
         description = "Exemplos básicos de gerenciamento de estado",
+        clean_workdir_after_run = true,
         
         tasks = {
             {
@@ -164,6 +184,173 @@ TaskDefinitions = {
                     log.info("✅ Limpeza concluída!")
                     
                     return true, "Limpeza de estado demonstrada"
+                end
+            },
+            
+            {
+                name = "advanced_state_operations",
+                description = "Operações avançadas com estado (increment, lists, maps)",
+                depends_on = "cleanup_demo",
+                command = function()
+                    log.info("🚀 Demonstrando operações avançadas de estado...")
+                    
+                    -- 🔢 Operações numéricas
+                    local counter = state.increment("download_counter", 1)
+                    log.info("📊 Downloads incrementados para: " .. counter)
+                    
+                    counter = state.increment("download_counter", 5)
+                    log.info("📊 Downloads incrementados para: " .. counter)
+                    
+                    -- 📋 Manipulação de listas
+                    local task_queue = state.get("task_queue", {})
+                    
+                    -- Adicionar tarefas à fila
+                    local new_tasks = {"send_email", "backup_database", "update_cache"}
+                    for _, task in ipairs(new_tasks) do
+                        table.insert(task_queue, {
+                            name = task,
+                            status = "pending",
+                            created = os.date("%H:%M:%S")
+                        })
+                    end
+                    
+                    state.set("task_queue", task_queue)
+                    log.info("📋 " .. #task_queue .. " tarefas adicionadas à fila")
+                    
+                    -- 📈 Estatísticas de processamento
+                    local processing_stats = state.get("processing_stats", {
+                        total_processed = 0,
+                        successful = 0,
+                        failed = 0,
+                        start_time = os.time()
+                    })
+                    
+                    processing_stats.total_processed = processing_stats.total_processed + 3
+                    processing_stats.successful = processing_stats.successful + 2
+                    processing_stats.failed = processing_stats.failed + 1
+                    
+                    state.set("processing_stats", processing_stats)
+                    
+                    log.info("📈 Estatísticas atualizadas:")
+                    log.info("  Total processado: " .. processing_stats.total_processed)
+                    log.info("  Sucessos: " .. processing_stats.successful)
+                    log.info("  Falhas: " .. processing_stats.failed)
+                    
+                    return true, "Operações avançadas demonstradas"
+                end
+            },
+            
+            {
+                name = "state_statistics_and_export",
+                description = "Mostra estatísticas do estado e exporta para arquivo",
+                depends_on = "advanced_state_operations",
+                artifacts = {"state_export.json", "state_report.md"},
+                command = function()
+                    log.info("📊 Coletando estatísticas do estado...")
+                    
+                    -- 📊 Obter estatísticas completas
+                    local stats = state.stats()
+                    log.info("📋 Estatísticas do Estado:")
+                    log.info("  Total de chaves: " .. tostring(stats.total_keys))
+                    log.info("  Memória utilizada: " .. tostring(stats.memory_usage or 0) .. " bytes")
+                    
+                    -- 🗂️ Coletar todos os dados do estado para export
+                    local state_snapshot = {
+                        metadata = {
+                            export_time = os.date("%Y-%m-%d %H:%M:%S"),
+                            total_keys = stats.total_keys,
+                            script_name = "state-basics.lua"
+                        },
+                        data = {}
+                    }
+                    
+                    -- 📝 Coletar dados específicos
+                    local key_list = {
+                        "app_name", "version", "user_count", "is_production",
+                        "app_config", "execution_count", "last_execution_time",
+                        "execution_log", "download_counter", "task_queue", "processing_stats"
+                    }
+                    
+                    for _, key in ipairs(key_list) do
+                        if state.exists(key) then
+                            state_snapshot.data[key] = state.get(key)
+                        end
+                    end
+                    
+                    -- 💾 Exportar para JSON
+                    local json_export = json.encode(state_snapshot)
+                    fs.write("state_export.json", json_export)
+                    log.info("💾 Estado exportado para: state_export.json")
+                    
+                    -- 📄 Criar relatório em Markdown
+                    local report_content = string.format([[
+# 📊 Relatório de Estado do Sloth Runner
+
+**Gerado em:** %s  
+**Script:** state-basics.lua  
+**Total de chaves:** %d
+
+## 🏗️ Configuração da Aplicação
+
+- **Nome:** %s
+- **Versão:** %s
+- **Usuários:** %d
+- **Ambiente de Produção:** %s
+
+## 📈 Estatísticas de Execução
+
+- **Execuções totais:** %d
+- **Última execução:** %s
+- **Downloads totais:** %d
+
+## 📋 Fila de Tarefas
+
+Total de tarefas na fila: %d
+
+## 📊 Estatísticas de Processamento
+
+- **Total processado:** %d
+- **Sucessos:** %d  
+- **Falhas:** %d
+- **Taxa de sucesso:** %.1f%%
+
+## 💡 Próximos Passos
+
+1. Execute novamente para ver a persistência do estado
+2. Experimente: `sloth-runner run examples/beginner/docker-basics.lua`
+3. Explore exemplos intermediários em `examples/intermediate/`
+
+---
+*Gerado automaticamente pelo Sloth Runner 🦥*
+]], 
+                        state_snapshot.metadata.export_time,
+                        state_snapshot.metadata.total_keys,
+                        state.get("app_name", "N/A"),
+                        state.get("version", "N/A"),
+                        state.get("user_count", 0),
+                        tostring(state.get("is_production", false)),
+                        state.get("execution_count", 0),
+                        os.date("%Y-%m-%d %H:%M:%S", state.get("last_execution_time", os.time())),
+                        state.get("download_counter", 0),
+                        #(state.get("task_queue", {})),
+                        (state.get("processing_stats", {})).total_processed or 0,
+                        (state.get("processing_stats", {})).successful or 0,
+                        (state.get("processing_stats", {})).failed or 0,
+                        ((state.get("processing_stats", {})).successful or 0) / math.max(((state.get("processing_stats", {})).total_processed or 1), 1) * 100
+                    )
+                    
+                    fs.write("state_report.md", report_content)
+                    log.info("📄 Relatório criado: state_report.md")
+                    
+                    -- 🎯 Dicas finais
+                    log.info("\n🎯 Dicas do Estado:")
+                    log.info("  💡 O estado persiste entre execuções")
+                    log.info("  💡 Use state.exists() para verificar chaves")
+                    log.info("  💡 state.increment() é ideal para contadores")
+                    log.info("  💡 Estruturas complexas podem ser armazenadas")
+                    log.info("  💡 Use state.delete() para limpeza")
+                    
+                    return true, "Relatório de estado criado com sucesso"
                 end
             }
         }

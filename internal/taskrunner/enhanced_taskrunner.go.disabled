@@ -1,0 +1,614 @@
+package taskrunner
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/chalkan3/sloth-runner/internal/core"
+	"github.com/chalkan3/sloth-runner/internal/luainterface"
+	"github.com/chalkan3/sloth-runner/internal/types"
+	"github.com/pterm/pterm"
+	lua "github.com/yuin/gopher-lua"
+)
+
+// EnhancedTaskRunner provides advanced task execution capabilities
+type EnhancedTaskRunner struct {
+	*TaskRunner
+	
+	// Enhanced components
+	enhancedCore      *core.EnhancedGlobalCore
+	orchestrator      *TaskOrchestrator
+	dependencyEngine  *DependencyEngine
+	stateManager      *StateManager
+	pluginSystem      *PluginSystem
+	
+	// Advanced execution features
+	executionGraph    *ExecutionGraph
+	rollbackManager   *RollbackManager
+	sagaManager       *SagaManager
+	
+	// Monitoring and observability
+	metricsCollector  *MetricsCollector
+	traceCollector    *TraceCollector
+	eventEmitter      *EventEmitter
+	
+	// Configuration
+	config            *EnhancedConfig
+	
+	mu sync.RWMutex
+}
+
+// EnhancedConfig provides comprehensive configuration options
+type EnhancedConfig struct {
+	// Execution settings
+	MaxConcurrency       int
+	TimeoutDefault       time.Duration
+	RetryDefault         int
+	BackoffStrategy      BackoffStrategy
+	
+	// Dependency management
+	DependencyResolution DependencyResolutionStrategy
+	CycleDetection       bool
+	LazyLoading          bool
+	
+	// State management
+	StatePersistence     bool
+	StateStore           StateStoreType
+	StateEncryption      bool
+	
+	// Rollback and recovery
+	EnableRollback       bool
+	CheckpointInterval   time.Duration
+	CompensationEnabled  bool
+	
+	// Observability
+	EnableMetrics        bool
+	EnableTracing        bool
+	EnableEvents         bool
+	MetricsInterval      time.Duration
+	
+	// Plugin system
+	PluginsEnabled       bool
+	PluginSearchPaths    []string
+	
+	// Performance
+	ResourceLimits       *ResourceLimits
+	OptimizationLevel    OptimizationLevel
+}
+
+// Supporting types
+type BackoffStrategy int
+type DependencyResolutionStrategy int
+type StateStoreType int
+type OptimizationLevel int
+
+const (
+	BackoffLinear BackoffStrategy = iota
+	BackoffExponential
+	BackoffFixed
+)
+
+const (
+	DependencyTopological DependencyResolutionStrategy = iota
+	DependencyParallel
+	DependencyStreaming
+)
+
+const (
+	StateMemory StateStoreType = iota
+	StateSQLite
+	StateRedis
+	StateEtcd
+)
+
+const (
+	OptimizationNone OptimizationLevel = iota
+	OptimizationBasic
+	OptimizationAdvanced
+	OptimizationAggressive
+)
+
+// TaskOrchestrator manages complex task execution patterns
+type TaskOrchestrator struct {
+	runner           *EnhancedTaskRunner
+	executionGraph   *ExecutionGraph
+	scheduler        *TaskScheduler
+	loadBalancer     *LoadBalancer
+	resourceManager  *ResourceManager
+}
+
+// DependencyEngine provides advanced dependency resolution
+type DependencyEngine struct {
+	graph            *DependencyGraph
+	resolver         *DependencyResolver
+	cache            *DependencyCache
+	analyzer         *DependencyAnalyzer
+}
+
+// StateManager handles comprehensive state management
+type StateManager struct {
+	store            StateStore
+	versioning       *StateVersioning
+	locking          *StateLocking
+	replication      *StateReplication
+}
+
+// PluginSystem provides extensibility through plugins
+type PluginSystem struct {
+	registry         *PluginRegistry
+	loader           *PluginLoader
+	sandbox          *PluginSandbox
+	manager          *PluginManager
+}
+
+// ExecutionGraph represents the task execution flow
+type ExecutionGraph struct {
+	nodes            map[string]*ExecutionNode
+	edges            map[string][]*ExecutionEdge
+	analyzer         *GraphAnalyzer
+	optimizer        *GraphOptimizer
+	mu               sync.RWMutex
+}
+
+// RollbackManager handles task rollback operations
+type RollbackManager struct {
+	checkpoints      map[string]*Checkpoint
+	compensations    map[string]CompensationAction
+	rollbackChain    []*RollbackStep
+	mu               sync.RWMutex
+}
+
+// SagaManager implements the Saga pattern for distributed transactions
+type SagaManager struct {
+	sagas            map[string]*Saga
+	coordinator      *SagaCoordinator
+	participants     map[string]SagaParticipant
+	mu               sync.RWMutex
+}
+
+// NewEnhancedTaskRunner creates an enhanced task runner
+func NewEnhancedTaskRunner(config *EnhancedConfig) (*EnhancedTaskRunner, error) {
+	// Initialize enhanced core
+	enhancedCore, err := core.NewEnhancedGlobalCore(config.toCoreConfig(), slog.Default())
+	if err != nil {
+		return nil, fmt.Errorf("failed to create enhanced core: %w", err)
+	}
+	
+	runner := &EnhancedTaskRunner{
+		enhancedCore: enhancedCore,
+		config:       config,
+	}
+	
+	// Initialize components
+	if err := runner.initializeComponents(); err != nil {
+		return nil, fmt.Errorf("failed to initialize components: %w", err)
+	}
+	
+	return runner, nil
+}
+
+// initializeComponents initializes all enhanced components
+func (r *EnhancedTaskRunner) initializeComponents() error {
+	// Initialize task orchestrator
+	r.orchestrator = &TaskOrchestrator{
+		runner:          r,
+		executionGraph:  NewExecutionGraph(),
+		scheduler:       NewTaskScheduler(r.config),
+		loadBalancer:    NewLoadBalancer(r.config),
+		resourceManager: NewResourceManager(r.config.ResourceLimits),
+	}
+	
+	// Initialize dependency engine
+	r.dependencyEngine = &DependencyEngine{
+		graph:    NewDependencyGraph(),
+		resolver: NewDependencyResolver(r.config.DependencyResolution),
+		cache:    NewDependencyCache(),
+		analyzer: NewDependencyAnalyzer(),
+	}
+	
+	// Initialize state manager
+	stateStore, err := NewStateStore(r.config.StateStore)
+	if err != nil {
+		return fmt.Errorf("failed to create state store: %w", err)
+	}
+	
+	r.stateManager = &StateManager{
+		store:       stateStore,
+		versioning:  NewStateVersioning(),
+		locking:     NewStateLocking(),
+		replication: NewStateReplication(),
+	}
+	
+	// Initialize plugin system
+	if r.config.PluginsEnabled {
+		r.pluginSystem = &PluginSystem{
+			registry: NewPluginRegistry(),
+			loader:   NewPluginLoader(r.config.PluginSearchPaths),
+			sandbox:  NewPluginSandbox(),
+			manager:  NewPluginManager(),
+		}
+	}
+	
+	// Initialize execution graph
+	r.executionGraph = r.orchestrator.executionGraph
+	
+	// Initialize rollback manager
+	r.rollbackManager = &RollbackManager{
+		checkpoints:   make(map[string]*Checkpoint),
+		compensations: make(map[string]CompensationAction),
+		rollbackChain: make([]*RollbackStep, 0),
+	}
+	
+	// Initialize saga manager
+	r.sagaManager = &SagaManager{
+		sagas:        make(map[string]*Saga),
+		coordinator:  NewSagaCoordinator(),
+		participants: make(map[string]SagaParticipant),
+	}
+	
+	// Initialize monitoring components
+	if r.config.EnableMetrics {
+		r.metricsCollector = NewMetricsCollector()
+	}
+	
+	if r.config.EnableTracing {
+		r.traceCollector = NewTraceCollector()
+	}
+	
+	if r.config.EnableEvents {
+		r.eventEmitter = NewEventEmitter()
+	}
+	
+	return nil
+}
+
+// ExecuteWorkflow executes a complex workflow with full orchestration
+func (r *EnhancedTaskRunner) ExecuteWorkflow(ctx context.Context, workflow *Workflow) (*WorkflowResult, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	
+	// Create execution context
+	execCtx := &ExecutionContext{
+		Context:     ctx,
+		Workflow:    workflow,
+		StartTime:   time.Now(),
+		ID:          GenerateWorkflowID(),
+		State:       make(map[string]interface{}),
+		Checkpoints: make(map[string]*Checkpoint),
+	}
+	
+	// Emit workflow started event
+	if r.eventEmitter != nil {
+		r.eventEmitter.EmitWorkflowStarted(execCtx)
+	}
+	
+	// Build execution graph
+	graph, err := r.buildExecutionGraph(workflow)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build execution graph: %w", err)
+	}
+	
+	// Optimize graph if enabled
+	if r.config.OptimizationLevel > OptimizationNone {
+		optimized, err := r.optimizeExecutionGraph(graph)
+		if err != nil {
+			slog.Warn("failed to optimize execution graph", "error", err)
+		} else {
+			graph = optimized
+		}
+	}
+	
+	// Execute with orchestration
+	result, err := r.executeWithOrchestration(execCtx, graph)
+	
+	execCtx.EndTime = time.Now()
+	execCtx.Duration = execCtx.EndTime.Sub(execCtx.StartTime)
+	
+	// Handle execution result
+	if err != nil {
+		execCtx.Status = WorkflowStatusFailed
+		execCtx.Error = err
+		
+		// Trigger rollback if enabled
+		if r.config.EnableRollback {
+			if rollbackErr := r.executeRollback(execCtx); rollbackErr != nil {
+				slog.Error("rollback failed", "workflow", execCtx.ID, "error", rollbackErr)
+			}
+		}
+		
+		if r.eventEmitter != nil {
+			r.eventEmitter.EmitWorkflowFailed(execCtx)
+		}
+	} else {
+		execCtx.Status = WorkflowStatusCompleted
+		execCtx.Result = result
+		
+		if r.eventEmitter != nil {
+			r.eventEmitter.EmitWorkflowCompleted(execCtx)
+		}
+	}
+	
+	// Record metrics
+	if r.metricsCollector != nil {
+		r.metricsCollector.RecordWorkflowExecution(execCtx)
+	}
+	
+	// Save final state
+	if r.config.StatePersistence {
+		if stateErr := r.stateManager.SaveWorkflowState(execCtx); stateErr != nil {
+			slog.Warn("failed to save workflow state", "workflow", execCtx.ID, "error", stateErr)
+		}
+	}
+	
+	return &WorkflowResult{
+		ExecutionContext: execCtx,
+		Output:           result,
+		Error:            err,
+	}, err
+}
+
+// ExecuteTaskWithEnhancements executes a single task with all enhancements
+func (r *EnhancedTaskRunner) ExecuteTaskWithEnhancements(ctx context.Context, task *EnhancedTask) (*TaskResult, error) {
+	// Create execution context
+	execCtx := &TaskExecutionContext{
+		Context:   ctx,
+		Task:      task,
+		StartTime: time.Now(),
+		ID:        GenerateTaskExecutionID(),
+		State:     make(map[string]interface{}),
+		Attempts:  0,
+	}
+	
+	// Apply pre-execution hooks
+	if err := r.applyPreExecutionHooks(execCtx); err != nil {
+		return nil, fmt.Errorf("pre-execution hooks failed: %w", err)
+	}
+	
+	// Create checkpoint if rollback is enabled
+	if r.config.EnableRollback {
+		checkpoint, err := r.createCheckpoint(execCtx)
+		if err != nil {
+			slog.Warn("failed to create checkpoint", "task", task.Name, "error", err)
+		} else {
+			execCtx.Checkpoint = checkpoint
+		}
+	}
+	
+	// Execute with retry and circuit breaker
+	var result *TaskResult
+	var err error
+	
+	for attempt := 0; attempt <= task.MaxRetries; attempt++ {
+		execCtx.Attempts = attempt + 1
+		
+		// Execute task
+		result, err = r.executeTaskAttempt(execCtx)
+		
+		if err == nil {
+			break // Success
+		}
+		
+		// Check if should retry
+		if attempt < task.MaxRetries && r.shouldRetry(err, task) {
+			delay := r.calculateBackoffDelay(attempt, task.BackoffStrategy)
+			slog.Info("retrying task", "task", task.Name, "attempt", attempt+1, "delay", delay)
+			time.Sleep(delay)
+			continue
+		}
+		
+		break // Max retries reached or non-retryable error
+	}
+	
+	execCtx.EndTime = time.Now()
+	execCtx.Duration = execCtx.EndTime.Sub(execCtx.StartTime)
+	
+	// Apply post-execution hooks
+	if hookErr := r.applyPostExecutionHooks(execCtx, result, err); hookErr != nil {
+		slog.Warn("post-execution hooks failed", "task", task.Name, "error", hookErr)
+	}
+	
+	// Handle result
+	if err != nil {
+		execCtx.Status = TaskStatusFailed
+		execCtx.Error = err
+		
+		// Execute compensation if configured
+		if task.CompensationAction != nil && r.config.CompensationEnabled {
+			if compErr := r.executeCompensation(execCtx); compErr != nil {
+				slog.Error("compensation failed", "task", task.Name, "error", compErr)
+			}
+		}
+	} else {
+		execCtx.Status = TaskStatusCompleted
+		execCtx.Result = result
+	}
+	
+	// Record metrics and traces
+	if r.metricsCollector != nil {
+		r.metricsCollector.RecordTaskExecution(execCtx)
+	}
+	
+	if r.traceCollector != nil {
+		r.traceCollector.RecordTaskTrace(execCtx)
+	}
+	
+	return result, err
+}
+
+// DSL Integration - Enhanced Lua interface
+func (r *EnhancedTaskRunner) RegisterEnhancedLuaAPI(L *lua.LState) {
+	// Register modern DSL extensions
+	luainterface.RegisterModernDSL(L, r.enhancedCore.GlobalCore)
+	
+	// Register enhanced task runner APIs
+	r.registerTaskRunnerAPI(L)
+	r.registerWorkflowAPI(L)
+	r.registerStateAPI(L)
+	r.registerMetricsAPI(L)
+	r.registerPluginAPI(L)
+}
+
+// registerTaskRunnerAPI registers task runner specific APIs
+func (r *EnhancedTaskRunner) registerTaskRunnerAPI(L *lua.LState) {
+	taskTable := L.NewTable()
+	
+	// Enhanced task execution
+	taskTable.RawSetString("execute", L.NewFunction(func(L *lua.LState) int {
+		taskName := L.CheckString(1)
+		params := L.OptTable(2, nil)
+		
+		// Convert Lua params to Go
+		goParams := make(map[string]interface{})
+		if params != nil {
+			params.ForEach(func(key, value lua.LValue) {
+				goParams[lua.LVAsString(key)] = luainterface.LuaToGoValue(L, value)
+			})
+		}
+		
+		// Create enhanced task
+		task := &EnhancedTask{
+			Name:       taskName,
+			Parameters: goParams,
+			Context:    context.Background(),
+		}
+		
+		// Execute task
+		result, err := r.ExecuteTaskWithEnhancements(context.Background(), task)
+		
+		// Return result
+		if err != nil {
+			L.Push(lua.LNil)
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
+		
+		L.Push(luainterface.GoValueToLua(L, result.Output))
+		L.Push(lua.LNil)
+		return 2
+	}))
+	
+	// Task dependency management
+	taskTable.RawSetString("depends_on", L.NewFunction(func(L *lua.LState) int {
+		taskName := L.CheckString(1)
+		dependencies := L.CheckTable(2)
+		
+		deps := make([]string, 0)
+		dependencies.ForEach(func(_, value lua.LValue) {
+			deps = append(deps, lua.LVAsString(value))
+		})
+		
+		// Register dependencies
+		err := r.dependencyEngine.RegisterDependencies(taskName, deps)
+		
+		L.Push(lua.LBool(err == nil))
+		if err != nil {
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
+		return 1
+	}))
+	
+	// Checkpoint creation
+	taskTable.RawSetString("checkpoint", L.NewFunction(func(L *lua.LState) int {
+		name := L.CheckString(1)
+		state := L.OptTable(2, nil)
+		
+		checkpoint := &Checkpoint{
+			Name:      name,
+			Timestamp: time.Now(),
+			State:     make(map[string]interface{}),
+		}
+		
+		if state != nil {
+			state.ForEach(func(key, value lua.LValue) {
+				checkpoint.State[lua.LVAsString(key)] = luainterface.LuaToGoValue(L, value)
+			})
+		}
+		
+		r.rollbackManager.checkpoints[name] = checkpoint
+		
+		L.Push(lua.LString(name))
+		return 1
+	}))
+	
+	L.SetGlobal("task", taskTable)
+}
+
+// registerWorkflowAPI registers workflow management APIs
+func (r *EnhancedTaskRunner) registerWorkflowAPI(L *lua.LState) {
+	workflowTable := L.NewTable()
+	
+	// Workflow execution
+	workflowTable.RawSetString("run", L.NewFunction(func(L *lua.LState) int {
+		workflowDef := L.CheckTable(1)
+		
+		// Parse workflow definition
+		workflow, err := r.parseWorkflowFromLua(L, workflowDef)
+		if err != nil {
+			L.Push(lua.LNil)
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
+		
+		// Execute workflow
+		result, err := r.ExecuteWorkflow(context.Background(), workflow)
+		
+		if err != nil {
+			L.Push(lua.LNil)
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
+		
+		L.Push(luainterface.GoValueToLua(L, result.Output))
+		L.Push(lua.LNil)
+		return 2
+	}))
+	
+	// Saga management
+	workflowTable.RawSetString("saga", L.NewFunction(func(L *lua.LState) int {
+		sagaName := L.CheckString(1)
+		definition := L.CheckTable(2)
+		
+		saga, err := r.parseSagaFromLua(L, sagaName, definition)
+		if err != nil {
+			L.Push(lua.LBool(false))
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
+		
+		r.sagaManager.sagas[sagaName] = saga
+		
+		L.Push(lua.LBool(true))
+		L.Push(lua.LNil)
+		return 2
+	}))
+	
+	L.SetGlobal("workflow", workflowTable)
+}
+
+// Supporting helper methods and types would continue here...
+// For brevity, I'm showing the key structure and main methods
+
+// Helper function to generate unique workflow ID
+func GenerateWorkflowID() string {
+	return fmt.Sprintf("workflow_%d", time.Now().UnixNano())
+}
+
+func GenerateTaskExecutionID() string {
+	return fmt.Sprintf("task_exec_%d", time.Now().UnixNano())
+}
+
+// Convert enhanced config to core config
+func (config *EnhancedConfig) toCoreConfig() *core.CoreConfig {
+	return &core.CoreConfig{
+		MaxWorkers:                config.MaxConcurrency,
+		TimeoutDefault:            config.TimeoutDefault,
+		CircuitBreakerMaxFailures: 5,
+		CircuitBreakerResetTime:   time.Minute,
+	}
+}

@@ -1,7 +1,6 @@
 package core
 
 import (
-	"context"
 	"log/slog"
 	"runtime"
 	"sync"

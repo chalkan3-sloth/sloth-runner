@@ -1,7 +1,6 @@
 package core
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -11,19 +10,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/chalkan3/sloth-runner/internal/modules"
 	"github.com/yuin/gopher-lua"
 )
 
 // HTTPModule provides HTTP client functionality
 type HTTPModule struct {
-	*modules.BaseModule
+	*BaseModule
 	client *http.Client
 }
 
 // NewHTTPModule creates a new HTTP module
 func NewHTTPModule() *HTTPModule {
-	info := modules.ModuleInfo{
+	info := ModuleInfo{
 		Name:        "http",
 		Version:     "1.0.0",
 		Description: "HTTP client with advanced features including retries, timeouts, and response validation",
@@ -33,7 +31,7 @@ func NewHTTPModule() *HTTPModule {
 	}
 	
 	return &HTTPModule{
-		BaseModule: modules.NewBaseModule(info),
+		BaseModule: NewBaseModule(info),
 		client: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -46,12 +44,12 @@ func (m *HTTPModule) Loader(L *lua.LState) int {
 	
 	// HTTP methods
 	L.SetFuncs(httpTable, map[string]lua.LGFunction{
-		"get":     modules.WrapLuaFunction(m.luaGet, []string{"url"}),
-		"post":    modules.WrapLuaFunction(m.luaPost, []string{"url"}),
-		"put":     modules.WrapLuaFunction(m.luaPut, []string{"url"}),
-		"delete":  modules.WrapLuaFunction(m.luaDelete, []string{"url"}),
-		"patch":   modules.WrapLuaFunction(m.luaPatch, []string{"url"}),
-		"request": modules.WrapLuaFunction(m.luaRequest, []string{"method", "url"}),
+		"get":     m.luaGet,
+		"post":    m.luaPost,
+		"put":     m.luaPut,
+		"delete":  m.luaDelete,
+		"patch":   m.luaPatch,
+		"request": m.luaRequest,
 		"client":  m.luaCreateClient,
 	})
 	
@@ -255,7 +253,11 @@ func (m *HTTPModule) luaRequest(L *lua.LState) int {
 func (m *HTTPModule) performRequest(L *lua.LState, req HTTPRequest) int {
 	resp, err := m.executeRequest(req)
 	if err != nil {
-		return modules.CreateErrorResponse(L, "HTTP request failed", err.Error())
+		errorTable := L.NewTable()
+		errorTable.RawSetString("error", lua.LString("HTTP request failed"))
+		errorTable.RawSetString("message", lua.LString(err.Error()))
+		L.Push(errorTable)
+		return 1
 	}
 	
 	// Create response table
@@ -277,7 +279,8 @@ func (m *HTTPModule) performRequest(L *lua.LState, req HTTPRequest) int {
 		responseTable.RawSetString("json", m.goValueToLua(L, jsonData))
 	}
 	
-	return modules.CreateSuccessResponse(L, responseTable)
+	L.Push(responseTable)
+	return 1
 }
 
 // luaCreateClient creates a custom HTTP client

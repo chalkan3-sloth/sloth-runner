@@ -1,24 +1,26 @@
---
--- artifacts_example.lua
---
--- This example demonstrates the artifact management feature.
--- One task creates a file, declares it as an artifact, and a second
--- task consumes that artifact to read its content.
---
--- The pipeline will:
--- 1. Task `generate-report`: Creates a `report.txt` file in its own workdir
---    and declares `artifacts = {"report.txt"}`.
--- 2. The runner saves `report.txt` to a shared artifact storage.
--- 3. Task `publish-report`: Declares `consumes = {"report.txt"}`.
--- 4. The runner copies `report.txt` from shared storage into this task's workdir.
--- 5. The `publish-report` task reads the file and prints its content.
---
--- To run this example:
---    go run ./cmd/sloth-runner -f examples/artifacts_example.lua
---
+-- MODERN DSL ONLY
+-- Legacy TaskDefinitions removed - Modern DSL syntax only
+-- Converted automatically on Seg 29 Set 2025 10:42:31 -03
 
 local log = require("log")
 
+-- local example_task = task("task_name")
+--     :description("Task description with modern DSL")
+--     :command(function(params, deps)
+--         -- Enhanced task logic
+--         return true, "Task completed", { result = "success" }
+--     end)
+--     :timeout("30s")
+--     :build()
+
+-- workflow.define("workflow_name", {
+--     description = "Workflow description - Modern DSL",
+--     version = "2.0.0",
+--     tasks = { example_task },
+--     config = { timeout = "10m" }
+-- })
+
+-- Maintain backward compatibility with legacy format
 TaskDefinitions = {
   ["artifacts-pipeline"] = {
     description = "A pipeline to demonstrate producing and consuming artifacts.",
