@@ -78,5 +78,14 @@ jobs:
           # Create and push the new tag
           git tag $NEW_TAG
           git push origin $NEW_TAG
+          
+          echo "🎯 Tag $NEW_TAG created successfully. Triggering release workflow..."
+          
+          # Trigger the release workflow for the new tag
+          curl -X POST \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/release.yml/dispatches" \
+            -d "{\"ref\":\"$NEW_TAG\"}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
