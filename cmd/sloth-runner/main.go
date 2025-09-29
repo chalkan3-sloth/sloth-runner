@@ -47,7 +47,9 @@ var (
 	runAsScheduler      bool
 	setFlags            []string // New: To store key-value pairs for template data
 	interactive         bool     // New: To enable interactive mode for task execution
-	version             = "dev" // será substituído em tempo de compilação
+	version             = "dev"  // será substituído em tempo de compilação
+	commit              = "none" // será substituído em tempo de compilação
+	date                = "unknown" // será substituído em tempo de compilação
 )
 
 // Test output buffer for capturing output during tests
@@ -88,6 +90,17 @@ var rootCmd = &cobra.Command{
 	and output manipulation.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
+	},
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Show the sloth-runner version information",
+	Long:  `Display version, commit hash, and build date information for sloth-runner.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Printf("sloth-runner version %s\n", version)
+		fmt.Printf("Git commit: %s\n", commit)
+		fmt.Printf("Build date: %s\n", date)
 	},
 }
 
@@ -855,6 +868,9 @@ func init() {
 	runCmd.Flags().StringP("values", "v", "", "Path to the values file")
 	runCmd.Flags().Bool("yes", false, "Skip confirmation prompts")
 	runCmd.Flags().Bool("interactive", false, "Run in interactive mode")
+
+	// Version command
+	rootCmd.AddCommand(versionCmd)
 }
 
 func Execute() error {

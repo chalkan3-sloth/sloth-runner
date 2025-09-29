@@ -1,5 +1,10 @@
 version: 2
 
+project_name: sloth-runner
+
+git:
+  tag_sort: -version:refname
+
 env:
   - CGO_ENABLED=1
 
@@ -87,11 +92,7 @@ builds:
     binary: sloth-runner
 
 archives:
-  - format: tar.gz
-    name_template: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    format_overrides:
-      - goos: windows
-        format: zip
+  - name_template: "{{ .ProjectName }}_v{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files:
       - README.md
       - LICENSE
@@ -101,7 +102,7 @@ checksum:
   name_template: "{{ .ProjectName }}_v{{ .Version }}_checksums.txt"
 
 snapshot:
-  name_template: "{{ .ProjectName }}_snapshot_{{ .Version }}_{{ .ShortCommit }}"
+  version_template: "{{ .ProjectName }}_snapshot_{{ .Version }}_{{ .ShortCommit }}"
 
 changelog:
   sort: asc
@@ -125,7 +126,7 @@ changelog:
 release:
   github:
     owner: chalkan3
-    name: sloth-runner
+    name: task-runner
   name_template: "🚀 sloth-runner v{{ .Version }}"
   mode: replace
   draft: false
@@ -145,15 +146,15 @@ release:
     ### 🚀 Quick Install
     ```bash
     # Linux/macOS
-    curl -L https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner_v{{ .Version }}_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/').tar.gz | tar xz
+    curl -L https://github.com/chalkan3/task-runner/releases/latest/download/sloth-runner_v{{ .Version }}_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/').tar.gz | tar xz
     chmod +x sloth-runner
     sudo mv sloth-runner /usr/local/bin/
     ```
     
     ### 📚 Documentation
-    - [📖 Getting Started](https://chalkan3.github.io/sloth-runner/en/quick-start/)
-    - [🌐 Multilingual Docs](https://chalkan3.github.io/sloth-runner/)
-    - [💾 State Management](https://chalkan3.github.io/sloth-runner/en/modules/state/)
-    - [📊 Metrics & Monitoring](https://chalkan3.github.io/sloth-runner/en/modules/metrics/)
+    - [📖 Getting Started](https://chalkan3.github.io/task-runner/en/quick-start/)
+    - [🌐 Multilingual Docs](https://chalkan3.github.io/task-runner/)
+    - [💾 State Management](https://chalkan3.github.io/task-runner/en/modules/state/)
+    - [📊 Metrics & Monitoring](https://chalkan3.github.io/task-runner/en/modules/metrics/)
 
-    **Full Changelog**: https://github.com/chalkan3-sloth/sloth-runner/compare/{{ .PreviousTag }}...{{ .Tag }}
+    **Full Changelog**: https://github.com/chalkan3/task-runner/compare/{{ .PreviousTag }}...{{ .Tag }}
