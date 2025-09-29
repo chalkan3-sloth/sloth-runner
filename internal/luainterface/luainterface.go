@@ -358,6 +358,10 @@ func RegisterAllModules(L *lua.LState) {
 	L.PreloadModule("pulumi", NewPulumiModule().Loader)
 	L.PreloadModule("terraform", NewTerraformModule().Loader)
 	
+	// Register cloud-native modules
+	L.PreloadModule("kubernetes", NewKubernetesModule().Loader)
+	L.PreloadModule("helm", NewHelmModule().Loader)
+	
 	// Register state module
 	L.PreloadModule("state", StateLoader)
 	OpenMetrics(L)
