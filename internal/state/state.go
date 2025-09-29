@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -310,4 +311,67 @@ func (sm *StateManager) Stats() (StateStats, error) {
 		LastModified: time.Now().Unix(),
 		Backend:      "sqlite",
 	}, nil
+}
+
+// Exists checks if a key exists
+func (sm *StateManager) Exists(key string) (bool, error) {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+
+	var count int
+	err := sm.db.QueryRow("SELECT COUNT(*) FROM state WHERE key = ?", key).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// Clear removes all state entries
+func (sm *StateManager) Clear() error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	_, err := sm.db.Exec("DELETE FROM state")
+	return err
+}
+
+// Increment increments a numeric value
+func (sm *StateManager) Increment(key string, delta int64) (int64, error) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	var currentValue string
+	err := sm.db.QueryRow("SELECT value FROM state WHERE key = ?", key).Scan(&currentValue)
+	
+	current := int64(0)
+	if err == nil {
+		// Parse existing value
+		if parsed, parseErr := strconv.ParseInt(currentValue, 10, 64); parseErr == nil {
+			current = parsed
+		}
+	}
+
+	newValue := current + delta
+	newValueStr := strconv.FormatInt(newValue, 10)
+
+	// Use UPSERT
+	_, err = sm.db.Exec(`
+		INSERT INTO state (key, value) VALUES (?, ?)
+		ON CONFLICT(key) DO UPDATE SET 
+			value = excluded.value,
+			updated_at = CURRENT_TIMESTAMP
+	`, key, newValueStr)
+	
+	if err != nil {
+		return 0, err
+	}
+	
+	return newValue, nil
+}
+
+// SetWithTTL sets a key with TTL (TTL not implemented in this version)
+func (sm *StateManager) SetWithTTL(key string, value interface{}, ttlSeconds int) error {
+	// For simplicity, just ignore TTL and set the value
+	valueStr := fmt.Sprintf("%v", value)
+	return sm.Set(key, valueStr)
 }
