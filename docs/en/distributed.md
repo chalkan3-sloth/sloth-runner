@@ -15,10 +15,10 @@ To run a task on a remote agent, you need to specify the `delegate_to` field in 
 
 ### 1. Delegate to an Agent at the Task Group Level
 
-You can define the agent directly within your `TaskDefinitions` group using the `delegate_to` field. All tasks within this group will then be delegated to this agent unless overridden by a task-specific `delegate_to`.
+You can define the agent directly within your `Modern DSLs` group using the `delegate_to` field. All tasks within this group will then be delegated to this agent unless overridden by a task-specific `delegate_to`.
 
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
   my_distributed_group = {
     description = "A task group with distributed tasks.",
     delegate_to = { address = "localhost:50051" }, -- Define the agent for the entire group
@@ -42,7 +42,7 @@ TaskDefinitions = {
 Alternatively, you can specify the `delegate_to` field directly on an individual task. This will override any group-level delegation or allow for ad-hoc remote execution.
 
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
   my_group = {
     description = "A task group with a specific remote task.",
     tasks = {

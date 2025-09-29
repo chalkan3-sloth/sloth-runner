@@ -493,7 +493,7 @@ func (mc *MetricsCollector) collectLoop() {
 
 ```lua
 -- Exemplo de uso em Lua tasks
-TaskDefinitions = {
+Modern DSLs = {
     metrics_demo = {
         tasks = {
             collect_system_metrics = {

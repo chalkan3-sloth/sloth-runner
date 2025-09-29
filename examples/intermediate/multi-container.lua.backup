@@ -1,0 +1,397 @@
+-- MODERN DSL ONLY
+-- Legacy TaskDefinitions removed - Modern DSL syntax only
+-- Converted automatically on Seg 29 Set 2025 10:42:31 -03
+
+
+-- local example_task = task("task_name")
+--     :description("Task description with modern DSL")
+--     :command(function(params, deps)
+--         -- Enhanced task logic
+--         return true, "Task completed", { result = "success" }
+--     end)
+--     :timeout("30s")
+--     :build()
+
+-- workflow.define("workflow_name", {
+--     description = "Workflow description - Modern DSL",
+--     version = "2.0.0",
+--     tasks = { example_task },
+--     config = { timeout = "10m" }
+-- })
+
+-- Maintain backward compatibility with legacy format
+TaskDefinitions = {
+    multi_container_setup = {
+        description = "Setup e orquestração de múltiplos containers Docker",
+        
+        tasks = {
+            {
+                name = "prepare_environment",
+                description = "Prepara o ambiente para os containers",
+                command = function()
+                    log.info("🏗️  Preparando ambiente para containers...")
+                    
+                    local docker = require("docker")
+                    
+                    -- Criar uma network personalizada
+                    local network_result = docker.exec({"network", "create", "--driver", "bridge", "sloth-runner-network"})
+                    if network_result.success then
+                        log.info("✅ Rede 'sloth-runner-network' criada")
+                    else
+                        if string.find(network_result.stderr, "already exists") then
+                            log.info("ℹ️  Rede 'sloth-runner-network' já existe")
+                        else
+                            log.error("❌ Erro ao criar rede: " .. network_result.stderr)
+                            return false, "Falha ao criar rede"
+                        end
+                    end
+                    
+                    -- Criar volume para dados persistentes
+                    local volume_result = docker.exec({"volume", "create", "sloth-runner-data"})
+                    if volume_result.success then
+                        log.info("✅ Volume 'sloth-runner-data' criado")
+                    else
+                        if string.find(volume_result.stderr, "already exists") then
+                            log.info("ℹ️  Volume 'sloth-runner-data' já existe")  
+                        else
+                            log.error("❌ Erro ao criar volume: " .. volume_result.stderr)
+                            return false, "Falha ao criar volume"
+                        end
+                    end
+                    
+                    -- Salvar configuração no estado
+                    state.set("container_config", {
+                        network = "sloth-runner-network",
+                        volume = "sloth-runner-data",
+                        containers = {}
+                    })
+                    
+                    return true, "Ambiente preparado"
+                end
+            },
+            
+            {
+                name = "start_database_container",
+                description = "Inicia container com banco de dados Redis",
+                depends_on = "prepare_environment",
+                command = function()
+                    log.info("💾 Iniciando container Redis...")
+                    
+                    local docker = require("docker")
+                    local config = state.get("container_config")
+                    
+                    -- Pull da imagem Redis
+                    log.info("⬇️  Baixando imagem Redis...")
+                    local pull_result = docker.exec({"pull", "redis:alpine"})
+                    if not pull_result.success then
+                        log.error("❌ Erro ao baixar Redis: " .. pull_result.stderr)
+                        return false, "Falha ao baixar Redis"
+                    end
+                    
+                    -- Iniciar container Redis
+                    local redis_result = docker.exec({
+                        "run", "-d",
+                        "--name", "sloth-redis",
+                        "--network", config.network,
+                        "--volume", config.volume .. ":/data",
+                        "-p", "6379:6379",
+                        "redis:alpine",
+                        "redis-server", "--appendonly", "yes"
+                    })
+                    
+                    if redis_result.success then
+                        log.info("✅ Container Redis iniciado")
+                        
+                        -- Aguardar o Redis ficar pronto
+                        log.info("⏳ Aguardando Redis ficar pronto...")
+                        exec.run("sleep 3")
+                        
+                        -- Verificar se o Redis está respondendo
+                        local health_check = docker.exec({"exec", "sloth-redis", "redis-cli", "ping"})
+                        if health_check.success and string.find(health_check.stdout, "PONG") then
+                            log.info("✅ Redis está respondendo")
+                        else
+                            log.error("❌ Redis não está respondendo")
+                            return false, "Redis não está saudável"
+                        end
+                        
+                        -- Salvar info do container
+                        config.containers.redis = {
+                            name = "sloth-redis",
+                            image = "redis:alpine",
+                            port = "6379",
+                            status = "running"
+                        }
+                        state.set("container_config", config)
+                        
+                    else
+                        log.error("❌ Erro ao iniciar Redis: " .. redis_result.stderr)
+                        return false, "Falha ao iniciar Redis"
+                    end
+                    
+                    return true, "Container Redis iniciado"
+                end
+            },
+            
+            {
+                name = "start_web_container",
+                description = "Inicia container web Nginx",
+                depends_on = "start_database_container",
+                command = function()
+                    log.info("🌐 Iniciando container Nginx...")
+                    
+                    local docker = require("docker")
+                    local config = state.get("container_config")
+                    
+                    -- Pull da imagem Nginx
+                    log.info("⬇️  Baixando imagem Nginx...")
+                    local pull_result = docker.exec({"pull", "nginx:alpine"})
+                    if not pull_result.success then
+                        log.error("❌ Erro ao baixar Nginx: " .. pull_result.stderr)
+                        return false, "Falha ao baixar Nginx"
+                    end
+                    
+                    -- Criar página HTML customizada
+                    local html_content = [[
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sloth Runner Multi-Container Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🦥 Sloth Runner Multi-Container Demo</h1>
+        <div class="status success">
+            ✅ Multi-container setup is working!
+        </div>
+        <p><strong>Services Running:</strong></p>
+        <ul>
+            <li>🌐 Nginx Web Server (Port 8080)</li>
+            <li>💾 Redis Database (Port 6379)</li>
+        </ul>
+        <p><strong>Network:</strong> sloth-runner-network</p>
+        <p><strong>Volume:</strong> sloth-runner-data</p>
+        <p><em>Generated by Sloth Runner at ]] .. os.date("%Y-%m-%d %H:%M:%S") .. [[</em></p>
+    </div>
+</body>
+</html>]]
+                    
+                    fs.write("index.html", html_content)
+                    
+                    -- Iniciar container Nginx
+                    local nginx_result = docker.exec({
+                        "run", "-d",
+                        "--name", "sloth-nginx",
+                        "--network", config.network,
+                        "-p", "8080:80",
+                        "-v", fs.current_dir() .. "/index.html:/usr/share/nginx/html/index.html:ro",
+                        "nginx:alpine"
+                    })
+                    
+                    if nginx_result.success then
+                        log.info("✅ Container Nginx iniciado")
+                        
+                        -- Aguardar o Nginx ficar pronto
+                        log.info("⏳ Aguardando Nginx ficar pronto...")
+                        exec.run("sleep 2")
+                        
+                        -- Verificar se o Nginx está respondendo
+                        local http = require("http")
+                        local health_result = http.get({
+                            url = "http://localhost:8080",
+                            timeout = 5
+                        })
+                        
+                        if health_result.success then
+                            log.info("✅ Nginx está respondendo (Status: " .. health_result.data.status_code .. ")")
+                        else
+                            log.error("❌ Nginx não está respondendo: " .. health_result.error)
+                            return false, "Nginx não está saudável"
+                        end
+                        
+                        -- Salvar info do container
+                        config.containers.nginx = {
+                            name = "sloth-nginx",
+                            image = "nginx:alpine", 
+                            port = "8080",
+                            status = "running"
+                        }
+                        state.set("container_config", config)
+                        
+                    else
+                        log.error("❌ Erro ao iniciar Nginx: " .. nginx_result.stderr)
+                        return false, "Falha ao iniciar Nginx"
+                    end
+                    
+                    return true, "Container Nginx iniciado"
+                end
+            },
+            
+            {
+                name = "test_container_communication",
+                description = "Testa comunicação entre containers",
+                depends_on = "start_web_container",
+                command = function()
+                    log.info("🔗 Testando comunicação entre containers...")
+                    
+                    local docker = require("docker")
+                    
+                    -- Testar se Nginx consegue resolver Redis na rede
+                    local dns_test = docker.exec({
+                        "exec", "sloth-nginx", 
+                        "nslookup", "sloth-redis"
+                    })
+                    
+                    if dns_test.success then
+                        log.info("✅ DNS resolution funciona (Nginx -> Redis)")
+                    else
+                        log.error("❌ Problema de DNS resolution: " .. dns_test.stderr)
+                    end
+                    
+                    -- Testar conectividade Redis a partir do Nginx
+                    local connectivity_test = docker.exec({
+                        "exec", "sloth-nginx",
+                        "sh", "-c", "echo 'testing connectivity' | nc -w 3 sloth-redis 6379"
+                    })
+                    
+                    if connectivity_test.success then
+                        log.info("✅ Conectividade de rede funciona (Nginx -> Redis:6379)")
+                    else
+                        log.info("ℹ️  Teste de conectividade: " .. connectivity_test.stderr)
+                    end
+                    
+                    -- Testar dados no Redis
+                    local redis_set = docker.exec({
+                        "exec", "sloth-redis",
+                        "redis-cli", "SET", "sloth-runner-test", "multi-container-success"
+                    })
+                    
+                    if redis_set.success then
+                        local redis_get = docker.exec({
+                            "exec", "sloth-redis", 
+                            "redis-cli", "GET", "sloth-runner-test"
+                        })
+                        
+                        if redis_get.success then
+                            log.info("✅ Dados salvos e recuperados do Redis: " .. redis_get.stdout)
+                        end
+                    end
+                    
+                    return true, "Comunicação entre containers testada"
+                end
+            },
+            
+            {
+                name = "monitor_containers",
+                description = "Monitora status e recursos dos containers",
+                depends_on = "test_container_communication",
+                command = function()
+                    log.info("📊 Monitorando containers...")
+                    
+                    local docker = require("docker")
+                    
+                    -- Status dos containers
+                    local status_result = docker.exec({
+                        "ps", "--filter", "network=sloth-runner-network", 
+                        "--format", "table {{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}"
+                    })
+                    
+                    if status_result.success then
+                        log.info("📋 Status dos containers:")
+                        log.info(status_result.stdout)
+                    end
+                    
+                    -- Estatísticas de recursos
+                    local stats_result = docker.exec({
+                        "stats", "--no-stream", "--format",
+                        "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.NetIO}}",
+                        "sloth-redis", "sloth-nginx"
+                    })
+                    
+                    if stats_result.success then
+                        log.info("📈 Estatísticas de recursos:")
+                        log.info(stats_result.stdout)
+                    end
+                    
+                    -- Informações da rede
+                    local network_info = docker.exec({
+                        "network", "inspect", "sloth-runner-network",
+                        "--format", "{{.Name}}: {{.Driver}} ({{len .Containers}} containers)"
+                    })
+                    
+                    if network_info.success then
+                        log.info("🌐 Rede: " .. network_info.stdout)
+                    end
+                    
+                    -- Informações do volume
+                    local volume_info = docker.exec({
+                        "volume", "inspect", "sloth-runner-data",
+                        "--format", "Volume: {{.Name}} ({{.Driver}})"
+                    })
+                    
+                    if volume_info.success then
+                        log.info("💾 " .. volume_info.stdout)
+                    end
+                    
+                    return true, "Monitoramento completado"
+                end
+            },
+            
+            {
+                name = "cleanup_containers",
+                description = "Remove containers, rede e volume",
+                depends_on = "monitor_containers",
+                command = function()
+                    log.info("🧹 Limpando recursos...")
+                    
+                    local docker = require("docker")
+                    
+                    -- Parar e remover containers
+                    local containers = {"sloth-nginx", "sloth-redis"}
+                    for _, container in ipairs(containers) do
+                        log.info("🛑 Parando container: " .. container)
+                        docker.exec({"stop", container})
+                        
+                        log.info("🗑️  Removendo container: " .. container)
+                        docker.exec({"rm", container})
+                    end
+                    
+                    -- Remover rede
+                    log.info("🗑️  Removendo rede...")
+                    local network_rm = docker.exec({"network", "rm", "sloth-runner-network"})
+                    if network_rm.success then
+                        log.info("✅ Rede removida")
+                    end
+                    
+                    -- Remover volume (comentado para preservar dados)
+                    --[[
+                    log.info("🗑️  Removendo volume...")
+                    local volume_rm = docker.exec({"volume", "rm", "sloth-runner-data"})
+                    if volume_rm.success then
+                        log.info("✅ Volume removido")
+                    end
+                    --]]
+                    
+                    log.info("ℹ️  Volume 'sloth-runner-data' preservado")
+                    
+                    -- Limpar arquivo HTML
+                    if fs.exists("index.html") then
+                        fs.delete("index.html")
+                        log.info("🗑️  Arquivo index.html removido")
+                    end
+                    
+                    log.info("✅ Limpeza concluída!")
+                    
+                    return true, "Recursos limpos"
+                end
+            }
+        }
+    }
+}

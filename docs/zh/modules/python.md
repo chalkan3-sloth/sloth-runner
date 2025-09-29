@@ -51,7 +51,7 @@
 ```lua
 -- examples/python_venv_lifecycle_example.lua
 
-TaskDefinitions = {
+Modern DSLs = {
   main = {
     description = "一个演示 Python venv 生命周期的任务。",
     create_workdir_before_run = true, -- 使用临时工作目录

@@ -127,7 +127,7 @@ command = function(params)
     return true, "Combined Pulumi and Git example finished."
 end
 
-TaskDefinitions = {
+Modern DSLs = {
     pulumi_git_combined_example = {
         description = "Demonstrates combined usage of 'pulumi' and 'git' modules for CI/CD pipeline.",
         tasks = {

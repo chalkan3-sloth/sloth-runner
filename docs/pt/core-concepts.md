@@ -6,7 +6,7 @@ Este documento explica os conceitos fundamentais do `sloth-runner` usando a **Mo
 
 ## Visão Geral da Modern DSL
 
-A Modern DSL substitui a abordagem legada `TaskDefinitions` por uma API mais intuitiva e fluente para definir fluxos de trabalho. Em vez de grandes estruturas de tabela, você agora usa métodos encadeáveis para construir tarefas e definir fluxos de trabalho de forma declarativa.
+A Modern DSL substitui a abordagem legada `Modern DSLs` por uma API mais intuitiva e fluente para definir fluxos de trabalho. Em vez de grandes estruturas de tabela, você agora usa métodos encadeáveis para construir tarefas e definir fluxos de trabalho de forma declarativa.
 
 ```lua
 -- meu_pipeline.lua - Modern DSL
@@ -66,7 +66,7 @@ local minha_tarefa = task("nome_da_tarefa")
 
 **Exemplo:**
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
   meu_grupo = {
     description = "Um grupo que gerencia seu próprio diretório temporário.",
     create_workdir_before_run = true,
@@ -149,7 +149,7 @@ Isso é útil para pipelines de CI/CD, onde uma etapa de compilação pode gerar
 ### Exemplo de Artefatos
 
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
   ["ci-pipeline"] = {
     description = "Demonstra o uso de artefatos.",
     create_workdir_before_run = true,
@@ -196,7 +196,7 @@ Carrega outro arquivo Lua e retorna o valor que ele retorna. Este é o principal
 -- Importa um módulo que retorna uma tabela de definições de tarefas
 local docker_tasks = import("shared/docker.lua")
 
-TaskDefinitions = {
+Modern DSLs = {
   main = {
     tasks = {
       {

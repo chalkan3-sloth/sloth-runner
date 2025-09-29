@@ -50,7 +50,7 @@ sloth-runner run -f examples/basic_pipeline.lua --yes --interactive
 
     ```lua
     -- my_task.lua
-    TaskDefinitions = {
+    Modern DSLs = {
       my_group = {
         tasks = {
           {

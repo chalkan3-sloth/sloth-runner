@@ -446,11 +446,11 @@ end)
 
 ## 📊 Legacy Format Support
 
-The Modern DSL maintains **100% backward compatibility** with the legacy `TaskDefinitions` format:
+The Modern DSL maintains **100% backward compatibility** with the legacy `Modern DSLs` format:
 
 ```lua
 -- Legacy format (still fully supported)
-TaskDefinitions = {
+Modern DSLs = {
     my_workflow = {
         description = "Legacy workflow",
         tasks = {
@@ -475,7 +475,7 @@ This allows for gradual migration and ensures existing scripts continue to work 
 
 **Before (Legacy):**
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
     build_pipeline = {
         description = "Build and test pipeline",
         tasks = {

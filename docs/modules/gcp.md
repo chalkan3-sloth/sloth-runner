@@ -25,7 +25,7 @@ This example defines a task that lists all Compute Engine instances in the `us-c
 ```lua
 -- examples/gcp_cli_example.lua
 
-TaskDefinitions = {
+Modern DSLs = {
   main = {
     description = "A task to list GCP compute instances.",
     tasks = {

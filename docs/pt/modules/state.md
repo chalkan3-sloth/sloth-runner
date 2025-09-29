@@ -186,7 +186,7 @@ end, 15) -- timeout de 15 segundos
 ### 1. Controle de Versão de Deploy
 
 ```lua
-TaskDefinitions = {
+Modern DSLs = {
     pipeline_deployment = {
         tasks = {
             preparar_deploy = {
@@ -259,7 +259,7 @@ function obter_dados_cached(chave_cache, funcao_busca, ttl)
 end
 
 -- Uso em tasks
-TaskDefinitions = {
+Modern DSLs = {
     processamento_dados = {
         tasks = {
             buscar_dados_usuario = {
@@ -306,7 +306,7 @@ function verificar_rate_limit(identificador, max_requisicoes, janela_segundos)
 end
 
 -- Uso em tasks
-TaskDefinitions = {
+Modern DSLs = {
     tarefas_api = {
         tasks = {
             fazer_chamada_api = {

@@ -51,7 +51,7 @@ This example demonstrates a complete lifecycle: creating a virtual environment, 
 ```lua
 -- examples/python_venv_lifecycle_example.lua
 
-TaskDefinitions = {
+Modern DSLs = {
   main = {
     description = "A task to demonstrate the Python venv lifecycle.",
     create_workdir_before_run = true, -- Use a temporary workdir

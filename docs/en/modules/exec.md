@@ -28,7 +28,7 @@ This example demonstrates how to use `exec.run` with a custom working directory 
 ```lua
 -- examples/exec_module_example.lua
 
-TaskDefinitions = {
+Modern DSLs = {
   main = {
     description = "A task to demonstrate the exec module.",
     tasks = {
