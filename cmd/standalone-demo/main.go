@@ -356,7 +356,7 @@ func registerEnhancedDSL(L *lua.LState) {
 			pterm.Warning.Printf("  ⚠️  Attempt %d failed: %v\n", attempt, err)
 			
 			if attempt < maxAttempts {
-				delay := time.Duration(float64(initialDelayMs)*float64(attempt)*backoffMultiplier) * time.Millisecond
+				delay := time.Duration(float64(initialDelayMs)*float64(attempt)*float64(backoffMultiplier)) * time.Millisecond
 				pterm.Debug.Printf("  ⏳ Waiting %v before next attempt (exponential backoff)\n", delay)
 				time.Sleep(delay)
 			}
@@ -409,7 +409,7 @@ func registerEnhancedModules(L *lua.LState) {
 	taskTable := L.NewTable()
 	taskTable.RawSetString("checkpoint", L.NewFunction(func(L *lua.LState) int {
 		name := L.CheckString(1)
-		state := L.OptTable(2, nil)
+		_ = L.OptTable(2, nil) // state parameter, currently unused
 		
 		pterm.Info.Printf("💾 Creating enhanced checkpoint: %s\n", name)
 		
@@ -426,7 +426,7 @@ func registerEnhancedModules(L *lua.LState) {
 	workflowTable := L.NewTable()
 	workflowTable.RawSetString("define", L.NewFunction(func(L *lua.LState) int {
 		name := L.CheckString(1)
-		definition := L.CheckTable(2)
+		_ = L.CheckTable(2) // definition parameter, currently unused
 		
 		pterm.Info.Printf("📋 Defining enhanced workflow: %s\n", name)
 		
