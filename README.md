@@ -223,6 +223,7 @@ sloth-runner ui                         # Start web dashboard
 
 # 🆔 NEW: Stack Management (Pulumi-style)
 sloth-runner run my-stack -f workflow.lua --output enhanced  # Run with stack
+sloth-runner run my-stack -f workflow.lua --output json     # JSON output
 sloth-runner stack list                                      # List all stacks  
 sloth-runner stack show my-stack                            # Show stack details
 sloth-runner list -f workflow.lua                          # List tasks with IDs
@@ -527,6 +528,32 @@ workflow.define("ci_pipeline", {
 *   **`utils` module:** Configuration management, secrets, and utilities
 *   **`validate` module:** Input validation and type checking
 
+### 📊 **JSON Output Support**
+*   **Structured Output:** `--output json` for machine-readable results
+*   **Complete Information:** Status, duration, tasks, stack info, and outputs
+*   **Error Handling:** Detailed error information in JSON format
+*   **Integration Ready:** Perfect for CI/CD pipelines and monitoring tools
+
+```json
+{
+  "status": "success",
+  "duration": "9.073s",
+  "stack": {
+    "id": "3ec19a86...",
+    "name": "production-deploy"
+  },
+  "tasks": {
+    "build_app": {
+      "status": "Success",
+      "duration": "2.020s"
+    }
+  },
+  "outputs": {
+    "deployment_url": "https://app.example.com"
+  }
+}
+```
+
 ### 🏢 **Enterprise Features**
 *   **🌐 Distributed Architecture:** Master-agent with enhanced load balancing
 *   **💾 Advanced State Management:** SQLite-based with clustering and replication
@@ -537,14 +564,14 @@ workflow.define("ci_pipeline", {
 *   **🔐 Security:** RBAC, secrets management, and audit logging
 
 ### 💻 **Modern CLI Interface**
-*   `run`: Execute workflows with Modern DSL support
+*   `run`: Execute workflows with Modern DSL support and multiple output formats
+*   `run --output json`: JSON structured output for automation and integration
+*   `stack`: Complete stack management (list, show, delete)
+*   `list`: Display workflows with enhanced metadata and unique IDs
+*   `workflow init`: Project scaffolding with templates
 *   `validate`: Enhanced validation for both DSL formats
-*   `migrate`: Convert legacy scripts to Modern DSL
-*   `list`: Display workflows with enhanced metadata
-*   `test`: Advanced testing framework for workflows
-*   `repl`: Interactive REPL with Modern DSL support
-*   `template`: Modern DSL templates and scaffolding
 *   `agent`: Enhanced distributed agent management
+*   `ui`: Web-based dashboard for monitoring and management
 
 ---
 
