@@ -2,6 +2,8 @@
 
 Bem-vindo ao Sloth-Runner! Este guia o ajudará a começar a usar a ferramenta rapidamente com as novas funcionalidades de gerenciamento de stacks e output estilo Pulumi.
 
+> **📝 Nota Importante:** A partir da versão atual, os arquivos de workflow do Sloth Runner usam a extensão `.sloth` em vez de `.lua`. A sintaxe Lua permanece a mesma, apenas a extensão do arquivo mudou para melhor identificação dos arquivos DSL do Sloth Runner.
+
 ## Instalação
 
 Para instalar o `sloth-runner` em seu sistema, você pode usar o script `install.sh` fornecido. Este script detecta automaticamente seu sistema operacional e arquitetura, baixa a versão mais recente do GitHub e coloca o executável `sloth-runner` em `/usr/local/bin`.
@@ -20,17 +22,23 @@ A nova funcionalidade principal do Sloth Runner é o **Stack Management**, simil
 
 ```bash
 # Nova sintaxe - nome do stack como argumento posicional
-sloth-runner run {nome-do-stack} --file workflow.lua
+sloth-runner run {nome-do-stack} --file workflow.sloth
 
 # Exemplos práticos
-sloth-runner run production-app -f deploy.lua --output enhanced
-sloth-runner run dev-environment -f test.lua -o rich
-sloth-runner run staging-api -f pipeline.lua
+sloth-runner run production-app -f deploy.sloth --output enhanced
+sloth-runner run dev-environment -f test.sloth -o rich
+sloth-runner run staging-api -f pipeline.sloth
 ```
 
 ### Gerenciamento de Stacks
 
 ```bash
+# Criar um novo stack
+sloth-runner stack new my-stack --description "Production deployment stack" --workflow-file deploy.sloth
+
+# Criar stack com valores padrão
+sloth-runner stack new dev-stack
+
 # Listar todos os stacks
 sloth-runner stack list
 
@@ -45,10 +53,10 @@ sloth-runner stack delete old-environment
 
 ```bash
 # Listar tasks e grupos com IDs únicos
-sloth-runner list -f workflow.lua
+sloth-runner list -f workflow.sloth
 
 # Visualizar estrutura completa do workflow
-sloth-runner list -f pipeline.lua
+sloth-runner list -f pipeline.sloth
 
 # Exemplo de saída organizada:
 # ## Task Group: deploy_group  
@@ -73,7 +81,7 @@ sloth-runner workflow list-templates
 
 # Executar o workflow gerado
 cd meu-app
-sloth-runner run dev-env -f meu-app.lua --output enhanced
+sloth-runner run dev-env -f meu-app.sloth --output enhanced
 ```
 
 ### Templates Disponíveis
@@ -90,12 +98,12 @@ sloth-runner run dev-env -f meu-app.lua --output enhanced
 
 ```bash
 # Output básico (padrão)
-sloth-runner run meu-stack -f workflow.lua
+sloth-runner run meu-stack -f workflow.sloth
 
 # Output melhorado estilo Pulumi
-sloth-runner run meu-stack -f workflow.lua --output enhanced
-sloth-runner run meu-stack -f workflow.lua -o rich
-sloth-runner run meu-stack -f workflow.lua --output modern
+sloth-runner run meu-stack -f workflow.sloth --output enhanced
+sloth-runner run meu-stack -f workflow.sloth -o rich
+sloth-runner run meu-stack -f workflow.sloth --output modern
 ```
 
 ### Demonstração Visual
@@ -133,16 +141,16 @@ Para executar um arquivo de tarefa Lua sem stack:
 
 ```bash
 # Execução simples
-sloth-runner run -f examples/basic_pipeline.lua
+sloth-runner run -f examples/basic_pipeline.sloth
 
 # Com output melhorado
-sloth-runner run -f examples/basic_pipeline.lua --output enhanced
+sloth-runner run -f examples/basic_pipeline.sloth --output enhanced
 ```
 
 Para listar as tarefas em um arquivo:
 
 ```bash
-sloth-runner list -f examples/basic_pipeline.lua
+sloth-runner list -f examples/basic_pipeline.sloth
 ```
 
 ## 📊 Exemplos Práticos
@@ -151,13 +159,13 @@ sloth-runner list -f examples/basic_pipeline.lua
 
 ```bash
 # Desenvolvimento
-sloth-runner run dev-app -f deploy.lua
+sloth-runner run dev-app -f deploy.sloth
 
 # Staging
-sloth-runner run staging-app -f deploy.lua
+sloth-runner run staging-app -f deploy.sloth
 
 # Produção com output rico
-sloth-runner run prod-app -f deploy.lua --output enhanced
+sloth-runner run prod-app -f deploy.sloth --output enhanced
 
 # Verificar status de produção
 sloth-runner stack show prod-app
@@ -167,10 +175,10 @@ sloth-runner stack show prod-app
 
 ```bash
 # No pipeline CI/CD
-sloth-runner run ${ENVIRONMENT}-${APP_NAME} -f pipeline.lua
+sloth-runner run ${ENVIRONMENT}-${APP_NAME} -f pipeline.sloth
 
 # Exemplo específico
-sloth-runner run prod-frontend -f frontend-deploy.lua
+sloth-runner run prod-frontend -f frontend-deploy.sloth
 ```
 
 ## 🗃️ Persistência de Estado

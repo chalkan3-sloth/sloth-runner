@@ -25,24 +25,24 @@ Benefícios:
 
 ```bash
 # Sintaxe nova (recomendada)
-sloth-runner run {stack-name} --file workflow.lua --output enhanced
+sloth-runner run {stack-name} --file workflow.sloth --output enhanced
 
 # Exemplos práticos
-sloth-runner run production-api -f api-deploy.lua --output json
-sloth-runner run staging-tests -f test-suite.lua --output modern
-sloth-runner run dev-environment -f dev-setup.lua --output enhanced
+sloth-runner run production-api -f api-deploy.sloth --output json
+sloth-runner run staging-tests -f test-suite.sloth --output modern
+sloth-runner run dev-environment -f dev-setup.sloth --output enhanced
 ```
 
 ### 🎨 Múltiplas Opções de Output
 
 #### 1. **Basic Output** (padrão)
 ```bash
-sloth-runner run my-stack -f workflow.lua --output basic
+sloth-runner run my-stack -f workflow.sloth --output basic
 ```
 
 #### 2. **Enhanced Output** (estilo Pulumi)
 ```bash
-sloth-runner run my-stack -f workflow.lua --output enhanced
+sloth-runner run my-stack -f workflow.sloth --output enhanced
 ```
 - Progress bars animados
 - Status colorido
@@ -51,12 +51,12 @@ sloth-runner run my-stack -f workflow.lua --output enhanced
 
 #### 3. **Modern Output** (visual aprimorado)
 ```bash
-sloth-runner run my-stack -f workflow.lua --output modern
+sloth-runner run my-stack -f workflow.sloth --output modern
 ```
 
 #### 4. **JSON Output** (para CI/CD)
 ```bash
-sloth-runner run my-stack -f workflow.lua --output json
+sloth-runner run my-stack -f workflow.sloth --output json
 ```
 
 **Exemplo de output JSON:**
@@ -97,7 +97,7 @@ Cada task e grupo agora possui um **UUID único** para rastreamento granular.
 
 ### 📋 Comando `list`
 ```bash
-sloth-runner list -f workflow.lua
+sloth-runner list -f workflow.sloth
 ```
 
 **Exemplo de output:**
@@ -148,7 +148,7 @@ Status: completed
 Created: 2024-01-15 08:00:00
 Updated: 2024-01-15 14:30:15
 Completed: 2024-01-15 14:30:15
-Workflow File: production-deploy.lua
+Workflow File: production-deploy.sloth
 Executions: 15
 Last Duration: 2.5s
 
@@ -244,24 +244,24 @@ sudo chmod 777 /etc/sloth-runner
 ### 1. **CI/CD Pipeline**
 ```bash
 # Pipeline de produção
-sloth-runner run cicd-main -f cicd-pipeline.lua --output json > deployment-report.json
+sloth-runner run cicd-main -f cicd-pipeline.sloth --output json > deployment-report.json
 
 # Verificar status
 sloth-runner stack show cicd-main
 
 # Deployment para múltiplos ambientes
-sloth-runner run production -f deploy.lua --output enhanced
-sloth-runner run staging -f deploy.lua --output enhanced
-sloth-runner run development -f deploy.lua --output enhanced
+sloth-runner run production -f deploy.sloth --output enhanced
+sloth-runner run staging -f deploy.sloth --output enhanced
+sloth-runner run development -f deploy.sloth --output enhanced
 ```
 
 ### 2. **Desenvolvimento Local**
 ```bash
 # Setup de ambiente
-sloth-runner run dev-setup -f local-env.lua --output modern
+sloth-runner run dev-setup -f local-env.sloth --output modern
 
 # Testes automatizados
-sloth-runner run test-suite -f tests.lua --output enhanced
+sloth-runner run test-suite -f tests.sloth --output enhanced
 
 # Monitoramento
 sloth-runner stack list
@@ -271,10 +271,10 @@ sloth-runner stack show test-suite
 ### 3. **Análise e Debugging**
 ```bash
 # Listar estrutura do workflow
-sloth-runner list -f complex-workflow.lua
+sloth-runner list -f complex-workflow.sloth
 
 # Output detalhado em JSON para análise
-sloth-runner run debug-session -f debug.lua --output json | jq .
+sloth-runner run debug-session -f debug.sloth --output json | jq .
 
 # Histórico de execuções
 sloth-runner stack show debug-session
@@ -300,7 +300,7 @@ As seguintes funcionalidades estão sendo desenvolvidas:
 set -e
 
 STACK_NAME="production-$(date +%Y%m%d-%H%M%S)"
-RESULT=$(sloth-runner run $STACK_NAME -f production.lua --output json)
+RESULT=$(sloth-runner run $STACK_NAME -f production.sloth --output json)
 STATUS=$(echo $RESULT | jq -r '.status')
 
 if [ "$STATUS" = "success" ]; then

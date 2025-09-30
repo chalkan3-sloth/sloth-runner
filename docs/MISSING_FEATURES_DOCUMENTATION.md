@@ -101,7 +101,7 @@ local decision = ai.decide(conditions)
 #### Arquivos de Implementação:
 - `internal/luainterface/ai.go`
 - `internal/ai/`
-- `examples/ai_*.lua`
+- `examples/ai_*.sloth`
 
 ---
 
@@ -186,7 +186,7 @@ security.audit_log(action, details)
 
 #### Arquivos de Implementação:
 - `internal/luainterface/security.go`
-- `examples/security_module_example.lua`
+- `examples/security_module_example.sloth`
 
 ---
 
@@ -211,7 +211,7 @@ observability.alert.send("high_cpu", details)
 #### Arquivos de Implementação:
 - `internal/luainterface/observability.go`
 - `internal/luainterface/metrics.go`
-- `examples/observability_module_example.lua`
+- `examples/observability_module_example.sloth`
 
 ---
 
@@ -236,7 +236,7 @@ state.atomic_increment("counter")
 #### Arquivos de Implementação:
 - `internal/luainterface/state.go`
 - `internal/state/`
-- `examples/state_management_demo.lua`
+- `examples/state_management_demo.sloth`
 
 ---
 
@@ -253,7 +253,7 @@ state.atomic_increment("counter")
 #### Arquivos de Implementação:
 - `internal/luainterface/network.go`
 - `internal/luainterface/http.go`
-- `examples/network_module_example.lua`
+- `examples/network_module_example.sloth`
 
 ---
 
@@ -269,7 +269,7 @@ state.atomic_increment("counter")
 
 #### Arquivos de Implementação:
 - `internal/luainterface/notifications.go`
-- `examples/notifications_example.lua`
+- `examples/notifications_example.sloth`
 
 ---
 
@@ -285,7 +285,7 @@ state.atomic_increment("counter")
 
 #### Arquivos de Implementação:
 - `internal/luainterface/database.go`
-- `examples/database_module_example.lua`
+- `examples/database_module_example.sloth`
 
 ---
 
@@ -300,7 +300,7 @@ state.atomic_increment("counter")
 
 #### Arquivos de Implementação:
 - `internal/luainterface/python.go`
-- `examples/python_venv_*.lua`
+- `examples/python_venv_*.sloth`
 
 ---
 

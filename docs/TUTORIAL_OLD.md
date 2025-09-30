@@ -10,10 +10,10 @@ Before you begin, make sure you have:
 
 ## Step 1: Create Your First Task File
 
-Let's create a simple Lua file named `my_tasks.lua`. This file will define our tasks using the **Modern DSL**.
+Let's create a simple sloth file named `my_tasks.sloth`. This file will define our tasks using the **Modern DSL**.
 
 ```lua
--- my_tasks.lua - Modern DSL
+-- my_tasks.sloth - Modern DSL
 
 -- Define your first task using the fluent API
 local hello_task = task("say_hello")
@@ -62,20 +62,20 @@ This defines a workflow with a single task using the **Modern DSL** fluent API. 
 
 ## Step 2: Run Your Task
 
-Now, let's run the task using the `sloth-runner` CLI. Open your terminal in the same directory where you saved `my_tasks.lua` and run:
+Now, let's run the task using the `sloth-runner` CLI. Open your terminal in the same directory where you saved `my_tasks.sloth` and run:
 
 ```bash
-sloth-runner run -f my_tasks.lua
+sloth-runner run -f my_tasks.sloth
 ```
 
 You should see the structured output and logging from the Modern DSL task execution!
 
 ## Step 3: Add a Dependent Task
 
-Let's make it more interesting by adding a second task that depends on the first one. Modify `my_tasks.lua`:
+Let's make it more interesting by adding a second task that depends on the first one. Modify `my_tasks.sloth`:
 
 ```lua
--- my_tasks.lua - Modern DSL with Dependencies
+-- my_tasks.sloth - Modern DSL with Dependencies
 
 -- First task with output
 local hello_task = task("say_hello")
@@ -157,7 +157,7 @@ workflow.define("hello_workflow_with_dependencies", {
 Now, let's run only the final task, `show_message`. Sloth Runner will automatically figure out that it needs to run `say_hello` first.
 
 ```bash
-sloth-runner run -f my_tasks.lua -t show_message
+sloth-runner run -f my_tasks.sloth -t show_message
 ```
 
 You will see both tasks execute in the correct order, with enhanced Modern DSL logging and structured output.

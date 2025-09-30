@@ -56,7 +56,7 @@ Create your first Lua task file:
 
 ```bash
 # Create a simple task file
-cat > hello-world.lua << 'EOF'
+cat > hello-world.sloth << 'EOF'
 Modern DSLs = {
     hello_world = {
         description = "My first Sloth Runner task",
@@ -119,10 +119,10 @@ EOF
 
 ```bash
 # Execute the task
-sloth-runner run -f hello-world.lua
+sloth-runner run -f hello-world.sloth
 
 # Or run specific task
-sloth-runner run -f hello-world.lua -t greet
+sloth-runner run -f hello-world.sloth -t greet
 ```
 
 Expected output:
@@ -205,7 +205,7 @@ wait
 ### **State Management Example**
 
 ```lua
--- Create state-demo.lua
+-- Create state-demo.sloth
 Modern DSLs = {
     state_demo = {
         description = "Demonstrate state management capabilities",
@@ -302,13 +302,13 @@ Modern DSLs = {
 
 Run the state demo:
 ```bash
-sloth-runner run -f state-demo.lua
+sloth-runner run -f state-demo.sloth
 ```
 
 ### **Metrics Monitoring Example**
 
 ```lua
--- Create metrics-demo.lua  
+-- Create metrics-demo.sloth  
 Modern DSLs = {
     metrics_demo = {
         description = "Demonstrate metrics and monitoring",
@@ -368,7 +368,7 @@ Modern DSLs = {
 
 Run the metrics demo:
 ```bash
-sloth-runner run -f metrics-demo.lua
+sloth-runner run -f metrics-demo.sloth
 ```
 
 ## 🌐 **Access Web Dashboard**
@@ -440,7 +440,7 @@ sudo ufw status
 ls -la /usr/local/bin/sloth-runner
 
 # Run with appropriate user
-sudo -u myuser sloth-runner run -f task.lua
+sudo -u myuser sloth-runner run -f task.sloth
 ```
 
 **State database issues?**

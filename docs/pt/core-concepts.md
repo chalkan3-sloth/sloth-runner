@@ -9,7 +9,7 @@ Este documento explica os conceitos fundamentais do `sloth-runner` usando a **Mo
 A Modern DSL substitui a abordagem legada `Modern DSLs` por uma API mais intuitiva e fluente para definir fluxos de trabalho. Em vez de grandes estruturas de tabela, você agora usa métodos encadeáveis para construir tarefas e definir fluxos de trabalho de forma declarativa.
 
 ```lua
--- meu_pipeline.lua - Modern DSL
+-- meu_pipeline.sloth - Modern DSL
 local minha_tarefa = task("nome_da_tarefa")
     :description("Descrição da tarefa")
     :command(function() ... end)
@@ -191,10 +191,10 @@ O `sloth-runner` fornece funções globais no ambiente Lua para ajudar a orquest
 
 Carrega outro arquivo Lua e retorna o valor que ele retorna. Este é o principal mecanismo para criar módulos de tarefas reutilizáveis. O caminho é relativo ao arquivo que chama `import`.
 
-**Exemplo (`reusable_tasks.lua`):**
+**Exemplo (`reusable_tasks.sloth`):**
 ```lua
 -- Importa um módulo que retorna uma tabela de definições de tarefas
-local docker_tasks = import("shared/docker.lua")
+local docker_tasks = import("shared/docker.sloth")
 
 Modern DSLs = {
   main = {

@@ -28,16 +28,16 @@ sloth-runner run [flags]
 
 *   运行特定组中的所有任务:
     ```bash
-    sloth-runner run -f examples/basic_pipeline.lua -g my_group
+    sloth-runner run -f examples/basic_pipeline.sloth -g my_group
     ```
 *   运行单个特定任务:
     ```bash
 
-    sloth-runner run -f examples/basic_pipeline.lua -g my_group -t my_task
+    sloth-runner run -f examples/basic_pipeline.sloth -g my_group -t my_task
     ```
 *   运行多个任务并将其组合输出作为 JSON 获取:
     ```bash
-    sloth-runner run -f examples/export_example.lua -t export-data-task --return
+    sloth-runner run -f examples/export_example.sloth -t export-data-task --return
     ```
 
 ---
@@ -79,14 +79,14 @@ sloth-runner new <group-name> [flags]
 
 **示例:**
 ```bash
-sloth-runner new my-python-pipeline -t python -o my_pipeline.lua
+sloth-runner new my-python-pipeline -t python -o my_pipeline.sloth
 ```
 
 ---
 
 ## `sloth-runner validate`
 
-验证 Lua 任务文件的语法和基本结构，而不执行任何任务。
+验证 sloth 任务文件的语法和基本结构，而不执行任何任务。
 
 **用法:**
 ```bash

@@ -18,12 +18,12 @@ Sloth Runner provides a complete stack management system similar to Pulumi, allo
 
 ```bash
 # New syntax - stack name as positional argument
-sloth-runner run {stack-name} --file workflow.lua
+sloth-runner run {stack-name} --file workflow.sloth
 
 # Practical examples
-sloth-runner run production-app -f deploy.lua --output enhanced
-sloth-runner run dev-environment -f test.lua -o rich
-sloth-runner run my-cicd -f pipeline.lua
+sloth-runner run production-app -f deploy.sloth --output enhanced
+sloth-runner run dev-environment -f test.sloth -o rich
+sloth-runner run my-cicd -f pipeline.sloth
 ```
 
 ### Managing Stacks
@@ -156,12 +156,12 @@ STARTED            STATUS     DURATION   TASKS   SUCCESS   FAILED
 
 ```bash
 # Basic output (default)
-sloth-runner run my-stack -f workflow.lua
+sloth-runner run my-stack -f workflow.sloth
 
 # Enhanced output
-sloth-runner run my-stack -f workflow.lua --output enhanced
-sloth-runner run my-stack -f workflow.lua -o rich
-sloth-runner run my-stack -f workflow.lua --output modern
+sloth-runner run my-stack -f workflow.sloth --output enhanced
+sloth-runner run my-stack -f workflow.sloth -o rich
+sloth-runner run my-stack -f workflow.sloth --output modern
 ```
 
 ### Pulumi Style
@@ -199,24 +199,24 @@ Tasks executed: 3
 
 ```bash
 # Development
-sloth-runner run dev-app -f app.lua
+sloth-runner run dev-app -f app.sloth
 
 # Staging  
-sloth-runner run staging-app -f app.lua
+sloth-runner run staging-app -f app.sloth
 
 # Production
-sloth-runner run prod-app -f app.lua --output enhanced
+sloth-runner run prod-app -f app.sloth --output enhanced
 ```
 
 ### CI/CD Integration
 
 ```bash
 # In CI/CD pipeline
-sloth-runner run ${ENVIRONMENT}-${APP_NAME} -f pipeline.lua
+sloth-runner run ${ENVIRONMENT}-${APP_NAME} -f pipeline.sloth
 
 # Examples:
-sloth-runner run prod-frontend -f frontend-deploy.lua
-sloth-runner run staging-api -f api-deploy.lua
+sloth-runner run prod-frontend -f frontend-deploy.sloth
+sloth-runner run staging-api -f api-deploy.sloth
 ```
 
 ### Monitoring
@@ -238,9 +238,9 @@ sloth-runner stack delete temp-test-env
 
 ```bash
 # Use pattern: {environment}-{application}
-sloth-runner run prod-frontend -f deploy.lua
-sloth-runner run staging-api -f deploy.lua
-sloth-runner run dev-database -f setup.lua
+sloth-runner run prod-frontend -f deploy.sloth
+sloth-runner run staging-api -f deploy.sloth
+sloth-runner run dev-database -f setup.sloth
 ```
 
 ### Output Exports
@@ -270,13 +270,13 @@ runner.Export({
 
 ```bash
 # Active development
-sloth-runner run dev-app -f app.lua
+sloth-runner run dev-app -f app.sloth
 
 # When ready for staging
-sloth-runner run staging-app -f app.lua
+sloth-runner run staging-app -f app.sloth
 
 # Deploy to production
-sloth-runner run prod-app -f app.lua --output enhanced
+sloth-runner run prod-app -f app.sloth --output enhanced
 
 # Clean up old environments
 sloth-runner stack delete old-test-branch
@@ -288,10 +288,10 @@ sloth-runner stack delete old-test-branch
 
 ```bash
 # Before
-sloth-runner run -f workflow.lua --stack my-stack
+sloth-runner run -f workflow.sloth --stack my-stack
 
 # Now
-sloth-runner run my-stack -f workflow.lua
+sloth-runner run my-stack -f workflow.sloth
 ```
 
 ### Compatibility

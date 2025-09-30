@@ -26,7 +26,7 @@ Uma tabela contendo o resultado da execução do comando:
 Este exemplo demonstra como usar `exec.run` com um diretório de trabalho e variáveis de ambiente personalizados.
 
 ```lua
--- examples/exec_module_example.lua
+-- examples/exec_module_example.sloth
 
 Modern DSLs = {
   main = {

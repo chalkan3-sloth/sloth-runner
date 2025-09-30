@@ -11,18 +11,18 @@ The `sloth-runner` now includes a built-in task scheduler, allowing you to autom
 
 ## Configuration: `scheduler.yaml`
 
-Scheduled tasks are defined in a YAML file, typically named `scheduler.yaml`. This file specifies the tasks to run, their schedule, and the Lua file, group, and task name.
+Scheduled tasks are defined in a YAML file, typically named `scheduler.yaml`. This file specifies the tasks to run, their schedule, and the sloth file, group, and task name.
 
 ```yaml
 scheduled_tasks:
   - name: "my_daily_backup"
     schedule: "0 0 * * *" # Every day at midnight
-    task_file: "examples/my_workflow.lua"
+    task_file: "examples/my_workflow.sloth"
     task_group: "backup_group"
     task_name: "perform_backup"
   - name: "hourly_report_generation"
     schedule: "0 * * * *" # Every hour
-    task_file: "examples/reporting.lua"
+    task_file: "examples/reporting.sloth"
     task_group: "reports"
     task_name: "generate_report"
 ```
@@ -32,7 +32,7 @@ scheduled_tasks:
 *   `name` (string, required): A unique name for the scheduled task.
 *   `schedule` (string, required): The cron string defining when the task should run. Supports standard cron syntax and some predefined schedules (e.g., `@every 1h`, `@daily`). Refer to [robfig/cron documentation](https://pkg.go.dev/github.com/robfig/cron/v3#hdr-CRON_Expression_Format) for details.
 *   `task_file` (string, required): The path to the Lua task definition file.
-*   `task_group` (string, required): The name of the task group within the Lua file.
+*   `task_group` (string, required): The name of the task group within the sloth file.
 *   `task_name` (string, required): The name of the specific task to execute within the task group.
 
 ## CLI Commands
@@ -75,8 +75,8 @@ sloth-runner scheduler list --scheduler-config scheduler.yaml
 # Configured Scheduled Tasks
 
 NAME                     | SCHEDULE    | FILE                     | GROUP        | TASK
-my_daily_backup          | 0 0 * * *   | examples/my_workflow.lua | backup_group | perform_backup
-hourly_report_generation | 0 * * * *   | examples/reporting.lua   | reports      | generate_report
+my_daily_backup          | 0 0 * * *   | examples/my_workflow.sloth | backup_group | perform_backup
+hourly_report_generation | 0 * * * *   | examples/reporting.sloth   | reports      | generate_report
 ```
 
 ### `sloth-runner scheduler delete <task_name>`
@@ -106,7 +106,7 @@ If a scheduled task fails, the scheduler will log the error and continue with ot
     scheduled_tasks:
       - name: "my_test_task"
         schedule: "@every 1m"
-        task_file: "examples/basic_pipeline.lua"
+        task_file: "examples/basic_pipeline.sloth"
         task_group: "basic_pipeline"
         task_name: "fetch_data"
     ```
