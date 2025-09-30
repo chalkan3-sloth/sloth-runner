@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="8" cy="8" r="7.5" fill="#8B4513" stroke="#654321" stroke-width="0.5"/>
+  
+  <!-- Sloth face -->
+  <ellipse cx="8" cy="8.5" rx="6" ry="5.5" fill="#A0522D"/>
+  
+  <!-- Eyes -->
+  <circle cx="6.5" cy="7" r="0.8" fill="#000"/>
+  <circle cx="9.5" cy="7" r="0.8" fill="#000"/>
+  <circle cx="6.7" cy="6.8" r="0.2" fill="#FFF"/>
+  <circle cx="9.7" cy="6.8" r="0.2" fill="#FFF"/>
+  
+  <!-- Nose -->
+  <ellipse cx="8" cy="8.5" rx="0.4" ry="0.6" fill="#000"/>
+  
+  <!-- Mouth -->
+  <path d="M 6.5 9.5 Q 8 10.2 9.5 9.5" stroke="#000" stroke-width="0.4" fill="none"/>
+  
+  <!-- Arms/claws -->
+  <ellipse cx="4" cy="10" rx="1" ry="0.3" fill="#654321"/>
+  <ellipse cx="12" cy="10" rx="1" ry="0.3" fill="#654321"/>
+  
+  <!-- Tree branch -->
+  <rect x="0" y="12" width="16" height="2" fill="#8B4513"/>
+  <rect x="13" y="2" width="1.5" height="12" fill="#654321"/>
+  
+  <!-- Leaves -->
+  <ellipse cx="14.5" cy="3" rx="1" ry="0.8" fill="#228B22"/>
+  <ellipse cx="13.5" cy="2" rx="0.8" ry="0.6" fill="#32CD32"/>
+</svg>

@@ -1,0 +1,46 @@
+🦥🦥🦥🦥🦥🦥🦥🦥🦥🦥🦥🦥🦥🦥🦥🦥
+🦥                              🦥
+🦥    SLOTH RUNNER DSL ICON     🦥  
+🦥                              🦥
+🦥🦥🦥🦥🦥🦥🦥🦥🦥🦥🦥🦥🦥🦥🦥🦥
+
+ASCII Art Icons for Terminal:
+
+Simple:
+    🦥
+
+Detailed:
+      🦥
+     /o o\
+    (  -  )
+     \___/
+
+With Branch:
+    🌿🦥
+      |
+    ──┴──
+
+File Listing Example:
+📁 workflows/
+  🦥 ci-pipeline.sloth
+  🦥 deployment.sloth  
+  🦥 build-test.sloth
+  📄 README.md
+
+Editor Tab Example:
+[🦥 main.sloth] [📄 config.yaml] [🐍 script.py]
+
+Terminal Prompt:
+$ sloth-runner run main.sloth
+🦥 Running Sloth workflow: main.sloth
+⚡ Executing tasks...
+✅ Workflow completed successfully!
+
+File Tree:
+project/
+├── 🦥 build.sloth
+├── 🦥 test.sloth
+├── 🦥 deploy.sloth
+└── 📁 scripts/
+    ├── 🐍 setup.py
+    └── 📄 requirements.txt
