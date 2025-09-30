@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -473,6 +474,7 @@ var runCmd = &cobra.Command{
 		// Initialize enhanced output based on style
 		var enhancedOutput *output.PulumiStyleOutput
 		useEnhancedOutput := outputStyle == "enhanced" || outputStyle == "rich" || outputStyle == "modern"
+		useJSONOutput := outputStyle == "json"
 		
 		if useEnhancedOutput {
 			enhancedOutput = output.NewPulumiStyleOutput()
@@ -599,6 +601,12 @@ var runCmd = &cobra.Command{
 		err = runner.Run()
 		duration := time.Since(startTime)
 		
+		// After execution, re-execute the script to capture final outputs
+		// This ensures we get any global variables like 'outputs' that were set
+		if err := runner.L.DoFile(filePath); err != nil {
+			slog.Warn("Failed to re-execute script for outputs", "error", err)
+		}
+		
 		// Get exported outputs from the Lua environment
 		exportedOutputs := make(map[string]interface{})
 		if runner.Exports != nil {
@@ -607,8 +615,8 @@ var runCmd = &cobra.Command{
 			}
 		}
 		
-		// Also check for global 'outputs' table in Lua
-		if outputsTable := L.GetGlobal("outputs"); outputsTable.Type() == lua.LTTable {
+		// Also check for global 'outputs' table in Lua using the runner's state
+		if outputsTable := runner.L.GetGlobal("outputs"); outputsTable.Type() == lua.LTTable {
 			outputsTable.(*lua.LTable).ForEach(func(key, value lua.LValue) {
 				exportedOutputs[key.String()] = luaValueToInterface(value)
 			})
@@ -673,6 +681,43 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			if enhancedOutput != nil {
 				enhancedOutput.WorkflowFailure("workflow", duration, err)
+			} else if useJSONOutput {
+				// JSON error output format
+				jsonOutput := map[string]interface{}{
+					"status": "failed",
+					"duration": duration.String(),
+					"error": err.Error(),
+					"tasks": map[string]interface{}{},
+					"outputs": exportedOutputs,
+					"stack": map[string]interface{}{
+						"name": stackName,
+						"id": stackID,
+					},
+					"workflow": workflowName,
+					"execution_time": time.Now().Unix(),
+				}
+				
+				// Add task results to JSON (including failed ones)
+				for _, result := range runner.Results {
+					taskName := result.Name
+					jsonOutput["tasks"].(map[string]interface{})[taskName] = map[string]interface{}{
+						"status": result.Status,
+						"duration": result.Duration.String(),
+						"error": func() string {
+							if result.Error != nil {
+								return result.Error.Error()
+							}
+							return ""
+						}(),
+					}
+				}
+				
+				// Marshal and print JSON
+				jsonBytes, err := json.MarshalIndent(jsonOutput, "", "  ")
+				if err != nil {
+					return fmt.Errorf("failed to marshal JSON output: %w", err)
+				}
+				fmt.Fprintln(writer, string(jsonBytes))
 			}
 			return fmt.Errorf("task execution failed: %w", err)
 		}
@@ -684,6 +729,42 @@ var runCmd = &cobra.Command{
 				enhancedOutput.AddOutput("exports", exportedOutputs)
 			}
 			enhancedOutput.WorkflowSuccess("workflow", duration, taskCount)
+		} else if useJSONOutput {
+			// JSON output format
+			jsonOutput := map[string]interface{}{
+				"status": "success",
+				"duration": duration.String(),
+				"tasks": map[string]interface{}{},
+				"outputs": exportedOutputs,
+				"stack": map[string]interface{}{
+					"name": stackName,
+					"id": stackID,
+				},
+				"workflow": workflowName,
+				"execution_time": time.Now().Unix(),
+			}
+			
+			// Add task results to JSON
+			for _, result := range runner.Results {
+				taskName := result.Name
+				jsonOutput["tasks"].(map[string]interface{})[taskName] = map[string]interface{}{
+					"status": result.Status,
+					"duration": result.Duration.String(),
+					"error": func() string {
+						if result.Error != nil {
+							return result.Error.Error()
+						}
+						return ""
+					}(),
+				}
+			}
+			
+			// Marshal and print JSON
+			jsonBytes, err := json.MarshalIndent(jsonOutput, "", "  ")
+			if err != nil {
+				return fmt.Errorf("failed to marshal JSON output: %w", err)
+			}
+			fmt.Fprintln(writer, string(jsonBytes))
 		} else {
 			fmt.Fprintln(writer, "Task execution completed successfully!")
 			// Show exported outputs in basic mode
@@ -1466,7 +1547,7 @@ func init() {
 	runCmd.Flags().StringP("values", "v", "", "Path to the values file")
 	runCmd.Flags().Bool("yes", false, "Skip confirmation prompts")
 	runCmd.Flags().Bool("interactive", false, "Run in interactive mode")
-	runCmd.Flags().StringP("output", "o", "basic", "Output style: basic, enhanced, rich, modern")
+	runCmd.Flags().StringP("output", "o", "basic", "Output style: basic, enhanced, rich, modern, json")
 
 	// List command
 	rootCmd.AddCommand(listCmd)
