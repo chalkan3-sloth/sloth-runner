@@ -152,7 +152,7 @@ func (ws *WorkflowScaffolder) InitWorkflow(workflowName string, templateName str
 	templateData := ws.gatherTemplateData(workflowName, template, interactive)
 
 	// Generate workflow file
-	workflowFile := filepath.Join(projectDir, fmt.Sprintf("%s.lua", workflowName))
+	workflowFile := filepath.Join(projectDir, fmt.Sprintf("%s.sloth", workflowName))
 	if err := ws.generateWorkflowFile(workflowFile, template, templateData); err != nil {
 		return fmt.Errorf("failed to generate workflow file: %w", err)
 	}
@@ -321,14 +321,14 @@ func (ws *WorkflowScaffolder) showSuccessMessage(workflowName, projectDir string
 	pterm.Printf("  Directory: %s\n", pterm.Cyan(projectDir))
 	
 	pterm.Printf("\n%s %s\n", pterm.Blue("📁"), pterm.DefaultBasicText.WithStyle(pterm.NewStyle(pterm.Bold)).Sprint("Generated files:"))
-	pterm.Printf("  %s/%s.lua     - Main workflow file\n", projectDir, workflowName)
+	pterm.Printf("  %s/%s.sloth     - Main workflow file\n", projectDir, workflowName)
 	pterm.Printf("  %s/README.md        - Project documentation\n", projectDir)
 	pterm.Printf("  %s/.gitignore       - Git ignore rules\n", projectDir)
 	pterm.Printf("  %s/sloth-runner.yaml - Configuration file\n", projectDir)
 	
 	pterm.Printf("\n%s %s\n", pterm.Yellow("🚀"), pterm.DefaultBasicText.WithStyle(pterm.NewStyle(pterm.Bold)).Sprint("Next steps:"))
 	pterm.Printf("  1. cd %s\n", workflowName)
-	pterm.Printf("  2. sloth-runner run -f %s.lua\n", workflowName)
+	pterm.Printf("  2. sloth-runner run -f %s.sloth\n", workflowName)
 	pterm.Printf("  3. Edit the workflow to suit your needs\n")
 	
 	pterm.Printf("\n%s %s\n", pterm.Magenta("📖"), pterm.DefaultBasicText.WithStyle(pterm.NewStyle(pterm.Bold)).Sprint("Documentation:"))

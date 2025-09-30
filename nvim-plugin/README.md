@@ -20,7 +20,7 @@
 {
   dir = "/path/to/sloth-runner/nvim-plugin", -- Local plugin path
   name = "sloth-runner",
-  ft = { "sloth", "lua" },
+  ft = { "sloth" },
   config = function()
     require("sloth-runner").setup({
       runner = {
@@ -60,8 +60,8 @@ require("sloth-runner").setup()
 
 The plugin automatically detects Sloth DSL files based on:
 
-- **File extensions**: `*.sloth.lua`
-- **File patterns**: `*task*.lua`, `*workflow*.lua`
+- **File extensions**: `*.sloth` (primary), `*.sloth.lua` (legacy support)
+- **File patterns**: `*task*.sloth`, `*workflow*.sloth`
 - **Content detection**: Files containing `task(` or `workflow.define`
 
 ## 🎨 Syntax Highlighting

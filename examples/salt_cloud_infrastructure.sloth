@@ -1,0 +1,542 @@
+-- Exemplo: Gerenciamento de Infraestrutura Cloud com Salt
+-- Este exemplo demonstra como usar Salt para gerenciar infraestrutura
+-- completa na nuvem, incluindo criação, configuração e monitoramento
+
+local salt = require("salt")
+
+-- Configuração da infraestrutura
+local infrastructure_config = {
+    cloud_provider = "aws",
+    region = "us-east-1",
+    environment = "production",
+    app_name = "ecommerce-platform",
+    
+    -- Definição dos perfis de instância
+    profiles = {
+        web_server = {
+            image = "ubuntu-20.04",
+            size = "t3.medium",
+            security_groups = {"web-sg", "common-sg"}
+        },
+        db_server = {
+            image = "ubuntu-20.04", 
+            size = "r5.large",
+            security_groups = {"db-sg", "common-sg"}
+        },
+        cache_server = {
+            image = "ubuntu-20.04",
+            size = "r5.xlarge",
+            security_groups = {"cache-sg", "common-sg"}
+        }
+    },
+    
+    -- Configuração de serviços
+    services = {
+        nginx = {
+            version = "1.20",
+            worker_processes = 4,
+            worker_connections = 1024
+        },
+        mysql = {
+            version = "8.0",
+            root_password = "SecurePassword123!",
+            max_connections = 200
+        },
+        redis = {
+            version = "6.2",
+            max_memory = "2gb",
+            persistence = "aof"
+        }
+    }
+}
+
+-- Função principal para provisionar infraestrutura
+command = function()
+    log.info("☁️ Iniciando provisionamento de infraestrutura cloud...")
+    
+    -- 1. CRIAR INSTÂNCIAS NA NUVEM
+    log.info("🚀 Criando instâncias na nuvem...")
+    
+    local instances = {
+        -- Servidores Web (Load Balanced)
+        {name = "web-01", profile = "web_server", role = "web"},
+        {name = "web-02", profile = "web_server", role = "web"},
+        {name = "web-03", profile = "web_server", role = "web"},
+        
+        -- Servidor de Banco (Master/Slave)
+        {name = "db-master", profile = "db_server", role = "database-master"},
+        {name = "db-slave", profile = "db_server", role = "database-slave"},
+        
+        -- Servidores de Cache
+        {name = "cache-01", profile = "cache_server", role = "cache"},
+        {name = "cache-02", profile = "cache_server", role = "cache"},
+        
+        -- Load Balancer
+        {name = "lb-01", profile = "web_server", role = "loadbalancer"}
+    }
+    
+    local created_instances = {}
+    
+    for _, instance in ipairs(instances) do
+        log.info("🔨 Criando instância: " .. instance.name)
+        
+        local create_result = salt.cloud_create(instance.profile, instance.name)
+        if create_result.success then
+            log.info("✅ Instância " .. instance.name .. " criada com sucesso")
+            table.insert(created_instances, instance.name)
+        else
+            log.error("❌ Falha ao criar instância " .. instance.name .. ": " .. (create_result.error or ""))
+            return false, "Falha na criação de instâncias"
+        end
+        
+        -- Aguardar um pouco entre criações para evitar rate limiting
+        time.sleep(30)
+    end
+    
+    -- 2. AGUARDAR INSTÂNCIAS FICAREM ONLINE
+    log.info("⏳ Aguardando instâncias ficarem online...")
+    
+    local max_wait = 300 -- 5 minutos
+    local start_time = os.time()
+    
+    while os.time() - start_time < max_wait do
+        local ping_result = salt.ping("*", {timeout = 10})
+        
+        if ping_result.success and ping_result.returns then
+            local online_count = 0
+            for minion, response in pairs(ping_result.returns) do
+                if response == true then
+                    online_count = online_count + 1
+                end
+            end
+            
+            log.info("📡 Minions online: " .. online_count .. "/" .. #created_instances)
+            
+            if online_count >= #created_instances then
+                log.info("✅ Todas as instâncias estão online!")
+                break
+            end
+        end
+        
+        time.sleep(30)
+    end
+    
+    -- 3. CONFIGURAÇÃO INICIAL DO SISTEMA
+    log.info("⚙️ Executando configuração inicial do sistema...")
+    
+    -- Atualizar todos os sistemas
+    local update_result = salt.cmd("*", "cmd", "run", "apt update && apt upgrade -y")
+    if update_result.success then
+        log.info("✅ Sistemas atualizados")
+    end
+    
+    -- Configurar timezone
+    salt.cmd("*", "cmd", "run", "timedatectl set-timezone UTC")
+    
+    -- Configurar NTP
+    salt.pkg_install("*", "ntp")
+    salt.service_enable("*", "ntp")
+    salt.service_start("*", "ntp")
+    
+    -- 4. CONFIGURAR SERVIDORES WEB
+    log.info("🌐 Configurando servidores web...")
+    
+    -- Instalar e configurar Nginx
+    local web_packages = {"nginx", "python3", "python3-pip", "git", "supervisor", "certbot"}
+    for _, package in ipairs(web_packages) do
+        salt.pkg_install("web-*", package)
+    end
+    
+    -- Aplicar configuração do Nginx via states
+    local nginx_state = salt.state_apply("web-*", "nginx.ecommerce", {
+        pillar = {
+            nginx = infrastructure_config.services.nginx,
+            app = {
+                name = infrastructure_config.app_name,
+                upstream_servers = {"web-01:8000", "web-02:8000", "web-03:8000"}
+            }
+        }
+    })
+    
+    if nginx_state.success then
+        log.info("✅ Nginx configurado nos servidores web")
+    end
+    
+    -- Configurar SSL/TLS
+    local ssl_config = salt.cmd("web-*", "cmd", "run", 
+        "certbot --nginx -d ecommerce.company.com --non-interactive --agree-tos --email admin@company.com")
+    
+    if ssl_config.success then
+        log.info("✅ Certificados SSL configurados")
+    end
+    
+    -- 5. CONFIGURAR SERVIDOR DE BANCO DE DADOS
+    log.info("🗄️ Configurando servidores de banco de dados...")
+    
+    -- Instalar MySQL
+    salt.pkg_install("db-*", "mysql-server")
+    salt.service_enable("db-*", "mysql")
+    salt.service_start("db-*", "mysql")
+    
+    -- Configurar MySQL Master
+    local mysql_master_config = salt.state_apply("db-master", "mysql.master", {
+        pillar = {
+            mysql = infrastructure_config.services.mysql,
+            replication = {
+                server_id = 1,
+                log_bin = "mysql-bin",
+                binlog_format = "ROW"
+            }
+        }
+    })
+    
+    if mysql_master_config.success then
+        log.info("✅ MySQL Master configurado")
+    end
+    
+    -- Configurar MySQL Slave
+    local mysql_slave_config = salt.state_apply("db-slave", "mysql.slave", {
+        pillar = {
+            mysql = infrastructure_config.services.mysql,
+            replication = {
+                server_id = 2,
+                master_host = "db-master",
+                master_user = "replication",
+                master_password = "ReplicationPass123!"
+            }
+        }
+    })
+    
+    if mysql_slave_config.success then
+        log.info("✅ MySQL Slave configurado")
+    end
+    
+    -- Criar bancos de dados da aplicação
+    local databases = {"ecommerce_production", "ecommerce_analytics"}
+    for _, db in ipairs(databases) do
+        salt.mysql_db_create("db-master", db)
+        log.info("📊 Banco de dados " .. db .. " criado")
+    end
+    
+    -- 6. CONFIGURAR SERVIDORES DE CACHE
+    log.info("💾 Configurando servidores de cache Redis...")
+    
+    -- Instalar Redis
+    salt.pkg_install("cache-*", "redis-server")
+    
+    -- Configurar Redis
+    local redis_config = salt.state_apply("cache-*", "redis.cluster", {
+        pillar = {
+            redis = infrastructure_config.services.redis,
+            cluster = {
+                nodes = {"cache-01", "cache-02"},
+                port = 6379
+            }
+        }
+    })
+    
+    if redis_config.success then
+        log.info("✅ Cluster Redis configurado")
+    end
+    
+    -- 7. CONFIGURAR LOAD BALANCER
+    log.info("⚖️ Configurando load balancer...")
+    
+    -- Instalar HAProxy
+    salt.pkg_install("lb-*", "haproxy")
+    
+    -- Configurar HAProxy
+    local haproxy_config = salt.state_apply("lb-*", "haproxy.ecommerce", {
+        pillar = {
+            haproxy = {
+                backend_servers = {
+                    {name = "web-01", address = "web-01:80", check = "check"},
+                    {name = "web-02", address = "web-02:80", check = "check"},
+                    {name = "web-03", address = "web-03:80", check = "check"}
+                },
+                stats = {
+                    enabled = true,
+                    port = 8404,
+                    user = "admin",
+                    password = "AdminPass123!"
+                }
+            }
+        }
+    })
+    
+    if haproxy_config.success then
+        log.info("✅ HAProxy configurado")
+    end
+    
+    -- 8. DEPLOY DA APLICAÇÃO
+    log.info("🚀 Fazendo deploy da aplicação...")
+    
+    -- Clonar código da aplicação
+    local app_repo = "https://github.com/company/ecommerce-platform.git"
+    local app_version = "v3.2.1"
+    
+    salt.git_clone("web-*", app_repo, "/opt/ecommerce")
+    salt.git_checkout("web-*", "/opt/ecommerce", app_version)
+    
+    -- Instalar dependências
+    salt.cmd("web-*", "cmd", "run", "cd /opt/ecommerce && pip3 install -r requirements.txt")
+    
+    -- Executar migrações
+    salt.cmd("web-01", "cmd", "run", "cd /opt/ecommerce && python3 manage.py migrate")
+    
+    -- Coletar arquivos estáticos
+    salt.cmd("web-*", "cmd", "run", "cd /opt/ecommerce && python3 manage.py collectstatic --noinput")
+    
+    log.info("✅ Aplicação implantada")
+    
+    -- 9. CONFIGURAR MONITORAMENTO
+    log.info("📊 Configurando monitoramento e alertas...")
+    
+    -- Instalar agentes de monitoramento
+    salt.pkg_install("*", "prometheus-node-exporter")
+    salt.service_enable("*", "prometheus-node-exporter")
+    salt.service_start("*", "prometheus-node-exporter")
+    
+    -- Configurar beacons para monitoramento
+    local monitoring_configs = {
+        {
+            target = "*",
+            beacon = "diskusage",
+            config = {interval = 300, threshold = 85}
+        },
+        {
+            target = "web-*",
+            beacon = "service",
+            config = {services = {"nginx", "supervisor"}, interval = 60}
+        },
+        {
+            target = "db-*", 
+            beacon = "service",
+            config = {services = {"mysql"}, interval = 60}
+        },
+        {
+            target = "cache-*",
+            beacon = "service", 
+            config = {services = {"redis-server"}, interval = 60}
+        }
+    }
+    
+    for _, config in ipairs(monitoring_configs) do
+        salt.beacon_add(config.target, config.beacon, config.config)
+        log.info("📡 Beacon " .. config.beacon .. " configurado para " .. config.target)
+    end
+    
+    -- 10. CONFIGURAR BACKUP AUTOMÁTICO
+    log.info("💾 Configurando sistema de backup...")
+    
+    -- Backup do banco de dados
+    local backup_schedule = salt.schedule_add("db-master", "database-backup", {
+        function = "cmd.run",
+        args = ["mysqldump --all-databases > /backup/mysql-$(date +%Y%m%d-%H%M%S).sql && gzip /backup/mysql-$(date +%Y%m%d-%H%M%S).sql"],
+        hours = 2,
+        minutes = 0
+    })
+    
+    if backup_schedule.success then
+        log.info("✅ Backup automático do banco configurado")
+    end
+    
+    -- Backup dos arquivos da aplicação
+    salt.schedule_add("web-*", "app-backup", {
+        function = "cmd.run", 
+        args = ["tar -czf /backup/app-$(date +%Y%m%d).tar.gz /opt/ecommerce"],
+        hours = 3,
+        minutes = 0
+    })
+    
+    -- 11. TESTES DE CONECTIVIDADE E SAÚDE
+    log.info("🏥 Executando testes de saúde da infraestrutura...")
+    
+    local health_checks = {
+        -- Teste de conectividade entre serviços
+        web_to_db = salt.network_ping("web-*", "db-master"),
+        web_to_cache = salt.network_ping("web-*", "cache-01"),
+        lb_to_web = salt.network_ping("lb-*", "web-01"),
+        
+        -- Teste de serviços
+        nginx_status = salt.service_status("web-*", "nginx"),
+        mysql_status = salt.service_status("db-*", "mysql"),
+        redis_status = salt.service_status("cache-*", "redis-server"),
+        haproxy_status = salt.service_status("lb-*", "haproxy"),
+        
+        -- Teste da aplicação
+        app_health = salt.cmd("web-*", "cmd", "run", "curl -f http://localhost/health/")
+    }
+    
+    local failed_checks = {}
+    for check_name, result in pairs(health_checks) do
+        if not result.success then
+            table.insert(failed_checks, check_name)
+            log.warning("⚠️ Falha no teste: " .. check_name)
+        else
+            log.info("✅ Teste passou: " .. check_name)
+        end
+    end
+    
+    -- 12. CONFIGURAR FIREWALL E SEGURANÇA
+    log.info("🔒 Configurando firewall e segurança...")
+    
+    -- Configurar UFW (Uncomplicated Firewall)
+    salt.pkg_install("*", "ufw")
+    
+    -- Regras básicas de firewall
+    local firewall_rules = {
+        ["*"] = {
+            "ufw --force enable",
+            "ufw default deny incoming", 
+            "ufw default allow outgoing",
+            "ufw allow ssh"
+        },
+        ["web-*"] = {
+            "ufw allow 80/tcp",
+            "ufw allow 443/tcp"
+        },
+        ["db-*"] = {
+            "ufw allow from web-01 to any port 3306",
+            "ufw allow from web-02 to any port 3306", 
+            "ufw allow from web-03 to any port 3306"
+        },
+        ["cache-*"] = {
+            "ufw allow from web-01 to any port 6379",
+            "ufw allow from web-02 to any port 6379",
+            "ufw allow from web-03 to any port 6379"
+        },
+        ["lb-*"] = {
+            "ufw allow 80/tcp",
+            "ufw allow 443/tcp",
+            "ufw allow 8404/tcp"
+        }
+    }
+    
+    for target, rules in pairs(firewall_rules) do
+        for _, rule in ipairs(rules) do
+            salt.cmd(target, "cmd", "run", rule)
+        end
+        log.info("🔒 Regras de firewall aplicadas para " .. target)
+    end
+    
+    -- 13. CONFIGURAR LOGS CENTRALIZADOS
+    log.info("📝 Configurando logs centralizados...")
+    
+    -- Instalar rsyslog
+    salt.pkg_install("*", "rsyslog")
+    
+    -- Configurar log shipping para servidor central
+    local log_config = salt.state_apply("*", "rsyslog.central")
+    if log_config.success then
+        log.info("✅ Logs centralizados configurados")
+    end
+    
+    -- 14. OTIMIZAÇÃO DE PERFORMANCE
+    log.info("⚡ Aplicando otimizações de performance...")
+    
+    -- Otimizações do kernel
+    local kernel_optimizations = {
+        "echo 'net.core.somaxconn = 65535' >> /etc/sysctl.conf",
+        "echo 'net.ipv4.tcp_max_syn_backlog = 65535' >> /etc/sysctl.conf",
+        "echo 'vm.swappiness = 10' >> /etc/sysctl.conf",
+        "sysctl -p"
+    }
+    
+    for _, optimization in ipairs(kernel_optimizations) do
+        salt.cmd("*", "cmd", "run", optimization)
+    end
+    
+    -- Otimizações específicas do MySQL
+    salt.cmd("db-*", "cmd", "run", "echo 'innodb_buffer_pool_size = 1G' >> /etc/mysql/mysql.conf.d/performance.cnf")
+    salt.service_restart("db-*", "mysql")
+    
+    -- 15. RELATÓRIO FINAL
+    log.info("📋 Gerando relatório da infraestrutura...")
+    
+    local infrastructure_summary = {
+        total_instances = #created_instances,
+        web_servers = 3,
+        database_servers = 2,
+        cache_servers = 2,
+        load_balancers = 1,
+        version_deployed = app_version,
+        deployment_time = os.date(),
+        failed_checks = #failed_checks
+    }
+    
+    log.info("=" .. string.rep("=", 60))
+    log.info("🎉 INFRAESTRUTURA PROVISIONADA COM SUCESSO!")
+    log.info("=" .. string.rep("=", 60))
+    log.info("📊 Resumo da Infraestrutura:")
+    log.info("   • Total de instâncias: " .. infrastructure_summary.total_instances)
+    log.info("   • Servidores Web: " .. infrastructure_summary.web_servers)
+    log.info("   • Servidores de Banco: " .. infrastructure_summary.database_servers)
+    log.info("   • Servidores de Cache: " .. infrastructure_summary.cache_servers)
+    log.info("   • Load Balancers: " .. infrastructure_summary.load_balancers)
+    log.info("   • Versão da Aplicação: " .. infrastructure_summary.version_deployed)
+    log.info("   • Testes Falharam: " .. infrastructure_summary.failed_checks)
+    log.info("=" .. string.rep("=", 60))
+    
+    -- URLs de acesso
+    log.info("🔗 URLs de Acesso:")
+    log.info("   • Aplicação: https://ecommerce.company.com")
+    log.info("   • HAProxy Stats: http://lb-01:8404/stats")
+    log.info("   • Monitoring: http://monitoring.company.com")
+    
+    -- Próximos passos
+    log.info("📝 PRÓXIMOS PASSOS:")
+    log.info("1. Configurar DNS para apontar para o load balancer")
+    log.info("2. Configurar SSL wildcard certificate") 
+    log.info("3. Executar testes de carga")
+    log.info("4. Configurar alertas via Slack/Email")
+    log.info("5. Documentar topologia de rede")
+    log.info("6. Treinar equipe de operações")
+    
+    if #failed_checks == 0 then
+        return true, "Infraestrutura provisionada com sucesso - todos os testes passaram!"
+    else
+        return true, "Infraestrutura provisionada com " .. #failed_checks .. " avisos - revisar logs"
+    end
+end
+
+-- Função para escalar horizontalmente
+scale_up = function(server_type, count)
+    log.info("📈 Escalando " .. server_type .. " - adicionando " .. count .. " instâncias...")
+    
+    local new_instances = {}
+    for i = 1, count do
+        local instance_name = server_type .. "-" .. string.format("%02d", i + 10)
+        local create_result = salt.cloud_create(server_type .. "_server", instance_name)
+        
+        if create_result.success then
+            table.insert(new_instances, instance_name)
+            log.info("✅ Instância " .. instance_name .. " criada")
+        end
+    end
+    
+    -- Aplicar configuração nas novas instâncias
+    time.sleep(60) -- Aguardar boot
+    salt.state_highstate(table.concat(new_instances, ","))
+    
+    return true, count .. " instâncias adicionadas com sucesso"
+end
+
+-- Função para fazer rollback da aplicação
+rollback_app = function(version)
+    log.info("🔄 Fazendo rollback da aplicação para versão: " .. version)
+    
+    -- Parar aplicação
+    salt.cmd("web-*", "cmd", "run", "supervisorctl stop ecommerce")
+    
+    -- Checkout da versão anterior
+    salt.git_checkout("web-*", "/opt/ecommerce", version)
+    
+    -- Executar migrações se necessário
+    salt.cmd("web-01", "cmd", "run", "cd /opt/ecommerce && python3 manage.py migrate")
+    
+    -- Reiniciar aplicação
+    salt.cmd("web-*", "cmd", "run", "supervisorctl start ecommerce")
+    
+    return true, "Rollback para " .. version .. " concluído"
+end

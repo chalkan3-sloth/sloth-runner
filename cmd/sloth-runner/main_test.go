@@ -210,7 +210,7 @@ func TestSchedulerEnable(t *testing.T) {
 	dummyConfig := `scheduled_tasks:
   - name: "test_task"
     schedule: "@every 1s"
-    task_file: "test.lua"
+    task_file: "test.sloth"
     task_group: "test_group"
     task_name: "test_name"`
 	err = ioutil.WriteFile(schedulerConfigPath, []byte(dummyConfig), 0644)
@@ -313,7 +313,7 @@ func TestSchedulerList(t *testing.T) {
 	dummyConfig := `scheduled_tasks:
   - name: "list_test_task"
     schedule: "@every 1h"
-    task_file: "list.lua"
+    task_file: "list.sloth"
     task_group: "list_group"
     task_name: "list_name"`
 	err = ioutil.WriteFile(schedulerConfigPath, []byte(dummyConfig), 0644)
@@ -342,12 +342,12 @@ func TestSchedulerDelete(t *testing.T) {
 	dummyConfig := `scheduled_tasks:
   - name: "task_to_delete"
     schedule: "@every 1s"
-    task_file: "file1.lua"
+    task_file: "file1.sloth"
     task_group: "group1"
     task_name: "name1"
   - name: "task_to_keep"
     schedule: "@every 2s"
-    task_file: "file2.lua"
+    task_file: "file2.sloth"
     task_group: "group2"
     task_name: "name2"`
 	err = ioutil.WriteFile(schedulerConfigPath, []byte(dummyConfig), 0644)
@@ -383,7 +383,7 @@ func TestInteractiveRunner(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	// Create a dummy Lua task file
-	taskFilePath := filepath.Join(tmpDir, "interactive_tasks.lua")
+	taskFilePath := filepath.Join(tmpDir, "interactive_tasks.sloth")
 	dummyTasks := `
 TaskDefinitions = {
   interactive_group = {
@@ -453,7 +453,7 @@ func TestEnhancedValuesTemplating(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Create a dummy Lua task file using Modern DSL
-	taskFilePath := filepath.Join(tmpDir, "templated_values_task.lua")
+	taskFilePath := filepath.Join(tmpDir, "templated_values_task.sloth")
 	dummyTask := `
 -- Modern DSL task definition
 local print_value_task = task("print_templated_value")

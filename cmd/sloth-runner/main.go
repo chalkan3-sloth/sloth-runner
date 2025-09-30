@@ -451,7 +451,7 @@ var runCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		filePath, _ := cmd.Flags().GetString("file")
 		if filePath == "" {
-			filePath = "examples/basic_pipeline.lua"
+			filePath = "examples/basic_pipeline.sloth"
 		}
 		
 		values, _ := cmd.Flags().GetString("values")
