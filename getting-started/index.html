@@ -6,14 +6,20 @@
 </span><span id=__span-1-5><a id=__codelineno-1-5 name=__codelineno-1-5 href=#__codelineno-1-5></a>sloth-runner<span class=w> </span>run<span class=w> </span>production-app<span class=w> </span>-f<span class=w> </span>deploy.sloth<span class=w> </span>--output<span class=w> </span>enhanced
 </span><span id=__span-1-6><a id=__codelineno-1-6 name=__codelineno-1-6 href=#__codelineno-1-6></a>sloth-runner<span class=w> </span>run<span class=w> </span>dev-environment<span class=w> </span>-f<span class=w> </span>test.sloth<span class=w> </span>-o<span class=w> </span>rich
 </span><span id=__span-1-7><a id=__codelineno-1-7 name=__codelineno-1-7 href=#__codelineno-1-7></a>sloth-runner<span class=w> </span>run<span class=w> </span>staging-api<span class=w> </span>-f<span class=w> </span>pipeline.sloth
-</span></code></pre></div> <h3 id=gerenciamento-de-stacks>Gerenciamento de Stacks<a class=headerlink href=#gerenciamento-de-stacks title="Permanent link">&para;</a></h3> <div class="language-bash highlight"><pre><span></span><code><span id=__span-2-1><a id=__codelineno-2-1 name=__codelineno-2-1 href=#__codelineno-2-1></a><span class=c1># Listar todos os stacks</span>
-</span><span id=__span-2-2><a id=__codelineno-2-2 name=__codelineno-2-2 href=#__codelineno-2-2></a>sloth-runner<span class=w> </span>stack<span class=w> </span>list
+</span></code></pre></div> <h3 id=gerenciamento-de-stacks>Gerenciamento de Stacks<a class=headerlink href=#gerenciamento-de-stacks title="Permanent link">&para;</a></h3> <div class="language-bash highlight"><pre><span></span><code><span id=__span-2-1><a id=__codelineno-2-1 name=__codelineno-2-1 href=#__codelineno-2-1></a><span class=c1># Criar um novo stack</span>
+</span><span id=__span-2-2><a id=__codelineno-2-2 name=__codelineno-2-2 href=#__codelineno-2-2></a>sloth-runner<span class=w> </span>stack<span class=w> </span>new<span class=w> </span>my-stack<span class=w> </span>--description<span class=w> </span><span class=s2>&quot;Production deployment stack&quot;</span><span class=w> </span>--workflow-file<span class=w> </span>deploy.sloth
 </span><span id=__span-2-3><a id=__codelineno-2-3 name=__codelineno-2-3 href=#__codelineno-2-3></a>
-</span><span id=__span-2-4><a id=__codelineno-2-4 name=__codelineno-2-4 href=#__codelineno-2-4></a><span class=c1># Ver detalhes e outputs exportados</span>
-</span><span id=__span-2-5><a id=__codelineno-2-5 name=__codelineno-2-5 href=#__codelineno-2-5></a>sloth-runner<span class=w> </span>stack<span class=w> </span>show<span class=w> </span>production-app
+</span><span id=__span-2-4><a id=__codelineno-2-4 name=__codelineno-2-4 href=#__codelineno-2-4></a><span class=c1># Criar stack com valores padrão</span>
+</span><span id=__span-2-5><a id=__codelineno-2-5 name=__codelineno-2-5 href=#__codelineno-2-5></a>sloth-runner<span class=w> </span>stack<span class=w> </span>new<span class=w> </span>dev-stack
 </span><span id=__span-2-6><a id=__codelineno-2-6 name=__codelineno-2-6 href=#__codelineno-2-6></a>
-</span><span id=__span-2-7><a id=__codelineno-2-7 name=__codelineno-2-7 href=#__codelineno-2-7></a><span class=c1># Remover stack antigo</span>
-</span><span id=__span-2-8><a id=__codelineno-2-8 name=__codelineno-2-8 href=#__codelineno-2-8></a>sloth-runner<span class=w> </span>stack<span class=w> </span>delete<span class=w> </span>old-environment
+</span><span id=__span-2-7><a id=__codelineno-2-7 name=__codelineno-2-7 href=#__codelineno-2-7></a><span class=c1># Listar todos os stacks</span>
+</span><span id=__span-2-8><a id=__codelineno-2-8 name=__codelineno-2-8 href=#__codelineno-2-8></a>sloth-runner<span class=w> </span>stack<span class=w> </span>list
+</span><span id=__span-2-9><a id=__codelineno-2-9 name=__codelineno-2-9 href=#__codelineno-2-9></a>
+</span><span id=__span-2-10><a id=__codelineno-2-10 name=__codelineno-2-10 href=#__codelineno-2-10></a><span class=c1># Ver detalhes e outputs exportados</span>
+</span><span id=__span-2-11><a id=__codelineno-2-11 name=__codelineno-2-11 href=#__codelineno-2-11></a>sloth-runner<span class=w> </span>stack<span class=w> </span>show<span class=w> </span>production-app
+</span><span id=__span-2-12><a id=__codelineno-2-12 name=__codelineno-2-12 href=#__codelineno-2-12></a>
+</span><span id=__span-2-13><a id=__codelineno-2-13 name=__codelineno-2-13 href=#__codelineno-2-13></a><span class=c1># Remover stack antigo</span>
+</span><span id=__span-2-14><a id=__codelineno-2-14 name=__codelineno-2-14 href=#__codelineno-2-14></a>sloth-runner<span class=w> </span>stack<span class=w> </span>delete<span class=w> </span>old-environment
 </span></code></pre></div> <h3 id=listagem-de-tasks-e-grupos-novo>🆔 Listagem de Tasks e Grupos (Novo)<a class=headerlink href=#listagem-de-tasks-e-grupos-novo title="Permanent link">&para;</a></h3> <div class="language-bash highlight"><pre><span></span><code><span id=__span-3-1><a id=__codelineno-3-1 name=__codelineno-3-1 href=#__codelineno-3-1></a><span class=c1># Listar tasks e grupos com IDs únicos</span>
 </span><span id=__span-3-2><a id=__codelineno-3-2 name=__codelineno-3-2 href=#__codelineno-3-2></a>sloth-runner<span class=w> </span>list<span class=w> </span>-f<span class=w> </span>workflow.sloth
 </span><span id=__span-3-3><a id=__codelineno-3-3 name=__codelineno-3-3 href=#__codelineno-3-3></a>
