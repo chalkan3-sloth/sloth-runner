@@ -343,7 +343,7 @@ schedules:
       notifications:
         - type: "slack"
           webhook: "https://hooks.slack.com/..."
-          message: "🚨 Critical task failed: {{.Error}}"
+          message: "🚨 Critical task failed: {% raw %}{{.Error}}{% endraw %}"
           
         - type: "email"
           to: ["ops@company.com"]
