@@ -2,7 +2,7 @@
 
 欢迎使用 Sloth-Runner！本指南将帮助您快速开始使用该工具。
 
-> **📝 重要说明：** 从当前版本开始，Sloth Runner 工作流文件使用 `.sloth` 扩展名而不是 `.lua`。Lua 语法保持不变 - 只是文件扩展名更改为更好地识别 Sloth Runner DSL 文件。
+> **📝 重要说明：** 从当前版本开始，Sloth Runner 工作流文件使用 `.sloth` 扩展名而不是 `.sloth`。Lua 语法保持不变 - 只是文件扩展名更改为更好地识别 Sloth Runner DSL 文件。
 
 ## 安装
 

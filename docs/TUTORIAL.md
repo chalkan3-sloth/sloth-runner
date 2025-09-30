@@ -3,7 +3,7 @@
 > **Welcome to the world's most intelligent task orchestration platform!**  
 > This tutorial will get you up and running with AI-powered automation and GitOps workflows in just 5 minutes.
 
-> **📝 Important Note:** Starting with the current version, Sloth Runner workflow files use the `.sloth` extension instead of `.lua`. The Lua syntax remains the same - only the file extension has changed for better identification of Sloth Runner DSL files.
+> **📝 Important Note:** Starting with the current version, Sloth Runner workflow files use the `.sloth` extension instead of `.sloth`. The Lua syntax remains the same - only the file extension has changed for better identification of Sloth Runner DSL files.
 
 ## 🎯 What You'll Learn
 

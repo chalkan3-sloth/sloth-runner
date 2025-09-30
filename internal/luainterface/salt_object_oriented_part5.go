@@ -1,10 +1,7 @@
 package luainterface
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"bytes"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -705,96 +702,7 @@ func (mod *ObjectOrientedSaltModule) saltConfigBackupMode(L *lua.LState) int {
 	return mod.returnSaltResult(L, result, err)
 }
 
-// API integration with enhanced object methods
-func (mod *ObjectOrientedSaltModule) saltApiLogin(L *lua.LState) int {
-	_ = L.CheckTable(1) // client parameter (not used in this implementation)
-	host := L.CheckString(2)
-	username := L.CheckString(3)
-	password := L.CheckString(4)
-	
-	// Create API client with login capability
-	loginData := map[string]string{
-		"username": username,
-		"password": password,
-		"eauth":    "pam",
-	}
-	
-	jsonData, _ := json.Marshal(loginData)
-	resp, err := http.Post(host+"/login", "application/json", bytes.NewBuffer(jsonData))
-	
-	result := map[string]interface{}{
-		"success": err == nil && resp != nil && resp.StatusCode == 200,
-		"host":    host,
-	}
-	
-	if err != nil {
-		result["error"] = err.Error()
-	}
-	
-	if resp != nil {
-		resp.Body.Close()
-		result["status_code"] = resp.StatusCode
-	}
-	
-	return mod.returnSaltResult(L, result, err)
-}
-
-func (mod *ObjectOrientedSaltModule) saltApiLogout(L *lua.LState) int {
-	result := map[string]interface{}{
-		"success": true,
-		"message": "Logged out successfully",
-	}
-	return mod.returnSaltResult(L, result, nil)
-}
-
-func (mod *ObjectOrientedSaltModule) saltApiMinions(L *lua.LState) int {
-	result := map[string]interface{}{
-		"success": true,
-		"minions": []string{"minion1", "minion2", "minion3"},
-	}
-	return mod.returnSaltResult(L, result, nil)
-}
-
-func (mod *ObjectOrientedSaltModule) saltApiJobs(L *lua.LState) int {
-	result := map[string]interface{}{
-		"success": true,
-		"jobs": []map[string]interface{}{
-			{"jid": "20231201120000", "function": "test.ping"},
-		},
-	}
-	return mod.returnSaltResult(L, result, nil)
-}
-
-func (mod *ObjectOrientedSaltModule) saltApiStats(L *lua.LState) int {
-	result := map[string]interface{}{
-		"success":       true,
-		"total_minions": 10,
-		"active_jobs":   2,
-	}
-	return mod.returnSaltResult(L, result, nil)
-}
-
-func (mod *ObjectOrientedSaltModule) saltApiEvents(L *lua.LState) int {
-	result := map[string]interface{}{
-		"success": true,
-		"events": []map[string]interface{}{
-			{"tag": "salt/minion/start", "data": "minion started"},
-		},
-	}
-	return mod.returnSaltResult(L, result, nil)
-}
-
-func (mod *ObjectOrientedSaltModule) saltApiHook(L *lua.LState) int {
-	hookName := L.CheckString(2)
-	result := map[string]interface{}{
-		"success": true,
-		"hook":    hookName,
-		"status":  "registered",
-	}
-	return mod.returnSaltResult(L, result, nil)
-}
-
-// Template engines
+// Template engines - CLI based implementation
 func (mod *ObjectOrientedSaltModule) saltTemplateJinja(L *lua.LState) int {
 	target := mod.getTarget(L)
 	timeout := mod.getTimeout(L)

@@ -14,9 +14,9 @@ autocmd BufRead,BufNewFile *workflow*.sloth setfiletype sloth
 
 " Legacy .lua files with sloth content (for backward compatibility)
 autocmd BufRead,BufNewFile *.lua 
-    \ if search('task\s*(.*).*:.*build()', 'nw') || 
-    \    search('workflow\.define\s*("', 'nw') || 
-    \    search(':command\s*\(', 'nw') || 
-    \    search(':description\s*\(', 'nw') |
+    \ if search('task\s*([^)]*)', 'nw') || 
+    \    search('workflow\.define\s*([^)]*)', 'nw') || 
+    \    search(':command\s*([^)]*)', 'nw') || 
+    \    search(':description\s*([^)]*)', 'nw') |
     \   setfiletype sloth |
     \ endif

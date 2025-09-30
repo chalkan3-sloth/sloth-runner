@@ -2,7 +2,7 @@
 
 Bem-vindo ao Sloth-Runner! Este guia o ajudará a começar a usar a ferramenta rapidamente.
 
-> **📝 Nota Importante:** A partir da versão atual, os arquivos de workflow do Sloth Runner usam a extensão `.sloth` em vez de `.lua`. A sintaxe Lua permanece a mesma - apenas a extensão do arquivo mudou para melhor identificação dos arquivos DSL do Sloth Runner.
+> **📝 Nota Importante:** A partir da versão atual, os arquivos de workflow do Sloth Runner usam a extensão `.sloth` em vez de `.sloth`. A sintaxe Lua permanece a mesma - apenas a extensão do arquivo mudou para melhor identificação dos arquivos DSL do Sloth Runner.
 
 ## Instalação
 
