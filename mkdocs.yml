@@ -155,6 +155,7 @@ nav:
     - '🛠️ Getting Started': 'getting-started.md'
     - '🧠 Core Concepts': 'core-concepts.md'
     - '🗂️ Stack Management': 'stack-management.md'
+    - '📋 Stack Management Guide': 'STACK_MANAGEMENT_GUIDE.md'
     - '🎯 Advanced Features': 'advanced-features.md'
     - '💾 State Module': 'state-module.md'
   - '🌐 Enterprise Features':

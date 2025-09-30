@@ -172,11 +172,23 @@ sloth-runner workflow init my-app --interactive
 ### 📊 Enhanced Output System
 **Pulumi-style rich output** formatting with configurable styles, progress indicators, and structured displays.
 
-- 🎨 **Multiple output styles** (basic, enhanced, rich, modern)
+- 🎨 **Multiple output styles** (basic, enhanced, rich, modern, **json**)
 - 📈 **Real-time progress** indicators
 - 🎯 **Structured output** sections
 - 🌈 **Rich color** formatting
 - 📊 **Metrics visualization**
+- 🔧 **JSON output** for automation and CI/CD integration
+
+```bash
+# Enhanced Pulumi-style output
+sloth-runner run my-stack -f workflow.lua --output enhanced
+
+# JSON output for automation
+sloth-runner run my-stack -f workflow.lua --output json
+
+# List tasks with unique IDs
+sloth-runner list -f workflow.lua
+```
 
 ### 🔧 Rich Module Ecosystem
 **Extensive collection** of pre-built modules for common automation tasks.
@@ -208,7 +220,7 @@ sloth-runner run prod-app -f my-cicd.lua -o rich
 sloth-runner stack show prod-app
 ```
 
-### 📊 Stack with Exported Outputs
+### 📊 Stack with Exported Outputs & JSON Output
 
 ```lua
 local deploy_task = task("deploy")
@@ -234,19 +246,55 @@ workflow.define("production_deployment", {
 })
 ```
 
+**Run with JSON output for automation:**
+```bash
+# Get structured JSON output for CI/CD integration
+sloth-runner run prod-deployment -f deploy.lua --output json
+
+# Example JSON output:
+{
+  "status": "success",
+  "duration": "5.192ms",
+  "stack": {
+    "id": "abc123...",
+    "name": "prod-deployment"
+  },
+  "tasks": {
+    "deploy": {
+      "status": "Success",
+      "duration": "4.120ms"
+    }
+  },
+  "outputs": {
+    "app_url": "https://myapp.example.com",
+    "version": "1.2.3",
+    "environment": "production"
+  },
+  "workflow": "production_deployment",
+  "execution_time": 1759237365
+}
+```
+
 ---
 
 ## 📊 CLI Commands Overview
 
-### Stack Management
+### Stack Management (NEW!)
 ```bash
 # Execute with stack persistence (NEW SYNTAX)
 sloth-runner run {stack-name} --file workflow.lua
 
+# Enhanced output styles
+sloth-runner run {stack-name} --file workflow.lua --output enhanced
+sloth-runner run {stack-name} --file workflow.lua --output json
+
 # Manage stacks
 sloth-runner stack list                    # List all stacks
-sloth-runner stack show production-app     # Show stack details
+sloth-runner stack show production-app     # Show stack details with outputs
 sloth-runner stack delete old-env          # Delete stack
+
+# List tasks with unique IDs
+sloth-runner list --file workflow.lua      # Show tasks and groups with IDs
 ```
 
 ### Project Scaffolding
