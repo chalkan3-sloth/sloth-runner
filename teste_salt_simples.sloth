@@ -1,16 +1,17 @@
--- Teste simples do Salt como objeto
-print("🧂 Teste Salt Objeto")
+-- Teste simples do Salt como objeto - CONFIGURAÇÃO MÍNIMA
+print("🧂 Teste Salt Objeto - Configuração Mínima")
 
--- FORMA CORRETA: salt_object_oriented
-local Salt = require("salt_object_oriented")
+-- CONFIGURAÇÃO MÍNIMA - sem master_host desnecessário
+local Salt = require("salt")
 
--- Criar cliente Salt como objeto
+-- Criar cliente Salt com configuração mínima
 local salt_client = Salt({
     timeout = 30,
-    output_format = "json"
+    retries = 2
 })
 
 print("✅ Cliente Salt objeto criado:", type(salt_client))
+print("✅ Configuração mínima suficiente!")
 
 -- Testar método do objeto (usando ':')
 local result = salt_client:ping("*")
@@ -20,4 +21,4 @@ print("📡 Resultado ping:", result.success and "✅ Sucesso" or "❌ Falha")
 local version = salt_client:version("*")
 print("📋 Versão Salt:", version.success and "✅ OK" or "❌ Erro")
 
-print("✨ Teste concluído!")
+print("✨ Salt funcionando sem master_host!")
