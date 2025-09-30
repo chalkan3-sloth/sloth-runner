@@ -42,20 +42,11 @@ function M.format_sloth()
   end
 end
 
--- Setup autoformat on save
+-- Setup autoformat on save - DESABILITADO
 function M.setup_autoformat()
-  vim.api.nvim_create_augroup("SlothFormatter", { clear = true })
-  
-  vim.api.nvim_create_autocmd("BufWritePre", {
-    group = "SlothFormatter",
-    pattern = "*.sloth",
-    callback = function()
-      -- Only format if explicitly enabled
-      if vim.g.sloth_format_on_save then
-        M.format_sloth()
-      end
-    end,
-  })
+  -- Formatação automática foi completamente desabilitada
+  -- Para formatar manualmente use: M.format_current_buffer()
+  print("🦥 Sloth Formatter: Auto-format desabilitado. Use formatação manual.")
 end
 
 -- Manual format command

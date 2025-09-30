@@ -19,31 +19,43 @@ A **modern task orchestration platform** built with Go and powered by **Lua scri
 *Clean, powerful Lua-based syntax for complex workflows*
 
 ```lua
--- Define tasks with fluent API
-local build_task = task("build_application")
-    :description("Build the Go application")
-    :command(function(params, deps)
-        log.info("🔨 Building application...")
-        return exec.run("go build -o app ./cmd/main.go")
+-- Define GitOps tasks with fluent API
+local clone_task = task("clone_infrastructure")
+    :description("Clone Terraform infrastructure repository")
+    :workdir("/tmp/infrastructure")
+    :command(function(this, params)
+        local git = require("git")
+        log.info("📡 Cloning infrastructure repository...")
+        
+        local repository = git.clone(
+            "https://github.com/company/terraform-infrastructure",
+            this.workdir.get()
+        )
+        
+        return true, "Repository cloned successfully"
     end)
     :timeout("5m")
     :retries(3, "exponential")
-    :on_success(function(params, output)
-        log.info("✅ Build completed successfully!")
+    :on_success(function(this, params, output)
+        log.info("✅ Infrastructure code ready for deployment!")
     end)
     :build()
 
--- Define workflows with metadata
-workflow.define("ci_pipeline", {
-    description = "Continuous Integration Pipeline",
-    version = "1.0.0",
-    tasks = { build_task, test_task, deploy_task },
-    
-    config = {
+-- Define workflows with advanced configuration
+workflow.define("infrastructure_pipeline")
+    :description("Complete Infrastructure Deployment Pipeline")
+    :version("2.0.0")
+    :tasks({ clone_task, terraform_plan_task, terraform_apply_task })
+    :config({
         timeout = "30m",
-        max_parallel_tasks = 3
-    }
-})
+        max_parallel_tasks = 2,
+        environment = "production"
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 Infrastructure successfully deployed!")
+        end
+    end)
 ```
 
 ### 🌐 **Distributed Master-Agent Architecture**
@@ -76,6 +88,8 @@ end, 30) -- 30 second timeout
 ### 🔧 **Rich Lua Module Ecosystem**
 *Comprehensive built-in modules for common operations*
 
+- **`git`**: Git operations with automatic credential handling
+- **`terraform`**: Terraform lifecycle management (init, plan, apply)
 - **`exec`**: Execute shell commands with enhanced error handling
 - **`fs`**: File system operations with validation
 - **`net`**: HTTP client with retry and timeout support
@@ -84,6 +98,26 @@ end, 30) -- 30 second timeout
 - **`state`**: Persistent state management
 - **`async`**: Parallel execution and modern async patterns
 - **`utils`**: Configuration management and utilities
+
+#### GitOps Module Examples
+
+```lua
+-- Git operations
+local git = require("git")
+local repo = git.clone("https://github.com/company/infra", "/tmp/infra")
+git.checkout(repo, "production")
+
+-- Terraform operations  
+local terraform = require("terraform")
+local client = terraform.init("/tmp/infra/terraform/")  -- Runs terraform init
+local plan = client:plan({ var_file = "prod.tfvars" })
+local apply = client:apply({ auto_approve = true })
+
+-- State management
+local state = require("state")
+state.set("deployment_version", "v2.1.0", 3600)
+local version = state.get("deployment_version")
+```
 
 ## 🚀 **Quick Start**
 
@@ -99,6 +133,132 @@ wget https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/slo
 # Or build from source
 go install github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner@latest
 ```
+
+### Your First GitOps Workflow
+
+Create a complete GitOps workflow that clones a repository and deploys infrastructure with Terraform:
+
+**1. Create your workflow file (`deploy.sloth`):**
+
+```lua
+-- Complete GitOps Workflow with Git + Terraform
+local clone_repo_task = task("clone_repo")
+    :description("Clone Git repository with infrastructure code")
+    :workdir("/tmp/infrastructure")
+    :command(function(this, params)
+        local git = require("git")
+        
+        log.info("📡 Cloning repository...")
+        local repository = git.clone(
+            "https://github.com/your-org/terraform-infrastructure",
+            this.workdir.get()
+        )
+        
+        return true, "Repository cloned successfully", {
+            repository_url = "https://github.com/your-org/terraform-infrastructure",
+            clone_destination = this.workdir.get()
+        }
+    end)
+    :timeout("5m")
+    :build()
+
+local deploy_infrastructure = task("deploy_terraform")
+    :description("Deploy infrastructure using Terraform")
+    :workdir("/tmp/infrastructure/environments/prod/")
+    :command(function(this, params)
+        local terraform = require("terraform")
+        
+        -- Terraform init is called automatically
+        log.info("🔄 Initializing Terraform...")
+        local client = terraform.init(this.workdir:get())
+        
+        -- Load configuration from values.yaml
+        local terraform_config = {
+            environment = Values.terraform.environment or "prod",
+            instance_type = Values.terraform.instance_type or "t3.micro",
+            region = Values.terraform.region or "us-east-1"
+        }
+        
+        -- Create terraform.tfvars from configuration
+        local tfvars = client:create_tfvars("terraform.tfvars", terraform_config)
+        
+        -- Plan and apply
+        local plan_result = client:plan({ var_file = tfvars.filename })
+        if plan_result.success then
+            log.info("🚀 Applying Terraform changes...")
+            local apply_result = client:apply({
+                var_file = tfvars.filename,
+                auto_approve = true
+            })
+            
+            return apply_result.success, "Infrastructure deployment", {
+                terraform_used = true,
+                plan_success = true,
+                apply_success = apply_result.success
+            }
+        end
+        
+        return false, "Terraform plan failed"
+    end)
+    :timeout("15m")
+    :build()
+
+-- Define the complete GitOps workflow
+workflow.define("gitops_deploy")
+    :description("Complete GitOps workflow: Git clone + Terraform deploy")
+    :version("1.0.0")
+    :tasks({ clone_repo_task, deploy_infrastructure })
+    :config({
+        timeout = "20m",
+        max_parallel_tasks = 1
+    })
+```
+
+**2. Create your configuration file (`values.yaml`):**
+
+```yaml
+terraform:
+  environment: "production"
+  instance_type: "t3.small"
+  region: "us-west-2"
+  
+workflow:
+  timeout: "30m"
+  environment: "prod"
+```
+
+**3. Run your GitOps workflow:**
+
+```bash
+# Execute the complete workflow
+sloth-runner run -f deploy.sloth -v values.yaml gitops_deploy
+
+# Watch the magic happen:
+# ✅ Repository cloned
+# ✅ Terraform initialized  
+# ✅ Infrastructure planned
+# ✅ Infrastructure deployed
+```
+
+### Try the Complete Example
+
+We provide a working example that you can run immediately:
+
+```bash
+# Clone the repository
+git clone https://github.com/chalkan3-sloth/sloth-runner.git
+cd sloth-runner
+
+# Run the GitOps example
+sloth-runner run -f examples/deploy_git_terraform.sloth -v examples/values.yaml deploy_git_terraform
+```
+
+This example demonstrates:
+- 🔄 **Git repository cloning**
+- 🏗️ **Terraform infrastructure deployment**  
+- ⚙️ **External configuration with values.yaml**
+- 📊 **Comprehensive error handling and logging**
+- 🎯 **Modern DSL syntax and best practices**
 
 ### Hello World Example
 
@@ -408,6 +568,11 @@ workflow.define("distributed_deployment", {
 - **📊 [State Management](docs/state.md)** - Persistent state and data handling
 - **🛡️ [Security Guide](docs/security.md)** - RBAC, secrets, and audit logging
 - **📈 [Monitoring](docs/monitoring.md)** - Metrics, health checks, and observability
+
+### 🛠️ **Development Tools**
+
+- **🦥 [Neovim Plugin](docs/nvim-plugin.md)** - IDE-grade support with syntax highlighting, code completion, and integrated runner
+  - [English](docs/en/nvim-plugin.md) | [Português](docs/pt/nvim-plugin.md) | [中文](docs/zh/nvim-plugin.md)
 
 ## 🎯 **Why Choose Sloth Runner?**
 

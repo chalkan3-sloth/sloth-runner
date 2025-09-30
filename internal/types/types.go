@@ -14,6 +14,7 @@ type Task struct {
 	ID          string // Unique identifier for the task
 	Name        string
 	Description string
+	Workdir     string // ✅ Added individual task workdir support
 	CommandFunc *lua.LFunction
 	CommandStr  string
 	DependsOn   []string
@@ -26,6 +27,8 @@ type Task struct {
 	Async       bool
 	PreExec     *lua.LFunction
 	PostExec    *lua.LFunction
+	OnSuccess   *lua.LFunction // ✅ Added success handler
+	OnFailure   *lua.LFunction // ✅ Added failure handler
 	RunIf       string
 	RunIfFunc   *lua.LFunction
 	AbortIf     string

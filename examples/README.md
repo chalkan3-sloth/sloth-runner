@@ -1,212 +1,117 @@
-# 🦥 Sloth Runner Examples - Modern DSL
+# Sloth Runner Examples
 
-Esta pasta contém uma coleção abrangente de exemplos que demonstram as capacidades do Sloth Runner, incluindo funcionalidades como distributed execution, state management, monitoring, e integração com cloud providers.
+This directory contains practical examples demonstrating Sloth Runner's capabilities.
 
-> **📝 Nota Importante:** Todos os arquivos de workflow agora usam a extensão `.sloth` em vez de `.lua`. A sintaxe Lua permanece a mesma - apenas a extensão do arquivo mudou para melhor identificação dos arquivos DSL do Sloth Runner.
+## 📁 Examples Overview
 
-## 🚀 **Exemplos Práticos**
+### `deploy_git_terraform.sloth`
+**Complete GitOps Workflow with Terraform and Values Configuration**
 
-### 📊 **Production Ready Examples**
+This example demonstrates a complete GitOps workflow that:
+1. **Clones a Git repository** containing Terraform infrastructure code
+2. **Deploys infrastructure** using Terraform with configuration from `values.yaml`
+3. **Manages the complete lifecycle** from git clone to infrastructure deployment
 
-**🔄 [gitops_kubernetes_advanced.sloth](./gitops_kubernetes_advanced.sloth)** - Pipeline completo GitOps com Kubernetes:
-- **🌐 Distributed Execution**: Execução distribuída através de agents
-- **💾 State Management**: Gerenciamento de estado persistente
-- **📊 Monitoring**: Métricas e alertas integrados
-- **🔄 CI/CD Pipeline**: Pipeline completo de deploy
-- **🛡️ Security**: mTLS e RBAC integrados
+#### ✨ **Key Features Demonstrated:**
+- **Git Module Integration**: Clone repositories with the modern DSL
+- **Terraform Module Integration**: Automatic `terraform init`, `plan`, and `apply`
+- **Values Configuration**: External configuration using `values.yaml`
+- **Error Handling**: Comprehensive error handling and cleanup
+- **Workflow Orchestration**: Multi-task workflow with dependencies
+- **Logging**: Detailed logging throughout the process
 
-**🐍 [ai_powered_pipeline.sloth](./ai_powered_pipeline.sloth)** - Pipeline inteligente com analytics:
-- **📈 Predictive Analytics**: Análise preditiva de performance
-- **🎯 Adaptive Optimization**: Otimização automática de recursos
-- **🔄 Self-Healing**: Auto-recovery de falhas
-- **📊 Real-time Monitoring**: Monitoramento em tempo real
+#### 🚀 **How to Run:**
 
-```bash
-# Execute exemplos práticos
-./sloth-runner run -f examples/gitops_kubernetes_advanced.sloth
-./sloth-runner run -f examples/ai_powered_pipeline.sloth
+1. **Edit the configuration** in `values.yaml`:
+   ```yaml
+   terraform:
+     do_token: "your-actual-digitalocean-token"
+     droplet_name: "my-demo-droplet"
+     droplet_region: "nyc3"
+     # ... other configuration
+   ```
+
+2. **Run the workflow**:
+   ```bash
+   # With values file
+   sloth-runner run -f examples/deploy_git_terraform.sloth -v examples/values.yaml deploy_git_terraform
+   
+   # Or run specific tasks
+   sloth-runner run -f examples/deploy_git_terraform.sloth deploy_git_terraform
+   ```
+
+3. **Monitor the execution**:
+   - Watch the git clone progress
+   - See Terraform init output
+   - Review the Terraform plan
+   - Observe the apply process (if token is valid)
+
+#### 📋 **What This Example Does:**
+
+```mermaid
+graph TD
+    A[Start Workflow] --> B[Clone Git Repository]
+    B --> C[Check for Terraform Files]
+    C --> D[Run terraform init]
+    D --> E[Load values.yaml Configuration]
+    E --> F[Create terraform.tfvars]
+    F --> G[Run terraform plan]
+    G --> H[Run terraform apply]
+    H --> I[Infrastructure Deployed]
+    I --> J[Workflow Complete]
+    
+    C --> K[No Terraform Files] --> L[Skip Terraform Operations]
+    L --> J
 ```
 
----
+#### 🔧 **Configuration via values.yaml:**
 
-## 🚀 **Modern DSL - Sintaxe Única e Moderna**
-
-Todos os exemplos agora usam **EXCLUSIVAMENTE** a Modern DSL - uma linguagem específica de domínio que oferece:
-
-- **🎯 Fluent API**: Sintaxe intuitiva e encadeável
-- **📋 Workflow Definition**: Configuração declarativa de workflows  
-- **🔄 Enhanced Features**: Retry strategies, circuit breakers, e padrões avançados
-- **🛡️ Type Safety**: Melhor validação e detecção de erros
-- **📊 Rich Metadata**: Informações detalhadas de tasks e workflows
-- **🧹 Clean Syntax**: Sintaxe limpa sem formato legacy
-
-### ✨ **Modern DSL - Sintaxe Única**
+The example shows how to use external configuration files instead of hardcoded values:
 
 ```lua
--- 🎯 Definição de Task com Fluent API
-local build_task = task("build_application")
-    :description("Build com recursos modernos")
-    :command(function(params, deps)
-        log.info("Construindo aplicação...")
-        return exec.run("go build -o app ./cmd/main.go")
-    end)
-    :timeout("5m")
-    :retries(3, "exponential")
-    :artifacts({"app"})
-    :tags({"build", "application"})
-    :build()
+-- Instead of hardcoded values:
+do_token = "hardcoded-token"
 
--- 📋 Definição de Workflow Declarativo
-workflow.define("ci_pipeline", {
-    description = "Pipeline CI/CD completo",
-    version = "2.0.0",
-    metadata = {
-        team = "devops",
-        environment = "production"
-    },
-    
-    tasks = {
-        build_task,
-        test_task,
-        deploy_task
-    },
-    
-    on_success = function(results)
-        log.info("✅ Pipeline executado com sucesso!")
-        notify.slack("Pipeline CI/CD concluído", results)
-    end,
-    
-    on_failure = function(error, context)
-        log.error("❌ Falha no pipeline: " .. error.message)
-        notify.slack("Pipeline falhou", { error = error, context = context })
-    end
-})
+-- Use values from YAML:
+do_token = Values.terraform.do_token or ""
 ```
 
----
+This approach provides:
+- **Environment-specific configurations**
+- **Secure token management** (keep tokens out of code)
+- **Reusable workflows** across different environments
+- **Easy customization** without modifying the `.sloth` file
 
-## 📂 **Estrutura dos Exemplos**
+#### 🎯 **Learning Outcomes:**
 
-### 🌟 **Exemplos Destacados**
+After running this example, you'll understand:
+- How to create multi-task workflows
+- How to integrate Git and Terraform modules
+- How to use external configuration files
+- How to handle errors and cleanup resources
+- How to implement comprehensive logging
+- How to structure complex GitOps workflows
 
-| Exemplo | Descrição | Complexidade | Recursos |
-|---------|-----------|--------------|----------|
-| [**simple_ai_demo.sloth**](./simple_ai_demo.sloth) | Demo básico com analytics | ⭐ Básico | Analytics, Monitoring |
-| [**gitops_native_demo.sloth**](./gitops_native_demo.sloth) | GitOps workflow | ⭐⭐ Intermediário | Git, State, Notifications |
-| [**gitops_kubernetes_advanced.sloth**](./gitops_kubernetes_advanced.sloth) | K8s + GitOps avançado | ⭐⭐⭐ Avançado | K8s, GitOps, Distributed |
-| [**ai_powered_pipeline.sloth**](./ai_powered_pipeline.sloth) | Pipeline com IA | ⭐⭐⭐ Avançado | Analytics, Prediction, Optimization |
+#### ⚠️ **Prerequisites:**
 
-### 🔧 **Exemplos por Categoria**
+- `terraform` command available in PATH
+- `git` command available in PATH
+- Valid DigitalOcean token (for actual deployment)
+- Network access to GitHub and DigitalOcean APIs
 
-#### 📊 **Analytics & Intelligence**
-- **[simple_ai_demo.sloth](./simple_ai_demo.sloth)**: Demonstração básica de analytics
-- **[ai_powered_pipeline.sloth](./ai_powered_pipeline.sloth)**: Pipeline com análise preditiva
-- **[test_ai_module.sloth](./test_ai_module.sloth)**: Teste dos módulos de IA
+#### 🔒 **Security Note:**
 
-#### 🔄 **GitOps & CI/CD**
-- **[gitops_native_demo.sloth](./gitops_native_demo.sloth)**: Workflow GitOps básico
-- **[gitops_kubernetes_advanced.sloth](./gitops_kubernetes_advanced.sloth)**: GitOps avançado com K8s
-- **[test_gitops_basic.sloth](./test_gitops_basic.sloth)**: Teste básico do GitOps
-
-#### 🎯 **Recursos Específicos**
-- **[ai_intelligence_showcase.sloth](./ai_intelligence_showcase.sloth)**: Showcase de inteligência
-- **[iac_integration_showcase.sloth](./iac_integration_showcase.sloth)**: Integração IaC
-- **[unified_fluent_workflow.sloth](./unified_fluent_workflow.sloth)**: Workflow fluente unificado
+Never commit real API tokens to version control. Use environment variables or secure configuration management for production deployments.
 
 ---
 
-## 🎯 **Como Usar os Exemplos**
+## 📚 **Next Steps**
 
-### 1. **📥 Preparação**
-```bash
-# Clone o repositório
-git clone https://github.com/chalkan3-sloth/sloth-runner.git
-cd sloth-runner
+Explore the code in `deploy_git_terraform.sloth` to see:
+- Modern DSL task definitions
+- Fluent API usage
+- Error handling patterns
+- Workflow orchestration
+- Integration with external tools
 
-# Compile o Sloth Runner
-go build -o sloth-runner ./cmd/sloth-runner
-```
-
-### 2. **🚀 Execução Básica**
-```bash
-# Execute um exemplo simples
-./sloth-runner run -f examples/simple_ai_demo.sloth
-
-# Execute com verbose para debug
-./sloth-runner run -f examples/gitops_native_demo.sloth --verbose
-
-# Execute com parâmetros customizados
-./sloth-runner run -f examples/ai_powered_pipeline.sloth --param environment=staging
-```
-
-### 3. **🔧 Modificação dos Exemplos**
-```bash
-# Copie um exemplo como base
-cp examples/simple_ai_demo.sloth my_workflow.sloth
-
-# Edite conforme necessário
-vim my_workflow.sloth
-
-# Execute seu workflow customizado
-./sloth-runner run -f my_workflow.sloth
-```
-
----
-
-## 📚 **Recursos de Aprendizagem**
-
-### 🎓 **Para Iniciantes**
-1. Comece com **[simple_ai_demo.sloth](./simple_ai_demo.sloth)** - exemplo mais simples
-2. Entenda a sintaxe Modern DSL no código
-3. Execute e observe os logs de saída
-4. Modifique valores e re-execute para experimentar
-
-### 🏗️ **Para Desenvolvedores**
-1. Analise **[gitops_kubernetes_advanced.sloth](./gitops_kubernetes_advanced.sloth)** - exemplo complexo
-2. Estude os padrões de error handling e retry
-3. Observe como state management é usado
-4. Implemente seus próprios workflows baseados nos exemplos
-
-### 🚀 **Para DevOps**
-1. Use **[ai_powered_pipeline.sloth](./ai_powered_pipeline.sloth)** como base para CI/CD
-2. Adapte para sua infraestrutura específica
-3. Configure alertas e monitoramento
-4. Implemente estratégias de deployment
-
----
-
-## 🤝 **Contribuindo com Exemplos**
-
-Tem um exemplo interessante? Contribua!
-
-1. **📝 Crie seu exemplo** seguindo a Modern DSL
-2. **📋 Adicione documentação** inline no código
-3. **✅ Teste completamente** antes de submeter
-4. **📧 Abra um PR** com descrição detalhada
-
-### 📐 **Padrões para Novos Exemplos**
-- Use **exclusivamente Modern DSL**
-- Inclua **comentários explicativos**
-- Adicione **error handling apropriado**
-- Demonstre **pelo menos 2-3 recursos** do Sloth Runner
-- Seja **prático e realista** (evite ficção científica)
-
----
-
-## 🔗 **Links Úteis**
-
-- 📖 [Documentação Completa](../docs/)
-- 🧠 [Core Concepts](../docs/en/core-concepts.md)
-- ⚡ [Quick Start](../docs/en/quick-start.md)
-- 🎯 [Advanced Features](../docs/en/advanced-features.md)
-- 🤖 [AI Features](../docs/en/ai-features.md)
-
----
-
-## 🆘 **Suporte & Ajuda**
-
-- 🐛 [Issues](https://github.com/chalkan3-sloth/sloth-runner/issues)
-- 💬 [Discussions](https://github.com/chalkan3-sloth/sloth-runner/discussions)
-- 📧 Email: support@sloth-runner.dev
-
-**Happy Automating! 🦥🚀**
+For more examples and documentation, visit: [Sloth Runner Documentation](../docs/)
