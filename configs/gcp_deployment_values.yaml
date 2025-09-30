@@ -1,6 +1,6 @@
 # configs/gcp_deployment_values.yaml
 #
-# Configuration values for the gcp_pulumi_orchestration.lua pipeline.
+# Configuration values for the gcp_pulumi_orchestration.sloth pipeline.
 
 # Base paths for cloning the repositories and creating the Python venv.
 paths:

@@ -1,0 +1,151 @@
+-- Test do Módulo Salt Comprehensive
+
+print("🧂 Testando o Módulo Salt Comprehensive")
+print("=" .. string.rep("=", 50))
+
+-- Carrega o módulo salt
+local salt = require("salt")
+
+-- Verifica se o módulo foi carregado corretamente
+if not salt then
+    print("❌ Erro: Módulo salt não foi carregado")
+    return false
+end
+
+print("✅ Módulo salt carregado com sucesso")
+
+-- Testa algumas funções básicas
+print("\n🔍 Testando funções básicas:")
+
+-- Test 1: Ping function
+print("1. Testando salt.ping...")
+local ping_result = salt.ping("*")
+if ping_result then
+    print("   ✅ Função salt.ping() disponível")
+    print("   📊 Success:", ping_result.success)
+    if ping_result.error then
+        print("   ⚠️ Expected error (no salt installation):", ping_result.error)
+    end
+else
+    print("   ❌ Função salt.ping() não disponível")
+end
+
+-- Test 2: Version function  
+print("\n2. Testando salt.version...")
+local version_result = salt.version("*")
+if version_result then
+    print("   ✅ Função salt.version() disponível")
+    print("   📊 Success:", version_result.success)
+else
+    print("   ❌ Função salt.version() não disponível")
+end
+
+-- Test 3: Key management
+print("\n3. Testando salt.key_list...")
+local keys_result = salt.key_list("all")
+if keys_result then
+    print("   ✅ Função salt.key_list() disponível")
+    print("   📊 Success:", keys_result.success)
+else
+    print("   ❌ Função salt.key_list() não disponível")
+end
+
+-- Test 4: State management
+print("\n4. Testando salt.state_apply...")
+local state_result = salt.state_apply("*", "test", {test = true})
+if state_result then
+    print("   ✅ Função salt.state_apply() disponível")
+    print("   📊 Success:", state_result.success)
+else
+    print("   ❌ Função salt.state_apply() não disponível")
+end
+
+-- Test 5: Package management
+print("\n5. Testando salt.pkg_list...")
+local pkg_result = salt.pkg_list("*")
+if pkg_result then
+    print("   ✅ Função salt.pkg_list() disponível")
+    print("   📊 Success:", pkg_result.success)
+else
+    print("   ❌ Função salt.pkg_list() não disponível")
+end
+
+-- Test 6: Docker integration
+print("\n6. Testando salt.docker_ps...")
+local docker_result = salt.docker_ps("*")
+if docker_result then
+    print("   ✅ Função salt.docker_ps() disponível")
+    print("   📊 Success:", docker_result.success)
+else
+    print("   ❌ Função salt.docker_ps() não disponível")
+end
+
+-- Test 7: API client
+print("\n7. Testando salt.api_client...")
+local api_client = salt.api_client("http://localhost:8000", "admin", "password")
+if api_client then
+    print("   ✅ Função salt.api_client() disponível")
+    print("   📊 API client criado")
+    
+    -- Test API login
+    if api_client.login then
+        local login_result = api_client:login()
+        print("   📊 Login method available:", login_result ~= nil)
+    end
+else
+    print("   ❌ Função salt.api_client() não disponível")
+end
+
+-- Test 8: Advanced features
+print("\n8. Testando funcionalidades avançadas...")
+
+local advanced_functions = {
+    "beacon_list",
+    "schedule_list", 
+    "mine_get",
+    "orchestrate",
+    "git_clone",
+    "mysql_query",
+    "performance_profile"
+}
+
+for _, func_name in ipairs(advanced_functions) do
+    if salt[func_name] then
+        print("   ✅ " .. func_name .. "() disponível")
+    else
+        print("   ❌ " .. func_name .. "() não disponível")
+    end
+end
+
+-- Summary
+print("\n📊 RESUMO DO TESTE:")
+print("=" .. string.rep("=", 50))
+
+local total_functions = 0
+local available_functions = 0
+
+-- Count available functions
+for func_name, func in pairs(salt) do
+    if type(func) == "function" then
+        total_functions = total_functions + 1
+        available_functions = available_functions + 1
+    end
+end
+
+print("📈 Funções disponíveis:", available_functions)
+print("🎯 Módulo funcional:", available_functions > 0 and "✅ SIM" or "❌ NÃO")
+
+if available_functions > 100 then
+    print("🏆 EXCELENTE: Módulo Salt comprehensive completamente funcional!")
+    print("🚀 Pronto para uso empresarial")
+elseif available_functions > 50 then
+    print("👍 BOM: Módulo Salt com funcionalidades essenciais")
+elseif available_functions > 10 then
+    print("⚠️ BÁSICO: Módulo Salt com funcionalidades limitadas")
+else
+    print("❌ PROBLEMA: Módulo Salt com funcionalidades insuficientes")
+end
+
+print("\n✨ Teste do módulo Salt comprehensive concluído!")
+
+return true

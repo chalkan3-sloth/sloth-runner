@@ -1,0 +1,521 @@
+-- Exemplo: Monitoramento e Manutenção de Infraestrutura com Salt
+-- Este exemplo demonstra operações diárias de monitoramento, manutenção
+-- e troubleshooting usando o módulo Salt comprehensive
+
+local salt = require("salt")
+
+-- Configuração de thresholds e limites
+local monitoring_config = {
+    disk_usage_threshold = 85,
+    memory_usage_threshold = 90,
+    cpu_load_threshold = 80,
+    service_check_interval = 300,
+    log_retention_days = 30,
+    backup_retention_days = 7
+}
+
+-- Função principal de monitoramento diário
+command = function()
+    log.info("📊 Iniciando rotina de monitoramento e manutenção...")
+    
+    -- 1. VERIFICAÇÃO DE CONECTIVIDADE
+    log.info("🔍 Verificando conectividade de todos os minions...")
+    
+    local ping_result = salt.ping("*", {timeout = 30})
+    local responsive_minions = {}
+    local unresponsive_minions = {}
+    
+    if ping_result.success and ping_result.returns then
+        for minion, response in pairs(ping_result.returns) do
+            if response == true then
+                table.insert(responsive_minions, minion)
+            else
+                table.insert(unresponsive_minions, minion)
+            end
+        end
+    end
+    
+    log.info("✅ Minions responsivos: " .. #responsive_minions)
+    if #unresponsive_minions > 0 then
+        log.warning("⚠️ Minions não responsivos: " .. table.concat(unresponsive_minions, ", "))
+    end
+    
+    -- 2. MONITORAMENTO DE RECURSOS DO SISTEMA
+    log.info("🖥️ Verificando recursos do sistema...")
+    
+    -- Verificar uso de disco
+    local disk_alerts = {}
+    local disk_usage = salt.disk_usage("*", "/")
+    if disk_usage.success and disk_usage.returns then
+        for minion, usage_data in pairs(disk_usage.returns) do
+            -- Simular parsing de dados de uso de disco
+            local usage_percent = math.random(30, 95) -- Simulação
+            if usage_percent > monitoring_config.disk_usage_threshold then
+                table.insert(disk_alerts, {
+                    minion = minion,
+                    usage = usage_percent,
+                    severity = usage_percent > 95 and "critical" or "warning"
+                })
+            end
+        end
+    end
+    
+    -- Verificar uso de memória
+    local memory_alerts = {}
+    local memory_info = salt.status_meminfo("*")
+    if memory_info.success and memory_info.returns then
+        for minion, mem_data in pairs(memory_info.returns) do
+            -- Simular parsing de dados de memória
+            local mem_usage_percent = math.random(40, 95)
+            if mem_usage_percent > monitoring_config.memory_usage_threshold then
+                table.insert(memory_alerts, {
+                    minion = minion,
+                    usage = mem_usage_percent,
+                    severity = mem_usage_percent > 95 and "critical" or "warning"
+                })
+            end
+        end
+    end
+    
+    -- Verificar carga da CPU
+    local cpu_alerts = {}
+    local load_avg = salt.status_loadavg("*")
+    if load_avg.success and load_avg.returns then
+        for minion, load_data in pairs(load_avg.returns) do
+            local load_1min = math.random(0.5, 4.0) -- Simulação
+            if load_1min > monitoring_config.cpu_load_threshold / 100 * 4 then
+                table.insert(cpu_alerts, {
+                    minion = minion,
+                    load = load_1min,
+                    severity = load_1min > 3.0 and "critical" or "warning"
+                })
+            end
+        end
+    end
+    
+    -- 3. VERIFICAÇÃO DE SERVIÇOS CRÍTICOS
+    log.info("⚙️ Verificando status dos serviços críticos...")
+    
+    local critical_services = {
+        ["web-*"] = {"nginx", "supervisor"},
+        ["db-*"] = {"mysql"},
+        ["cache-*"] = {"redis-server"},
+        ["lb-*"] = {"haproxy"}
+    }
+    
+    local service_alerts = {}
+    
+    for target, services in pairs(critical_services) do
+        for _, service in ipairs(services) do
+            local service_status = salt.service_status(target, service)
+            if not service_status.success then
+                table.insert(service_alerts, {
+                    target = target,
+                    service = service,
+                    status = "down",
+                    severity = "critical"
+                })
+                
+                -- Tentar reiniciar o serviço automaticamente
+                log.warning("🔄 Tentando reiniciar serviço " .. service .. " em " .. target)
+                local restart_result = salt.service_restart(target, service)
+                if restart_result.success then
+                    log.info("✅ Serviço " .. service .. " reiniciado com sucesso")
+                else
+                    log.error("❌ Falha ao reiniciar serviço " .. service)
+                end
+            end
+        end
+    end
+    
+    -- 4. VERIFICAÇÃO DE LOGS DE ERRO
+    log.info("📝 Analisando logs de erro...")
+    
+    local log_patterns = {
+        nginx_errors = {
+            target = "web-*",
+            file = "/var/log/nginx/error.log",
+            pattern = "ERROR"
+        },
+        mysql_errors = {
+            target = "db-*", 
+            file = "/var/log/mysql/error.log",
+            pattern = "ERROR"
+        },
+        app_errors = {
+            target = "web-*",
+            file = "/var/log/webapp/app.log",
+            pattern = "CRITICAL\\|ERROR"
+        }
+    }
+    
+    local log_alerts = {}
+    
+    for log_type, config in pairs(log_patterns) do
+        local log_check = salt.cmd(config.target, "cmd", "run", 
+            "grep -c '" .. config.pattern .. "' " .. config.file .. " | tail -n 100")
+        
+        if log_check.success and log_check.returns then
+            for minion, error_count in pairs(log_check.returns) do
+                local count = tonumber(error_count) or 0
+                if count > 10 then -- Mais de 10 erros é preocupante
+                    table.insert(log_alerts, {
+                        minion = minion,
+                        log_type = log_type,
+                        error_count = count,
+                        severity = count > 50 and "critical" or "warning"
+                    })
+                end
+            end
+        end
+    end
+    
+    -- 5. VERIFICAÇÃO DE CONECTIVIDADE DE REDE
+    log.info("🌐 Testando conectividade de rede...")
+    
+    local network_tests = {
+        {source = "web-*", target = "db-master", port = 3306},
+        {source = "web-*", target = "cache-01", port = 6379},
+        {source = "lb-*", target = "web-01", port = 80},
+        {source = "*", target = "8.8.8.8", port = 53}
+    }
+    
+    local network_alerts = {}
+    
+    for _, test in ipairs(network_tests) do
+        local connectivity = salt.network_ping(test.source, test.target)
+        if not connectivity.success then
+            table.insert(network_alerts, {
+                source = test.source,
+                target = test.target,
+                port = test.port,
+                severity = "warning"
+            })
+        end
+    end
+    
+    -- 6. VERIFICAÇÃO DE CERTIFICADOS SSL
+    log.info("🔒 Verificando certificados SSL...")
+    
+    local ssl_checks = salt.cmd("web-*", "cmd", "run", 
+        "echo | openssl s_client -servername example.com -connect localhost:443 2>/dev/null | openssl x509 -noout -dates")
+    
+    local ssl_alerts = {}
+    if ssl_checks.success and ssl_checks.returns then
+        for minion, cert_info in pairs(ssl_checks.returns) do
+            -- Verificar se o certificado expira em menos de 30 dias
+            -- (Simulação - em produção, seria necessário parsing real das datas)
+            local days_until_expiry = math.random(1, 90)
+            if days_until_expiry < 30 then
+                table.insert(ssl_alerts, {
+                    minion = minion,
+                    days_until_expiry = days_until_expiry,
+                    severity = days_until_expiry < 7 and "critical" or "warning"
+                })
+            end
+        end
+    end
+    
+    -- 7. VERIFICAÇÃO DE BACKUPS
+    log.info("💾 Verificando status dos backups...")
+    
+    local backup_checks = {
+        database = {
+            target = "db-master",
+            path = "/backup",
+            pattern = "mysql-*.sql.gz",
+            max_age_hours = 24
+        },
+        application = {
+            target = "web-*",
+            path = "/backup", 
+            pattern = "app-*.tar.gz",
+            max_age_hours = 24
+        }
+    }
+    
+    local backup_alerts = {}
+    
+    for backup_type, config in pairs(backup_checks) do
+        local backup_check = salt.cmd(config.target, "cmd", "run",
+            "find " .. config.path .. " -name '" .. config.pattern .. "' -mtime -1 | wc -l")
+        
+        if backup_check.success and backup_check.returns then
+            for minion, backup_count in pairs(backup_check.returns) do
+                local count = tonumber(backup_count) or 0
+                if count == 0 then
+                    table.insert(backup_alerts, {
+                        minion = minion,
+                        backup_type = backup_type,
+                        severity = "critical"
+                    })
+                end
+            end
+        end
+    end
+    
+    -- 8. LIMPEZA AUTOMÁTICA
+    log.info("🧹 Executando limpeza automática...")
+    
+    -- Limpar logs antigos
+    local log_cleanup = salt.cmd("*", "cmd", "run",
+        "find /var/log -name '*.log' -mtime +" .. monitoring_config.log_retention_days .. " -delete")
+    
+    if log_cleanup.success then
+        log.info("✅ Logs antigos removidos")
+    end
+    
+    -- Limpar backups antigos
+    local backup_cleanup = salt.cmd("*", "cmd", "run",
+        "find /backup -name '*.gz' -mtime +" .. monitoring_config.backup_retention_days .. " -delete")
+    
+    if backup_cleanup.success then
+        log.info("✅ Backups antigos removidos")
+    end
+    
+    -- Limpeza de cache de pacotes
+    salt.cmd("*", "cmd", "run", "apt autoremove -y && apt autoclean")
+    log.info("✅ Cache de pacotes limpo")
+    
+    -- 9. ATUALIZAÇÃO DE SEGURANÇA
+    log.info("🔐 Verificando atualizações de segurança...")
+    
+    local security_updates = salt.cmd("*", "cmd", "run", 
+        "apt list --upgradable 2>/dev/null | grep -i security | wc -l")
+    
+    local security_alerts = {}
+    if security_updates.success and security_updates.returns then
+        for minion, update_count in pairs(security_updates.returns) do
+            local count = tonumber(update_count) or 0
+            if count > 0 then
+                table.insert(security_alerts, {
+                    minion = minion,
+                    update_count = count,
+                    severity = count > 10 and "warning" or "info"
+                })
+            end
+        end
+    end
+    
+    -- 10. VERIFICAÇÃO DE INTEGRIDADE DE ARQUIVOS
+    log.info("🔍 Verificando integridade de arquivos críticos...")
+    
+    local integrity_checks = {
+        {target = "web-*", file = "/opt/webapp/app/settings.py"},
+        {target = "db-*", file = "/etc/mysql/mysql.conf.d/mysqld.cnf"},
+        {target = "lb-*", file = "/etc/haproxy/haproxy.cfg"}
+    }
+    
+    local integrity_alerts = {}
+    
+    for _, check in ipairs(integrity_checks) do
+        local file_check = salt.file_stats(check.target, check.file)
+        if not file_check.success then
+            table.insert(integrity_alerts, {
+                target = check.target,
+                file = check.file,
+                issue = "file_missing",
+                severity = "critical"
+            })
+        end
+    end
+    
+    -- 11. ANÁLISE DE PERFORMANCE
+    log.info("⚡ Analisando performance do sistema...")
+    
+    local performance_data = {}
+    
+    -- CPU usage
+    local cpu_info = salt.status_cpuinfo("*")
+    -- Network stats
+    local network_stats = salt.status_netdev("*")
+    -- Process count
+    local process_count = salt.cmd("*", "cmd", "run", "ps aux | wc -l")
+    
+    log.info("📊 Dados de performance coletados")
+    
+    -- 12. VERIFICAÇÃO DE JOBS AGENDADOS
+    log.info("⏰ Verificando jobs agendados...")
+    
+    local scheduled_jobs = salt.schedule_list("*")
+    if scheduled_jobs.success then
+        log.info("✅ Jobs agendados verificados")
+    end
+    
+    -- Verificar se backups agendados estão rodando
+    local cron_jobs = salt.cron_list("*", "root")
+    if cron_jobs.success then
+        log.info("✅ Cron jobs verificados")
+    end
+    
+    -- 13. TESTE DE DISASTER RECOVERY
+    log.info("🚨 Executando testes básicos de disaster recovery...")
+    
+    -- Verificar se é possível fazer backup manual
+    local manual_backup_test = salt.cmd("db-master", "cmd", "run",
+        "mysqldump --single-transaction --routines --triggers webapp_production > /tmp/test_backup.sql && rm /tmp/test_backup.sql")
+    
+    if manual_backup_test.success then
+        log.info("✅ Teste de backup manual passou")
+    else
+        log.warning("⚠️ Teste de backup manual falhou")
+    end
+    
+    -- 14. RELATÓRIO DE ALERTAS
+    log.info("📋 Gerando relatório de alertas...")
+    
+    local all_alerts = {
+        disk = disk_alerts,
+        memory = memory_alerts,
+        cpu = cpu_alerts,
+        services = service_alerts,
+        logs = log_alerts,
+        network = network_alerts,
+        ssl = ssl_alerts,
+        backups = backup_alerts,
+        security = security_alerts,
+        integrity = integrity_alerts
+    }
+    
+    local total_alerts = 0
+    local critical_alerts = 0
+    
+    for category, alerts in pairs(all_alerts) do
+        total_alerts = total_alerts + #alerts
+        for _, alert in ipairs(alerts) do
+            if alert.severity == "critical" then
+                critical_alerts = critical_alerts + 1
+            end
+        end
+    end
+    
+    -- 15. ENVIO DE NOTIFICAÇÕES
+    if total_alerts > 0 then
+        log.info("📤 Enviando notificações de alertas...")
+        
+        local alert_summary = {
+            total_alerts = total_alerts,
+            critical_alerts = critical_alerts,
+            timestamp = os.date(),
+            categories = {}
+        }
+        
+        for category, alerts in pairs(all_alerts) do
+            if #alerts > 0 then
+                alert_summary.categories[category] = #alerts
+            end
+        end
+        
+        -- Enviar evento para sistema de notificações
+        local notification_event = salt.event_fire("monitoring.alerts", alert_summary, "*")
+        if notification_event.success then
+            log.info("✅ Notificações enviadas")
+        end
+        
+        -- Log detalhado dos alertas críticos
+        if critical_alerts > 0 then
+            log.warning("🚨 ALERTAS CRÍTICOS DETECTADOS:")
+            for category, alerts in pairs(all_alerts) do
+                for _, alert in ipairs(alerts) do
+                    if alert.severity == "critical" then
+                        log.warning("   • " .. category .. ": " .. (alert.minion or alert.target) .. " - " .. (alert.issue or "issue detected"))
+                    end
+                end
+            end
+        end
+    end
+    
+    -- 16. RELATÓRIO FINAL
+    log.info("=" .. string.rep("=", 60))
+    log.info("📊 RELATÓRIO DE MONITORAMENTO DIÁRIO")
+    log.info("=" .. string.rep("=", 60))
+    log.info("⏰ Data/Hora: " .. os.date())
+    log.info("🖥️ Minions Responsivos: " .. #responsive_minions .. "/" .. (#responsive_minions + #unresponsive_minions))
+    log.info("🚨 Total de Alertas: " .. total_alerts)
+    log.info("⚠️ Alertas Críticos: " .. critical_alerts)
+    log.info("")
+    log.info("📈 Resumo por Categoria:")
+    for category, alerts in pairs(all_alerts) do
+        if #alerts > 0 then
+            log.info("   • " .. category .. ": " .. #alerts .. " alertas")
+        end
+    end
+    log.info("=" .. string.rep("=", 60))
+    
+    -- Status geral
+    local overall_health = "HEALTHY"
+    if critical_alerts > 0 then
+        overall_health = "CRITICAL"
+    elseif total_alerts > 5 then
+        overall_health = "WARNING"
+    end
+    
+    log.info("🏥 Status Geral da Infraestrutura: " .. overall_health)
+    
+    -- Recomendações
+    if critical_alerts > 0 then
+        log.info("📝 AÇÕES RECOMENDADAS:")
+        log.info("1. Revisar alertas críticos imediatamente")
+        log.info("2. Verificar logs detalhados dos serviços afetados")
+        log.info("3. Considerar escalação para equipe de plantão")
+    elseif total_alerts > 5 then
+        log.info("📝 AÇÕES RECOMENDADAS:")
+        log.info("1. Revisar alertas de warning durante horário comercial")
+        log.info("2. Planejar manutenção preventiva")
+    else
+        log.info("✅ Sistema operando dentro dos parâmetros normais")
+    end
+    
+    return true, "Monitoramento concluído - " .. overall_health .. " (" .. total_alerts .. " alertas)"
+end
+
+-- Função para execução de manutenção programada
+maintenance = function()
+    log.info("🔧 Iniciando manutenção programada...")
+    
+    -- Reiniciar serviços de forma controlada
+    salt.service_restart("web-*", "nginx")
+    time.sleep(30)
+    
+    -- Otimização de banco de dados
+    salt.cmd("db-*", "cmd", "run", "mysqlcheck --optimize --all-databases")
+    
+    -- Limpeza de cache Redis
+    salt.cmd("cache-*", "cmd", "run", "redis-cli FLUSHDB")
+    
+    -- Compactação de logs
+    salt.cmd("*", "cmd", "run", "find /var/log -name '*.log' -exec gzip {} \\;")
+    
+    return true, "Manutenção programada concluída"
+end
+
+-- Função para troubleshooting específico
+troubleshoot = function(target, issue_type)
+    log.info("🔍 Iniciando troubleshooting para " .. target .. " - " .. issue_type)
+    
+    local diagnostics = {}
+    
+    if issue_type == "high_cpu" then
+        diagnostics.top_processes = salt.cmd(target, "cmd", "run", "ps aux --sort=-%cpu | head -10")
+        diagnostics.load_average = salt.status_loadavg(target)
+        diagnostics.cpu_info = salt.status_cpuinfo(target)
+        
+    elseif issue_type == "high_memory" then
+        diagnostics.memory_info = salt.status_meminfo(target)
+        diagnostics.top_memory = salt.cmd(target, "cmd", "run", "ps aux --sort=-%mem | head -10")
+        diagnostics.free_memory = salt.cmd(target, "cmd", "run", "free -h")
+        
+    elseif issue_type == "disk_full" then
+        diagnostics.disk_usage = salt.disk_usage(target, "/")
+        diagnostics.large_files = salt.cmd(target, "cmd", "run", "du -h / | sort -rh | head -20")
+        diagnostics.open_files = salt.cmd(target, "cmd", "run", "lsof | wc -l")
+        
+    elseif issue_type == "network_slow" then
+        diagnostics.network_stats = salt.status_netdev(target)
+        diagnostics.connections = salt.network_netstat(target)
+        diagnostics.bandwidth_test = salt.cmd(target, "cmd", "run", "iperf3 -c speedtest.net -t 10")
+    end
+    
+    log.info("🔍 Diagnósticos coletados para " .. issue_type)
+    return true, "Troubleshooting concluído"
+end
