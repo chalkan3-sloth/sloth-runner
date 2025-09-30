@@ -20,7 +20,7 @@ cd sloth-runner
 
 2. **Open the example file**:
    ```bash
-   nvim ~/example.sloth.lua
+   nvim ~/example.sloth
    ```
 
 3. **Verify syntax highlighting** - You should see:
@@ -31,7 +31,7 @@ cd sloth-runner
 
 ## ⌨️ Test Key Mappings
 
-With a `.sloth.lua` file open:
+With a `.sloth` file open:
 
 | Key | Action | Test |
 |-----|--------|------|
@@ -107,7 +107,7 @@ vim.api.nvim_set_hl(0, 'slothMethod', { fg = '#4ec9b0' })
 ```
 
 ### File not detected as Sloth DSL?
-- Use `.sloth.lua` extension
+- Use `.sloth` extension
 - Or add DSL keywords like `task(` or `workflow.define`
 
 ### Runner commands not working?
@@ -119,13 +119,13 @@ vim.api.nvim_set_hl(0, 'slothMethod', { fg = '#4ec9b0' })
 The plugin auto-detects these files as Sloth DSL:
 
 ```lua
-# example.sloth.lua ✅
+# example.sloth ✅
 task("build"):command(function() end):build()
 
-# ci-pipeline.lua ✅  
+# ci-pipeline.sloth ✅  
 workflow.define("ci", { tasks = {} })
 
-# deploy-task.lua ✅
+# deploy-task.sloth ✅
 local deploy = task("deploy")
     :description("Deploy app")
     :build()

@@ -2,18 +2,20 @@
 
 Esta pasta contém uma coleção abrangente de exemplos que demonstram as capacidades do Sloth Runner, incluindo funcionalidades como distributed execution, state management, monitoring, e integração com cloud providers.
 
+> **📝 Nota Importante:** Todos os arquivos de workflow agora usam a extensão `.sloth` em vez de `.lua`. A sintaxe Lua permanece a mesma - apenas a extensão do arquivo mudou para melhor identificação dos arquivos DSL do Sloth Runner.
+
 ## 🚀 **Exemplos Práticos**
 
 ### 📊 **Production Ready Examples**
 
-**🔄 [gitops_kubernetes_advanced.lua](./gitops_kubernetes_advanced.lua)** - Pipeline completo GitOps com Kubernetes:
+**🔄 [gitops_kubernetes_advanced.sloth](./gitops_kubernetes_advanced.sloth)** - Pipeline completo GitOps com Kubernetes:
 - **🌐 Distributed Execution**: Execução distribuída através de agents
 - **💾 State Management**: Gerenciamento de estado persistente
 - **📊 Monitoring**: Métricas e alertas integrados
 - **🔄 CI/CD Pipeline**: Pipeline completo de deploy
 - **🛡️ Security**: mTLS e RBAC integrados
 
-**🐍 [ai_powered_pipeline.lua](./ai_powered_pipeline.lua)** - Pipeline inteligente com analytics:
+**🐍 [ai_powered_pipeline.sloth](./ai_powered_pipeline.sloth)** - Pipeline inteligente com analytics:
 - **📈 Predictive Analytics**: Análise preditiva de performance
 - **🎯 Adaptive Optimization**: Otimização automática de recursos
 - **🔄 Self-Healing**: Auto-recovery de falhas
@@ -21,8 +23,8 @@ Esta pasta contém uma coleção abrangente de exemplos que demonstram as capaci
 
 ```bash
 # Execute exemplos práticos
-./sloth-runner run -f examples/gitops_kubernetes_advanced.lua
-./sloth-runner run -f examples/ai_powered_pipeline.lua
+./sloth-runner run -f examples/gitops_kubernetes_advanced.sloth
+./sloth-runner run -f examples/ai_powered_pipeline.sloth
 ```
 
 ---
@@ -89,27 +91,27 @@ workflow.define("ci_pipeline", {
 
 | Exemplo | Descrição | Complexidade | Recursos |
 |---------|-----------|--------------|----------|
-| [**simple_ai_demo.lua**](./simple_ai_demo.lua) | Demo básico com analytics | ⭐ Básico | Analytics, Monitoring |
-| [**gitops_native_demo.lua**](./gitops_native_demo.lua) | GitOps workflow | ⭐⭐ Intermediário | Git, State, Notifications |
-| [**gitops_kubernetes_advanced.lua**](./gitops_kubernetes_advanced.lua) | K8s + GitOps avançado | ⭐⭐⭐ Avançado | K8s, GitOps, Distributed |
-| [**ai_powered_pipeline.lua**](./ai_powered_pipeline.lua) | Pipeline com IA | ⭐⭐⭐ Avançado | Analytics, Prediction, Optimization |
+| [**simple_ai_demo.sloth**](./simple_ai_demo.sloth) | Demo básico com analytics | ⭐ Básico | Analytics, Monitoring |
+| [**gitops_native_demo.sloth**](./gitops_native_demo.sloth) | GitOps workflow | ⭐⭐ Intermediário | Git, State, Notifications |
+| [**gitops_kubernetes_advanced.sloth**](./gitops_kubernetes_advanced.sloth) | K8s + GitOps avançado | ⭐⭐⭐ Avançado | K8s, GitOps, Distributed |
+| [**ai_powered_pipeline.sloth**](./ai_powered_pipeline.sloth) | Pipeline com IA | ⭐⭐⭐ Avançado | Analytics, Prediction, Optimization |
 
 ### 🔧 **Exemplos por Categoria**
 
 #### 📊 **Analytics & Intelligence**
-- **[simple_ai_demo.lua](./simple_ai_demo.lua)**: Demonstração básica de analytics
-- **[ai_powered_pipeline.lua](./ai_powered_pipeline.lua)**: Pipeline com análise preditiva
-- **[test_ai_module.lua](./test_ai_module.lua)**: Teste dos módulos de IA
+- **[simple_ai_demo.sloth](./simple_ai_demo.sloth)**: Demonstração básica de analytics
+- **[ai_powered_pipeline.sloth](./ai_powered_pipeline.sloth)**: Pipeline com análise preditiva
+- **[test_ai_module.sloth](./test_ai_module.sloth)**: Teste dos módulos de IA
 
 #### 🔄 **GitOps & CI/CD**
-- **[gitops_native_demo.lua](./gitops_native_demo.lua)**: Workflow GitOps básico
-- **[gitops_kubernetes_advanced.lua](./gitops_kubernetes_advanced.lua)**: GitOps avançado com K8s
-- **[test_gitops_basic.lua](./test_gitops_basic.lua)**: Teste básico do GitOps
+- **[gitops_native_demo.sloth](./gitops_native_demo.sloth)**: Workflow GitOps básico
+- **[gitops_kubernetes_advanced.sloth](./gitops_kubernetes_advanced.sloth)**: GitOps avançado com K8s
+- **[test_gitops_basic.sloth](./test_gitops_basic.sloth)**: Teste básico do GitOps
 
 #### 🎯 **Recursos Específicos**
-- **[ai_intelligence_showcase.lua](./ai_intelligence_showcase.lua)**: Showcase de inteligência
-- **[iac_integration_showcase.lua](./iac_integration_showcase.lua)**: Integração IaC
-- **[unified_fluent_workflow.lua](./unified_fluent_workflow.lua)**: Workflow fluente unificado
+- **[ai_intelligence_showcase.sloth](./ai_intelligence_showcase.sloth)**: Showcase de inteligência
+- **[iac_integration_showcase.sloth](./iac_integration_showcase.sloth)**: Integração IaC
+- **[unified_fluent_workflow.sloth](./unified_fluent_workflow.sloth)**: Workflow fluente unificado
 
 ---
 
@@ -128,25 +130,25 @@ go build -o sloth-runner ./cmd/sloth-runner
 ### 2. **🚀 Execução Básica**
 ```bash
 # Execute um exemplo simples
-./sloth-runner run -f examples/simple_ai_demo.lua
+./sloth-runner run -f examples/simple_ai_demo.sloth
 
 # Execute com verbose para debug
-./sloth-runner run -f examples/gitops_native_demo.lua --verbose
+./sloth-runner run -f examples/gitops_native_demo.sloth --verbose
 
 # Execute com parâmetros customizados
-./sloth-runner run -f examples/ai_powered_pipeline.lua --param environment=staging
+./sloth-runner run -f examples/ai_powered_pipeline.sloth --param environment=staging
 ```
 
 ### 3. **🔧 Modificação dos Exemplos**
 ```bash
 # Copie um exemplo como base
-cp examples/simple_ai_demo.lua my_workflow.lua
+cp examples/simple_ai_demo.sloth my_workflow.sloth
 
 # Edite conforme necessário
-vim my_workflow.lua
+vim my_workflow.sloth
 
 # Execute seu workflow customizado
-./sloth-runner run -f my_workflow.lua
+./sloth-runner run -f my_workflow.sloth
 ```
 
 ---
@@ -154,19 +156,19 @@ vim my_workflow.lua
 ## 📚 **Recursos de Aprendizagem**
 
 ### 🎓 **Para Iniciantes**
-1. Comece com **[simple_ai_demo.lua](./simple_ai_demo.lua)** - exemplo mais simples
+1. Comece com **[simple_ai_demo.sloth](./simple_ai_demo.sloth)** - exemplo mais simples
 2. Entenda a sintaxe Modern DSL no código
 3. Execute e observe os logs de saída
 4. Modifique valores e re-execute para experimentar
 
 ### 🏗️ **Para Desenvolvedores**
-1. Analise **[gitops_kubernetes_advanced.lua](./gitops_kubernetes_advanced.lua)** - exemplo complexo
+1. Analise **[gitops_kubernetes_advanced.sloth](./gitops_kubernetes_advanced.sloth)** - exemplo complexo
 2. Estude os padrões de error handling e retry
 3. Observe como state management é usado
 4. Implemente seus próprios workflows baseados nos exemplos
 
 ### 🚀 **Para DevOps**
-1. Use **[ai_powered_pipeline.lua](./ai_powered_pipeline.lua)** como base para CI/CD
+1. Use **[ai_powered_pipeline.sloth](./ai_powered_pipeline.sloth)** como base para CI/CD
 2. Adapte para sua infraestrutura específica
 3. Configure alertas e monitoramento
 4. Implemente estratégias de deployment

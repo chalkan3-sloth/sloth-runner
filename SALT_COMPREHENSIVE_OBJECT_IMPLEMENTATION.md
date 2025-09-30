@@ -394,7 +394,7 @@ local result = salt_client:with_grains({role = "webserver"})
 ## 📁 Arquivos Criados
 
 ### 1. Exemplo Abrangente
-- **Arquivo**: `examples/salt_comprehensive_object_example.lua`
+- **Arquivo**: `examples/salt_comprehensive_object_example.sloth`
 - **Tamanho**: 691 linhas
 - **Funcionalidades**: 100+ demonstradas
 - **Organização**: 33 categorias funcionais

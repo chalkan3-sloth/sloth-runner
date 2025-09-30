@@ -7,7 +7,7 @@ Este documento resume todas as funcionalidades que foram testadas e validadas du
 ### ✅ 1. Sistema de Stack Management (Pulumi-style)
 **STATUS: ✅ FUNCIONAL E TESTADO**
 
-- **Criação de stacks com nomes**: `sloth-runner run {stack-name} -f workflow.lua`
+- **Criação de stacks com nomes**: `sloth-runner run {stack-name} -f workflow.sloth`
 - **Listagem de stacks**: `sloth-runner stack list` 
 - **Detalhes de stack**: `sloth-runner stack show {stack-name}`
 - **Histórico de execuções**: Incluso no comando `stack show`
@@ -15,7 +15,7 @@ Este documento resume todas as funcionalidades que foram testadas e validadas du
 
 ```bash
 # Testado e funcionando:
-sloth-runner run my-production-stack -f pipeline.lua --output enhanced
+sloth-runner run my-production-stack -f pipeline.sloth --output enhanced
 sloth-runner stack list
 sloth-runner stack show my-production-stack
 ```
@@ -30,9 +30,9 @@ sloth-runner stack show my-production-stack
 
 ```bash
 # Testado e funcionando:
-sloth-runner run test-stack -f demo.lua --output enhanced
-sloth-runner run test-stack -f demo.lua --output json
-sloth-runner run test-stack -f demo.lua -o rich
+sloth-runner run test-stack -f demo.sloth --output enhanced
+sloth-runner run test-stack -f demo.sloth --output json
+sloth-runner run test-stack -f demo.sloth -o rich
 ```
 
 ### ✅ 3. Sistema de IDs Únicos para Tasks e Groups
@@ -40,26 +40,26 @@ sloth-runner run test-stack -f demo.lua -o rich
 
 - **IDs únicos para cada task**: Gerados automaticamente
 - **IDs únicos para task groups**: UUID v4
-- **Listagem com IDs**: `sloth-runner list -f workflow.lua`
+- **Listagem com IDs**: `sloth-runner list -f workflow.sloth`
 - **Rastreabilidade completa**: Para debugging e monitoramento
 
 ```bash
 # Testado e funcionando:
-sloth-runner list -f examples/basic_pipeline.lua
+sloth-runner list -f examples/basic_pipeline.sloth
 # Saída mostra IDs truncados (ex: 97ee8628...)
 ```
 
 ### ✅ 4. 🆕 JSON Output Format
 **STATUS: ✅ NOVA FUNCIONALIDADE IMPLEMENTADA E TESTADA**
 
-- **Comando**: `sloth-runner run {stack-name} -f workflow.lua --output json`
+- **Comando**: `sloth-runner run {stack-name} -f workflow.sloth --output json`
 - **Estrutura completa**: status, duration, tasks, outputs, stack info
 - **Suporte a erros**: JSON estruturado mesmo para falhas
 - **Outputs capturados**: Variáveis globais exportadas incluídas
 
 ```bash
 # Testado e funcionando:
-sloth-runner run json-test -f examples/enhanced_output_demo.lua --output json
+sloth-runner run json-test -f examples/enhanced_output_demo.sloth --output json
 ```
 
 #### Exemplo de JSON Output (Sucesso):
@@ -173,14 +173,14 @@ workflow.define("demo_with_exports", {
 ### Exemplo 2: Enhanced Output Style
 ```bash
 # Execução com saída rica estilo Pulumi
-sloth-runner run test-output --output enhanced -f examples/enhanced_output_demo.lua
+sloth-runner run test-output --output enhanced -f examples/enhanced_output_demo.sloth
 
 # Resultado: Progress bars, cores, duração, resumo estruturado
 ```
 
 ### Exemplo 3: Listagem de Tasks com IDs
 ```bash
-sloth-runner list -f examples/basic_pipeline.lua
+sloth-runner list -f examples/basic_pipeline.sloth
 
 # Saída:
 ## Task Group: basic_pipeline
@@ -201,7 +201,7 @@ Durante os testes, descobrimos que o Sloth Runner já possui muito mais funciona
 
 ### 🤖 AI/ML Integration
 - **Módulos de IA**: OpenAI integration, decision making
-- **Exemplos funcionais**: `examples/ai_*.lua`
+- **Exemplos funcionais**: `examples/ai_*.sloth`
 
 ### ☁️ Multi-Cloud Support
 - **AWS, GCP, Azure**: Módulos nativos completos
@@ -231,9 +231,9 @@ Durante os testes, descobrimos que o Sloth Runner já possui muito mais funciona
 |---|---|---|
 | ✅ Flag `--output` estilo Pulumi | **FUNCIONAL** | `--output enhanced/rich/modern` |
 | ✅ Comando `workflow init` | **FUNCIONAL** | `sloth-runner workflow init name --template basic` |
-| ✅ Sistema de Stack com estado | **FUNCIONAL** | `sloth-runner run stack-name -f file.lua` |
+| ✅ Sistema de Stack com estado | **FUNCIONAL** | `sloth-runner run stack-name -f file.sloth` |
 | ✅ Stack list command | **FUNCIONAL** | `sloth-runner stack list` |
-| ✅ IDs únicos para tasks/groups | **FUNCIONAL** | `sloth-runner list -f file.lua` |
+| ✅ IDs únicos para tasks/groups | **FUNCIONAL** | `sloth-runner list -f file.sloth` |
 | ✅ Outputs exportados | **FUNCIONAL** | Via variável global `outputs` |
 | ✅ Sistema de agentes | **IMPLEMENTADO** | Master-agent architecture |
 | ✅ Web Dashboard | **IMPLEMENTADO** | `sloth-runner ui --port 8080` |

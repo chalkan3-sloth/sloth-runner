@@ -9,12 +9,12 @@ Implementei com sucesso as últimas melhorias solicitadas para tornar o Sloth Ru
 ### 🎯 **Sintaxe Atualizada:**
 ```bash
 # Nova sintaxe - stack name como argumento posicional
-sloth-runner run {stack-name} --file workflow.lua
+sloth-runner run {stack-name} --file workflow.sloth
 
 # Exemplos práticos
-sloth-runner run production-app -f deploy.lua --output enhanced
-sloth-runner run dev-environment -f test.lua -o rich
-sloth-runner run my-cicd -f pipeline.lua
+sloth-runner run production-app -f deploy.sloth --output enhanced
+sloth-runner run dev-environment -f test.sloth -o rich
+sloth-runner run my-cicd -f pipeline.sloth
 ```
 
 ### 🔧 **Comparação com Pulumi:**
@@ -23,7 +23,7 @@ sloth-runner run my-cicd -f pipeline.lua
 pulumi up --stack dev
 
 # Sloth Runner (agora)
-sloth-runner run dev -f workflow.lua
+sloth-runner run dev -f workflow.sloth
 ```
 
 ## ✨ **2. Outputs Exportados da Pipeline**
@@ -56,7 +56,7 @@ end)
 ## 🛠️ **3. Integração Completa com Stack State**
 
 ### 📁 **Fluxo Completo:**
-1. **Execução:** `sloth-runner run my-stack -f workflow.lua`
+1. **Execução:** `sloth-runner run my-stack -f workflow.sloth`
 2. **Captura:** Exports da pipeline são coletados
 3. **Persistência:** Salvos no SQLite
 4. **Visualização:** `sloth-runner stack show my-stack`
@@ -64,7 +64,7 @@ end)
 ### 🎯 **Comandos Disponíveis:**
 ```bash
 # Executar com stack
-sloth-runner run production-app -f deploy.lua --output enhanced
+sloth-runner run production-app -f deploy.sloth --output enhanced
 
 # Listar stacks  
 sloth-runner stack list
@@ -80,7 +80,7 @@ sloth-runner stack delete production-app
 
 ### 🖥️ **Nova Sintaxe em Ação:**
 ```bash
-$ sloth-runner run my-app -f workflow.lua --output enhanced
+$ sloth-runner run my-app -f workflow.sloth --output enhanced
 
 🦥 Sloth Runner
 
@@ -155,13 +155,13 @@ build_time: "2025-09-29 19:33:21"
 ### 📦 **Deploy de Aplicação:**
 ```bash
 # Desenvolvimento
-sloth-runner run dev-app -f app.lua
+sloth-runner run dev-app -f app.sloth
 
 # Staging  
-sloth-runner run staging-app -f app.lua
+sloth-runner run staging-app -f app.sloth
 
 # Produção
-sloth-runner run prod-app -f app.lua --output enhanced
+sloth-runner run prod-app -f app.sloth --output enhanced
 
 # Ver estado de produção
 sloth-runner stack show prod-app
@@ -170,11 +170,11 @@ sloth-runner stack show prod-app
 ### 🔧 **CI/CD Pipeline:**
 ```bash
 # No CI/CD
-sloth-runner run ${ENVIRONMENT}-${APP_NAME} -f pipeline.lua
+sloth-runner run ${ENVIRONMENT}-${APP_NAME} -f pipeline.sloth
 
 # Exemplo: 
-sloth-runner run prod-frontend -f frontend-deploy.lua
-sloth-runner run staging-api -f api-deploy.lua
+sloth-runner run prod-frontend -f frontend-deploy.sloth
+sloth-runner run staging-api -f api-deploy.sloth
 ```
 
 ### 🎯 **Gestão de Stacks:**

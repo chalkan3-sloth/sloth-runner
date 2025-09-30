@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Sloth body -->
+  <ellipse cx="64" cy="80" rx="35" ry="25" fill="#8B4513" stroke="#654321" stroke-width="2"/>
+  
+  <!-- Sloth head -->
+  <circle cx="64" cy="45" r="25" fill="#A0522D" stroke="#654321" stroke-width="2"/>
+  
+  <!-- Arms -->
+  <ellipse cx="35" cy="65" rx="8" ry="20" fill="#8B4513" stroke="#654321" stroke-width="1.5" transform="rotate(-30 35 65)"/>
+  <ellipse cx="93" cy="65" rx="8" ry="20" fill="#8B4513" stroke="#654321" stroke-width="1.5" transform="rotate(30 93 65)"/>
+  
+  <!-- Legs -->
+  <ellipse cx="50" cy="95" rx="6" ry="15" fill="#8B4513" stroke="#654321" stroke-width="1.5"/>
+  <ellipse cx="78" cy="95" rx="6" ry="15" fill="#8B4513" stroke="#654321" stroke-width="1.5"/>
+  
+  <!-- Eyes -->
+  <circle cx="58" cy="40" r="4" fill="#000"/>
+  <circle cx="70" cy="40" r="4" fill="#000"/>
+  <circle cx="59" cy="39" r="1.5" fill="#FFF"/>
+  <circle cx="71" cy="39" r="1.5" fill="#FFF"/>
+  
+  <!-- Nose -->
+  <ellipse cx="64" cy="48" rx="2" ry="1.5" fill="#654321"/>
+  
+  <!-- Mouth -->
+  <path d="M 60 52 Q 64 55 68 52" stroke="#654321" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+  
+  <!-- Claws -->
+  <line x1="32" y1="75" x2="28" y2="78" stroke="#2F4F4F" stroke-width="2" stroke-linecap="round"/>
+  <line x1="35" y1="77" x2="31" y2="81" stroke="#2F4F4F" stroke-width="2" stroke-linecap="round"/>
+  <line x1="38" y1="75" x2="34" y2="78" stroke="#2F4F4F" stroke-width="2" stroke-linecap="round"/>
+  
+  <line x1="96" y1="75" x2="100" y2="78" stroke="#2F4F4F" stroke-width="2" stroke-linecap="round"/>
+  <line x1="93" y1="77" x2="97" y2="81" stroke="#2F4F4F" stroke-width="2" stroke-linecap="round"/>
+  <line x1="90" y1="75" x2="94" y2="78" stroke="#2F4F4F" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Tree branch -->
+  <rect x="20" y="25" width="88" height="8" fill="#8B4513" rx="4"/>
+  <rect x="15" y="28" width="20" height="4" fill="#8B4513" rx="2"/>
+  <rect x="93" y="28" width="20" height="4" fill="#8B4513" rx="2"/>
+  
+  <!-- Leaves -->
+  <ellipse cx="18" cy="25" rx="8" ry="4" fill="#228B22" transform="rotate(-20 18 25)"/>
+  <ellipse cx="110" cy="25" rx="8" ry="4" fill="#228B22" transform="rotate(20 110 25)"/>
+  <ellipse cx="25" cy="20" rx="6" ry="3" fill="#32CD32" transform="rotate(-45 25 20)"/>
+  <ellipse cx="103" cy="20" rx="6" ry="3" fill="#32CD32" transform="rotate(45 103 20)"/>
+</svg>
