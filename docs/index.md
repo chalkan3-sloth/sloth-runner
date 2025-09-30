@@ -56,12 +56,12 @@ local clone_task = task("clone_infrastructure")
         
         log.info("📡 Cloning infrastructure repository...")
         local repository = git.clone(
-            Values.git.repository_url,
+            values.git.repository_url,
             this.workdir.get()
         )
         
         return true, "Repository cloned successfully", {
-            repository_url = Values.git.repository_url,
+            repository_url = values.git.repository_url,
             clone_destination = this.workdir.get()
         }
     end)
@@ -79,9 +79,9 @@ local deploy_task = task("deploy_terraform")
         
         -- Load configuration from values.yaml
         local tfvars = client:create_tfvars("terraform.tfvars", {
-            environment = Values.terraform.environment,
-            region = Values.terraform.region,
-            instance_type = Values.terraform.instance_type
+            environment = values.terraform.environment,
+            region = values.terraform.region,
+            instance_type = values.terraform.instance_type
         })
         
         -- Plan and apply infrastructure
@@ -132,9 +132,9 @@ local apply = client:apply({ auto_approve = true })
 
 -- Values-driven configuration
 local config = {
-    environment = Values.terraform.environment or "production",
-    region = Values.terraform.region or "us-west-2",
-    instance_count = Values.terraform.instance_count or 3
+    environment = values.terraform.environment or "production",
+    region = values.terraform.region or "us-west-2",
+    instance_count = values.terraform.instance_count or 3
 }
 ```
 
@@ -162,9 +162,9 @@ workflow:
 ```lua
 -- Load configuration from values.yaml
 local terraform_config = {
-    environment = Values.terraform.environment,
-    region = Values.terraform.region,
-    instance_type = Values.terraform.instance_type
+    environment = values.terraform.environment,
+    region = values.terraform.region,
+    instance_type = values.terraform.instance_type
 }
 ```
 
