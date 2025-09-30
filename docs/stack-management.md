@@ -11,7 +11,11 @@ O **Stack Management** no Sloth Runner permite:
 - **Histórico completo** de execuções
 - **Gestão via CLI** intuitiva
 - **Isolamento** por ambiente/projeto
-- **Database persistente** em `/etc/sloth-runner/`
+- **Database persistente** em `/etc/sloth-runner/stacks.db`
+- **IDs únicos** para tasks e grupos
+- **Output JSON** para integração CI/CD
+- **Criação automática** de stacks
+- **Comando de delete** com confirmação
 
 ## 📝 Sintaxe Básica
 
@@ -41,6 +45,55 @@ sloth-runner stack delete old-environment
 
 # Remover stack (sem confirmação)
 sloth-runner stack delete old-environment --force
+```
+
+#### Exemplo de `stack list`:
+```
+Workflow Stacks                      
+
+NAME          STATUS      LAST RUN           DURATION     EXECUTIONS   DESCRIPTION
+----          ------      --------           --------     ----------   -----------
+prod-stack    completed   2025-09-30 10:34   926.292µs    1            Stack for workflow: prod-stack
+dev-env       running     2025-09-30 09:15   2.5ms        3            Development environment
+test-ci       failed      2025-09-30 08:30   1.2s         5            CI testing stack
+```
+
+#### Exemplo de `stack show`:
+```
+Stack: prod-stack                    
+
+ID: 56f1de4f-5e4e-4106-b8a3-333005c16769
+Description: Stack for workflow: prod-stack
+Version: 1.0.0
+Status: completed
+Created: 2025-09-30 10:34:41
+Updated: 2025-09-30 10:34:41
+Completed: 2025-09-30 10:34:41
+Workflow File: test_working.lua
+Executions: 1
+Last Duration: 926.292µs
+
+Outputs                              
+
+app_url: https://myapp.example.com
+environment: production
+status: success
+timestamp: 30 Sep 25 10:34 -03
+version: 1.2.3
+
+Recent Executions                    
+
+STARTED            STATUS      DURATION    TASKS   SUCCESS   FAILED
+-------            ------      --------    -----   -------   ------
+2025-09-30 10:34   completed   926.292µs   1       1         0
+```
+
+#### Stack Delete com Confirmação:
+```bash
+$ sloth-runner stack delete test-stack
+⚠ This will permanently delete stack 'test-stack' and all its execution history.
+? Are you sure? (y/N) y
+✓ Stack 'test-stack' deleted successfully.
 ```
 
 ### 🆔 Listar Tasks e Grupos
@@ -85,19 +138,66 @@ sloth-runner run my-stack -f workflow.lua --output json
 
 ### Exemplo de Output JSON
 
+**Sucesso:**
 ```json
 {
   "status": "success",
-  "duration": "2.19075ms",
+  "duration": "926.292µs",
+  "execution_time": 1759239281,
+  "outputs": {
+    "app_url": "https://myapp.example.com",
+    "environment": "production",
+    "status": "success",
+    "timestamp": "30 Sep 25 10:34 -03",
+    "version": "1.2.3"
+  },
+  "stack": {
+    "id": "56f1de4f-5e4e-4106-b8a3-333005c16769",
+    "name": "prod-stack"
+  },
   "tasks": {
-    "setup": {
-      "status": "Success",
-      "duration": "193.667µs",
-      "error": ""
+    "hello": {
+      "duration": "298.458µs",
+      "error": "",
+      "status": "Success"
+    }
+  },
+  "workflow": "prod-stack"
+}
+```
+
+**Falha:**
+```json
+{
+  "status": "failed",
+  "duration": "2.5935ms",
+  "error": "one or more task groups failed",
+  "execution_time": 1759239267,
+  "outputs": {
+    "app_url": "https://example.com",
+    "test_result": "success",
+    "timestamp": "30 Sep 25 10:34 -03",
+    "version": "1.2.3"
+  },
+  "stack": {
+    "id": "4a9f7561-424b-4087-b8fd-9cdae33885f1",
+    "name": "test-simple"
+  },
+  "tasks": {
+    "hello": {
+      "duration": "548.916µs",
+      "error": "",
+      "status": "Success"
     },
-    "build": {
-      "status": "Success", 
-      "duration": "420.666µs",
+    "goodbye": {
+      "duration": "291.917µs",
+      "error": "task failed...",
+      "status": "Failed"
+    }
+  },
+  "workflow": "test-simple"
+}
+```
       "error": ""
     }
   },
@@ -687,4 +787,66 @@ sloth-runner run my-stack -f workflow.lua
 - [Output Styles](output-styles.md) - Configuração de estilos de output
 - [Workflow Scaffolding](workflow-scaffolding.md) - Criação de projetos
 - [Examples](../examples/) - Exemplos práticos
+
+## 📤 Exportando Outputs
+
+### Como Definir Outputs no Workflow
+
+Os outputs são exportados automaticamente quando você define uma variável global `outputs` no seu workflow Lua:
+
+```lua
+-- No final do seu workflow.lua
+outputs = {
+    app_url = "https://myapp.example.com",
+    version = "1.2.3",
+    environment = "production",
+    status = "success",
+    timestamp = os.date(),
+    database_url = "postgresql://...",
+    api_key = "sk-...",
+    deployment_id = "dep-12345"
+}
+```
+
+### Acessando Outputs
+
+```bash
+# Via comando show (outputs persistidos no stack)
+sloth-runner stack show my-stack
+
+# Via output JSON (outputs da execução atual)
+sloth-runner run my-stack -f workflow.lua --output json
+```
+
+### Exemplo Completo de Workflow com Outputs
+
+```lua
+-- Task que gera dados
+local deploy_task = task("deploy")
+    :description("Deploy application")
+    :command(function(params)
+        -- Simula deploy e retorna dados
+        local app_url = "https://app-" .. os.time() .. ".example.com"
+        return true, "echo 'Deployed!'", { 
+            url = app_url,
+            version = "1.0.0" 
+        }
+    end)
+    :build()
+
+-- Define workflow
+workflow.define("deployment", {
+    description = "Deploy application",
+    tasks = { deploy_task }
+})
+
+-- IMPORTANTE: Outputs globais são capturados automaticamente
+outputs = {
+    app_url = "https://myapp.example.com",
+    version = "1.2.3",
+    environment = "production",
+    timestamp = os.date(),
+    status = "deployed"
+}
+```
 - [CLI Reference](CLI.md) - Referência completa de comandos

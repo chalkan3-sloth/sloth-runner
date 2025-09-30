@@ -1,5 +1,8 @@
 # 🆕 Latest Features & Improvements
 
+**Data de Atualização:** 30 de Setembro de 2025  
+**Versão:** Sloth Runner dev (latest)
+
 Esta página documenta as mais recentes funcionalidades implementadas no Sloth Runner.
 
 ## 🗂️ Stack Management Completo
