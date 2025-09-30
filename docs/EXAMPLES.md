@@ -9,22 +9,22 @@ This example demonstrates how to use the `sloth-runner new` command with the `--
 
 1.  **Generate the task file:**
     ```bash
-    sloth-runner new templated-task --template simple --set custom_message="This is a custom message from the CLI!" -o examples/templated_task.lua
+    sloth-runner new templated-task --template simple --set custom_message="This is a custom message from the CLI!" -o examples/templated_task.sloth
     ```
-    This command uses the `simple` template and injects `custom_message` into the generated Lua file.
+    This command uses the `simple` template and injects `custom_message` into the generated sloth file.
 
 2.  **Run the generated task:**
     ```bash
-    sloth-runner run -f examples/templated_task.lua -g templated-task -t hello_task
+    sloth-runner run -f examples/templated_task.sloth -g templated-task -t hello_task
     ```
     Observe the output, which should include the custom message you provided.
 
 ---
 
-### **Pipeline: `examples/templated_task.lua`**
+### **Pipeline: `examples/templated_task.sloth`**
 
 ```lua
--- examples/templated_task.lua
+-- examples/templated_task.sloth
 --
 -- This file is generated using 'sloth-runner new' with the --set flag.
 -- It demonstrates how to inject dynamic data into templates using Modern DSL.
@@ -101,7 +101,7 @@ This example demonstrates how to use the new `sloth-runner list` command to insp
 First, let's create a comprehensive workflow file to explore:
 
 ```lua
--- examples/id_demo.lua
+-- examples/id_demo.sloth
 -- Demonstration of task IDs and workflow structure
 
 TaskDefinitions = {
@@ -166,7 +166,7 @@ TaskDefinitions = {
 
 **1. Basic workflow inspection:**
 ```bash
-sloth-runner list -f examples/id_demo.lua
+sloth-runner list -f examples/id_demo.sloth
 ```
 
 **Expected output:**
@@ -219,13 +219,13 @@ deploy_production   99aabbcc...  Deploy to production             integration_te
 **Run with stack and inspect:**
 ```bash
 # Run the workflow with a stack
-sloth-runner run demo-stack -f examples/id_demo.lua --output enhanced
+sloth-runner run demo-stack -f examples/id_demo.sloth --output enhanced
 
 # List stacks to see execution history
 sloth-runner stack list
 
 # Inspect the workflow structure
-sloth-runner list -f examples/id_demo.lua
+sloth-runner list -f examples/id_demo.sloth
 
 # View detailed stack information
 sloth-runner stack show demo-stack

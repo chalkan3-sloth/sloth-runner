@@ -21,13 +21,13 @@ Stack management in Sloth Runner enables:
 
 ```bash
 # Create a new stack by running workflow with stack name
-sloth-runner run my-production-stack -f pipeline.lua
+sloth-runner run my-production-stack -f pipeline.sloth
 
 # Run with enhanced output
-sloth-runner run my-production-stack -f pipeline.lua --output enhanced
+sloth-runner run my-production-stack -f pipeline.sloth --output enhanced
 
 # Run with JSON output for automation
-sloth-runner run my-production-stack -f pipeline.lua --output json
+sloth-runner run my-production-stack -f pipeline.sloth --output json
 ```
 
 ### List All Stacks
@@ -64,7 +64,7 @@ Status: completed
 Created: 2025-09-30 08:22:45
 Updated: 2025-09-30 08:22:46
 Completed: 2025-09-30 08:22:46
-Workflow File: pipeline.lua
+Workflow File: pipeline.sloth
 Executions: 1
 Last Duration: 5.192ms
 
@@ -165,7 +165,7 @@ local setup_task = task("setup_infrastructure")
 ### Basic JSON Output
 
 ```bash
-sloth-runner run my-stack -f workflow.lua --output json
+sloth-runner run my-stack -f workflow.sloth --output json
 ```
 
 Example JSON response:
@@ -229,7 +229,7 @@ Example JSON response:
 ### List Tasks with IDs
 
 ```bash
-sloth-runner list -f workflow.lua
+sloth-runner list -f workflow.sloth
 ```
 
 Example output:
@@ -294,7 +294,7 @@ jobs:
         id: deploy
         run: |
           # Run with JSON output for parsing
-          OUTPUT=$(sloth-runner run prod-${{ github.sha }} -f deploy.lua --output json)
+          OUTPUT=$(sloth-runner run prod-${{ github.sha }} -f deploy.sloth --output json)
           echo "deployment_output=$OUTPUT" >> $GITHUB_OUTPUT
           
           # Check if deployment was successful
@@ -327,7 +327,7 @@ pipeline {
                 script {
                     // Run deployment with JSON output
                     def result = sh(
-                        script: "sloth-runner run jenkins-${env.BUILD_NUMBER} -f deploy.lua --output json",
+                        script: "sloth-runner run jenkins-${env.BUILD_NUMBER} -f deploy.sloth --output json",
                         returnStdout: true
                     ).trim()
                     
@@ -368,31 +368,31 @@ pipeline {
 
 ```bash
 # Environment-based naming
-sloth-runner run dev-myapp -f deploy.lua
-sloth-runner run staging-myapp -f deploy.lua  
-sloth-runner run prod-myapp -f deploy.lua
+sloth-runner run dev-myapp -f deploy.sloth
+sloth-runner run staging-myapp -f deploy.sloth  
+sloth-runner run prod-myapp -f deploy.sloth
 
 # Feature branch deployment
-sloth-runner run feature-auth-system -f deploy.lua
+sloth-runner run feature-auth-system -f deploy.sloth
 
 # Version-based deployment
-sloth-runner run myapp-v1.2.3 -f deploy.lua
+sloth-runner run myapp-v1.2.3 -f deploy.sloth
 
 # Time-based deployment
-sloth-runner run deploy-$(date +%Y%m%d-%H%M%S) -f deploy.lua
+sloth-runner run deploy-$(date +%Y%m%d-%H%M%S) -f deploy.sloth
 ```
 
 ### Stack Lifecycle Management
 
 ```bash
 # Create development stack
-sloth-runner run dev-app -f app.lua --output enhanced
+sloth-runner run dev-app -f app.sloth --output enhanced
 
 # Promote to staging
-sloth-runner run staging-app -f app.lua -v staging-values.yaml
+sloth-runner run staging-app -f app.sloth -v staging-values.yaml
 
 # Production deployment with audit trail
-sloth-runner run prod-app -f app.lua -v prod-values.yaml --output json | tee deployment-audit.json
+sloth-runner run prod-app -f app.sloth -v prod-values.yaml --output json | tee deployment-audit.json
 
 # Cleanup old stacks
 sloth-runner stack list | grep "failed" | awk '{print $1}' | xargs -I {} sloth-runner stack delete {} --force
@@ -403,12 +403,12 @@ sloth-runner stack list | grep "failed" | awk '{print $1}' | xargs -I {} sloth-r
 ### 1. **Meaningful Stack Names**
 ```bash
 # ✅ Good: Environment and purpose clear
-sloth-runner run prod-ecommerce-api -f deploy.lua
-sloth-runner run staging-user-service -f deploy.lua
+sloth-runner run prod-ecommerce-api -f deploy.sloth
+sloth-runner run staging-user-service -f deploy.sloth
 
 # ❌ Bad: Generic names
-sloth-runner run test1 -f deploy.lua
-sloth-runner run my-stack -f deploy.lua
+sloth-runner run test1 -f deploy.sloth
+sloth-runner run my-stack -f deploy.sloth
 ```
 
 ### 2. **Comprehensive Output Exports**

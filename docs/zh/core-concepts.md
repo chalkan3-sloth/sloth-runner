@@ -9,7 +9,7 @@
 任何 `sloth-runner` 工作流的入口点都是一个返回名为 `Modern DSLs` 的全局 Lua 表的 Lua 文件。此表是一个字典，其中每个键都是一个 **任务组** 名称。
 
 ```lua
--- my_pipeline.lua
+-- my_pipeline.sloth
 Modern DSLs = {
   -- 在此处定义任务组
 }
@@ -155,10 +155,10 @@ Modern DSLs = {
 
 加载另一个 Lua 文件并返回其返回的值。这是创建可重用任务模块的主要机制。路径是相对于调用 `import` 的文件的。
 
-**示例 (`reusable_tasks.lua`):**
+**示例 (`reusable_tasks.sloth`):**
 ```lua
 -- 导入一个返回任务定义表的模块
-local docker_tasks = import("shared/docker.lua")
+local docker_tasks = import("shared/docker.sloth")
 
 Modern DSLs = {
   main = {

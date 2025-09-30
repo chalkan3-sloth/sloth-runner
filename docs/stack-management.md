@@ -23,12 +23,12 @@ O **Stack Management** no Sloth Runner permite:
 
 ```bash
 # Nova sintaxe - stack name como argumento posicional
-sloth-runner run {stack-name} --file workflow.lua
+sloth-runner run {stack-name} --file workflow.sloth
 
 # Exemplos práticos
-sloth-runner run production-app -f deploy.lua --output enhanced
-sloth-runner run dev-environment -f test.lua -o json
-sloth-runner run my-cicd -f pipeline.lua --output modern
+sloth-runner run production-app -f deploy.sloth --output enhanced
+sloth-runner run dev-environment -f test.sloth -o json
+sloth-runner run my-cicd -f pipeline.sloth --output modern
 ```
 
 ### Gerenciar Stacks
@@ -69,7 +69,7 @@ Status: completed
 Created: 2025-09-30 10:34:41
 Updated: 2025-09-30 10:34:41
 Completed: 2025-09-30 10:34:41
-Workflow File: test_working.lua
+Workflow File: test_working.sloth
 Executions: 1
 Last Duration: 926.292µs
 
@@ -100,7 +100,7 @@ $ sloth-runner stack delete test-stack
 
 ```bash
 # Listar todos os grupos e tasks com IDs únicos
-sloth-runner list -f workflow.lua
+sloth-runner list -f workflow.sloth
 
 # Exemplo de saída:
 # Workflow Tasks and Groups
@@ -124,16 +124,16 @@ sloth-runner list -f workflow.lua
 
 ```bash
 # Output básico (padrão)
-sloth-runner run my-stack -f workflow.lua --output basic
+sloth-runner run my-stack -f workflow.sloth --output basic
 
 # Output melhorado (estilo Pulumi)
-sloth-runner run my-stack -f workflow.lua --output enhanced
+sloth-runner run my-stack -f workflow.sloth --output enhanced
 
 # Output moderno com cores
-sloth-runner run my-stack -f workflow.lua --output modern
+sloth-runner run my-stack -f workflow.sloth --output modern
 
 # Output em JSON estruturado
-sloth-runner run my-stack -f workflow.lua --output json
+sloth-runner run my-stack -f workflow.sloth --output json
 ```
 
 ### Exemplo de Output JSON
@@ -305,7 +305,7 @@ Status: completed
 Created: 2024-01-15 08:00:00
 Updated: 2024-01-15 14:30:15
 Completed: 2024-01-15 14:30:15
-Workflow File: production-deploy.lua
+Workflow File: production-deploy.sloth
 Executions: 15
 Last Duration: 2.5s
 
@@ -344,7 +344,7 @@ $ sloth-runner stack delete old-environment --force
 ### Pipeline CI/CD
 
 ```lua
--- cicd-pipeline.lua
+-- cicd-pipeline.sloth
 TaskDefinitions = {
     cicd_pipeline = {
         description = "Complete CI/CD pipeline",
@@ -392,22 +392,22 @@ TaskDefinitions = {
 
 ```bash
 # Executar pipeline
-sloth-runner run cicd-main -f cicd-pipeline.lua --output enhanced
+sloth-runner run cicd-main -f cicd-pipeline.sloth --output enhanced
 
 # Verificar status
 sloth-runner stack show cicd-main
 
 # Ver outputs em JSON
-sloth-runner run cicd-main -f cicd-pipeline.lua --output json
+sloth-runner run cicd-main -f cicd-pipeline.sloth --output json
 ```
 
 ### Múltiplos Ambientes
 
 ```bash
 # Diferentes stacks por ambiente
-sloth-runner run production -f deploy.lua --output enhanced
-sloth-runner run staging -f deploy.lua --output enhanced
-sloth-runner run development -f deploy.lua --output enhanced
+sloth-runner run production -f deploy.sloth --output enhanced
+sloth-runner run staging -f deploy.sloth --output enhanced
+sloth-runner run development -f deploy.sloth --output enhanced
 
 # Listar todos os ambientes
 sloth-runner stack list
@@ -467,7 +467,7 @@ Por padrão, o database é criado em `/etc/sloth-runner/stacks.db`, mas pode ser
 ```bash
 # Usando variável de ambiente
 export SLOTH_RUNNER_DB_PATH="/custom/path/stacks.db"
-sloth-runner run my-stack -f workflow.lua
+sloth-runner run my-stack -f workflow.sloth
 ```
 
 ### Backup e Restore
@@ -638,12 +638,12 @@ STARTED            STATUS     DURATION   TASKS   SUCCESS   FAILED
 
 ```bash
 # Output básico (padrão)
-sloth-runner run my-stack -f workflow.lua
+sloth-runner run my-stack -f workflow.sloth
 
 # Output melhorado
-sloth-runner run my-stack -f workflow.lua --output enhanced
-sloth-runner run my-stack -f workflow.lua -o rich
-sloth-runner run my-stack -f workflow.lua --output modern
+sloth-runner run my-stack -f workflow.sloth --output enhanced
+sloth-runner run my-stack -f workflow.sloth -o rich
+sloth-runner run my-stack -f workflow.sloth --output modern
 ```
 
 ### Estilo Pulumi
@@ -681,24 +681,24 @@ Tasks executed: 3
 
 ```bash
 # Desenvolvimento
-sloth-runner run dev-app -f app.lua
+sloth-runner run dev-app -f app.sloth
 
 # Staging  
-sloth-runner run staging-app -f app.lua
+sloth-runner run staging-app -f app.sloth
 
 # Produção
-sloth-runner run prod-app -f app.lua --output enhanced
+sloth-runner run prod-app -f app.sloth --output enhanced
 ```
 
 ### CI/CD Integration
 
 ```bash
 # No pipeline CI/CD
-sloth-runner run ${ENVIRONMENT}-${APP_NAME} -f pipeline.lua
+sloth-runner run ${ENVIRONMENT}-${APP_NAME} -f pipeline.sloth
 
 # Exemplos:
-sloth-runner run prod-frontend -f frontend-deploy.lua
-sloth-runner run staging-api -f api-deploy.lua
+sloth-runner run prod-frontend -f frontend-deploy.sloth
+sloth-runner run staging-api -f api-deploy.sloth
 ```
 
 ### Monitoramento
@@ -720,9 +720,9 @@ sloth-runner stack delete temp-test-env
 
 ```bash
 # Usar padrão: {ambiente}-{aplicação}
-sloth-runner run prod-frontend -f deploy.lua
-sloth-runner run staging-api -f deploy.lua
-sloth-runner run dev-database -f setup.lua
+sloth-runner run prod-frontend -f deploy.sloth
+sloth-runner run staging-api -f deploy.sloth
+sloth-runner run dev-database -f setup.sloth
 ```
 
 ### Export de Outputs
@@ -752,13 +752,13 @@ runner.Export({
 
 ```bash
 # Desenvolvimento ativo
-sloth-runner run dev-app -f app.lua
+sloth-runner run dev-app -f app.sloth
 
 # Quando pronto para staging
-sloth-runner run staging-app -f app.lua
+sloth-runner run staging-app -f app.sloth
 
 # Deploy para produção
-sloth-runner run prod-app -f app.lua --output enhanced
+sloth-runner run prod-app -f app.sloth --output enhanced
 
 # Limpeza de ambientes antigos
 sloth-runner stack delete old-test-branch
@@ -770,10 +770,10 @@ sloth-runner stack delete old-test-branch
 
 ```bash
 # Antes
-sloth-runner run -f workflow.lua --stack my-stack
+sloth-runner run -f workflow.sloth --stack my-stack
 
 # Agora
-sloth-runner run my-stack -f workflow.lua
+sloth-runner run my-stack -f workflow.sloth
 ```
 
 ### Compatibilidade
@@ -795,7 +795,7 @@ sloth-runner run my-stack -f workflow.lua
 Os outputs são exportados automaticamente quando você define uma variável global `outputs` no seu workflow Lua:
 
 ```lua
--- No final do seu workflow.lua
+-- No final do seu workflow.sloth
 outputs = {
     app_url = "https://myapp.example.com",
     version = "1.2.3",
@@ -815,7 +815,7 @@ outputs = {
 sloth-runner stack show my-stack
 
 # Via output JSON (outputs da execução atual)
-sloth-runner run my-stack -f workflow.lua --output json
+sloth-runner run my-stack -f workflow.sloth --output json
 ```
 
 ### Exemplo Completo de Workflow com Outputs

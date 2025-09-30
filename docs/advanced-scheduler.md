@@ -25,17 +25,17 @@ scheduler:
 schedules:
   - name: "daily_backup"
     cron: "0 2 * * *"  # Every day at 2 AM
-    workflow: "backup.lua"
+    workflow: "backup.sloth"
     description: "Daily database backup"
     
   - name: "hourly_health_check"
     cron: "0 * * * *"  # Every hour
-    workflow: "health-check.lua"
+    workflow: "health-check.sloth"
     timeout: "5m"
     
   - name: "weekly_cleanup"
     cron: "0 0 * * 0"  # Every Sunday at midnight
-    workflow: "cleanup.lua"
+    workflow: "cleanup.sloth"
     enabled: true
 ```
 
@@ -82,17 +82,17 @@ schedules:
 schedules:
   # Using @yearly, @monthly, @weekly, @daily, @hourly
   - cron: "@daily"
-    workflow: "daily-tasks.lua"
+    workflow: "daily-tasks.sloth"
     
   - cron: "@weekly"
-    workflow: "weekly-report.lua"
+    workflow: "weekly-report.sloth"
     
   # Using @every with duration
   - cron: "@every 30m"
-    workflow: "monitoring.lua"
+    workflow: "monitoring.sloth"
     
   - cron: "@every 2h30m"
-    workflow: "periodic-sync.lua"
+    workflow: "periodic-sync.sloth"
 ```
 
 ## 🔧 Advanced Configuration
@@ -130,7 +130,7 @@ scheduler:
 schedules:
   - name: "production_deployment"
     cron: "0 2 * * 1-5"  # Weekdays at 2 AM
-    workflow: "deploy-prod.lua"
+    workflow: "deploy-prod.sloth"
     description: "Production deployment pipeline"
     
     # Schedule-specific settings
@@ -159,7 +159,7 @@ schedules:
 
 ### Scheduled Workflow Example
 ```lua
--- scheduled-backup.lua
+-- scheduled-backup.sloth
 local backup = task("database_backup")
     :description("Automated database backup")
     :command(function(params, deps)
@@ -218,7 +218,7 @@ workflow.define("backup_workflow", {
 
 ### Conditional Scheduling
 ```lua
--- conditional-deploy.lua
+-- conditional-deploy.sloth
 local deployment = task("conditional_deployment")
     :description("Deploy only if tests pass and load is low")
     :command(function(params, deps)
@@ -331,7 +331,7 @@ scheduler:
 schedules:
   - name: "critical_task"
     cron: "0 */6 * * *"
-    workflow: "critical.lua"
+    workflow: "critical.sloth"
     
     # Failure handling
     on_failure:
@@ -356,7 +356,7 @@ schedules:
 
 ### Circuit Breaker Pattern
 ```lua
--- circuit-breaker-task.lua
+-- circuit-breaker-task.sloth
 local task_with_circuit_breaker = task("resilient_task")
     :description("Task with circuit breaker protection")
     :command(function(params, deps)

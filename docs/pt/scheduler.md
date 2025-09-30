@@ -17,12 +17,12 @@ As tarefas agendadas são definidas em um arquivo YAML, tipicamente chamado `sch
 scheduled_tasks:
   - name: "my_daily_backup"
     schedule: "0 0 * * *" # Todo dia à meia-noite
-    task_file: "examples/my_workflow.lua"
+    task_file: "examples/my_workflow.sloth"
     task_group: "backup_group"
     task_name: "perform_backup"
   - name: "hourly_report_generation"
     schedule: "0 * * * *" # Toda hora
-    task_file: "examples/reporting.lua"
+    task_file: "examples/reporting.sloth"
     task_group: "reports"
     task_name: "generate_report"
 ```
@@ -75,8 +75,8 @@ sloth-runner scheduler list --scheduler-config scheduler.yaml
 # Configured Scheduled Tasks
 
 NAME                     | SCHEDULE    | FILE                     | GROUP        | TASK
-my_daily_backup          | 0 0 * * *   | examples/my_workflow.lua | backup_group | perform_backup
-hourly_report_generation | 0 * * * *   | examples/reporting.lua   | reports      | generate_report
+my_daily_backup          | 0 0 * * *   | examples/my_workflow.sloth | backup_group | perform_backup
+hourly_report_generation | 0 * * * *   | examples/reporting.sloth   | reports      | generate_report
 ```
 
 ### `sloth-runner scheduler delete <task_name>`
@@ -106,7 +106,7 @@ Se uma tarefa agendada falhar, o agendador registrará o erro e continuará com 
     scheduled_tasks:
       - name: "my_test_task"
         schedule: "@every 1m"
-        task_file: "examples/basic_pipeline.lua"
+        task_file: "examples/basic_pipeline.sloth"
         task_group: "basic_pipeline"
         task_name: "fetch_data"
     ```

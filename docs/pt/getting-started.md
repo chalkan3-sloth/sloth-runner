@@ -2,6 +2,8 @@
 
 Bem-vindo ao Sloth-Runner! Este guia o ajudará a começar a usar a ferramenta rapidamente.
 
+> **📝 Nota Importante:** A partir da versão atual, os arquivos de workflow do Sloth Runner usam a extensão `.sloth` em vez de `.lua`. A sintaxe Lua permanece a mesma - apenas a extensão do arquivo mudou para melhor identificação dos arquivos DSL do Sloth Runner.
+
 ## Instalação
 
 Para instalar o `sloth-runner` em seu sistema, você pode usar o script `install.sh` fornecido. Este script detecta automaticamente seu sistema operacional e arquitetura, baixa a versão mais recente do GitHub e coloca o executável `sloth-runner` em `/usr/local/bin`.
@@ -14,16 +16,34 @@ bash <(curl -sL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/ma
 
 ## Uso Básico
 
-Para executar um arquivo de tarefa Lua:
+### Gerenciamento de Stacks
 
 ```bash
-sloth-runner run -f examples/basic_pipeline.lua
+# Criar um novo stack
+sloth-runner stack new my-app --description "Stack de deployment da aplicação"
+
+# Executar workflows em stacks
+sloth-runner run my-app -f examples/basic_pipeline.sloth
+
+# Listar todos os stacks
+sloth-runner stack list
+
+# Ver detalhes do stack
+sloth-runner stack show my-app
+```
+
+### Execução Direta de Workflow
+
+Para executar um arquivo de workflow diretamente:
+
+```bash
+sloth-runner run -f examples/basic_pipeline.sloth
 ```
 
 Para listar as tarefas em um arquivo:
 
 ```bash
-sloth-runner list -f examples/basic_pipeline.lua
+sloth-runner list -f examples/basic_pipeline.sloth
 ```
 
 ## Agendador de Tarefas (Novo!)

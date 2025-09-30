@@ -98,9 +98,9 @@ metrics.list_custom()
 2. `internal/luainterface/state_helpers.go` - Helpers e serialização
 3. `internal/agent/metrics.go` - Coletor de métricas para agentes
 4. `internal/luainterface/metrics.go` - Módulo Lua de métricas
-5. `examples/state_management_demo.lua` - Demo completo do state
-6. `examples/simple_state_test.lua` - Teste básico do state
-7. `examples/advanced_agent_demo.lua` - Demo avançado com métricas
+5. `examples/state_management_demo.sloth` - Demo completo do state
+6. `examples/simple_state_test.sloth` - Teste básico do state
+7. `examples/advanced_agent_demo.sloth` - Demo avançado com métricas
 8. `docs/state-module.md` - Documentação do módulo state
 9. `docs/agent-improvements.md` - Proposta de melhorias dos agentes
 10. `docs/implementation-summary.md` - Este resumo

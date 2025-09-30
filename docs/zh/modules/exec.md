@@ -26,7 +26,7 @@
 此示例演示如何使用带有自定义工作目录和环境变量的 `exec.run`。
 
 ```lua
--- examples/exec_module_example.lua
+-- examples/exec_module_example.sloth
 
 Modern DSLs = {
   main = {

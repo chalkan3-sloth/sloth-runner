@@ -180,11 +180,7 @@ nav:
       - '🔄 GitOps Native': 'en/gitops-features.md'
       - '🧬 Modern DSL': 'en/modern-dsl.md'
       - '🏢 Enterprise Features': 'en/enterprise-features.md'
-      - '⚛️ Quantum Computing': 'en/quantum-features.md'
-      - '🎮 Metaverse & VR Control': 'en/metaverse-features.md'
-      - '🌌 Multiverse Execution': 'en/multiverse-features.md'
-      - '🧬 Bio-Inspired Computing': 'en/bio-features.md'
-      - '🔗 Blockchain Integration': 'en/blockchain-features.md'
+
     - '📖 User Guide':
       - '💻 CLI Commands': 'en/CLI.md'
       - '🔄 Interactive REPL': 'en/repl.md'
@@ -215,13 +211,7 @@ nav:
       - '📦 Built-in Modules':
         - '🤖 AI Intelligence': 'en/modules/ai.md'
         - '🔄 GitOps': 'en/modules/gitops.md'
-        - '⚛️ Quantum Computing': 'en/modules/quantum.md'
-        - '🌌 Multiverse': 'en/modules/multiverse.md'
-        - '🎮 Metaverse & VR': 'en/modules/metaverse.md'
-        - '🧬 Bio Computing': 'en/modules/bio.md'
-        - '🔗 Blockchain': 'en/modules/blockchain.md'
-        - '🔮 Time Travel': 'en/modules/timetravel.md'
-        - '🤖 Autonomous': 'en/modules/autonomous.md'
+
         - '💾 State Management': 'en/modules/state.md'
         - '📊 Metrics & Monitoring': 'en/modules/metrics.md'
         - '⚡ Exec': 'en/modules/exec.md'

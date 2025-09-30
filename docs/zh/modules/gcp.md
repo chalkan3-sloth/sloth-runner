@@ -23,7 +23,7 @@
 此示例定义了一个任务，用于列出特定项目在 `us-central1` 区域中的所有 Compute Engine 实例。
 
 ```lua
--- examples/gcp_cli_example.lua
+-- examples/gcp_cli_example.sloth
 
 Modern DSLs = {
   main = {

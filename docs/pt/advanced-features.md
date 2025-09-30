@@ -9,7 +9,7 @@ Para fluxos de trabalho complexos, pode ser útil percorrer as tarefas uma a uma
 Para usar o executor interativo, adicione a flag `--interactive` ao comando `sloth-runner run`:
 
 ```bash
-sloth-runner run -f examples/basic_pipeline.lua --yes --interactive
+sloth-runner run -f examples/basic_pipeline.sloth --yes --interactive
 ```
 
 Quando habilitado, o executor pausará antes de executar cada tarefa e solicitará uma ação:
@@ -49,7 +49,7 @@ O `sloth-runner` processa o `values.yaml` como um modelo Go, disponibilizando qu
 2.  **Crie uma tarefa Lua que use esses valores:**
 
     ```lua
-    -- my_task.lua
+    -- my_task.sloth
     Modern DSLs = {
       my_group = {
         tasks = {
@@ -72,7 +72,7 @@ O `sloth-runner` processa o `values.yaml` como um modelo Go, disponibilizando qu
     export MY_API_KEY="supersecretkey12345"
     export AWS_REGION="us-west-2"
 
-    sloth-runner run -f my_task.lua -v values.yaml --yes
+    sloth-runner run -f my_task.sloth -v values.yaml --yes
     ```
 
 **Saída:**

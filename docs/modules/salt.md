@@ -53,7 +53,7 @@ Retorna o resultado da última operação Salt executada na instância do `SaltT
 Este exemplo demonstra como usar a API fluente do Salt para realizar pings e executar comandos em minions.
 
 ```lua
--- examples/fluent_salt_api_test.lua
+-- examples/fluent_salt_api_test.sloth
 
 command = function()
     log.info("Iniciando teste da API fluente do Salt...")

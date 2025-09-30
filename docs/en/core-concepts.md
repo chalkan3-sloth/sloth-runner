@@ -9,7 +9,7 @@ This document explains the fundamental concepts of `sloth-runner` using the **Mo
 The Modern DSL replaces the legacy `Modern DSLs` approach with a more intuitive, fluent API for defining workflows. Instead of large table structures, you now use chainable methods to build tasks and define workflows declaratively.
 
 ```lua
--- my_pipeline.lua - Modern DSL
+-- my_pipeline.sloth - Modern DSL
 local my_task = task("task_name")
     :description("Task description")
     :command(function() ... end)
@@ -189,12 +189,12 @@ Modern DSLs = {
 
 ### `import(path)`
 
-Loads another Lua file and returns the value it returns. This is the primary mechanism for creating reusable task modules. The path is relative to the file calling `import`.
+Loads another sloth file and returns the value it returns. This is the primary mechanism for creating reusable task modules. The path is relative to the file calling `import`.
 
-**Example (`reusable_tasks.lua`):**
+**Example (`reusable_tasks.sloth`):**
 ```lua
 -- Import a module that returns a table of task definitions
-local docker_tasks = import("shared/docker.lua")
+local docker_tasks = import("shared/docker.sloth")
 
 Modern DSLs = {
   main = {

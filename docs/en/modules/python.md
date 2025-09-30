@@ -49,7 +49,7 @@ Executes a Python script using the Python interpreter from the virtual environme
 This example demonstrates a complete lifecycle: creating a virtual environment, installing dependencies from a `requirements.txt` file, and running a Python script.
 
 ```lua
--- examples/python_venv_lifecycle_example.lua
+-- examples/python_venv_lifecycle_example.sloth
 
 Modern DSLs = {
   main = {

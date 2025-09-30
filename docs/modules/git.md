@@ -94,7 +94,7 @@ Retorna o resultado da última operação Git executada na instância do `GitRep
 Este exemplo demonstra como clonar um repositório, fazer um pull, simular uma alteração, commitar e empurrar as mudanças.
 
 ```lua
--- examples/git_example.lua
+-- examples/git_example.sloth
 
 command = function(params)
     log.info("Iniciando exemplo de automação Git...")

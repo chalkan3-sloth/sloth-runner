@@ -16,10 +16,10 @@
 4.  执行 `pulumi up` 以预置或更新基础设施（例如，暂存环境）。
 5.  使用 Salt 配置预置的服务器并部署应用程序。
 
-### Lua 脚本 (`examples/pulumi_git_combined_example.lua`)
+### Lua 脚本 (`examples/pulumi_git_combined_example.sloth`)
 
 ```lua
--- examples/pulumi_git_combined_example.lua
+-- examples/pulumi_git_combined_example.sloth
 
 command = function(params)
     log.info("Starting combined Pulumi and Git example...")

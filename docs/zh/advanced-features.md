@@ -9,7 +9,7 @@
 要使用交互式运行器，请将 `--interactive` 标志添加到 `sloth-runner run` 命令中：
 
 ```bash
-sloth-runner run -f examples/basic_pipeline.lua --yes --interactive
+sloth-runner run -f examples/basic_pipeline.sloth --yes --interactive
 ```
 
 启用后，运行器将在执行每个任务之前暂停并提示您执行操作：
@@ -49,7 +49,7 @@ sloth-runner run -f examples/basic_pipeline.lua --yes --interactive
 2.  **创建一个使用这些值的 Lua 任务：**
 
     ```lua
-    -- my_task.lua
+    -- my_task.sloth
     Modern DSLs = {
       my_group = {
         tasks = {
@@ -72,7 +72,7 @@ sloth-runner run -f examples/basic_pipeline.lua --yes --interactive
     export MY_API_KEY="supersecretkey12345"
     export AWS_REGION="us-west-2"
 
-    sloth-runner run -f my_task.lua -v values.yaml --yes
+    sloth-runner run -f my_task.sloth -v values.yaml --yes
     ```
 
 **输出:**
