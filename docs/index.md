@@ -1,16 +1,172 @@
-# 🦥 Sloth Runner - Advanced Task Orchestration Platform
+# 🦥 Sloth Runner - AI-Powered GitOps Task Orchestration Platform
 
-> 🚀 A powerful, modern task runner with Pulumi-style stack management, distributed execution, and comprehensive monitoring capabilities.
+**The world's first AI-powered task orchestration platform with native GitOps capabilities.** Sloth Runner combines intelligent optimization, predictive analytics, automated deployments, and enterprise-grade reliability into a single, powerful platform.
 
-> **📝 Important Note:** Starting with the current version, Sloth Runner workflow files use the `.sloth` extension instead of `.sloth`. The Lua syntax remains the same - only the file extension has changed for better identification of Sloth Runner DSL files.
+[![Go CI](https://github.com/chalkan3-sloth/sloth-runner/actions/workflows/ci.yml/badge.svg)](https://github.com/chalkan3-sloth/sloth-runner/actions/workflows/ci.yml)
+[![Go Version](https://img.shields.io/badge/Go-1.24+-blue.svg)](https://golang.org/)
+[![Lua Powered](https://img.shields.io/badge/Lua-Powered-purple.svg)](https://www.lua.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 
-[![🌐 Distributed](https://img.shields.io/badge/🌐-Distributed-blue)](docs/distributed.md)
-[![💾 Stateful](https://img.shields.io/badge/💾-Stateful-green)](docs/stack-management.md)  
-[![📊 Observable](https://img.shields.io/badge/📊-Observable-orange)](docs/advanced-features.md)
-[![🏢 Enterprise Ready](https://img.shields.io/badge/🏢-Enterprise%20Ready-purple)](docs/enterprise-features.md)
+---
 
-**Quick Links:** 
-[🚀 Get Started](TUTORIAL.md) | [⚡ Quick Start](en/quick-start.md) | [🗂️ Stack Management](stack-management.md)
+## 🚀 **Quick Start with GitOps**
+
+Get started with a complete GitOps workflow in under 5 minutes:
+
+### 1. Install Sloth Runner
+
+```bash
+curl -sSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/main/install.sh | bash
+```
+
+### 2. Run the GitOps Example
+
+```bash
+# Clone the repository
+git clone https://github.com/chalkan3-sloth/sloth-runner.git
+cd sloth-runner
+
+# Execute the complete GitOps workflow
+sloth-runner run -f examples/deploy_git_terraform.sloth -v examples/values.yaml deploy_git_terraform
+```
+
+### 3. Watch the Magic Happen
+
+```
+✅ Repository cloned successfully
+✅ Terraform initialized automatically  
+✅ Infrastructure planned and validated
+✅ Deployment completed successfully
+```
+
+---
+
+## ✨ **Revolutionary Features**
+
+### 🎯 **Modern DSL for GitOps**
+*Clean, powerful Lua-based syntax designed for infrastructure workflows*
+
+```lua
+-- Complete GitOps workflow in clean, readable syntax
+local clone_task = task("clone_infrastructure")
+    :description("Clone Terraform infrastructure repository")
+    :workdir("/tmp/infrastructure")
+    :command(function(this, params)
+        local git = require("git")
+        
+        log.info("📡 Cloning infrastructure repository...")
+        local repository = git.clone(
+            Values.git.repository_url,
+            this.workdir.get()
+        )
+        
+        return true, "Repository cloned successfully", {
+            repository_url = Values.git.repository_url,
+            clone_destination = this.workdir.get()
+        }
+    end)
+    :timeout("5m")
+    :retries(3, "exponential")
+    :build()
+
+local deploy_task = task("deploy_terraform")
+    :description("Deploy infrastructure using Terraform")
+    :command(function(this, params)
+        local terraform = require("terraform")
+        
+        -- Terraform init runs automatically
+        local client = terraform.init(this.workdir:get())
+        
+        -- Load configuration from values.yaml
+        local tfvars = client:create_tfvars("terraform.tfvars", {
+            environment = Values.terraform.environment,
+            region = Values.terraform.region,
+            instance_type = Values.terraform.instance_type
+        })
+        
+        -- Plan and apply infrastructure
+        local plan_result = client:plan({ var_file = tfvars.filename })
+        if plan_result.success then
+            return client:apply({ 
+                var_file = tfvars.filename,
+                auto_approve = true 
+            })
+        end
+        
+        return false, "Terraform plan failed"
+    end)
+    :timeout("15m")
+    :build()
+
+-- Define the complete GitOps workflow
+workflow.define("infrastructure_deployment")
+    :description("Complete GitOps: Clone + Plan + Deploy")
+    :version("1.0.0")
+    :tasks({ clone_task, deploy_task })
+    :config({
+        timeout = "20m",
+        max_parallel_tasks = 1
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 Infrastructure deployed successfully!")
+        end
+    end)
+```
+
+### 🏗️ **Native GitOps Integration**
+*Built-in support for Git and Terraform operations*
+
+```lua
+-- Git operations with automatic credential handling
+local git = require("git")
+local repo = git.clone("https://github.com/company/infrastructure", "/tmp/infra")
+git.checkout(repo, "production")
+git.pull(repo, "origin", "production")
+
+-- Terraform lifecycle management
+local terraform = require("terraform")
+local client = terraform.init("/tmp/infra/terraform/")  -- Runs 'terraform init'
+local plan = client:plan({ var_file = "production.tfvars" })
+local apply = client:apply({ auto_approve = true })
+
+-- Values-driven configuration
+local config = {
+    environment = Values.terraform.environment or "production",
+    region = Values.terraform.region or "us-west-2",
+    instance_count = Values.terraform.instance_count or 3
+}
+```
+
+### ⚙️ **External Configuration Management**
+*Clean separation of code and configuration using values.yaml*
+
+**values.yaml:**
+```yaml
+terraform:
+  environment: "production"
+  region: "us-west-2" 
+  instance_type: "t3.medium"
+  enable_monitoring: true
+
+git:
+  repository_url: "https://github.com/company/terraform-infrastructure"
+  branch: "main"
+
+workflow:
+  timeout: "30m"
+  max_parallel_tasks: 2
+```
+
+**Access in workflows:**
+```lua
+-- Load configuration from values.yaml
+local terraform_config = {
+    environment = Values.terraform.environment,
+    region = Values.terraform.region,
+    instance_type = Values.terraform.instance_type
+}
+```
 
 ---
 

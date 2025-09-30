@@ -4,15 +4,23 @@
 
 > **📝 Important Note:** Starting with the current version, Sloth Runner workflow files use the `.sloth` extension instead of `.lua`. The plugin automatically recognizes both extensions for backward compatibility.
 
-## ✨ Features
+## 📚 Documentation
 
-- **🎨 Rich Syntax Highlighting** - Custom colors for DSL keywords, methods, and modules
+**📖 Complete documentation available at:** 
+- [English Documentation](../docs/en/nvim-plugin.md)
+- [Documentação em Português](../docs/pt/nvim-plugin.md)  
+- [中文文档](../docs/zh/nvim-plugin.md)
+- [Main Documentation](../docs/nvim-plugin.md)
+
+## ✨ Quick Overview
+
+- **🎨 Rich Syntax Highlighting** - Custom colors for DSL keywords, methods, and modules (uses traditional syntax, not treesitter to avoid conflicts)
 - **📁 Smart File Detection** - Auto-detects Sloth DSL files 
 - **⚡ Code Completion** - Intelligent completion for DSL methods and modules
 - **🔧 Integrated Runner** - Run workflows directly from Neovim
 - **📋 Code Snippets** - Quick templates for tasks and workflows
-- **🔄 Folding Support** - Collapsible task and workflow blocks
 - **🎯 Text Objects** - Navigate and select DSL constructs easily
+- **🐛 Conflict-Free** - Automatically handles treesitter conflicts
 
 ## 🚀 Installation
 

@@ -1,16 +1,25 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
+	"github.com/chalkan3-sloth/sloth-runner/internal/taskrunner"
 	"github.com/pterm/pterm"
 	lua "github.com/yuin/gopher-lua"
 )
 
 // Simple demo showing enhanced features without complex dependencies
 func main() {
+	// Check if a .sloth file is provided as argument
+	if len(os.Args) > 1 && filepath.Ext(os.Args[1]) == ".sloth" {
+		runSlothFile(os.Args[1])
+		return
+	}
+	
 	pterm.DefaultHeader.WithFullWidth().Println("🦥 Sloth Runner Enhanced Features Demo")
 	
 	// Show feature comparison first
@@ -30,6 +39,51 @@ func main() {
 	showImprovements()
 	
 	pterm.Success.Println("Enhanced demo completed successfully! 🚀")
+}
+
+// runSlothFile executes a .sloth file
+func runSlothFile(filePath string) {
+	pterm.DefaultHeader.WithFullWidth().Println("🦥 Sloth Runner - Executing " + filepath.Base(filePath))
+	
+	// Create Lua environment
+	L := lua.NewState()
+	defer L.Close()
+	
+	// Register all modules
+	luainterface.RegisterAllModules(L)
+	luainterface.OpenImport(L, filePath)
+	
+	// Parse the Lua script to extract task definitions
+	taskGroups, err := luainterface.ParseLuaScript(context.Background(), filePath, nil)
+	if err != nil {
+		pterm.Error.Printf("Failed to parse script: %v\n", err)
+		os.Exit(1)
+	}
+
+	if len(taskGroups) == 0 {
+		pterm.Warning.Println("No task groups found in the script")
+		return
+	}
+
+	// Create task runner with all required parameters
+	runner := taskrunner.NewTaskRunner(L, taskGroups, "", nil, false, false, &taskrunner.DefaultSurveyAsker{}, "")
+	
+	// Set outputs to capture results
+	runner.Outputs = make(map[string]interface{})
+	
+	// Run all task groups
+	pterm.Info.Printf("Found %d task group(s)\n", len(taskGroups))
+	
+	startTime := time.Now()
+	err = runner.Run()
+	duration := time.Since(startTime)
+	
+	if err != nil {
+		pterm.Error.Printf("Failed to execute tasks: %v\n", err)
+		os.Exit(1)
+	}
+	
+	pterm.Success.Printf("All tasks executed successfully in %v! 🚀\n", duration)
 }
 
 // setupSimpleEnhancedDSL sets up a simplified version of the enhanced DSL

@@ -136,6 +136,7 @@ func ParseLuaScript(ctx context.Context, filePath string, valuesTable *lua.LTabl
 func parseLuaTask(L *lua.LState, taskTable *lua.LTable) types.Task {
 	name := taskTable.RawGetString("name").String()
 	desc := taskTable.RawGetString("description").String()
+	workdir := taskTable.RawGetString("workdir").String() // ✅ Parse workdir for individual task
 	var cmdFunc *lua.LFunction
 	var cmdStr string
 	luaCommand := taskTable.RawGetString("command")
@@ -220,7 +221,7 @@ func parseLuaTask(L *lua.LState, taskTable *lua.LTable) types.Task {
 	}
 
 	// Parse pre_exec and post_exec
-	var preExec, postExec *lua.LFunction
+	var preExec, postExec, onSuccess, onFailure *lua.LFunction
 	luaPreExec := taskTable.RawGetString("pre_exec")
 	if luaPreExec.Type() == lua.LTFunction {
 		preExec = luaPreExec.(*lua.LFunction)
@@ -228,6 +229,21 @@ func parseLuaTask(L *lua.LState, taskTable *lua.LTable) types.Task {
 	luaPostExec := taskTable.RawGetString("post_exec")
 	if luaPostExec.Type() == lua.LTFunction {
 		postExec = luaPostExec.(*lua.LFunction)
+	}
+	
+	// ✅ Parse on_success and on_failure handlers
+	luaOnSuccess := taskTable.RawGetString("on_success")
+	if luaOnSuccess.Type() == lua.LTFunction {
+		onSuccess = luaOnSuccess.(*lua.LFunction)
+	}
+	luaOnFailure := taskTable.RawGetString("on_failure")
+	if luaOnFailure.Type() == lua.LTFunction {
+		onFailure = luaOnFailure.(*lua.LFunction)
+	}
+	// Also check for on_fail as alias
+	luaOnFail := taskTable.RawGetString("on_fail")
+	if luaOnFail.Type() == lua.LTFunction {
+		onFailure = luaOnFail.(*lua.LFunction)
 	}
 
 	// Parse delegate_to
@@ -243,6 +259,7 @@ func parseLuaTask(L *lua.LState, taskTable *lua.LTable) types.Task {
 		ID:          types.GenerateTaskID(), // Generate unique ID for the task
 		Name:        name,
 		Description: desc,
+		Workdir:     workdir, // ✅ Include workdir in task
 		CommandFunc: cmdFunc,
 		CommandStr:  cmdStr,
 		Params:      params,
@@ -255,6 +272,8 @@ func parseLuaTask(L *lua.LState, taskTable *lua.LTable) types.Task {
 		Async:       async,
 		PreExec:     preExec,
 		PostExec:    postExec,
+		OnSuccess:   onSuccess,   // ✅ Include success handler
+		OnFailure:   onFailure,   // ✅ Include failure handler
 		DelegateTo:  delegateTo,
 	}
 }
@@ -379,6 +398,9 @@ func RegisterAllModules(L *lua.LState) {
 	// Register state module
 	L.PreloadModule("state", StateLoader)
 	OpenMetrics(L)
+	
+	// ✅ Register workdir functions
+	OpenWorkdir(L)
 	
 	// Register Modern DSL
 	OpenModernDSL(L)
@@ -891,12 +913,94 @@ func luaLogDebug(L *lua.LState) int {
 	return 0
 }
 
+func luaLogPrint(L *lua.LState) int {
+	message := L.CheckString(1)
+	// Print directly to stdout without formatting
+	fmt.Println(message)
+	return 0
+}
+
+// ✅ luaLogTable logs complex table/object data in a structured format
+func luaLogTable(L *lua.LState) int {
+	value := L.CheckAny(1)
+	title := L.OptString(2, "Table Contents")
+	
+	// Convert value to a formatted string representation
+	formatted := formatLuaValueForLog(value, 0)
+	
+	// Log with structured format
+	slog.Info(fmt.Sprintf("📊 %s:\n%s", title, formatted), "source", "lua")
+	return 0
+}
+
+// ✅ formatLuaValueForLog formats a Lua value for pretty logging
+func formatLuaValueForLog(value lua.LValue, indent int) string {
+	indentStr := strings.Repeat("  ", indent)
+	
+	switch v := value.(type) {
+	case lua.LString:
+		return fmt.Sprintf("\"%s\"", v.String())
+	case lua.LNumber:
+		return v.String()
+	case lua.LBool:
+		if bool(v) {
+			return "true"
+		}
+		return "false"
+	case *lua.LTable:
+		var parts []string
+		parts = append(parts, "{")
+		
+		// Check if it's an array-like table
+		isArray := true
+		maxIndex := 0
+		v.ForEach(func(key, _ lua.LValue) {
+			if key.Type() == lua.LTNumber {
+				if idx := int(lua.LVAsNumber(key)); idx > maxIndex {
+					maxIndex = idx
+				}
+			} else {
+				isArray = false
+			}
+		})
+		
+		if isArray && maxIndex > 0 {
+			// Format as array
+			for i := 1; i <= maxIndex; i++ {
+				val := v.RawGetInt(i)
+				if val != lua.LNil {
+					formatted := formatLuaValueForLog(val, indent+1)
+					parts = append(parts, fmt.Sprintf("%s  [%d] = %s", indentStr, i, formatted))
+				}
+			}
+		} else {
+			// Format as object
+			v.ForEach(func(key, val lua.LValue) {
+				keyStr := key.String()
+				formatted := formatLuaValueForLog(val, indent+1)
+				parts = append(parts, fmt.Sprintf("%s  %s = %s", indentStr, keyStr, formatted))
+			})
+		}
+		
+		parts = append(parts, indentStr+"}")
+		return strings.Join(parts, "\n")
+		
+	default:
+		if value == lua.LNil {
+			return "nil"
+		}
+		return fmt.Sprintf("<%s>", value.Type().String())
+	}
+}
+
 func LogLoader(L *lua.LState) int {
 	mod := L.SetFuncs(L.NewTable(), map[string]lua.LGFunction{
 		"info":  luaLogInfo,
 		"warn":  luaLogWarn,
 		"error": luaLogError,
 		"debug": luaLogDebug,
+		"print": luaLogPrint,
+		"table": luaLogTable, // ✅ Added table function
 	})
 	L.Push(mod)
 	return 1
@@ -939,16 +1043,95 @@ func ExecuteLuaFunction(L *lua.LState, fn *lua.LFunction, params map[string]stri
 	if ctx != nil {
 		L.SetContext(ctx)
 	}
+	
+	// ✅ Set task context with workdir for workdir functions
+	taskContext := L.NewTable()
+	if params != nil {
+		if workdir, exists := params["workdir"]; exists {
+			taskContext.RawSetString("workdir", lua.LString(workdir))
+		}
+		if taskName, exists := params["task_name"]; exists {
+			taskContext.RawSetString("task_name", lua.LString(taskName))
+		}
+		if groupName, exists := params["group_name"]; exists {
+			taskContext.RawSetString("group_name", lua.LString(groupName))
+		}
+	}
+	L.SetGlobal("__task_context", taskContext)
+	
+	// ✅ Create 'this' object for Modern DSL tasks
+	var thisObj lua.LValue = lua.LNil
+	if params != nil {
+		if taskName, exists := params["task_name"]; exists {
+			// Create a task-like object with workdir and name methods
+			thisUD := L.NewUserData()
+			thisData := map[string]interface{}{
+				"name": taskName,
+				"workdir_path": params["workdir"],
+			}
+			thisUD.Value = thisData
+			
+			// Create metatable for 'this' object
+			thisMt := L.NewTypeMetatable("TaskThis")
+			L.SetField(thisMt, "__index", L.NewFunction(func(L *lua.LState) int {
+				ud := L.CheckUserData(1)
+				key := L.CheckString(2)
+				
+				data, ok := ud.Value.(map[string]interface{})
+				if !ok {
+					L.ArgError(1, "TaskThis expected")
+					return 0
+				}
+				
+				switch key {
+				case "name":
+					L.Push(L.NewFunction(func(L *lua.LState) int {
+						if name, exists := data["name"]; exists {
+							L.Push(lua.LString(name.(string)))
+						} else {
+							L.Push(lua.LString("unknown"))
+						}
+						return 1
+					}))
+				case "workdir":
+					// Return workdir object with colon methods support
+					workdirPath := ""
+					if wd, exists := data["workdir_path"]; exists && wd != nil {
+						workdirPath = wd.(string)
+					}
+					workdirObj := createRuntimeWorkdirObjectWithColonSupport(L, workdirPath)
+					L.Push(workdirObj)
+				default:
+					L.Push(lua.LNil)
+				}
+				return 1
+			}))
+			
+			L.SetMetatable(thisUD, thisMt)
+			thisObj = thisUD
+		}
+	}
+	
 	L.Push(fn)
+	
+	// Push 'this' as first argument if it exists
+	numArgs := 0
+	if thisObj != lua.LNil {
+		L.Push(thisObj)
+		numArgs++
+	}
+	
+	// Push params
 	luaParams := L.NewTable()
 	for k, v := range params {
 		luaParams.RawSetString(k, lua.LString(v))
 	}
 	L.Push(luaParams)
-	numArgs := 1
+	numArgs++
+	
 	if secondArg != nil {
 		L.Push(secondArg)
-		numArgs = 2
+		numArgs++
 	}
 	// Push additional args
 	for _, arg := range args {
@@ -1017,4 +1200,350 @@ func CopyValue(value lua.LValue, destL *lua.LState) lua.LValue {
 		// For other types (functions, etc.), we return nil as they cannot be copied.
 		return lua.LNil
 	}
+}
+
+// ✅ Workdir Module Functions
+func luaWorkdirGet(L *lua.LState) int {
+	// Get current workdir from task context
+	taskContext := L.GetGlobal("__task_context")
+	if taskContext.Type() == lua.LTTable {
+		workdir := taskContext.(*lua.LTable).RawGetString("workdir")
+		if workdir.Type() == lua.LTString {
+			L.Push(workdir)
+			return 1
+		}
+	}
+	
+	// Fallback to current working directory
+	if cwd, err := os.Getwd(); err == nil {
+		L.Push(lua.LString(cwd))
+	} else {
+		L.Push(lua.LString("/tmp"))
+	}
+	return 1
+}
+
+func luaWorkdirCleanup(L *lua.LState) int {
+	// Get workdir path (optional argument)
+	var workdirPath string
+	if L.GetTop() >= 1 {
+		workdirPath = L.CheckString(1)
+	} else {
+		// Get from context
+		taskContext := L.GetGlobal("__task_context")
+		if taskContext.Type() == lua.LTTable {
+			workdir := taskContext.(*lua.LTable).RawGetString("workdir")
+			if workdir.Type() == lua.LTString {
+				workdirPath = workdir.String()
+			}
+		}
+	}
+	
+	if workdirPath == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("no workdir specified"))
+		return 2
+	}
+	
+	// Remove the directory
+	if err := os.RemoveAll(workdirPath); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(err.Error()))
+		return 2
+	}
+	
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("workdir cleaned up successfully"))
+	return 2
+}
+
+func luaWorkdirExists(L *lua.LState) int {
+	// Get workdir path (optional argument)
+	var workdirPath string
+	if L.GetTop() >= 1 {
+		workdirPath = L.CheckString(1)
+	} else {
+		// Get from context
+		taskContext := L.GetGlobal("__task_context")
+		if taskContext.Type() == lua.LTTable {
+			workdir := taskContext.(*lua.LTable).RawGetString("workdir")
+			if workdir.Type() == lua.LTString {
+				workdirPath = workdir.String()
+			}
+		}
+	}
+	
+	if workdirPath == "" {
+		L.Push(lua.LBool(false))
+		return 1
+	}
+	
+	// Check if directory exists
+	if _, err := os.Stat(workdirPath); err == nil {
+		L.Push(lua.LBool(true))
+	} else {
+		L.Push(lua.LBool(false))
+	}
+	return 1
+}
+
+func luaWorkdirCreate(L *lua.LState) int {
+	// Get workdir path (required argument)
+	workdirPath := L.CheckString(1)
+	
+	// Create directory with all parent directories
+	if err := os.MkdirAll(workdirPath, 0755); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(err.Error()))
+		return 2
+	}
+	
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("workdir created successfully"))
+	return 2
+}
+
+func WorkdirLoader(L *lua.LState) int {
+	mod := L.SetFuncs(L.NewTable(), map[string]lua.LGFunction{
+		"get":     luaWorkdirGet,
+		"cleanup": luaWorkdirCleanup,
+		"exists":  luaWorkdirExists,
+		"create":  luaWorkdirCreate,
+	})
+	L.Push(mod)
+	return 1
+}
+
+func OpenWorkdir(L *lua.LState) {
+	// Register as global module (like exec, fs, etc.)
+	workdirMt := L.SetFuncs(L.NewTable(), map[string]lua.LGFunction{
+		"get":     luaWorkdirGet,
+		"cleanup": luaWorkdirCleanup,
+		"exists":  luaWorkdirExists,
+		"create":  luaWorkdirCreate,
+	})
+	L.SetGlobal("workdir", workdirMt)
+}
+
+// ✅ CreateRuntimeWorkdirObjectWithColonSupport creates workdir object supporting this.workdir.method() syntax (exported)
+func CreateRuntimeWorkdirObjectWithColonSupport(L *lua.LState, workdirPath string) *lua.LUserData {
+	return createRuntimeWorkdirObjectWithColonSupport(L, workdirPath)
+}
+
+// ✅ createRuntimeWorkdirObjectWithColonSupport creates workdir object supporting this:workdir:method() syntax
+func createRuntimeWorkdirObjectWithColonSupport(L *lua.LState, workdirPath string) *lua.LUserData {
+	workdirUD := L.NewUserData()
+	workdirUD.Value = workdirPath
+	
+	// Create metatable for workdir object with colon syntax support
+	workdirMt := L.NewTypeMetatable("RuntimeWorkdirColonSupport")
+	L.SetField(workdirMt, "__index", L.NewFunction(func(L *lua.LState) int {
+		ud := L.CheckUserData(1)
+		key := L.CheckString(2)
+		
+		workdirPath, ok := ud.Value.(string)
+		if !ok {
+			L.ArgError(1, "RuntimeWorkdirColonSupport expected")
+			return 0
+		}
+		
+		switch key {
+		case "get":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				if workdirPath != "" {
+					L.Push(lua.LString(workdirPath))
+				} else {
+					if cwd, err := os.Getwd(); err == nil {
+						L.Push(lua.LString(cwd))
+					} else {
+						L.Push(lua.LString("/tmp"))
+					}
+				}
+				return 1
+			}))
+		case "ensure":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				if workdirPath == "" {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				// Remove existing directory
+				os.RemoveAll(workdirPath)
+				
+				// Create new directory
+				if err := os.MkdirAll(workdirPath, 0755); err != nil {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				L.Push(lua.LBool(true))
+				return 1
+			}))
+		case "exists":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				if workdirPath == "" {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				if _, err := os.Stat(workdirPath); err == nil {
+					L.Push(lua.LBool(true))
+				} else {
+					L.Push(lua.LBool(false))
+				}
+				return 1
+			}))
+		case "cleanup":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				if workdirPath == "" {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				if err := os.RemoveAll(workdirPath); err != nil {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				L.Push(lua.LBool(true))
+				return 1
+			}))
+		case "recreate":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				if workdirPath == "" {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				// Remove and recreate
+				os.RemoveAll(workdirPath)
+				if err := os.MkdirAll(workdirPath, 0755); err != nil {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				L.Push(lua.LBool(true))
+				return 1
+			}))
+		default:
+			L.Push(lua.LNil)
+		}
+		return 1
+	}))
+	
+	L.SetMetatable(workdirUD, workdirMt)
+	return workdirUD
+}
+
+// ✅ createRuntimeWorkdirObject creates workdir object for runtime execution
+func createRuntimeWorkdirObject(L *lua.LState, workdirPath string) *lua.LUserData {
+	workdirUD := L.NewUserData()
+	workdirUD.Value = workdirPath
+	
+	// Create metatable for workdir object
+	workdirMt := L.NewTypeMetatable("RuntimeWorkdir")
+	L.SetField(workdirMt, "__index", L.NewFunction(func(L *lua.LState) int {
+		ud := L.CheckUserData(1)
+		key := L.CheckString(2)
+		
+		workdirPath, ok := ud.Value.(string)
+		if !ok {
+			L.ArgError(1, "RuntimeWorkdir expected")
+			return 0
+		}
+		
+		switch key {
+		case "get":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				if workdirPath != "" {
+					L.Push(lua.LString(workdirPath))
+				} else {
+					if cwd, err := os.Getwd(); err == nil {
+						L.Push(lua.LString(cwd))
+					} else {
+						L.Push(lua.LString("/tmp"))
+					}
+				}
+				return 1
+			}))
+		case "exists":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				if workdirPath == "" {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				if _, err := os.Stat(workdirPath); err == nil {
+					L.Push(lua.LBool(true))
+				} else {
+					L.Push(lua.LBool(false))
+				}
+				return 1
+			}))
+		case "ensure":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				if workdirPath == "" {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				// Remove existing directory
+				os.RemoveAll(workdirPath)
+				
+				// Create new directory
+				if err := os.MkdirAll(workdirPath, 0755); err != nil {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				L.Push(lua.LBool(true))
+				return 1
+			}))
+		case "cleanup":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				if workdirPath == "" {
+					L.Push(lua.LBool(false))
+					L.Push(lua.LString("no workdir specified"))
+					return 2
+				}
+				
+				if err := os.RemoveAll(workdirPath); err != nil {
+					L.Push(lua.LBool(false))
+					L.Push(lua.LString(err.Error()))
+					return 2
+				}
+				
+				L.Push(lua.LBool(true))
+				L.Push(lua.LString("workdir cleaned up successfully"))
+				return 2
+			}))
+		case "recreate":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				if workdirPath == "" {
+					L.Push(lua.LBool(false))
+					L.Push(lua.LString("no workdir specified"))
+					return 2
+				}
+				
+				// Remove and recreate
+				os.RemoveAll(workdirPath)
+				if err := os.MkdirAll(workdirPath, 0755); err != nil {
+					L.Push(lua.LBool(false))
+					L.Push(lua.LString(err.Error()))
+					return 2
+				}
+				
+				L.Push(lua.LBool(true))
+				L.Push(lua.LString("workdir recreated successfully"))
+				return 2
+			}))
+		default:
+			L.Push(lua.LNil)
+		}
+		return 1
+	}))
+	
+	L.SetMetatable(workdirUD, workdirMt)
+	return workdirUD
 }
