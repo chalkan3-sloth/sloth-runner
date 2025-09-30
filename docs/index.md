@@ -17,25 +17,34 @@
 ### 🗂️ Stack Management
 **Pulumi-style stack management** with persistent state, exported outputs, and execution history tracking.
 
-- 🔒 **Persistent stack state** with SQLite
-- 📊 **Exported outputs capture** from pipeline
-- 📈 **Complete execution history** tracking
-- 🎯 **Environment isolation** by stack
-- 🆔 **Unique task IDs** for enhanced traceability
+- 🔒 **Persistent stack state** with SQLite in `/etc/sloth-runner/`
+- 📊 **Exported outputs capture** from pipeline with JSON support
+- 📈 **Complete execution history** tracking with duration metrics
+- 🎯 **Environment isolation** by stack name
+- 🆔 **Unique task and group IDs** for enhanced traceability
 - 📋 **Task listing** with detailed relationship view
+- 🗑️ **Stack deletion** with confirmation prompts
+- 🎨 **Multiple output formats**: basic, enhanced, modern, json
 
 ```bash
-# Create and run a stack
+# Create and run a stack with enhanced output
 sloth-runner run my-production-stack -f pipeline.lua --output enhanced
 
-# List all stacks
+# Run with JSON output for CI/CD integration
+sloth-runner run my-stack -f workflow.lua --output json
+
+# List all stacks with status and metrics
 sloth-runner stack list
 
-# Show stack details with outputs
+# Show stack details with outputs and execution history
 sloth-runner stack show my-production-stack
 
-# List tasks with IDs
+# List tasks with unique IDs and dependencies
 sloth-runner list -f pipeline.lua
+
+# Delete stacks with confirmation
+sloth-runner stack delete old-stack
+sloth-runner stack delete old-stack --force  # skip confirmation
 ```
 
 ### 🌐 Distributed by Design
