@@ -24,6 +24,20 @@
 - 🆔 **Unique task IDs** for enhanced traceability
 - 📋 **Task listing** with detailed relationship view
 
+```bash
+# Create and run a stack
+sloth-runner run my-production-stack -f pipeline.lua --output enhanced
+
+# List all stacks
+sloth-runner stack list
+
+# Show stack details with outputs
+sloth-runner stack show my-production-stack
+
+# List tasks with IDs
+sloth-runner list -f pipeline.lua
+```
+
 ### 🌐 Distributed by Design
 **Native master-agent architecture** with real-time streaming, automatic failover, and intelligent load balancing.
 
@@ -34,6 +48,16 @@
 - 🏗️ **Scalable architecture** for enterprise workloads
 - 🔒 **TLS-secured** communication
 
+```bash
+# Start master server
+sloth-runner master --port 50053 --daemon
+
+# Start and manage agents
+sloth-runner agent start --name worker-01 --master localhost:50053
+sloth-runner agent list --master localhost:50053
+sloth-runner agent run worker-01 "docker ps" --master localhost:50053
+```
+
 ### 🎨 Web Dashboard & UI
 **Modern web-based dashboard** for comprehensive workflow management and monitoring.
 
@@ -42,6 +66,15 @@
 - 📈 **Performance metrics** visualization
 - 🔍 **Centralized logging** system
 - 👥 **Team collaboration** features
+
+```bash
+# Start web dashboard
+sloth-runner ui --port 8080
+# Access at http://localhost:8080
+
+# Run as daemon
+sloth-runner ui --daemon --port 8080
+```
 
 ### 🤖 AI/ML Integration
 **Built-in artificial intelligence** capabilities for smart automation and decision making.
@@ -52,6 +85,16 @@
 - 🔍 **Intelligent analysis** of workflows
 - 🎯 **Smart recommendations**
 
+```lua
+-- AI-powered workflow optimization
+local ai = require("ai")
+local result = ai.openai.complete("Generate Docker build script")
+local decision = ai.decide({
+    cpu_usage = metrics.cpu,
+    memory_usage = metrics.memory
+})
+```
+
 ### ⏰ Advanced Scheduling
 **Enterprise-grade task scheduling** with cron-style syntax and background execution.
 
@@ -61,6 +104,17 @@
 - 🎯 **Event-driven** triggers
 - 📊 **Schedule monitoring**
 
+```bash
+# Enable scheduler
+sloth-runner scheduler enable --config scheduler.yaml
+
+# List scheduled tasks
+sloth-runner scheduler list
+
+# Delete a scheduled task
+sloth-runner scheduler delete backup-task
+```
+
 ### 💾 Advanced State Management
 **Built-in SQLite-based** persistent state with atomic operations, distributed locks, and TTL support.
 
@@ -69,6 +123,33 @@
 - ⏰ **TTL-based** data expiration
 - 🔍 **Pattern-based** queries
 - 🔄 **State replication** across agents
+
+```lua
+-- Advanced state operations
+local state = require("state")
+state.lock("deploy-resource", 30)  -- 30 second lock
+state.set("config", data, 3600)    -- 1 hour TTL
+state.atomic_increment("build-count")
+```
+
+### 🏗️ Project Scaffolding
+**Template-based project initialization** similar to Pulumi new or Terraform init.
+
+- 📋 **Multiple templates** (basic, cicd, infrastructure, microservices, data-pipeline)
+- 🎯 **Interactive mode** with guided setup
+- 📁 **Complete project** structure generation
+- 🔧 **Configuration files** auto-generated
+
+```bash
+# List available templates
+sloth-runner workflow list-templates
+
+# Create new project from template
+sloth-runner workflow init my-app --template cicd
+
+# Interactive mode
+sloth-runner workflow init my-app --interactive
+```
 
 ### ☁️ Multi-Cloud Excellence
 **Comprehensive cloud provider** support with advanced automation capabilities.
@@ -175,12 +256,34 @@ sloth-runner workflow init my-app --template cicd
 sloth-runner workflow list-templates       # Available templates
 ```
 
-### Output Styles
+### Distributed Agents & Web UI
 ```bash
-# Configurable output formatting
-sloth-runner run my-stack -f app.lua --output enhanced
-sloth-runner run my-stack -f app.lua -o rich
-sloth-runner run my-stack -f app.lua --output modern
+# Start master server
+sloth-runner master --port 50053 --daemon
+
+# Start distributed agents
+sloth-runner agent start --name web-builder --master localhost:50053
+sloth-runner agent start --name db-manager --master localhost:50053
+
+# Start web dashboard
+sloth-runner ui --port 8080 --daemon
+# Access dashboard at http://localhost:8080
+
+# List connected agents
+sloth-runner agent list --master localhost:50053
+
+# Execute commands on specific agents
+sloth-runner agent run web-builder "docker ps" --master localhost:50053
+```
+
+### Advanced Scheduling
+```bash
+# Enable background scheduler
+sloth-runner scheduler enable --config scheduler.yaml
+
+# List and manage scheduled tasks
+sloth-runner scheduler list
+sloth-runner scheduler delete backup-task
 ```
 
 ### 📊 Distributed Deployment with Monitoring
