@@ -1,6 +1,6 @@
 # ✅ Funcionalidades Testadas e Validadas - Sloth Runner
 
-Este documento resume todas as funcionalidades que foram testadas e validadas durante a sessão de melhorias do Sloth Runner.
+Este documento resume todas as funcionalidades que foram testadas e validadas durante as sessões de melhorias do Sloth Runner.
 
 ## 🎯 **Resumo das Melhorias Implementadas**
 
@@ -23,13 +23,15 @@ sloth-runner stack show my-production-stack
 ### ✅ 2. Output Style Aprimorado (--output)
 **STATUS: ✅ FUNCIONAL E TESTADO**
 
-- **Múltiplos estilos**: `basic`, `enhanced`, `rich`, `modern`
+- **Múltiplos estilos**: `basic`, `enhanced`, `rich`, `modern`, **`json`** 🆕
 - **Saída estilo Pulumi**: Com progress bars, cores e estruturação
 - **Compatível com stacks**: Outputs integrados ao sistema de stack
+- **🆕 JSON Output**: Saída estruturada para integração com outras ferramentas
 
 ```bash
 # Testado e funcionando:
 sloth-runner run test-stack -f demo.lua --output enhanced
+sloth-runner run test-stack -f demo.lua --output json
 sloth-runner run test-stack -f demo.lua -o rich
 ```
 
@@ -47,7 +49,67 @@ sloth-runner list -f examples/basic_pipeline.lua
 # Saída mostra IDs truncados (ex: 97ee8628...)
 ```
 
-### ✅ 4. Workflow Scaffolding (workflow init)
+### ✅ 4. 🆕 JSON Output Format
+**STATUS: ✅ NOVA FUNCIONALIDADE IMPLEMENTADA E TESTADA**
+
+- **Comando**: `sloth-runner run {stack-name} -f workflow.lua --output json`
+- **Estrutura completa**: status, duration, tasks, outputs, stack info
+- **Suporte a erros**: JSON estruturado mesmo para falhas
+- **Outputs capturados**: Variáveis globais exportadas incluídas
+
+```bash
+# Testado e funcionando:
+sloth-runner run json-test -f examples/enhanced_output_demo.lua --output json
+```
+
+#### Exemplo de JSON Output (Sucesso):
+```json
+{
+  "duration": "9.073145833s",
+  "execution_time": 1759231158,
+  "outputs": {
+    "deployment_url": "https://app.example.com",
+    "version": "v1.2.3"
+  },
+  "stack": {
+    "id": "3ec19a86-462c-459d-aad1-02df57a610c5",
+    "name": "production-deploy"
+  },
+  "status": "success",
+  "tasks": {
+    "build_app": {
+      "duration": "2.020794291s",
+      "error": "",
+      "status": "Success"
+    },
+    "deploy_production": {
+      "duration": "4.028715792s",
+      "error": "",
+      "status": "Success"
+    }
+  },
+  "workflow": "production-deploy"
+}
+```
+
+#### Exemplo de JSON Output (Erro):
+```json
+{
+  "duration": "12.730584ms",
+  "error": "one or more task groups failed",
+  "execution_time": 1759231136,
+  "status": "failed",
+  "tasks": {
+    "failing_task": {
+      "duration": "385.25µs",
+      "error": "task 'failing_task' failed: error executing command function...",
+      "status": "Failed"
+    }
+  }
+}
+```
+
+### ✅ 5. Workflow Scaffolding (workflow init)
 **STATUS: ✅ FUNCIONAL E TESTADO**
 
 - **Templates disponíveis**: basic, cicd, infrastructure, microservices, data-pipeline
