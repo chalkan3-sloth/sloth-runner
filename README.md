@@ -174,9 +174,9 @@ local deploy_infrastructure = task("deploy_terraform")
         
         -- Load configuration from values.yaml
         local terraform_config = {
-            environment = Values.terraform.environment or "prod",
-            instance_type = Values.terraform.instance_type or "t3.micro",
-            region = Values.terraform.region or "us-east-1"
+            environment = values.terraform.environment or "prod",
+            instance_type = values.terraform.instance_type or "t3.micro",
+            region = values.terraform.region or "us-east-1"
         }
         
         -- Create terraform.tfvars from configuration
