@@ -43,11 +43,8 @@ type StackManager struct {
 // NewStackManager creates a new stack manager
 func NewStackManager(dbPath string) (*StackManager, error) {
 	if dbPath == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get home directory: %w", err)
-		}
-		dbPath = filepath.Join(homeDir, ".sloth-runner", "stacks.db")
+		// Use /etc/sloth-runner/ as the default location
+		dbPath = "/etc/sloth-runner/stacks.db"
 	}
 
 	// Create directory if it doesn't exist
