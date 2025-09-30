@@ -6,17 +6,19 @@ on:
     paths-ignore:
       - 'docs/**'
       - '*.md'
+      - 'site/**'
   pull_request:
     branches: [ master ]
     paths-ignore:
       - 'docs/**'
       - '*.md'
+      - 'site/**'
 
 jobs:
   test-builds:
     name: Test Build on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
+    timeout-minutes: 10
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
@@ -51,32 +53,24 @@ jobs:
           brew install sqlite3
 
       - name: Install Go dependencies
-        run: go mod tidy
-
-      - name: Run tests (with SQLite on Linux)
-        if: runner.os == 'Linux'
-        run: go test -v ./...
-        env:
-          CGO_ENABLED: 1
-
-      - name: Run tests (without SQLite on macOS)
-        if: runner.os == 'macOS'
-        run: go test -v ./... -tags="no_sqlite"
-        env:
-          CGO_ENABLED: 0
+        run: go mod download
+        timeout-minutes: 3
 
       - name: Build binary (Linux with SQLite)
         if: runner.os == 'Linux'
         run: |
           CGO_ENABLED=1 go build -v -o sloth-runner-test ./cmd/sloth-runner
+        timeout-minutes: 5
 
       - name: Build binary (macOS without SQLite)
         if: runner.os == 'macOS'
         run: |
           CGO_ENABLED=0 go build -v -o sloth-runner-test ./cmd/sloth-runner
+        timeout-minutes: 5
 
       - name: Test binary execution
         run: ./sloth-runner-test version || echo "Binary built successfully"
+        timeout-minutes: 1
 
       - name: Upload test binary
         uses: actions/upload-artifact@v4

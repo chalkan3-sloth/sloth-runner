@@ -1,68 +1,67 @@
 name: Create Tag on Merge
 
 on:
-  pull_request:
-    types: [closed]
-    branches:
-      - master
   push:
     branches:
       - master
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'site/**'
 
 jobs:
   create-tag:
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
     name: Create Tag
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Required to fetch all history for correct versioning
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create and Push Tag
         run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
           # Fetch all tags to ensure correct versioning
           git fetch --tags
 
           # Get the latest tag using proper version sorting
-          LATEST_TAG=$(git tag | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
+          LATEST_TAG=$(git tag -l | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n1)
           if [ -z "$LATEST_TAG" ]; then
             LATEST_TAG="v0.0.0"
           fi
           echo "Latest tag: $LATEST_TAG"
 
           # Extract version components
-          MAJOR=$(echo $LATEST_TAG | sed -E 's/v([0-9]+)\.([0-9]+)\.([0-9]+)/\1/')
-          MINOR=$(echo $LATEST_TAG | sed -E 's/v([0-9]+)\.([0-9]+)\.([0-9]+)/\2/')
-          PATCH=$(echo $LATEST_TAG | sed -E 's/v([0-9]+)\.([0-9]+)\.([0-9]+)/\3/')
-
-          # Get commit message for analysis
-          if [ "${{ github.event_name }}" = "push" ]; then
-            COMMIT_MSG=$(printf '%s' '${{ github.event.head_commit.message }}' | tr '\n' ' ')
-            echo "Analyzing push commit: $(echo "$COMMIT_MSG" | head -c 100)..."
+          if [ "$LATEST_TAG" = "v0.0.0" ]; then
+            MAJOR=0
+            MINOR=0  
+            PATCH=0
           else
-            COMMIT_MSG=$(printf '%s' '${{ github.event.pull_request.title }}' | tr '\n' ' ')
-            PR_BODY=$(printf '%s' '${{ github.event.pull_request.body }}' | tr '\n' ' ')
-            PR_LABELS="${{ join(github.event.pull_request.labels.*.name, ' ') }}"
-            echo "Analyzing PR: $(echo "$COMMIT_MSG" | head -c 100)..."
-            echo "PR Labels: $PR_LABELS"
+            MAJOR=$(echo $LATEST_TAG | sed -E 's/v([0-9]+)\.([0-9]+)\.([0-9]+)/\1/')
+            MINOR=$(echo $LATEST_TAG | sed -E 's/v([0-9]+)\.([0-9]+)\.([0-9]+)/\2/')
+            PATCH=$(echo $LATEST_TAG | sed -E 's/v([0-9]+)\.([0-9]+)\.([0-9]+)/\3/')
           fi
 
-          # Determine version bump based on conventional commits or labels
-          if echo "$COMMIT_MSG $PR_BODY" | grep -iE "(BREAKING CHANGE|breaking:|major:)" || echo "$PR_LABELS" | grep -q "major"; then
+          # Get commit message for analysis
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          echo "Analyzing commit: $(echo "$COMMIT_MSG" | head -c 100)..."
+
+          # Determine version bump based on conventional commits
+          if echo "$COMMIT_MSG" | grep -iE "(BREAKING CHANGE|breaking change|breaking:|major:)"; then
             # Major version bump
             NEW_MAJOR=$((MAJOR + 1))
             NEW_MINOR=0
             NEW_PATCH=0
             NEW_TAG="v${NEW_MAJOR}.${NEW_MINOR}.${NEW_PATCH}"
             echo "🚀 MAJOR version bump detected"
-          elif echo "$COMMIT_MSG $PR_BODY" | grep -iE "(feat\(|feat:|feature:|minor:)" || echo "$PR_LABELS" | grep -q "minor\|feature"; then
+          elif echo "$COMMIT_MSG" | grep -iE "(feat\(|feat:|feature:|minor:)"; then
             # Minor version bump  
             NEW_MINOR=$((MINOR + 1))
             NEW_PATCH=0
@@ -78,31 +77,22 @@ jobs:
           echo "New tag: $NEW_TAG"
 
           # Check if tag already exists
-          if git tag | grep -q "^${NEW_TAG}$"; then
+          if git tag -l | grep -q "^${NEW_TAG}$"; then
             echo "⚠️  Tag $NEW_TAG already exists. Skipping tag creation."
-            echo "🏷️  Existing tags: $(git tag | sort -V | tail -5 | tr '\n' ' ')"
+            echo "🏷️  Existing tags: $(git tag -l | sort -V | tail -5 | tr '\n' ' ')"
             exit 0
           fi
 
           # Create and push the new tag
-          git tag $NEW_TAG
+          git tag -a $NEW_TAG -m "Release $NEW_TAG"
           git push origin $NEW_TAG
           
           echo "🎯 Tag $NEW_TAG created successfully!"
-          
-          # Try to trigger release workflow using Personal Access Token if available
-          if [ -n "${{ secrets.PAT_TOKEN }}" ]; then
-            echo "🚀 Triggering release workflow with PAT token..."
-            curl -X POST \
-              -H "Accept: application/vnd.github.v3+json" \
-              -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/actions/workflows/release.yml/dispatches" \
-              -d "{\"ref\":\"$NEW_TAG\"}"
-          else
-            echo "ℹ️  PAT_TOKEN not configured. Please manually trigger release or configure a Personal Access Token."
-            echo "💡 To enable automatic releases, add a PAT_TOKEN secret with 'actions:write' permissions."
-          fi
-          
-          echo "📦 New version: $NEW_TAG"
+          echo "tag_created=true" >> $GITHUB_OUTPUT
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    outputs:
+      tag_created: ${{ steps.create-tag.outputs.tag_created }}
+      new_tag: ${{ steps.create-tag.outputs.new_tag }}

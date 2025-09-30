@@ -222,6 +222,7 @@ sloth-runner run --interactive          # Interactive task selection
 sloth-runner ui                         # Start web dashboard
 
 # 🆔 NEW: Stack Management (Pulumi-style)
+sloth-runner stack new my-app --description "My application stack"  # Create stack
 sloth-runner run my-stack -f workflow.sloth --output enhanced  # Run with stack
 sloth-runner run my-stack -f workflow.sloth --output json     # JSON output
 sloth-runner stack list                                      # List all stacks  

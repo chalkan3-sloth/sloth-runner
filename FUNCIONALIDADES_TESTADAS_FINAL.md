@@ -4,7 +4,7 @@
 
 ### 1. 🆔 IDs Únicos para Tasks e Grupos
 - **Status**: ✅ IMPLEMENTADO E TESTADO
-- **Comando**: `sloth-runner list -f workflow.lua`
+- **Comando**: `sloth-runner list -f workflow.sloth`
 - **Detalhes**: 
   - Cada task e task group possui UUID único
   - IDs são gerados automaticamente via `types.GenerateTaskID()` e `types.GenerateTaskGroupID()`
@@ -15,7 +15,7 @@
 - **Status**: ✅ IMPLEMENTADO E TESTADO
 
 #### 2.1 Comando `run` com Stack
-- **Sintaxe**: `sloth-runner run {stack-name} -f workflow.lua`
+- **Sintaxe**: `sloth-runner run {stack-name} -f workflow.sloth`
 - **Funcionalidade**: 
   - Stack name como argumento posicional
   - Persistência automática de estado
@@ -47,7 +47,7 @@
 
 ### 3. 📤 Output JSON
 - **Status**: ✅ IMPLEMENTADO E TESTADO
-- **Sintaxe**: `sloth-runner run {stack-name} --output json -f workflow.lua`
+- **Sintaxe**: `sloth-runner run {stack-name} --output json -f workflow.sloth`
 - **Funcionalidade**:
   - Output estruturado em JSON
   - Inclui status, duração, tasks, outputs exportados
@@ -69,13 +69,13 @@
 ### Teste 1: IDs Únicos
 ```bash
 cd /Users/chalkan3/.projects/task-runner
-./sloth-runner list -f examples/basic_pipeline.lua
+./sloth-runner list -f examples/basic_pipeline.sloth
 ```
 **Resultado**: ✅ IDs únicos exibidos para grupos e tasks
 
 ### Teste 2: Stack Run com Outputs JSON
 ```bash
-./sloth-runner run test-stack --output json -f test_workflow.lua
+./sloth-runner run test-stack --output json -f test_workflow.sloth
 ```
 **Resultado**: ✅ JSON completo com outputs exportados
 
@@ -125,19 +125,19 @@ cp sloth-runner ~/.local/bin/
 
 ### 1. Desenvolvimento Multi-Ambiente
 ```bash
-sloth-runner run dev-app -f app.lua
-sloth-runner run staging-app -f app.lua  
-sloth-runner run prod-app -f app.lua --output enhanced
+sloth-runner run dev-app -f app.sloth
+sloth-runner run staging-app -f app.sloth  
+sloth-runner run prod-app -f app.sloth --output enhanced
 ```
 
 ### 2. CI/CD Integration
 ```bash
-sloth-runner run ${ENV}-${APP} --output json -f pipeline.lua
+sloth-runner run ${ENV}-${APP} --output json -f pipeline.sloth
 ```
 
 ### 3. Debugging e Observabilidade
 ```bash
-sloth-runner list -f workflow.lua  # Ver IDs únicos
+sloth-runner list -f workflow.sloth  # Ver IDs únicos
 sloth-runner stack show my-app     # Ver estado e outputs
 ```
 

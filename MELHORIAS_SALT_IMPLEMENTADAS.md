@@ -204,7 +204,7 @@ internal/luainterface/
 - Troubleshooting
 
 ### **Exemplos Práticos**
-- `salt_comprehensive_showcase.lua` - Demonstração completa
+- `salt_comprehensive_showcase.sloth` - Demonstração completa
 - Casos de uso empresariais
 - Workflows complexos
 - Integração multi-serviços

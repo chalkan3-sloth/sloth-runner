@@ -1,0 +1,23 @@
+-- Teste simples do Salt como objeto
+print("🧂 Teste Salt Objeto")
+
+-- FORMA CORRETA: salt_object_oriented
+local Salt = require("salt_object_oriented")
+
+-- Criar cliente Salt como objeto
+local salt_client = Salt({
+    timeout = 30,
+    output_format = "json"
+})
+
+print("✅ Cliente Salt objeto criado:", type(salt_client))
+
+-- Testar método do objeto (usando ':')
+local result = salt_client:ping("*")
+print("📡 Resultado ping:", result.success and "✅ Sucesso" or "❌ Falha")
+
+-- Testar outros métodos
+local version = salt_client:version("*")
+print("📋 Versão Salt:", version.success and "✅ OK" or "❌ Erro")
+
+print("✨ Teste concluído!")

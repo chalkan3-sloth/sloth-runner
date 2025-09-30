@@ -20,7 +20,7 @@ Local de Instalação: `~/.local/bin/sloth-runner`
 ### 🧪 Comandos Testados:
 ```bash
 # ✅ Criar e executar stack
-sloth-runner run {nome-da-stack} -f workflow.lua
+sloth-runner run {nome-da-stack} -f workflow.sloth
 
 # ✅ Listar todas as stacks
 sloth-runner stack list
@@ -32,7 +32,7 @@ sloth-runner stack show {nome-da-stack}
 sloth-runner stack delete {nome-da-stack}
 
 # ✅ Listar tasks com IDs únicos
-sloth-runner list -f workflow.lua
+sloth-runner list -f workflow.sloth
 ```
 
 ---
@@ -48,10 +48,10 @@ sloth-runner list -f workflow.lua
 ### 🧪 Comandos Testados:
 ```bash
 # ✅ Output enhanced (estilo Pulumi)
-sloth-runner run stack-name -f workflow.lua --output enhanced
+sloth-runner run stack-name -f workflow.sloth --output enhanced
 
 # ✅ Output JSON para automação
-sloth-runner run stack-name -f workflow.lua --output json
+sloth-runner run stack-name -f workflow.sloth --output json
 ```
 
 ### 📋 Exemplo de Output JSON:
@@ -137,7 +137,7 @@ export_example_task   a67f80ec...           Workflow description - Modern DSL   
 ### 🧪 Exemplo de Uso em CI/CD:
 ```bash
 # Pipeline automation
-OUTPUT=$(sloth-runner run prod-deployment -f deploy.lua --output json)
+OUTPUT=$(sloth-runner run prod-deployment -f deploy.sloth --output json)
 STATUS=$(echo "$OUTPUT" | jq -r '.status')
 APP_URL=$(echo "$OUTPUT" | jq -r '.outputs.app_url')
 ```
