@@ -41,8 +41,8 @@ You can make your `values.yaml` files more dynamic by using Go template syntax t
 
     ```yaml
     # values.yaml
-    api_key: "{{ .Env.MY_API_KEY }}"
-    region: "{{ .Env.AWS_REGION | default "us-east-1" }}"
+    api_key: "{% raw %}{{ .Env.MY_API_KEY }}{% endraw %}"
+    region: "{% raw %}{{ .Env.AWS_REGION | default "us-east-1" }}{% endraw %}"
     ```
     *Note: You can use `default` to provide a fallback value if the environment variable is not set.*
 
