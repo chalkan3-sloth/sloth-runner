@@ -14,8 +14,8 @@ copyright: 'Copyright &copy; 2024 Sloth Runner Team. All rights reserved.'
 # Theme
 theme:
   name: material
-  favicon: assets/favicon.png
-  logo: assets/logo.png
+  favicon: assets/favicon.svg
+  logo: assets/logo.svg
   palette:
     # Palette toggle for light mode
     - media: '(prefers-color-scheme: light)'

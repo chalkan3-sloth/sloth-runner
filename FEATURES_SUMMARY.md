@@ -20,7 +20,7 @@
 ### 📋 Comandos Disponíveis:
 ```bash
 # Executar com stack (NOVA SINTAXE)
-sloth-runner run {stack-name} --file workflow.lua
+sloth-runner run {stack-name} --file workflow.sloth
 
 # Gerenciar stacks
 sloth-runner stack list                    # ✅ Implementado
@@ -28,7 +28,7 @@ sloth-runner stack show {stack-name}       # ✅ Implementado
 sloth-runner stack delete {stack-name}     # ✅ Implementado
 
 # Listar tasks com IDs únicos
-sloth-runner list --file workflow.lua      # ✅ Implementado
+sloth-runner list --file workflow.sloth      # ✅ Implementado
 ```
 
 ---
@@ -45,7 +45,7 @@ sloth-runner list --file workflow.lua      # ✅ Implementado
 ### 🤖 Output JSON para CI/CD:
 ```bash
 # Output JSON estruturado
-sloth-runner run prod-stack -f deploy.lua --output json
+sloth-runner run prod-stack -f deploy.sloth --output json
 
 # Exemplo de saída JSON:
 {

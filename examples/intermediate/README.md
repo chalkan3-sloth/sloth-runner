@@ -2,9 +2,11 @@
 
 Esta pasta contém exemplos que combinam múltiplas funcionalidades do Sloth Runner, ideais para quem já domina o básico.
 
+> **📝 Nota Importante:** Todos os arquivos de workflow agora usam a extensão `.sloth` em vez de `.lua`. A sintaxe Lua permanece a mesma - apenas a extensão do arquivo mudou para melhor identificação dos arquivos DSL do Sloth Runner.
+
 ## 📋 Exemplos Disponíveis
 
-### 🚀 [`api-integration.lua`](./api-integration.lua)
+### 🚀 [`api-integration.sloth`](./api-integration.sloth)
 **Integração completa com APIs REST**
 - 🔧 Configuração avançada de HTTP client
 - 🔄 Retry automático com diferentes estratégias
@@ -13,7 +15,7 @@ Esta pasta contém exemplos que combinam múltiplas funcionalidades do Sloth Run
 - 🔗 Composição de múltiplas chamadas de API
 
 ```bash
-sloth-runner -f examples/intermediate/api-integration.lua
+sloth-runner -f examples/intermediate/api-integration.sloth
 ```
 
 **Funcionalidades demonstradas:**
@@ -22,7 +24,7 @@ sloth-runner -f examples/intermediate/api-integration.lua
 - Criação e atualização de recursos
 - Relatórios automatizados
 
-### 🐳 [`multi-container.lua`](./multi-container.lua)
+### 🐳 [`multi-container.sloth`](./multi-container.sloth)
 **Orquestração de múltiplos containers**
 - 🌐 Criação de redes Docker customizadas
 - 💾 Gerenciamento de volumes persistentes
@@ -31,7 +33,7 @@ sloth-runner -f examples/intermediate/api-integration.lua
 - 🧹 Limpeza automatizada
 
 ```bash
-sloth-runner -f examples/intermediate/multi-container.lua
+sloth-runner -f examples/intermediate/multi-container.sloth
 ```
 
 **Funcionalidades demonstradas:**
@@ -40,7 +42,7 @@ sloth-runner -f examples/intermediate/multi-container.lua
 - Health checks e monitoring
 - Gerenciamento do ciclo de vida
 
-### ⚡ [`parallel-processing.lua`](./parallel-processing.lua)
+### ⚡ [`parallel-processing.sloth`](./parallel-processing.sloth)
 **Processamento paralelo eficiente**
 - 🔄 Comparação sequencial vs paralelo
 - 📡 Requisições HTTP paralelas
@@ -49,7 +51,7 @@ sloth-runner -f examples/intermediate/multi-container.lua
 - 📈 Análise de performance
 
 ```bash
-sloth-runner -f examples/intermediate/parallel-processing.lua
+sloth-runner -f examples/intermediate/parallel-processing.sloth
 ```
 
 **Funcionalidades demonstradas:**

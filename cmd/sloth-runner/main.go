@@ -1338,6 +1338,82 @@ var stackDeleteCmd = &cobra.Command{
 	},
 }
 
+var stackNewCmd = &cobra.Command{
+	Use:   "new <stack-name>",
+	Short: "Create a new workflow stack",
+	Long:  `Create a new workflow stack with the specified name and optional configuration.`,
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		stackName := args[0]
+		description, _ := cmd.Flags().GetString("description")
+		workflowFile, _ := cmd.Flags().GetString("workflow-file")
+		version, _ := cmd.Flags().GetString("version")
+		
+		stackManager, err := stack.NewStackManager("")
+		if err != nil {
+			return fmt.Errorf("failed to initialize stack manager: %w", err)
+		}
+		defer stackManager.Close()
+
+		// Check if stack already exists
+		if _, err := stackManager.GetStackByName(stackName); err == nil {
+			return fmt.Errorf("stack '%s' already exists", stackName)
+		}
+
+		// Set defaults
+		if description == "" {
+			description = fmt.Sprintf("Workflow stack: %s", stackName)
+		}
+		if version == "" {
+			version = "1.0.0"
+		}
+
+		// Create new stack
+		stackID := uuid.New().String()
+		newStack := &stack.StackState{
+			ID:           stackID,
+			Name:         stackName,
+			Description:  description,
+			Version:      version,
+			Status:       "created",
+			WorkflowFile: workflowFile,
+			TaskResults:  make(map[string]interface{}),
+			Outputs:      make(map[string]interface{}),
+			Configuration: make(map[string]interface{}),
+			Metadata:     make(map[string]interface{}),
+		}
+		
+		if err := stackManager.CreateStack(newStack); err != nil {
+			return fmt.Errorf("failed to create stack: %w", err)
+		}
+		
+		// Show success message
+		pterm.Success.Printf("Stack '%s' created successfully.\n", stackName)
+		pterm.Printf("\n")
+		pterm.Printf("Stack Details:\n")
+		pterm.Printf("  Name: %s\n", stackName)
+		pterm.Printf("  ID: %s\n", stackID)
+		pterm.Printf("  Description: %s\n", description)
+		pterm.Printf("  Version: %s\n", version)
+		if workflowFile != "" {
+			pterm.Printf("  Workflow File: %s\n", workflowFile)
+		}
+		pterm.Printf("  Status: %s\n", "created")
+		
+		pterm.Printf("\n")
+		pterm.Printf("Next steps:\n")
+		if workflowFile != "" {
+			pterm.Printf("  1. Run your workflow: sloth-runner run %s -f %s\n", stackName, workflowFile)
+		} else {
+			pterm.Printf("  1. Run your workflow: sloth-runner run %s -f <workflow-file>\n", stackName)
+		}
+		pterm.Printf("  2. View stack details: sloth-runner stack show %s\n", stackName)
+		pterm.Printf("  3. List all stacks: sloth-runner stack list\n")
+		
+		return nil
+	},
+}
+
 type agentServer struct {
 	pb.UnimplementedAgentServer
 	grpcServer *grpc.Server
@@ -1566,7 +1642,13 @@ func init() {
 	rootCmd.AddCommand(stackCmd)
 	stackCmd.AddCommand(stackListCmd)
 	stackCmd.AddCommand(stackShowCmd)
+	stackCmd.AddCommand(stackNewCmd)
 	stackCmd.AddCommand(stackDeleteCmd)
+	
+	// Stack new command flags
+	stackNewCmd.Flags().StringP("description", "d", "", "Description of the stack")
+	stackNewCmd.Flags().StringP("workflow-file", "f", "", "Path to the workflow file")
+	stackNewCmd.Flags().StringP("version", "v", "1.0.0", "Version of the stack")
 	
 	// Stack delete command flags
 	stackDeleteCmd.Flags().Bool("force", false, "Force deletion without confirmation")

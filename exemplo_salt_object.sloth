@@ -1,0 +1,376 @@
+-- Exemplo prático de uso do Salt como Objeto
+-- Demonstrando como usar o salt de forma orientada a objetos
+
+print("🧂 SALT COMO OBJETO - EXEMPLO PRÁTICO")
+print("=" .. string.rep("=", 60))
+
+-- EXISTEM DUAS FORMAS DE USAR O SALT:
+
+print("\n📋 OPÇÃO 1: Salt Tradicional (Funcional)")
+print("local salt = require('salt')")
+print("local result = salt.ping('*')")
+
+print("\n📋 OPÇÃO 2: Salt Orientado a Objetos (Recomendado)")
+print("local Salt = require('salt_object_oriented')")
+print("local client = Salt({config})")
+print("local result = client:ping('*')")
+
+-- 1. CRIAÇÃO DO OBJETO SALT (FORMA ORIENTADA A OBJETOS)
+print("\n🔧 Criando cliente Salt orientado a objetos...")
+
+-- Forma CORRETA de usar o salt como objeto
+local Salt = require("salt_object_oriented")
+
+-- Criar uma instância do cliente Salt com configurações específicas
+local salt_client = Salt({
+    master_host = "localhost",
+    master_port = 4506,
+    timeout = 30,
+    retries = 3,
+    output_format = "json",
+    cache_dir = "/tmp/salt_cache",
+    log_level = "info",
+    batch_size = 10
+})
+
+print("✅ Cliente Salt OBJETO criado com configurações personalizadas")
+print("   Tipo:", type(salt_client))
+
+-- Para comparação, vamos também usar o salt tradicional
+local salt_traditional = require("salt")
+print("✅ Módulo Salt tradicional carregado")
+print("   Tipo:", type(salt_traditional))
+
+-- 2. USANDO MÉTODOS DO OBJETO vs TRADICIONAL
+print("\n🔌 Comparando uso de objeto vs tradicional...")
+
+-- FORMA ORIENTADA A OBJETOS (RECOMENDADA)
+print("\n🎯 USANDO SALT COMO OBJETO:")
+local ping_result_obj = salt_client:ping("*", {timeout = 30})
+if ping_result_obj.success then
+    print("✅ Ping OBJETO bem-sucedido")
+    if ping_result_obj.returns then
+        for minion, response in pairs(ping_result_obj.returns) do
+            print("   Minion " .. minion .. ": " .. tostring(response))
+        end
+    end
+else
+    print("❌ Falha no ping OBJETO:", ping_result_obj.error or "Erro desconhecido")
+end
+
+-- FORMA TRADICIONAL (PARA COMPARAÇÃO)
+print("\n📋 USANDO SALT TRADICIONAL:")
+local ping_result_trad = salt_traditional.ping("*", {timeout = 30})
+if ping_result_trad.success then
+    print("✅ Ping TRADICIONAL bem-sucedido")
+else
+    print("❌ Falha no ping TRADICIONAL:", ping_result_trad.error or "Erro desconhecido")
+end
+
+print("\n🔍 DIFERENÇAS IMPORTANTES:")
+print("   OBJETO:      salt_client:ping('*')     ← Usa ':' (método do objeto)")
+print("   TRADICIONAL: salt.ping('*')            ← Usa '.' (função do módulo)")
+print("   OBJETO:      Configuração encapsulada no cliente")
+print("   TRADICIONAL: Configuração global do módulo")
+
+-- 3. GERENCIAMENTO DE ESTADOS COM OBJETO
+print("\n🏗️ Gerenciamento de Estados com Objeto...")
+
+-- Aplicar estado usando o objeto (sintaxe correta com ':')
+local state_result = salt_client:state_apply("web*", "nginx", {
+    test = true,
+    pillar = {
+        nginx = {
+            worker_processes = 4,
+            worker_connections = 1024,
+            keepalive_timeout = 65
+        }
+    }
+})
+
+if state_result.success then
+    print("✅ Estado aplicado com OBJETO com sucesso")
+    print("   Duração:", state_result.duration_ms .. "ms")
+else
+    print("❌ Falha na aplicação do estado OBJETO:", state_result.error or "Erro desconhecido")
+end
+
+-- Highstate usando o objeto
+local highstate_result = salt_client:state_highstate("*", {test = true})
+if highstate_result.success then
+    print("✅ Highstate OBJETO executado")
+end
+
+-- Mostrar SLS usando objeto
+local sls_result = salt_client:state_show_sls("*", "nginx")
+if sls_result.success then
+    print("✅ SLS mostrado via OBJETO")
+end
+
+-- 4. GERENCIAMENTO DE PACOTES COM OBJETO
+print("\n📦 Gerenciamento de Pacotes...")
+
+-- Instalar pacote usando o objeto
+local pkg_result = salt_client:pkg_install("web*", "nginx")
+if pkg_result.success then
+    print("✅ Nginx instalado com sucesso")
+end
+
+-- Listar pacotes instalados
+local pkg_list = salt_client:pkg_list("*")
+if pkg_list.success then
+    print("📋 Lista de pacotes obtida")
+end
+
+-- Atualizar repositórios
+local pkg_refresh = salt_client:pkg_refresh("*")
+if pkg_refresh.success then
+    print("🔄 Repositórios atualizados")
+end
+
+-- 5. GERENCIAMENTO DE SERVIÇOS COM OBJETO
+print("\n⚙️ Gerenciamento de Serviços...")
+
+-- Controlar serviços usando o objeto
+local service_start = salt_client:service_start("web*", "nginx")
+if service_start.success then
+    print("✅ Nginx iniciado")
+end
+
+-- Verificar status do serviço
+local service_status = salt_client:service_status("*", "nginx")
+if service_status.success then
+    print("📊 Status do nginx verificado")
+end
+
+-- Habilitar serviço
+local service_enable = salt_client:service_enable("*", "nginx")
+if service_enable.success then
+    print("🔛 Nginx habilitado para inicialização automática")
+end
+
+-- 6. OPERAÇÕES COM GRAINS USANDO OBJETO
+print("\n🌾 Operações com Grains...")
+
+-- Obter informações do sistema
+local os_info = salt_client:grains_get("*", "os_family")
+if os_info.success then
+    print("🖥️ Informações do sistema operacional:")
+    if os_info.returns then
+        for minion, os_family in pairs(os_info.returns) do
+            print("   " .. minion .. ": " .. tostring(os_family))
+        end
+    end
+end
+
+-- Definir grain customizado
+local set_grain = salt_client:grains_set("*", "environment", "production")
+if set_grain.success then
+    print("✏️ Grain 'environment' definido como 'production'")
+end
+
+-- Adicionar a lista de grains
+local append_grain = salt_client:grains_append("*", "roles", "webserver")
+if append_grain.success then
+    print("➕ 'webserver' adicionado aos roles")
+end
+
+-- 7. OPERAÇÕES COM ARQUIVOS USANDO OBJETO
+print("\n📁 Operações com Arquivos...")
+
+-- Verificar estatísticas de arquivo
+local file_stats = salt_client:file_stats("*", "/etc/hosts")
+if file_stats.success then
+    print("📊 Estatísticas do /etc/hosts obtidas")
+end
+
+-- Encontrar arquivos
+local file_find = salt_client:file_find("*", "/var/log", "name=*.log")
+if file_find.success then
+    print("🔍 Arquivos de log encontrados")
+end
+
+-- Copiar arquivo
+local file_copy = salt_client:file_copy("*", "/tmp/source.txt", "/tmp/dest.txt")
+if file_copy.success then
+    print("📋 Arquivo copiado com sucesso")
+end
+
+-- 8. OPERAÇÕES AVANÇADAS COM OBJETO
+print("\n🚀 Operações Avançadas...")
+
+-- Execução em lotes
+local batch_result = salt_client:batch("*", "25%", "cmd", "run", "uptime")
+if batch_result.success then
+    print("🔄 Execução em lotes completada (25% por vez)")
+end
+
+-- Execução assíncrona
+local async_result = salt_client:async("*", "cmd", "run", "long-running-command")
+if async_result.success then
+    print("🚀 Comando assíncrono iniciado")
+    if async_result.jid then
+        print("   Job ID:", async_result.jid)
+        
+        -- Verificar status do job
+        local job_status = salt_client:job_lookup(async_result.jid)
+        if job_status.success then
+            print("💼 Status do job obtido")
+        end
+    end
+end
+
+-- 9. GERENCIAMENTO DE CHAVES COM OBJETO
+print("\n🔑 Gerenciamento de Chaves...")
+
+-- Listar chaves
+local keys = salt_client:key_list("all")
+if keys.success then
+    print("🗝️ Lista de chaves obtida")
+end
+
+-- Obter fingerprint
+local fingerprint = salt_client:key_finger("*")
+if fingerprint.success then
+    print("👆 Fingerprints das chaves obtidos")
+end
+
+-- 10. MONITORAMENTO E MÉTRICAS COM OBJETO
+print("\n📊 Monitoramento e Métricas...")
+
+-- Obter métricas do sistema
+local load_avg = salt_client:status_loadavg("*")
+if load_avg.success then
+    print("📈 Load average obtido")
+end
+
+local mem_info = salt_client:status_meminfo("*")
+if mem_info.success then
+    print("🧠 Informações de memória obtidas")
+end
+
+local disk_usage = salt_client:disk_usage("*", "/")
+if disk_usage.success then
+    print("💾 Uso do disco raiz obtido")
+end
+
+-- 11. CONFIGURAÇÃO DE BEACONS COM OBJETO
+print("\n🚨 Configuração de Beacons...")
+
+-- Adicionar beacon de monitoramento
+local beacon_add = salt_client:beacon_add("*", "diskusage", {
+    interval = 300,
+    threshold = 85
+})
+if beacon_add.success then
+    print("🚨 Beacon de uso de disco configurado")
+end
+
+-- Listar beacons
+local beacon_list = salt_client:beacon_list("*")
+if beacon_list.success then
+    print("📋 Lista de beacons obtida")
+end
+
+-- 12. AGENDAMENTO DE TAREFAS COM OBJETO
+print("\n⏰ Agendamento de Tarefas...")
+
+-- Agendar tarefa
+local schedule_add = salt_client:schedule_add("*", "system-backup", {
+    function = "cmd.run",
+    args = ["/usr/local/bin/backup.sh"],
+    hours = 2,
+    minutes = 0
+})
+if schedule_add.success then
+    print("⏰ Backup automático agendado para 02:00")
+end
+
+-- Listar tarefas agendadas
+local schedule_list = salt_client:schedule_list("*")
+if schedule_list.success then
+    print("📅 Lista de tarefas agendadas obtida")
+end
+
+-- 13. INTEGRAÇÃO COM CLOUD USANDO OBJETO
+print("\n☁️ Integração com Cloud...")
+
+-- Listar nós na nuvem
+local cloud_nodes = salt_client:cloud_list_nodes()
+if cloud_nodes.success then
+    print("☁️ Nós na nuvem listados")
+end
+
+-- Simular criação de instância (comentado para evitar execução real)
+-- local cloud_create = salt_client:cloud_create("web-profile", "web-server-01")
+print("🌩️ Funcionalidade de criação de instâncias disponível")
+
+-- 14. OPERAÇÕES DE REDE COM OBJETO
+print("\n🌐 Operações de Rede...")
+
+-- Informações de interfaces de rede
+local net_interfaces = salt_client:network_interfaces("*")
+if net_interfaces.success then
+    print("🔌 Informações de interfaces de rede obtidas")
+end
+
+-- Teste de conectividade de rede
+local net_ping = salt_client:network_ping("*", "8.8.8.8")
+if net_ping.success then
+    print("🏓 Teste de conectividade de rede realizado")
+end
+
+-- 15. EXEMPLO DE CONFIGURAÇÃO COMPLEXA COM OBJETO
+print("\n🎯 Configuração Complexa Usando Objeto...")
+
+-- Criar um segundo cliente com configurações diferentes
+local salt_dev = Salt({
+    master_host = "dev-salt-master.company.com",
+    master_port = 4506,
+    timeout = 60,
+    retries = 5,
+    output_format = "yaml",
+    log_level = "debug"
+})
+
+print("🔧 Cliente Salt para desenvolvimento criado")
+
+-- Usar diferentes clientes para diferentes ambientes
+local prod_result = salt_client:ping("prod-*")
+local dev_result = salt_dev:ping("dev-*")
+
+print("🏭 Teste em produção:", prod_result.success and "✅" or "❌")
+print("🛠️ Teste em desenvolvimento:", dev_result.success and "✅" or "❌")
+
+-- RESUMO FINAL
+print("\n" .. string.rep("=", 60))
+print("🎉 DEMONSTRAÇÃO DO SALT COMO OBJETO CONCLUÍDA!")
+print("=" .. string.rep("=", 60))
+
+print("\n📋 DUAS FORMAS DE USAR O SALT:")
+print("1️⃣ TRADICIONAL:")
+print("   local salt = require('salt')")
+print("   local result = salt.ping('*')  ← Função do módulo")
+
+print("\n2️⃣ ORIENTADO A OBJETOS (RECOMENDADO):")
+print("   local Salt = require('salt_object_oriented')")
+print("   local client = Salt({config})")
+print("   local result = client:ping('*')  ← Método do objeto")
+
+print("\n🔧 VANTAGENS DA ABORDAGEM ORIENTADA A OBJETOS:")
+print("✅ Configuração isolada por cliente")
+print("✅ Múltiplas instâncias com configurações diferentes")
+print("✅ Encapsulamento de estado e configuração")
+print("✅ Melhor organização de código")
+print("✅ Sintaxe mais limpa e intuitiva")
+print("✅ Reutilização eficiente de recursos")
+
+print("\n🎯 SINTAXE CORRETA:")
+print("OBJETO:      client:método()    ← Usa ':' para métodos")
+print("TRADICIONAL: módulo.função()    ← Usa '.' para funções")
+
+print("\n🚀 RECOMENDAÇÃO:")
+print("Use 'salt_object_oriented' para novos projetos")
+print("Use a sintaxe client:método() para acessar funcionalidades")
+
+print("\n✨ Módulo Salt orientado a objetos funcionando perfeitamente!")

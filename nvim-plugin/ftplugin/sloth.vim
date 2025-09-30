@@ -12,7 +12,7 @@ runtime! ftplugin/lua.vim
 " Sloth-specific settings
 setlocal commentstring=--\ %s
 setlocal comments=:--
-setlocal suffixesadd=.lua,.sloth.lua
+setlocal suffixesadd=.sloth,.lua
 
 " Enhanced indentation for DSL chaining
 setlocal indentexpr=GetSlothIndent()
@@ -212,9 +212,20 @@ augroup SlothRunner
 augroup END
 
 function! s:FormatSlothFile()
-  " Simple formatting - could be enhanced with external formatter
-  " For now, just ensure consistent indentation
-  normal! gg=G``
+  " Check if sloth-runner is available and formatting is enabled
+  if !exists('g:sloth_format_on_save') || !g:sloth_format_on_save
+    return
+  endif
+  
+  " Check if file is a .sloth file
+  if expand('%:e') !=# 'sloth'
+    return
+  endif
+  
+  " Simple indentation fix - safer than external commands
+  let save_pos = getpos('.')
+  normal! gg=G
+  call setpos('.', save_pos)
 endfunction
 
 function! s:HighlightMatchingConstruct()

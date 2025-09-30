@@ -2,9 +2,11 @@
 
 Esta pasta contém exemplos simples e didáticos para quem está começando com o Sloth Runner.
 
+> **📝 Nota Importante:** Todos os arquivos de workflow agora usam a extensão `.sloth` em vez de `.lua`. A sintaxe Lua permanece a mesma - apenas a extensão do arquivo mudou para melhor identificação dos arquivos DSL do Sloth Runner.
+
 ## 📋 Exemplos Disponíveis
 
-### 🌟 [`hello-world.lua`](./hello-world.lua)
+### 🌟 [`hello-world.sloth`](./hello-world.sloth)
 **Seu primeiro script Sloth Runner**
 - ✨ Estrutura básica de um TaskDefinitions
 - 📝 Uso do sistema de logging
@@ -13,10 +15,10 @@ Esta pasta contém exemplos simples e didáticos para quem está começando com 
 - ✅ Tratamento de retorno de funções
 
 ```bash
-sloth-runner -f examples/beginner/hello-world.lua
+sloth-runner -f examples/beginner/hello-world.sloth
 ```
 
-### 🌐 [`http-basics.lua`](./http-basics.lua) 
+### 🌐 [`http-basics.sloth`](./http-basics.sloth) 
 **Primeiras requisições HTTP**
 - 📡 GET requests simples
 - 🔧 Headers customizados
@@ -25,10 +27,10 @@ sloth-runner -f examples/beginner/hello-world.lua
 - ⏰ Configuração de timeouts
 
 ```bash
-sloth-runner -f examples/beginner/http-basics.lua
+sloth-runner -f examples/beginner/http-basics.sloth
 ```
 
-### 💾 [`state-basics.lua`](./state-basics.lua)
+### 💾 [`state-basics.sloth`](./state-basics.sloth)
 **Gerenciamento de estado básico**
 - 📝 Operações set, get, delete
 - 🎯 Valores padrão
@@ -37,10 +39,10 @@ sloth-runner -f examples/beginner/http-basics.lua
 - 🧹 Limpeza de dados
 
 ```bash
-sloth-runner -f examples/beginner/state-basics.lua
+sloth-runner -f examples/beginner/state-basics.sloth
 ```
 
-### 🐳 [`docker-basics.lua`](./docker-basics.lua)
+### 🐳 [`docker-basics.sloth`](./docker-basics.sloth)
 **Primeiros passos com Docker**
 - ✅ Verificação de instalação
 - 📋 Listagem de containers
@@ -49,7 +51,7 @@ sloth-runner -f examples/beginner/state-basics.lua
 - 🧹 Limpeza de recursos
 
 ```bash
-sloth-runner -f examples/beginner/docker-basics.lua
+sloth-runner -f examples/beginner/docker-basics.sloth
 ```
 
 ## 🎓 Conceitos Aprendidos
@@ -82,7 +84,7 @@ Após executar todos os exemplos desta seção, você terá aprendido:
 
 ## 💡 Dicas para Iniciantes
 
-1. **Comece Simples**: Execute `hello-world.lua` primeiro
+1. **Comece Simples**: Execute `hello-world.sloth` primeiro
 2. **Leia os Comentários**: Cada exemplo tem comentários explicativos
 3. **Use o Help**: `help()` no início de qualquer script
 4. **Experimente**: Modifique os exemplos para entender melhor

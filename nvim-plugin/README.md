@@ -2,6 +2,8 @@
 
 🦥 **Syntax highlighting and IDE features for Sloth Runner DSL in Neovim**
 
+> **📝 Important Note:** Starting with the current version, Sloth Runner workflow files use the `.sloth` extension instead of `.lua`. The plugin automatically recognizes both extensions for backward compatibility.
+
 ## ✨ Features
 
 - **🎨 Rich Syntax Highlighting** - Custom colors for DSL keywords, methods, and modules
@@ -60,7 +62,7 @@ require("sloth-runner").setup()
 
 The plugin automatically detects Sloth DSL files based on:
 
-- **File extensions**: `*.sloth` (primary), `*.sloth.lua` (legacy support)
+- **File extensions**: `*.sloth` (primary), `*.lua` (legacy support)
 - **File patterns**: `*task*.sloth`, `*workflow*.sloth`
 - **Content detection**: Files containing `task(` or `workflow.define`
 
@@ -227,7 +229,7 @@ The plugin works alongside Lua LSP for enhanced features:
 
 ```lua
 -- If using nvim-lspconfig
-require('lspconfig').lua_ls.setup({
+require('lspconfig').sloth_ls.setup({
   filetypes = { 'lua', 'sloth' }, -- Add sloth filetype
   settings = {
     Lua = {
@@ -267,7 +269,7 @@ vim.api.nvim_set_hl(0, 'SlothMethod', { fg = '#your-color' })
 
 ## 📚 Example Usage
 
-Create a file `deploy.sloth.lua`:
+Create a file `deploy.sloth`:
 
 ```lua
 -- This file will be auto-detected as Sloth DSL
