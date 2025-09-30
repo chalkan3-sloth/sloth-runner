@@ -153,11 +153,39 @@ nav:
   - '🚀 Quick Start': 'TUTORIAL.md'
   - '📚 Core Documentation':
     - '🛠️ Getting Started': 'getting-started.md'
+    - '🎯 GitOps Example': 'gitops-example.md'
     - '🧠 Core Concepts': 'core-concepts.md'
     - '🆕 Latest Features': 'latest-features.md'
     - '🗂️ Stack Management': 'stack-management.md'
     - '📋 Stack Management Guide': 'STACK_MANAGEMENT_GUIDE.md'
     - '🎯 Advanced Features': 'advanced-features.md'
+  - '🎨 Modern DSL':
+    - '📖 DSL Overview': 'modern-dsl/index.md'
+    - '📝 Syntax Guide': 'modern-dsl/syntax.md'
+  - '🔧 Modules & APIs':
+    - '📦 Module Overview': 'modules/index.md'
+    - '🔀 Git Module': 'modules/git.md'
+    - '🏗️ Terraform Module': 'modules/terraform.md'
+    - '💾 State Module': 'state-module.md'
+    - '🔧 Lua API Reference': 'LUA_API.md'
+  - '🎭 Examples & Tutorials':
+    - '🚀 GitOps Workflow': 'gitops-example.md'
+    - '🏢 Advanced Examples': 'advanced-examples.md'
+    - '🌟 Real-World Scenarios': 'EXAMPLES.md'
+  - '⚡ Advanced Features':
+    - '🤖 AI Integration': 'ai-integration.md'
+    - '🌐 Distributed Agents': 'distributed-agents.md'
+    - '📊 Web Dashboard': 'web-dashboard.md'
+    - '⏰ Advanced Scheduler': 'advanced-scheduler.md'
+    - '☁️ Multi-Cloud Excellence': 'multi-cloud-excellence.md'
+  - '🛠️ Development & Testing':
+    - '🧪 Testing Guide': 'testing.md'
+    - '💻 REPL': 'repl.md'
+    - '🔌 Nvim Plugin': 'nvim-plugin.md'
+  - '📖 Reference':
+    - '📝 Implementation Summary': 'implementation-summary.md'
+    - '📋 Documentation Updates': 'DOCUMENTATION_UPDATE_SUMMARY.md'
+    - '✨ Enhanced Improvements': 'ENHANCED_IMPROVEMENTS.md'
     - '💾 State Module': 'state-module.md'
   - '🌐 Enterprise Features':
     - '🤖 Distributed Agents': 'distributed-agents.md'
@@ -170,6 +198,7 @@ nav:
     - '🔄 REPL': 'repl.md'
     - '🌙 Lua API': 'LUA_API.md'
     - '📝 Examples': 'EXAMPLES.md'
+    - '🦥 Neovim Plugin': 'nvim-plugin.md'
   - '🇺🇸 English':
     - '📚 Getting Started':
       - '🛠️ Installation': 'en/getting-started.md'
@@ -236,6 +265,7 @@ nav:
     - '🧪 Development':
       - '🧪 Testing': 'en/testing.md'
       - '🔌 Plugin Development': 'en/plugin-development.md'
+      - '🦥 Neovim Plugin': 'en/nvim-plugin.md'
       - '🤝 Contributing': 'en/contributing.md'
   - '🇧🇷 Português':
     - '📚 Primeiros Passos':
@@ -281,6 +311,7 @@ nav:
     - '🧪 Desenvolvimento':
       - '🧪 Testes': 'pt/testing.md'
       - '🔌 Desenvolvimento de Plugins': 'pt/plugin-development.md'
+      - '🦥 Plugin Neovim': 'pt/nvim-plugin.md'
       - '🤝 Contribuindo': 'pt/contributing.md'
   - '🇨🇳 中文':
     - '📚 入门指南':
@@ -326,6 +357,7 @@ nav:
     - '🧪 开发':
       - '🧪 测试': 'zh/testing.md'
       - '🔌 插件开发': 'zh/plugin-development.md'
+      - '🦥 Neovim 插件': 'zh/nvim-plugin.md'
       - '🤝 贡献': 'zh/contributing.md'
 
 # Docs directory

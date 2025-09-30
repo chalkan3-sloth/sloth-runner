@@ -2,6 +2,7 @@ package luainterface
 
 import (
 	"log/slog"
+	"os"
 	"sync"
 	"time"
 
@@ -27,6 +28,18 @@ validators  map[string]TaskValidator
 mu          sync.RWMutex
 }
 
+// WorkflowBuilder provides fluent API for workflow construction
+type WorkflowBuilder struct {
+	name        string
+	description string
+	version     string
+	tasks       []*TaskDefinition
+	config      map[string]interface{}
+	metadata    map[string]interface{}
+	onComplete  *lua.LFunction
+	onStart     *lua.LFunction
+}
+
 // TaskBuilder provides fluent API for task construction
 type TaskBuilder struct {
 definition *TaskDefinition
@@ -41,6 +54,7 @@ Description     string                 `json:"description"`
 Version         string                 `json:"version"`
 Tags            []string               `json:"tags"`
 Category        string                 `json:"category"`
+Workdir         string                 `json:"workdir"` // ✅ Added workdir field
 
 // Execution properties
 Command         interface{}            `json:"command"`
@@ -240,7 +254,16 @@ func (m *ModernDSL) taskBuilderIndex(L *lua.LState) int {
 	case "command":
 		L.Push(L.NewFunction(func(L *lua.LState) int {
 			cmd := L.CheckAny(2) // Argument position 2 (1 is self)
-			builder.definition.Command = cmd
+			
+			// ✅ Store the original function and builder reference
+			if cmdFunc, ok := cmd.(*lua.LFunction); ok {
+				// Store original function and task definition reference in builder
+				builder.definition.Command = cmdFunc
+				// We'll handle the 'this' injection during execution
+			} else {
+				builder.definition.Command = cmd
+			}
+			
 			L.Push(ud) // Return self for chaining
 			return 1
 		}))
@@ -253,6 +276,13 @@ func (m *ModernDSL) taskBuilderIndex(L *lua.LState) int {
 			L.Push(ud) // Return self for chaining
 			return 1
 		}))
+	case "workdir":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			workdirPath := L.CheckString(2) // Argument position 2 (1 is self)
+			builder.definition.Workdir = workdirPath
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
 	case "depends_on":
 		L.Push(L.NewFunction(func(L *lua.LState) int {
 			_ = L.CheckAny(2) // deps variable - simplified for now
@@ -262,13 +292,29 @@ func (m *ModernDSL) taskBuilderIndex(L *lua.LState) int {
 		}))
 	case "on_success":
 		L.Push(L.NewFunction(func(L *lua.LState) int {
-			_ = L.CheckAny(2) // hook function - simplified for now
+			hook := L.CheckFunction(2) // hook function
+			
+			// Store the success hook in the task definition
+			builder.definition.OnSuccess = append(builder.definition.OnSuccess, Hook{
+				Name:    "on_success",
+				Type:    HookLua,
+				Command: hook,
+			})
+			
 			L.Push(ud) // Return self for chaining
 			return 1
 		}))
-	case "on_failure":
+	case "on_failure", "on_fail":
 		L.Push(L.NewFunction(func(L *lua.LState) int {
-			_ = L.CheckAny(2) // hook function - simplified for now
+			hook := L.CheckFunction(2) // hook function
+			
+			// Store the failure hook in the task definition
+			builder.definition.OnFailure = append(builder.definition.OnFailure, Hook{
+				Name:    "on_failure",
+				Type:    HookLua,
+				Command: hook,
+			})
+			
 			L.Push(ud) // Return self for chaining
 			return 1
 		}))
@@ -337,17 +383,200 @@ func (m *ModernDSL) taskBuilderIndex(L *lua.LState) int {
 
 // workflowBuilderIndex handles method calls on WorkflowBuilder objects
 func (m *ModernDSL) workflowBuilderIndex(L *lua.LState) int {
-	// Simplified implementation
-	return 0
+	ud := L.CheckUserData(1)
+	key := L.CheckString(2)
+	
+	builder, ok := ud.Value.(*WorkflowBuilder)
+	if !ok {
+		L.ArgError(1, "WorkflowBuilder expected")
+		return 0
+	}
+	
+	switch key {
+	case "description":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			desc := L.CheckString(2) // Argument position 2 (1 is self)
+			builder.description = desc
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "version":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			version := L.CheckString(2) // Argument position 2 (1 is self)
+			builder.version = version
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "tasks":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			tasksArg := L.CheckTable(2) // Argument position 2 (1 is self)
+			
+			// Convert Lua table to task definitions
+			builder.tasks = []*TaskDefinition{}
+			tasksArg.ForEach(func(_, taskValue lua.LValue) {
+				if taskValue.Type() == lua.LTUserData {
+					taskUD := taskValue.(*lua.LUserData)
+					if taskDef, ok := taskUD.Value.(*TaskDefinition); ok {
+						builder.tasks = append(builder.tasks, taskDef)
+					}
+				}
+			})
+			
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "config":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			configArg := L.CheckTable(2) // Argument position 2 (1 is self)
+			
+			// Convert Lua table to config map
+			builder.config = make(map[string]interface{})
+			configArg.ForEach(func(key, value lua.LValue) {
+				if key.Type() == lua.LTString {
+					keyStr := key.String()
+					switch value.Type() {
+					case lua.LTString:
+						builder.config[keyStr] = value.String()
+					case lua.LTNumber:
+						builder.config[keyStr] = float64(value.(lua.LNumber))
+					case lua.LTBool:
+						builder.config[keyStr] = bool(value.(lua.LBool))
+					}
+				}
+			})
+			
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	case "on_complete":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			onCompleteFunc := L.CheckFunction(2) // Argument position 2 (1 is self)
+			builder.onComplete = onCompleteFunc
+			
+			// Build and register immediately when on_complete is called
+			// This supports the syntax with the trailing }))
+			m.buildAndRegisterWorkflow(L, builder)
+			
+			return 0 // Don't return anything to end the chain
+		}))
+	case "on_start":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			onStartFunc := L.CheckFunction(2) // Argument position 2 (1 is self)
+			builder.onStart = onStartFunc
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
+	default:
+		L.Push(lua.LNil)
+	}
+	return 1
 }
 
-// Core registration methods
+// buildAndRegisterWorkflow finalizes a workflow definition and registers it
+func (m *ModernDSL) buildAndRegisterWorkflow(L *lua.LState, builder *WorkflowBuilder) {
+	// Get existing TaskDefinitions table or create it
+	taskDefs := L.GetGlobal("TaskDefinitions")
+	if taskDefs.Type() != lua.LTTable {
+		taskDefs = L.NewTable()
+		L.SetGlobal("TaskDefinitions", taskDefs)
+	}
+	
+	// Create group structure compatible with legacy parser
+	groupTable := L.NewTable()
+	
+	// Set description
+	if builder.description != "" {
+		groupTable.RawSetString("description", lua.LString(builder.description))
+	}
+	
+	// Set version
+	if builder.version != "" {
+		groupTable.RawSetString("version", lua.LString(builder.version))
+	}
+	
+	// Convert Modern DSL tasks to legacy format
+	if len(builder.tasks) > 0 {
+		tasksTable := L.NewTable()
+		
+		for i, taskDef := range builder.tasks {
+			// Create legacy task structure
+			legacyTask := L.NewTable()
+			legacyTask.RawSetString("name", lua.LString(taskDef.Name))
+			legacyTask.RawSetString("description", lua.LString(taskDef.Description))
+			
+			// Set workdir if specified
+			if taskDef.Workdir != "" {
+				legacyTask.RawSetString("workdir", lua.LString(taskDef.Workdir))
+			}
+			
+			// Convert command
+			if taskDef.Command != nil {
+				if luaValue, ok := taskDef.Command.(lua.LValue); ok {
+					legacyTask.RawSetString("command", luaValue)
+				}
+			}
+			
+			// Convert timeout
+			if taskDef.Timeout > 0 {
+				legacyTask.RawSetString("timeout", lua.LString(taskDef.Timeout.String()))
+			}
+			
+			// Convert hooks
+			if len(taskDef.OnSuccess) > 0 {
+				if hook := taskDef.OnSuccess[0]; hook.Command != nil {
+					if luaValue, ok := hook.Command.(lua.LValue); ok {
+						legacyTask.RawSetString("on_success", luaValue)
+					}
+				}
+			}
+			
+			if len(taskDef.OnFailure) > 0 {
+				if hook := taskDef.OnFailure[0]; hook.Command != nil {
+					if luaValue, ok := hook.Command.(lua.LValue); ok {
+						legacyTask.RawSetString("on_failure", luaValue)
+					}
+				}
+			}
+			
+			tasksTable.RawSetInt(i+1, legacyTask)
+		}
+		
+		groupTable.RawSetString("tasks", tasksTable)
+	}
+	
+	// Set config
+	if len(builder.config) > 0 {
+		configTable := L.NewTable()
+		for key, value := range builder.config {
+			switch v := value.(type) {
+			case string:
+				configTable.RawSetString(key, lua.LString(v))
+			case float64:
+				configTable.RawSetString(key, lua.LNumber(v))
+			case bool:
+				configTable.RawSetString(key, lua.LBool(v))
+			}
+		}
+		groupTable.RawSetString("config", configTable)
+	}
+	
+	// Set on_complete handler
+	if builder.onComplete != nil {
+		groupTable.RawSetString("on_complete", builder.onComplete)
+	}
+	
+	// Set on_start handler
+	if builder.onStart != nil {
+		groupTable.RawSetString("on_start", builder.onStart)
+	}
+	
+	// Add to TaskDefinitions
+	taskDefs.(*lua.LTable).RawSetString(builder.name, groupTable)
+}
+
 func (m *ModernDSL) registerTaskDefinition(L *lua.LState) {
 	// task() - main task builder function
 	L.SetGlobal("task", L.NewFunction(m.taskBuilderFunc))
-	
-	// workflow() - workflow definition function
-	L.SetGlobal("workflow", L.NewFunction(m.workflowBuilderFunc))
 	
 	// chain() - sequential task chain
 	L.SetGlobal("chain", L.NewFunction(m.chainBuilderFunc))
@@ -397,6 +626,14 @@ func (m *ModernDSL) registerUtilities(L *lua.LState) {
 	L.SetField(utilsMt, "secret", L.NewFunction(m.utilsSecretFunc))
 	L.SetField(utilsMt, "env", L.NewFunction(m.utilsEnvFunc))
 	L.SetGlobal("utils", utilsMt)
+	
+	// workdir namespace for workdir management
+	workdirMt := L.NewTable()
+	L.SetField(workdirMt, "get", L.NewFunction(m.workdirGetFunc))
+	L.SetField(workdirMt, "cleanup", L.NewFunction(m.workdirCleanupFunc))
+	L.SetField(workdirMt, "exists", L.NewFunction(m.workdirExistsFunc))
+	L.SetField(workdirMt, "create", L.NewFunction(m.workdirCreateFunc))
+	L.SetGlobal("workdir", workdirMt)
 }
 
 func (m *ModernDSL) registerValidators(L *lua.LState) {
@@ -477,8 +714,10 @@ func (m *ModernDSL) taskBuilderFunc(L *lua.LState) int {
 }
 
 func (m *ModernDSL) workflowBuilderFunc(L *lua.LState) int {
-	// Implement workflow builder
-	return 0
+	// This function should not be called directly anymore since we register workflow as a table
+	// in registerWorkflowDefinition. Return nil to indicate error.
+	L.Push(lua.LNil)
+	return 1
 }
 
 func (m *ModernDSL) chainBuilderFunc(L *lua.LState) int {
@@ -582,57 +821,76 @@ func NewTaskRegistry() *TaskRegistry {
 // Placeholder implementations for DSL functions
 func (m *ModernDSL) workflowDefineFunc(L *lua.LState) int {
 	workflowName := L.CheckString(1)
-	workflowConfig := L.CheckTable(2)
 	
-	// Get existing TaskDefinitions table or create it
-	taskDefs := L.GetGlobal("TaskDefinitions")
-	if taskDefs.Type() != lua.LTTable {
-		taskDefs = L.NewTable()
-		L.SetGlobal("TaskDefinitions", taskDefs)
-	}
-	
-	// Create group structure compatible with legacy parser
-	groupTable := L.NewTable()
-	
-	// Set description
-	if desc := workflowConfig.RawGetString("description"); desc != lua.LNil {
-		groupTable.RawSetString("description", desc)
-	}
-	
-	// Convert Modern DSL tasks to legacy format
-	if tasksValue := workflowConfig.RawGetString("tasks"); tasksValue.Type() == lua.LTTable {
-		tasksTable := L.NewTable()
-		taskIndex := 1
+	// Check if second argument is a table (legacy syntax) or if it's missing (fluent syntax)
+	if L.GetTop() >= 2 && L.Get(2).Type() == lua.LTTable {
+		// Legacy table-based syntax
+		workflowConfig := L.CheckTable(2)
 		
-		tasksValue.(*lua.LTable).ForEach(func(_, taskValue lua.LValue) {
-			if taskValue.Type() == lua.LTUserData {
-				taskUD := taskValue.(*lua.LUserData)
-				if taskDef, ok := taskUD.Value.(*TaskDefinition); ok {
-					// Create legacy task structure
-					legacyTask := L.NewTable()
-					legacyTask.RawSetString("name", lua.LString(taskDef.Name))
-					legacyTask.RawSetString("description", lua.LString(taskDef.Description))
-					
-					// Convert command
-					if taskDef.Command != nil {
-						if luaValue, ok := taskDef.Command.(lua.LValue); ok {
-							legacyTask.RawSetString("command", luaValue)
+		// Get existing TaskDefinitions table or create it
+		taskDefs := L.GetGlobal("TaskDefinitions")
+		if taskDefs.Type() != lua.LTTable {
+			taskDefs = L.NewTable()
+			L.SetGlobal("TaskDefinitions", taskDefs)
+		}
+		
+		// Create group structure compatible with legacy parser
+		groupTable := L.NewTable()
+		
+		// Set description
+		if desc := workflowConfig.RawGetString("description"); desc != lua.LNil {
+			groupTable.RawSetString("description", desc)
+		}
+		
+		// Convert Modern DSL tasks to legacy format
+		if tasksValue := workflowConfig.RawGetString("tasks"); tasksValue.Type() == lua.LTTable {
+			tasksTable := L.NewTable()
+			taskIndex := 1
+			
+			tasksValue.(*lua.LTable).ForEach(func(_, taskValue lua.LValue) {
+				if taskValue.Type() == lua.LTUserData {
+					taskUD := taskValue.(*lua.LUserData)
+					if taskDef, ok := taskUD.Value.(*TaskDefinition); ok {
+						// Create legacy task structure
+						legacyTask := L.NewTable()
+						legacyTask.RawSetString("name", lua.LString(taskDef.Name))
+						legacyTask.RawSetString("description", lua.LString(taskDef.Description))
+						
+						// Convert command
+						if taskDef.Command != nil {
+							if luaValue, ok := taskDef.Command.(lua.LValue); ok {
+								legacyTask.RawSetString("command", luaValue)
+							}
 						}
+						
+						tasksTable.RawSetInt(taskIndex, legacyTask)
+						taskIndex++
 					}
-					
-					tasksTable.RawSetInt(taskIndex, legacyTask)
-					taskIndex++
 				}
-			}
-		})
+			})
+			
+			groupTable.RawSetString("tasks", tasksTable)
+		}
 		
-		groupTable.RawSetString("tasks", tasksTable)
+		// Add group to TaskDefinitions
+		taskDefs.(*lua.LTable).RawSetString(workflowName, groupTable)
+		
+		return 0
+	} else {
+		// New fluent syntax - return WorkflowBuilder
+		builder := &WorkflowBuilder{
+			name:     workflowName,
+			config:   make(map[string]interface{}),
+			metadata: make(map[string]interface{}),
+		}
+		
+		// Return workflow builder userdata
+		ud := L.NewUserData()
+		ud.Value = builder
+		L.SetMetatable(ud, L.GetTypeMetatable("WorkflowBuilder"))
+		L.Push(ud)
+		return 1
 	}
-	
-	// Add group to TaskDefinitions
-	taskDefs.(*lua.LTable).RawSetString(workflowName, groupTable)
-	
-	return 0
 }
 func (m *ModernDSL) workflowParallelFunc(L *lua.LState) int    { return 0 }
 func (m *ModernDSL) workflowSequenceFunc(L *lua.LState) int    { return 0 }
@@ -662,6 +920,351 @@ func (m *ModernDSL) resourceReleaseFunc(L *lua.LState) int     { return 0 }
 func (m *ModernDSL) resourceUsageFunc(L *lua.LState) int       { return 0 }
 func (m *ModernDSL) securitySandboxFunc(L *lua.LState) int     { return 0 }
 func (m *ModernDSL) securityPolicyFunc(L *lua.LState) int      { return 0 }
+
+// ✅ createTaskThisObject creates the 'this' object for task functions
+func (m *ModernDSL) createTaskThisObject(L *lua.LState, taskDef *TaskDefinition) *lua.LUserData {
+	// Create 'this' userdata
+	thisUD := L.NewUserData()
+	thisUD.Value = taskDef
+	
+	// Create metatable for 'this' object
+	thisMt := L.NewTypeMetatable("TaskThis")
+	L.SetField(thisMt, "__index", L.NewFunction(func(L *lua.LState) int {
+		ud := L.CheckUserData(1)
+		key := L.CheckString(2)
+		
+		taskDef, ok := ud.Value.(*TaskDefinition)
+		if !ok {
+			L.ArgError(1, "TaskThis expected")
+			return 0
+		}
+		
+		switch key {
+		case "name":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				L.Push(lua.LString(taskDef.Name))
+				return 1
+			}))
+		case "workdir":
+			// Return workdir object with methods - usando dois pontos
+			workdirObj := m.createWorkdirObjectWithColons(L, taskDef)
+			L.Push(workdirObj)
+		default:
+			L.Push(lua.LNil)
+		}
+		return 1
+	}))
+	
+	L.SetMetatable(thisUD, thisMt)
+	return thisUD
+}
+
+// ✅ createWorkdirObjectWithColons creates the workdir object with colon methods (this:workdir:method)
+func (m *ModernDSL) createWorkdirObjectWithColons(L *lua.LState, taskDef *TaskDefinition) *lua.LUserData {
+	workdirUD := L.NewUserData()
+	workdirUD.Value = taskDef
+	
+	// Create metatable for workdir object with colon syntax support
+	workdirMt := L.NewTypeMetatable("TaskWorkdirColons")
+	L.SetField(workdirMt, "__index", L.NewFunction(func(L *lua.LState) int {
+		ud := L.CheckUserData(1)
+		key := L.CheckString(2)
+		
+		taskDef, ok := ud.Value.(*TaskDefinition)
+		if !ok {
+			L.ArgError(1, "TaskWorkdirColons expected")
+			return 0
+		}
+		
+		switch key {
+		case "get":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				if taskDef.Workdir != "" {
+					L.Push(lua.LString(taskDef.Workdir))
+				} else {
+					if cwd, err := os.Getwd(); err == nil {
+						L.Push(lua.LString(cwd))
+					} else {
+						L.Push(lua.LString("/tmp"))
+					}
+				}
+				return 1
+			}))
+		case "ensure":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				workdirPath := taskDef.Workdir
+				if workdirPath == "" {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				// Remove existing directory
+				os.RemoveAll(workdirPath)
+				
+				// Create new directory
+				if err := os.MkdirAll(workdirPath, 0755); err != nil {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				L.Push(lua.LBool(true))
+				return 1
+			}))
+		case "exists":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				workdirPath := taskDef.Workdir
+				if workdirPath == "" {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				if _, err := os.Stat(workdirPath); err == nil {
+					L.Push(lua.LBool(true))
+				} else {
+					L.Push(lua.LBool(false))
+				}
+				return 1
+			}))
+		case "cleanup":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				workdirPath := taskDef.Workdir
+				if workdirPath == "" {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				if err := os.RemoveAll(workdirPath); err != nil {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				L.Push(lua.LBool(true))
+				return 1
+			}))
+		case "recreate":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				workdirPath := taskDef.Workdir
+				if workdirPath == "" {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				// Remove and recreate
+				os.RemoveAll(workdirPath)
+				if err := os.MkdirAll(workdirPath, 0755); err != nil {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				L.Push(lua.LBool(true))
+				return 1
+			}))
+		default:
+			L.Push(lua.LNil)
+		}
+		return 1
+	}))
+	
+	L.SetMetatable(workdirUD, workdirMt)
+	return workdirUD
+}
+
+// ✅ createWorkdirObject creates the workdir object with methods
+func (m *ModernDSL) createWorkdirObject(L *lua.LState, taskDef *TaskDefinition) *lua.LUserData {
+	workdirUD := L.NewUserData()
+	workdirUD.Value = taskDef
+	
+	// Create metatable for workdir object
+	workdirMt := L.NewTypeMetatable("TaskWorkdir")
+	L.SetField(workdirMt, "__index", L.NewFunction(func(L *lua.LState) int {
+		ud := L.CheckUserData(1)
+		key := L.CheckString(2)
+		
+		taskDef, ok := ud.Value.(*TaskDefinition)
+		if !ok {
+			L.ArgError(1, "TaskWorkdir expected")
+			return 0
+		}
+		
+		switch key {
+		case "get":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				if taskDef.Workdir != "" {
+					L.Push(lua.LString(taskDef.Workdir))
+				} else {
+					if cwd, err := os.Getwd(); err == nil {
+						L.Push(lua.LString(cwd))
+					} else {
+						L.Push(lua.LString("/tmp"))
+					}
+				}
+				return 1
+			}))
+		case "exists":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				workdirPath := taskDef.Workdir
+				if workdirPath == "" {
+					L.Push(lua.LBool(false))
+					return 1
+				}
+				
+				if _, err := os.Stat(workdirPath); err == nil {
+					L.Push(lua.LBool(true))
+				} else {
+					L.Push(lua.LBool(false))
+				}
+				return 1
+			}))
+		case "cleanup":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				workdirPath := taskDef.Workdir
+				if workdirPath == "" {
+					L.Push(lua.LBool(false))
+					L.Push(lua.LString("no workdir specified"))
+					return 2
+				}
+				
+				if err := os.RemoveAll(workdirPath); err != nil {
+					L.Push(lua.LBool(false))
+					L.Push(lua.LString(err.Error()))
+					return 2
+				}
+				
+				L.Push(lua.LBool(true))
+				L.Push(lua.LString("workdir cleaned up successfully"))
+				return 2
+			}))
+		case "recreate":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				workdirPath := taskDef.Workdir
+				if workdirPath == "" {
+					L.Push(lua.LBool(false))
+					L.Push(lua.LString("no workdir specified"))
+					return 2
+				}
+				
+				// Remove and recreate
+				os.RemoveAll(workdirPath)
+				if err := os.MkdirAll(workdirPath, 0755); err != nil {
+					L.Push(lua.LBool(false))
+					L.Push(lua.LString(err.Error()))
+					return 2
+				}
+				
+				L.Push(lua.LBool(true))
+				L.Push(lua.LString("workdir recreated successfully"))
+				return 2
+			}))
+		default:
+			L.Push(lua.LNil)
+		}
+		return 1
+	}))
+	
+	L.SetMetatable(workdirUD, workdirMt)
+	return workdirUD
+}
+
+// Workdir management functions
+func (m *ModernDSL) workdirGetFunc(L *lua.LState) int {
+	// Get current workdir from environment or context
+	taskContext := L.GetGlobal("__task_context")
+	if taskContext.Type() == lua.LTTable {
+		workdir := taskContext.(*lua.LTable).RawGetString("workdir")
+		if workdir.Type() == lua.LTString {
+			L.Push(workdir)
+			return 1
+		}
+	}
+	
+	// Fallback to current working directory
+	if cwd, err := os.Getwd(); err == nil {
+		L.Push(lua.LString(cwd))
+	} else {
+		L.Push(lua.LString("/tmp"))
+	}
+	return 1
+}
+
+func (m *ModernDSL) workdirCleanupFunc(L *lua.LState) int {
+	// Get workdir path (optional argument)
+	var workdirPath string
+	if L.GetTop() >= 1 {
+		workdirPath = L.CheckString(1)
+	} else {
+		// Get from context
+		taskContext := L.GetGlobal("__task_context")
+		if taskContext.Type() == lua.LTTable {
+			workdir := taskContext.(*lua.LTable).RawGetString("workdir")
+			if workdir.Type() == lua.LTString {
+				workdirPath = workdir.String()
+			}
+		}
+	}
+	
+	if workdirPath == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("no workdir specified"))
+		return 2
+	}
+	
+	// Remove the directory
+	if err := os.RemoveAll(workdirPath); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(err.Error()))
+		return 2
+	}
+	
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("workdir cleaned up successfully"))
+	return 2
+}
+
+func (m *ModernDSL) workdirExistsFunc(L *lua.LState) int {
+	// Get workdir path (optional argument)
+	var workdirPath string
+	if L.GetTop() >= 1 {
+		workdirPath = L.CheckString(1)
+	} else {
+		// Get from context
+		taskContext := L.GetGlobal("__task_context")
+		if taskContext.Type() == lua.LTTable {
+			workdir := taskContext.(*lua.LTable).RawGetString("workdir")
+			if workdir.Type() == lua.LTString {
+				workdirPath = workdir.String()
+			}
+		}
+	}
+	
+	if workdirPath == "" {
+		L.Push(lua.LBool(false))
+		return 1
+	}
+	
+	// Check if directory exists
+	if _, err := os.Stat(workdirPath); err == nil {
+		L.Push(lua.LBool(true))
+	} else {
+		L.Push(lua.LBool(false))
+	}
+	return 1
+}
+
+func (m *ModernDSL) workdirCreateFunc(L *lua.LState) int {
+	// Get workdir path (required argument)
+	workdirPath := L.CheckString(1)
+	
+	// Create directory with all parent directories
+	if err := os.MkdirAll(workdirPath, 0755); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(err.Error()))
+		return 2
+	}
+	
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("workdir created successfully"))
+	return 2
+}
 
 // Global Modern DSL instance
 var globalModernDSL *ModernDSL

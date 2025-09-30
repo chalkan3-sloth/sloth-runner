@@ -3,20 +3,12 @@
 
 " Detect .sloth files as sloth filetype
 autocmd BufRead,BufNewFile *.sloth setfiletype sloth
-autocmd BufRead,BufNewFile *.sloth.sloth setfiletype sloth
-autocmd BufRead,BufNewFile */sloth-runner/*.sloth setfiletype sloth
-autocmd BufRead,BufNewFile */workflows/*.sloth setfiletype sloth
-autocmd BufRead,BufNewFile */tasks/*.sloth setfiletype sloth
 
 " Detect common sloth file patterns
 autocmd BufRead,BufNewFile *task*.sloth setfiletype sloth
 autocmd BufRead,BufNewFile *workflow*.sloth setfiletype sloth
 
-" Legacy .lua files with sloth content (for backward compatibility)
-autocmd BufRead,BufNewFile *.lua 
-    \ if search('task\s*([^)]*)', 'nw') || 
-    \    search('workflow\.define\s*([^)]*)', 'nw') || 
-    \    search(':command\s*([^)]*)', 'nw') || 
-    \    search(':description\s*([^)]*)', 'nw') |
-    \   setfiletype sloth |
-    \ endif
+" Detect files in sloth-runner directory structure
+autocmd BufRead,BufNewFile */sloth-runner/*.sloth setfiletype sloth
+autocmd BufRead,BufNewFile */workflows/*.sloth setfiletype sloth
+autocmd BufRead,BufNewFile */tasks/*.sloth setfiletype sloth

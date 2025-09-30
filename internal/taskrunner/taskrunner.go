@@ -357,7 +357,13 @@ t.Output = L.NewTable()
 		}
 		t.Params["task_name"] = t.Name
 		t.Params["group_name"] = groupName
-		t.Params["workdir"] = session.Workdir
+		
+		// ✅ Use task workdir if defined, otherwise use session workdir
+		taskWorkdir := session.Workdir
+		if t.Workdir != "" {
+			taskWorkdir = t.Workdir
+		}
+		t.Params["workdir"] = taskWorkdir
 
 		var sessionUD *lua.LUserData
 		if session != nil {
@@ -368,11 +374,28 @@ t.Output = L.NewTable()
 
 		success, msg, outputTable, err := luainterface.ExecuteLuaFunction(L, t.CommandFunc, t.Params, localInputFromDependencies, 3, ctx, sessionUD)
 		if err != nil {
+			// ✅ Execute OnFailure handler if command function has error
+			if t.OnFailure != nil {
+				tr.executeFailureHandler(L, t, ctx, fmt.Sprintf("error executing command function: %v", err))
+			}
 			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("error executing command function: %w", err)}
 		} else if !success {
+			// ✅ Execute OnFailure handler if command function returns false
+			if t.OnFailure != nil {
+				tr.executeFailureHandler(L, t, ctx, msg)
+			}
 			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("command function returned failure: %s", msg)}
 		} else if outputTable != nil {
 			t.Output = outputTable
+			// ✅ Execute OnSuccess handler if command was successful
+			if t.OnSuccess != nil {
+				tr.executeSuccessHandler(L, t, ctx, outputTable)
+			}
+		} else {
+			// ✅ Execute OnSuccess handler even if no output table
+			if t.OnSuccess != nil {
+				tr.executeSuccessHandler(L, t, ctx, L.NewTable())
+			}
 		}
 	}
 
@@ -896,4 +919,120 @@ func extractTar(reader io.Reader, dest string) error {
 			}
 		}
 	}
+}
+
+// ✅ executeSuccessHandler executes the OnSuccess handler
+func (tr *TaskRunner) executeSuccessHandler(L *lua.LState, t *types.Task, ctx context.Context, output *lua.LTable) {
+	if t.OnSuccess == nil {
+		return
+	}
+	
+	// Create 'this' object for the handler
+	thisObj := tr.createThisObjectForHandler(L, t)
+	
+	// Create params table
+	paramsTable := L.NewTable()
+	if t.Params != nil {
+		for k, v := range t.Params {
+			paramsTable.RawSetString(k, lua.LString(v))
+		}
+	}
+	
+	// Execute the success handler with this, params, output
+	L.Push(t.OnSuccess)
+	L.Push(thisObj)
+	L.Push(paramsTable)
+	L.Push(output)
+	
+	if err := L.PCall(3, 0, nil); err != nil {
+		slog.Error("Failed to execute success handler", "task", t.Name, "error", err)
+	}
+}
+
+// ✅ executeFailureHandler executes the OnFailure handler
+func (tr *TaskRunner) executeFailureHandler(L *lua.LState, t *types.Task, ctx context.Context, errorMsg string) {
+	if t.OnFailure == nil {
+		return
+	}
+	
+	// Create 'this' object for the handler
+	thisObj := tr.createThisObjectForHandler(L, t)
+	
+	// Create params table
+	paramsTable := L.NewTable()
+	if t.Params != nil {
+		for k, v := range t.Params {
+			paramsTable.RawSetString(k, lua.LString(v))
+		}
+	}
+	
+	// Create error output table
+	errorOutput := L.NewTable()
+	errorOutput.RawSetString("error", lua.LString(errorMsg))
+	errorOutput.RawSetString("task_name", lua.LString(t.Name))
+	
+	// Execute the failure handler with this, params, error_output
+	L.Push(t.OnFailure)
+	L.Push(thisObj)
+	L.Push(paramsTable)
+	L.Push(errorOutput)
+	
+	if err := L.PCall(3, 0, nil); err != nil {
+		slog.Error("Failed to execute failure handler", "task", t.Name, "error", err)
+	}
+}
+
+// ✅ createThisObjectForHandler creates the 'this' object for handlers
+func (tr *TaskRunner) createThisObjectForHandler(L *lua.LState, t *types.Task) *lua.LUserData {
+	// Create 'this' userdata
+	thisUD := L.NewUserData()
+	thisData := map[string]interface{}{
+		"name": t.Name,
+		"workdir_path": t.Workdir,
+	}
+	if t.Workdir == "" && t.Params != nil {
+		if workdir, exists := t.Params["workdir"]; exists {
+			thisData["workdir_path"] = workdir
+		}
+	}
+	thisUD.Value = thisData
+	
+	// Create metatable for 'this' object
+	thisMt := L.NewTypeMetatable("TaskThisHandler")
+	L.SetField(thisMt, "__index", L.NewFunction(func(L *lua.LState) int {
+		ud := L.CheckUserData(1)
+		key := L.CheckString(2)
+		
+		data, ok := ud.Value.(map[string]interface{})
+		if !ok {
+			L.ArgError(1, "TaskThisHandler expected")
+			return 0
+		}
+		
+		switch key {
+		case "name":
+			L.Push(L.NewFunction(func(L *lua.LState) int {
+				if name, exists := data["name"]; exists {
+					L.Push(lua.LString(name.(string)))
+				} else {
+					L.Push(lua.LString("unknown"))
+				}
+				return 1
+			}))
+		case "workdir":
+			// Return workdir object with methods
+			workdirPath := ""
+			if wd, exists := data["workdir_path"]; exists && wd != nil {
+				workdirPath = wd.(string)
+			}
+			workdirObj := luainterface.CreateRuntimeWorkdirObjectWithColonSupport(L, workdirPath)
+			L.Push(workdirObj)
+		default:
+			L.Push(lua.LNil)
+		}
+		return 1
+	}))
+	
+	L.SetMetatable(thisUD, thisMt)
+	return thisUD
 }

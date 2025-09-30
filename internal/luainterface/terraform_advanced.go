@@ -21,46 +21,385 @@ func NewTerraformModule() *TerraformModule {
 
 // Loader returns the Lua loader for the terraform module
 func (mod *TerraformModule) Loader(L *lua.LState) int {
+	// ✅ Create terraform module table with factory methods
 	terraformTable := L.NewTable()
-	L.SetFuncs(terraformTable, map[string]lua.LGFunction{
-		"init":                mod.terraformInit,
-		"plan":                mod.terraformPlan,
-		"apply":               mod.terraformApply,
-		"destroy":             mod.terraformDestroy,
-		"validate":            mod.terraformValidate,
-		"fmt":                 mod.terraformFmt,
-		"output":              mod.terraformOutput,
-		"show":                mod.terraformShow,
-		"state_list":          mod.terraformStateList,
-		"state_show":          mod.terraformStateShow,
-		"state_mv":            mod.terraformStateMove,
-		"state_rm":            mod.terraformStateRemove,
-		"state_pull":          mod.terraformStatePull,
-		"state_push":          mod.terraformStatePush,
-		"import":              mod.terraformImport,
-		"taint":               mod.terraformTaint,
-		"untaint":             mod.terraformUntaint,
-		"workspace_list":      mod.terraformWorkspaceList,
-		"workspace_new":       mod.terraformWorkspaceNew,
-		"workspace_select":    mod.terraformWorkspaceSelect,
-		"workspace_delete":    mod.terraformWorkspaceDelete,
-		"providers":           mod.terraformProviders,
-		"providers_lock":      mod.terraformProvidersLock,
-		"providers_mirror":    mod.terraformProvidersMirror,
-		"refresh":             mod.terraformRefresh,
-		"graph":               mod.terraformGraph,
-		"version":             mod.terraformVersion,
-		"force_unlock":        mod.terraformForceUnlock,
-		"get":                 mod.terraformGet,
-		"console":             mod.terraformConsole,
-	})
+	
+	// ✅ Factory method: terraform.init(workdir) executes init and returns client  
+	L.SetField(terraformTable, "init", L.NewFunction(func(L *lua.LState) int {
+		workdir := L.CheckString(1)
+		
+		// ✅ Execute terraform init automatically
+		_, err := mod.executeTerraformCommand(workdir, nil, "init")
+		if err != nil {
+			// Return error result
+			resultTable := L.NewTable()
+			resultTable.RawSetString("success", lua.LBool(false))
+			resultTable.RawSetString("error", lua.LString(err.Error()))
+			L.Push(resultTable)
+			return 1
+		}
+		
+		// Create terraform client object after successful init
+		terraformClient := L.NewUserData()
+		terraformClient.Value = &TerraformClient{
+			module:  mod,
+			workdir: workdir,
+		}
+		
+		// Create metatable for terraform client with fluent methods
+		terraformMt := L.NewTypeMetatable("TerraformClient")
+		L.SetField(terraformMt, "__index", L.NewFunction(func(L *lua.LState) int {
+			ud := L.CheckUserData(1)
+			method := L.CheckString(2)
+			
+			client, ok := ud.Value.(*TerraformClient)
+			if !ok {
+				L.ArgError(1, "TerraformClient expected")
+				return 0
+			}
+			
+			switch method {
+			case "plan":
+				L.Push(L.NewFunction(client.plan))
+			case "apply":
+				L.Push(L.NewFunction(client.apply))
+			case "destroy":
+				L.Push(L.NewFunction(client.destroy))
+			case "validate":
+				L.Push(L.NewFunction(client.validate))
+			case "fmt":
+				L.Push(L.NewFunction(client.fmt))
+			case "output":
+				L.Push(L.NewFunction(client.output))
+			case "create_tfvars":
+				L.Push(L.NewFunction(client.createTfvars))
+			default:
+				L.Push(lua.LNil)
+			}
+			return 1
+		}))
+		
+		L.SetMetatable(terraformClient, terraformMt)
+		L.Push(terraformClient)
+		return 1
+	}))
+	
 	L.Push(terraformTable)
+	return 1
+}
+
+// ✅ TerraformClient represents a terraform client with workdir context
+type TerraformClient struct {
+	module  *TerraformModule
+	workdir string
+}
+
+// ✅ plan executes terraform plan with client context
+func (client *TerraformClient) plan(L *lua.LState) int {
+	// Skip userdata (self) at position 1, get options at position 2
+	opts := L.OptTable(2, L.NewTable())
+	
+	// Use client's workdir as default
+	workdir := client.workdir
+	if customWorkdir := opts.RawGetString("workdir"); customWorkdir != lua.LNil {
+		workdir = customWorkdir.String()
+	}
+	
+	args := []string{"plan"}
+	
+	// Add options
+	if out := opts.RawGetString("out"); out != lua.LNil {
+		args = append(args, "-out="+out.String())
+	}
+	
+	if destroy := opts.RawGetString("destroy"); lua.LVAsBool(destroy) {
+		args = append(args, "-destroy")
+	}
+	
+	if refresh := opts.RawGetString("refresh"); !lua.LVAsBool(refresh) {
+		args = append(args, "-refresh=false")
+	}
+	
+	if varFile := opts.RawGetString("var_file"); varFile != lua.LNil {
+		args = append(args, "-var-file="+varFile.String())
+	}
+	
+	if vars := opts.RawGetString("vars"); vars != lua.LNil {
+		if varsTable, ok := vars.(*lua.LTable); ok {
+			varsTable.ForEach(func(key, value lua.LValue) {
+				args = append(args, fmt.Sprintf("-var=%s=%s", key.String(), value.String()))
+			})
+		}
+	}
+	
+	// Execute terraform plan
+	result, err := client.module.executeTerraformCommand(workdir, nil, args...)
+	if err != nil {
+		resultTable := L.NewTable()
+		resultTable.RawSetString("success", lua.LBool(false))
+		resultTable.RawSetString("error", lua.LString(err.Error()))
+		L.Push(resultTable)
+		return 1
+	}
+	
+	resultTable := L.NewTable()
+	resultTable.RawSetString("success", lua.LBool(true))
+	resultTable.RawSetString("output", lua.LString(result))
+	L.Push(resultTable)
+	return 1
+}
+
+// ✅ apply executes terraform apply with client context
+func (client *TerraformClient) apply(L *lua.LState) int {
+	// Skip userdata (self) at position 1, get options at position 2
+	opts := L.OptTable(2, L.NewTable())
+	
+	// Use client's workdir as default
+	workdir := client.workdir
+	if customWorkdir := opts.RawGetString("workdir"); customWorkdir != lua.LNil {
+		workdir = customWorkdir.String()
+	}
+	
+	args := []string{"apply"}
+	
+	// Add options
+	if planFile := opts.RawGetString("plan"); planFile != lua.LNil {
+		args = append(args, planFile.String())
+	} else {
+		if autoApprove := opts.RawGetString("auto_approve"); lua.LVAsBool(autoApprove) {
+			args = append(args, "-auto-approve")
+		}
+	}
+	
+	if varFile := opts.RawGetString("var_file"); varFile != lua.LNil {
+		args = append(args, "-var-file="+varFile.String())
+	}
+	
+	if vars := opts.RawGetString("vars"); vars != lua.LNil {
+		if varsTable, ok := vars.(*lua.LTable); ok {
+			varsTable.ForEach(func(key, value lua.LValue) {
+				args = append(args, fmt.Sprintf("-var=%s=%s", key.String(), value.String()))
+			})
+		}
+	}
+	
+	// Execute terraform apply
+	result, err := client.module.executeTerraformCommand(workdir, nil, args...)
+	if err != nil {
+		resultTable := L.NewTable()
+		resultTable.RawSetString("success", lua.LBool(false))
+		resultTable.RawSetString("error", lua.LString(err.Error()))
+		L.Push(resultTable)
+		return 1
+	}
+	
+	resultTable := L.NewTable()
+	resultTable.RawSetString("success", lua.LBool(true))
+	resultTable.RawSetString("output", lua.LString(result))
+	L.Push(resultTable)
+	return 1
+}
+
+// ✅ destroy executes terraform destroy with client context
+func (client *TerraformClient) destroy(L *lua.LState) int {
+	// Skip userdata (self) at position 1, get options at position 2
+	opts := L.OptTable(2, L.NewTable())
+	
+	// Use client's workdir as default
+	workdir := client.workdir
+	if customWorkdir := opts.RawGetString("workdir"); customWorkdir != lua.LNil {
+		workdir = customWorkdir.String()
+	}
+	
+	args := []string{"destroy"}
+	
+	if autoApprove := opts.RawGetString("auto_approve"); lua.LVAsBool(autoApprove) {
+		args = append(args, "-auto-approve")
+	}
+	
+	if varFile := opts.RawGetString("var_file"); varFile != lua.LNil {
+		args = append(args, "-var-file="+varFile.String())
+	}
+	
+	if vars := opts.RawGetString("vars"); vars != lua.LNil {
+		if varsTable, ok := vars.(*lua.LTable); ok {
+			varsTable.ForEach(func(key, value lua.LValue) {
+				args = append(args, fmt.Sprintf("-var=%s=%s", key.String(), value.String()))
+			})
+		}
+	}
+	
+	// Execute terraform destroy
+	result, err := client.module.executeTerraformCommand(workdir, nil, args...)
+	if err != nil {
+		resultTable := L.NewTable()
+		resultTable.RawSetString("success", lua.LBool(false))
+		resultTable.RawSetString("error", lua.LString(err.Error()))
+		L.Push(resultTable)
+		return 1
+	}
+	
+	resultTable := L.NewTable()
+	resultTable.RawSetString("success", lua.LBool(true))
+	resultTable.RawSetString("output", lua.LString(result))
+	L.Push(resultTable)
+	return 1
+}
+
+// ✅ validate executes terraform validate with client context
+func (client *TerraformClient) validate(L *lua.LState) int {
+	// Skip userdata (self) at position 1, get options at position 2
+	opts := L.OptTable(2, L.NewTable())
+	
+	workdir := client.workdir
+	if customWorkdir := opts.RawGetString("workdir"); customWorkdir != lua.LNil {
+		workdir = customWorkdir.String()
+	}
+	
+	args := []string{"validate"}
+	
+	result, err := client.module.executeTerraformCommand(workdir, nil, args...)
+	if err != nil {
+		resultTable := L.NewTable()
+		resultTable.RawSetString("success", lua.LBool(false))
+		resultTable.RawSetString("error", lua.LString(err.Error()))
+		L.Push(resultTable)
+		return 1
+	}
+	
+	resultTable := L.NewTable()
+	resultTable.RawSetString("success", lua.LBool(true))
+	resultTable.RawSetString("output", lua.LString(result))
+	L.Push(resultTable)
+	return 1
+}
+
+// ✅ fmt executes terraform fmt with client context
+func (client *TerraformClient) fmt(L *lua.LState) int {
+	// Skip userdata (self) at position 1, get options at position 2
+	opts := L.OptTable(2, L.NewTable())
+	
+	workdir := client.workdir
+	if customWorkdir := opts.RawGetString("workdir"); customWorkdir != lua.LNil {
+		workdir = customWorkdir.String()
+	}
+	
+	args := []string{"fmt"}
+	
+	if check := opts.RawGetString("check"); lua.LVAsBool(check) {
+		args = append(args, "-check")
+	}
+	
+	if diff := opts.RawGetString("diff"); lua.LVAsBool(diff) {
+		args = append(args, "-diff")
+	}
+	
+	result, err := client.module.executeTerraformCommand(workdir, nil, args...)
+	if err != nil {
+		resultTable := L.NewTable()
+		resultTable.RawSetString("success", lua.LBool(false))
+		resultTable.RawSetString("error", lua.LString(err.Error()))
+		L.Push(resultTable)
+		return 1
+	}
+	
+	resultTable := L.NewTable()
+	resultTable.RawSetString("success", lua.LBool(true))
+	resultTable.RawSetString("output", lua.LString(result))
+	L.Push(resultTable)
+	return 1
+}
+
+// ✅ output executes terraform output with client context
+func (client *TerraformClient) output(L *lua.LState) int {
+	// Skip userdata (self) at position 1, get options at position 2
+	opts := L.OptTable(2, L.NewTable())
+	
+	workdir := client.workdir
+	if customWorkdir := opts.RawGetString("workdir"); customWorkdir != lua.LNil {
+		workdir = customWorkdir.String()
+	}
+	
+	args := []string{"output"}
+	
+	if json := opts.RawGetString("json"); lua.LVAsBool(json) {
+		args = append(args, "-json")
+	}
+	
+	if name := opts.RawGetString("name"); name != lua.LNil {
+		args = append(args, name.String())
+	}
+	
+	result, err := client.module.executeTerraformCommand(workdir, nil, args...)
+	if err != nil {
+		resultTable := L.NewTable()
+		resultTable.RawSetString("success", lua.LBool(false))
+		resultTable.RawSetString("error", lua.LString(err.Error()))
+		L.Push(resultTable)
+		return 1
+	}
+	
+	resultTable := L.NewTable()
+	resultTable.RawSetString("success", lua.LBool(true))
+	resultTable.RawSetString("output", lua.LString(result))
+	L.Push(resultTable)
+	return 1
+}
+
+// ✅ createTfvars creates terraform.tfvars with client context
+func (client *TerraformClient) createTfvars(L *lua.LState) int {
+	// Skip userdata (self), get filename and varsTable
+	filename := L.CheckString(2)    // Skip userdata at position 1
+	varsTable := L.CheckTable(3)    // Table at position 3
+	
+	// Use client's workdir
+	fullPath := fmt.Sprintf("%s/%s", client.workdir, filename)
+	
+	// Convert table to tfvars content
+	var tfvarsContent strings.Builder
+	tfvarsContent.WriteString("# Generated by sloth-runner\n")
+	tfvarsContent.WriteString(fmt.Sprintf("# Created at: %s\n\n", time.Now().Format("2006-01-02 15:04:05")))
+	
+	varsTable.ForEach(func(key, value lua.LValue) {
+		keyStr := key.String()
+		valueStr := client.module.convertLuaValueToTerraform(value)
+		tfvarsContent.WriteString(fmt.Sprintf("%s = %s\n", keyStr, valueStr))
+	})
+	
+	// Write file
+	err := os.WriteFile(fullPath, []byte(tfvarsContent.String()), 0644)
+	if err != nil {
+		resultTable := L.NewTable()
+		resultTable.RawSetString("success", lua.LBool(false))
+		resultTable.RawSetString("error", lua.LString(err.Error()))
+		L.Push(resultTable)
+		return 1
+	}
+	
+	resultTable := L.NewTable()
+	resultTable.RawSetString("success", lua.LBool(true))
+	resultTable.RawSetString("filename", lua.LString(filename))
+	resultTable.RawSetString("full_path", lua.LString(fullPath))
+	resultTable.RawSetString("content", lua.LString(tfvarsContent.String()))
+	
+	L.Push(resultTable)
 	return 1
 }
 
 // terraformInit initializes a Terraform working directory
 func (mod *TerraformModule) terraformInit(L *lua.LState) int {
-	opts := L.OptTable(1, L.NewTable())
+	// ✅ Handle both fluent (terraform_client:method()) and direct call syntax
+	var opts *lua.LTable
+	
+	// Check if first argument is userdata (fluent call) or table (direct call)
+	if L.Get(1).Type() == lua.LTUserData {
+		// Fluent call: terraform_client:init(options)
+		opts = L.OptTable(2, L.NewTable())
+	} else {
+		// Direct call: terraform.init(options)
+		opts = L.OptTable(1, L.NewTable())
+	}
+	
 	workdir := opts.RawGetString("workdir").String()
 	if workdir == "" {
 		workdir = "."
@@ -103,10 +442,24 @@ func (mod *TerraformModule) terraformInit(L *lua.LState) int {
 
 // terraformPlan creates an execution plan
 func (mod *TerraformModule) terraformPlan(L *lua.LState) int {
-	opts := L.OptTable(1, L.NewTable())
-	workdir := opts.RawGetString("workdir").String()
-	if workdir == "" {
-		workdir = "."
+	// ✅ Handle both fluent (terraform_client:method()) and direct call syntax
+	var opts *lua.LTable
+	var workdir string
+	
+	// Check if first argument is userdata (fluent call) or table (direct call)
+	if L.Get(1).Type() == lua.LTUserData {
+		// Fluent call: terraform_client:plan(options)
+		clientData := L.CheckUserData(1)
+		client := clientData.Value.(*TerraformClient)
+		workdir = client.workdir
+		opts = L.OptTable(2, L.NewTable())
+	} else {
+		// Direct call: terraform.plan(options)
+		opts = L.OptTable(1, L.NewTable())
+		workdir = opts.RawGetString("workdir").String()
+		if workdir == "" {
+			workdir = "."
+		}
 	}
 	
 	args := []string{"plan"}
@@ -159,10 +512,24 @@ func (mod *TerraformModule) terraformPlan(L *lua.LState) int {
 
 // terraformApply applies the changes required to reach the desired state
 func (mod *TerraformModule) terraformApply(L *lua.LState) int {
-	opts := L.OptTable(1, L.NewTable())
-	workdir := opts.RawGetString("workdir").String()
-	if workdir == "" {
-		workdir = "."
+	// ✅ Handle both fluent (terraform_client:method()) and direct call syntax
+	var opts *lua.LTable
+	var workdir string
+	
+	// Check if first argument is userdata (fluent call) or table (direct call)
+	if L.Get(1).Type() == lua.LTUserData {
+		// Fluent call: terraform_client:apply(options)
+		clientData := L.CheckUserData(1)
+		client := clientData.Value.(*TerraformClient)
+		workdir = client.workdir
+		opts = L.OptTable(2, L.NewTable())
+	} else {
+		// Direct call: terraform.apply(options)
+		opts = L.OptTable(1, L.NewTable())
+		workdir = opts.RawGetString("workdir").String()
+		if workdir == "" {
+			workdir = "."
+		}
 	}
 	
 	args := []string{"apply"}
@@ -210,10 +577,24 @@ func (mod *TerraformModule) terraformApply(L *lua.LState) int {
 
 // terraformDestroy destroys Terraform-managed infrastructure
 func (mod *TerraformModule) terraformDestroy(L *lua.LState) int {
-	opts := L.OptTable(1, L.NewTable())
-	workdir := opts.RawGetString("workdir").String()
-	if workdir == "" {
-		workdir = "."
+	// ✅ Handle both fluent (terraform_client:method()) and direct call syntax
+	var opts *lua.LTable
+	var workdir string
+	
+	// Check if first argument is userdata (fluent call) or table (direct call)
+	if L.Get(1).Type() == lua.LTUserData {
+		// Fluent call: terraform_client:destroy(options)
+		clientData := L.CheckUserData(1)
+		client := clientData.Value.(*TerraformClient)
+		workdir = client.workdir
+		opts = L.OptTable(2, L.NewTable())
+	} else {
+		// Direct call: terraform.destroy(options)
+		opts = L.OptTable(1, L.NewTable())
+		workdir = opts.RawGetString("workdir").String()
+		if workdir == "" {
+			workdir = "."
+		}
 	}
 	
 	args := []string{"destroy"}
@@ -994,4 +1375,138 @@ func (mod *TerraformModule) executeTerraformCommand(workdir string, env map[stri
 		}
 		return "", fmt.Errorf("terraform command timed out after %v", timeout)
 	}
+}
+
+// ✅ createTfvars creates a terraform.tfvars file from a Lua table
+func (mod *TerraformModule) createTfvars(L *lua.LState) int {
+	// ✅ Handle both fluent (terraform_client:method()) and direct call syntax
+	var filename string
+	var varsTable *lua.LTable
+	
+	// Check if first argument is userdata (fluent call) or string (direct call)
+	if L.Get(1).Type() == lua.LTUserData {
+		// Fluent call: terraform_client:create_tfvars(filename, vars)
+		filename = L.CheckString(2)
+		varsTable = L.CheckTable(3)
+	} else {
+		// Direct call: terraform.create_tfvars(filename, vars)
+		filename = L.CheckString(1)
+		varsTable = L.CheckTable(2)
+	}
+	
+	// ✅ Verificar se há um contexto de tarefa para usar o workdir
+	var workdir string
+	taskContext := L.GetGlobal("__task_context")
+	if taskContext.Type() == lua.LTTable {
+		if wd := taskContext.(*lua.LTable).RawGetString("workdir"); wd.Type() == lua.LTString {
+			workdir = wd.String()
+		}
+	}
+	
+	// ✅ Construir caminho completo do arquivo
+	var fullPath string
+	if workdir != "" {
+		fullPath = fmt.Sprintf("%s/%s", workdir, filename)
+	} else {
+		fullPath = filename
+	}
+	
+	// Converter tabela Lua para string de tfvars
+	var tfvarsContent strings.Builder
+	tfvarsContent.WriteString("# Generated by sloth-runner\n")
+	tfvarsContent.WriteString(fmt.Sprintf("# Created at: %s\n\n", time.Now().Format("2006-01-02 15:04:05")))
+	
+	// Processar cada entrada da tabela
+	varsTable.ForEach(func(key, value lua.LValue) {
+		keyStr := key.String()
+		valueStr := mod.convertLuaValueToTerraform(value)
+		tfvarsContent.WriteString(fmt.Sprintf("%s = %s\n", keyStr, valueStr))
+	})
+	
+	// Escrever arquivo
+	err := os.WriteFile(fullPath, []byte(tfvarsContent.String()), 0644)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("Failed to write tfvars file: %v", err)))
+		return 2
+	}
+	
+	// Retornar sucesso
+	resultTable := L.NewTable()
+	resultTable.RawSetString("success", lua.LBool(true))
+	resultTable.RawSetString("filename", lua.LString(filename))
+	resultTable.RawSetString("full_path", lua.LString(fullPath))
+	resultTable.RawSetString("content", lua.LString(tfvarsContent.String()))
+	
+	L.Push(resultTable)
+	return 1
+}
+
+// ✅ convertLuaValueToTerraform converte valores Lua para formato Terraform
+func (mod *TerraformModule) convertLuaValueToTerraform(value lua.LValue) string {
+	switch v := value.(type) {
+	case lua.LString:
+		// String - adicionar aspas
+		return fmt.Sprintf("\"%s\"", strings.ReplaceAll(v.String(), "\"", "\\\""))
+		
+	case lua.LNumber:
+		// Número - sem aspas
+		return v.String()
+		
+	case lua.LBool:
+		// Boolean - sem aspas
+		if bool(v) {
+			return "true"
+		}
+		return "false"
+		
+	case *lua.LTable:
+		// Tabela - pode ser array ou objeto
+		if mod.isLuaTableArray(v) {
+			// Array/Lista
+			var items []string
+			v.ForEach(func(key, val lua.LValue) {
+				items = append(items, mod.convertLuaValueToTerraform(val))
+			})
+			return fmt.Sprintf("[%s]", strings.Join(items, ", "))
+		} else {
+			// Objeto/Map
+			var pairs []string
+			v.ForEach(func(key, val lua.LValue) {
+				keyStr := key.String()
+				valStr := mod.convertLuaValueToTerraform(val)
+				pairs = append(pairs, fmt.Sprintf("%s = %s", keyStr, valStr))
+			})
+			return fmt.Sprintf("{\n  %s\n}", strings.Join(pairs, "\n  "))
+		}
+		
+	default:
+		// Outros tipos - converter para string e adicionar aspas
+		return fmt.Sprintf("\"%s\"", value.String())
+	}
+}
+
+// ✅ isLuaTableArray verifica se uma tabela Lua é um array (chaves numéricas sequenciais)
+func (mod *TerraformModule) isLuaTableArray(table *lua.LTable) bool {
+	length := table.Len()
+	if length == 0 {
+		return false
+	}
+	
+	// Verificar se todas as chaves são numéricas e sequenciais (1, 2, 3, ...)
+	for i := 1; i <= length; i++ {
+		if table.RawGetInt(i) == lua.LNil {
+			return false
+		}
+	}
+	
+	// Verificar se não há outras chaves além das numéricas
+	hasNonNumericKeys := false
+	table.ForEach(func(key, value lua.LValue) {
+		if key.Type() != lua.LTNumber {
+			hasNonNumericKeys = true
+		}
+	})
+	
+	return !hasNonNumericKeys
 }
