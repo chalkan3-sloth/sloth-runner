@@ -311,7 +311,7 @@ task("azure_vmss_management")
                 },
                 
                 network_profile = {
-                    network_interface_configurations = {{
+{% raw %}                    network_interface_configurations = {{
                         name = "web-nic",
                         primary = true,
                         ip_configurations = {{
@@ -322,7 +322,7 @@ task("azure_vmss_management")
                             load_balancer_backend_address_pools = {{
                                 id = "/subscriptions/.../backendAddressPools/web-backend"
                             }}
-                        }}
+                        }}{% endraw %}
                     }}
                 }
             },
@@ -343,7 +343,7 @@ task("azure_vmss_management")
         azure.monitor.create_autoscale_settings({
             name = "web-servers-autoscale",
             target_resource_id = vmss.id,
-            profiles = {{
+{% raw %}            profiles = {{{% endraw %}
                 name = "default",
                 capacity = {
                     minimum = "2",
@@ -392,7 +392,7 @@ task("do_kubernetes_deployment")
             region = "nyc1",
             version = "1.25.4-do.0",
             
-            node_pools = {{
+{% raw %}            node_pools = {{{% endraw %}
                 size = "s-2vcpu-2gb",
                 count = 3,
                 name = "worker-pool",
@@ -467,7 +467,7 @@ spec:
             algorithm = "round_robin",
             status = "active",
             
-            forwarding_rules = {{
+{% raw %}            forwarding_rules = {{{% endraw %}
                 entry_protocol = "http",
                 entry_port = 80,
                 target_protocol = "http",
