@@ -105,7 +105,7 @@ go install github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner@latest
 Create your first workflow with the Modern DSL:
 
 ```lua
--- hello-world.lua
+-- hello-world.sloth
 local hello_task = task("say_hello")
     :description("Simple hello world demonstration")
     :command(function(params)
@@ -140,13 +140,13 @@ workflow.define("hello_world_workflow", {
 
 ```bash
 # Run the workflow
-./sloth-runner run -f hello-world.lua
+./sloth-runner run -f hello-world.sloth
 ```
 
 ### Basic Pipeline Example
 
 ```lua
--- pipeline.lua
+-- pipeline.sloth
 -- Task 1: Fetch data
 local fetch_data = task("fetch_data")
     :description("Fetches raw data from an API")
@@ -217,16 +217,16 @@ workflow.define("data_pipeline", {
 
 ```bash
 # Core commands
-sloth-runner run -f workflow.lua        # Execute workflows
+sloth-runner run -f workflow.sloth        # Execute workflows
 sloth-runner run --interactive          # Interactive task selection
 sloth-runner ui                         # Start web dashboard
 
 # 🆔 NEW: Stack Management (Pulumi-style)
-sloth-runner run my-stack -f workflow.lua --output enhanced  # Run with stack
-sloth-runner run my-stack -f workflow.lua --output json     # JSON output
+sloth-runner run my-stack -f workflow.sloth --output enhanced  # Run with stack
+sloth-runner run my-stack -f workflow.sloth --output json     # JSON output
 sloth-runner stack list                                      # List all stacks  
 sloth-runner stack show my-stack                            # Show stack details
-sloth-runner list -f workflow.lua                          # List tasks with IDs
+sloth-runner list -f workflow.sloth                          # List tasks with IDs
 
 # Distributed execution
 sloth-runner master                     # Start master server
@@ -245,7 +245,7 @@ sloth-runner version                    # Show version information
 ### Complete CI/CD Pipeline
 
 ```lua
--- ci-cd-pipeline.lua
+-- ci-cd-pipeline.sloth
 local test_task = task("run_tests")
     :description("Run application tests")
     :command(function(params, deps)
@@ -345,7 +345,7 @@ workflow.define("ci_cd_pipeline", {
 ### Distributed Task Execution
 
 ```lua
--- distributed-workflow.lua
+-- distributed-workflow.sloth
 local web_deploy = task("deploy_web_servers")
     :description("Deploy to web servers")
     :agent_selector("web-server-*")  -- Select agents matching pattern
@@ -588,7 +588,7 @@ go install github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner@latest
 
 ### 2. **Create Your First Modern Workflow**
 ```lua
--- hello-world-modern.lua
+-- hello-world-modern.sloth
 local hello_task = task("say_hello")
     :description("Modern DSL hello world")
     :command(function()
@@ -610,7 +610,7 @@ workflow.define("hello_world", {
 
 ### 3. **Run Your Workflow**
 ```bash
-./sloth-runner run -f hello-world-modern.lua
+./sloth-runner run -f hello-world-modern.sloth
 ```
 
 ---
@@ -662,49 +662,49 @@ workflow.define("hello_world", {
 ### 🟢 **Beginner Examples**
 ```bash
 # Hello World with Modern DSL
-./sloth-runner run -f examples/beginner/hello-world.lua
+./sloth-runner run -f examples/beginner/hello-world.sloth
 
 # Simple state management
-./sloth-runner run -f examples/simple_state_test.lua
+./sloth-runner run -f examples/simple_state_test.sloth
 
 # Basic exec module testing
-./sloth-runner run -f examples/exec_test.lua
+./sloth-runner run -f examples/exec_test.sloth
 
 # Simple pipeline processing
-./sloth-runner run -f examples/basic_pipeline.lua
+./sloth-runner run -f examples/basic_pipeline.sloth
 ```
 
 ### 🟡 **Intermediate Examples**  
 ```bash
 # Parallel execution with modern async
-./sloth-runner run -f examples/parallel_execution.lua
+./sloth-runner run -f examples/parallel_execution.sloth
 
 # Conditional execution and logic
-./sloth-runner run -f examples/conditional_execution.lua
+./sloth-runner run -f examples/conditional_execution.sloth
 
 # Enhanced pipeline with modern features
-./sloth-runner run -f examples/basic_pipeline_modern.lua
+./sloth-runner run -f examples/basic_pipeline_modern.sloth
 
 # Terraform infrastructure management
-./sloth-runner run -f examples/terraform_example.lua
+./sloth-runner run -f examples/terraform_example.sloth
 ```
 
 ### 🔴 **Advanced Examples**
 ```bash
 # Advanced state management
-./sloth-runner run -f examples/state_management_demo.lua
+./sloth-runner run -f examples/state_management_demo.sloth
 
 # Enterprise reliability patterns
-./sloth-runner run -f examples/reliability_demo.lua
+./sloth-runner run -f examples/reliability_demo.sloth
 ```
 
 ### 🌍 **Real-World Examples**
 ```bash
 # Complete CI/CD pipeline
-./sloth-runner run -f examples/real-world/nodejs-cicd.lua
+./sloth-runner run -f examples/real-world/nodejs-cicd.sloth
 
 # Microservices deployment
-./sloth-runner run -f examples/real-world/microservices-deploy.lua
+./sloth-runner run -f examples/real-world/microservices-deploy.sloth
 ```
 
 ---

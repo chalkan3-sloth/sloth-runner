@@ -261,7 +261,7 @@ func runEnhancedDemo(L *lua.LState) {
 	pterm.DefaultHeader.WithFullWidth().Println("🚀 Enhanced Features in Action")
 	
 	// Try to load external demo file first
-	examplePath := filepath.Join("examples", "enhanced_demo.lua")
+	examplePath := filepath.Join("examples", "enhanced_demo.sloth")
 	if _, err := os.Stat(examplePath); err == nil {
 		pterm.Info.Printf("📁 Loading: %s\n", examplePath)
 		

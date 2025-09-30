@@ -26,7 +26,7 @@ func main() {
 	setupEnhancedLuaEnvironment(L)
 	
 	// Load enhanced example if available
-	examplePath := filepath.Join("examples", "enhanced_demo.lua")
+	examplePath := filepath.Join("examples", "enhanced_demo.sloth")
 	if _, err := os.Stat(examplePath); err == nil {
 		pterm.Info.Printf("Loading enhanced pipeline: %s\n", examplePath)
 		
@@ -50,7 +50,7 @@ func main() {
 // setupEnhancedLuaEnvironment sets up the enhanced Lua environment
 func setupEnhancedLuaEnvironment(L *lua.LState) {
 	// Setup import function for the demo directory
-	luainterface.OpenImport(L, "examples/enhanced_demo.lua")
+	luainterface.OpenImport(L, "examples/enhanced_demo.sloth")
 	
 	// Register enhanced DSL functions
 	registerEnhancedDSL(L)

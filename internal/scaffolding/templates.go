@@ -578,12 +578,12 @@ This workflow was generated using the Sloth Runner Scaffolder.
 Run the workflow:
 
 ` + "```bash" + `
-sloth-runner run -f %s.lua
+sloth-runner run -f %s.sloth
 ` + "```" + `
 
 ## Customization
 
-Edit the %s.lua file to customize the workflow according to your needs:
+Edit the %s.sloth file to customize the workflow according to your needs:
 
 1. Update task commands with your actual implementation
 2. Modify task dependencies as needed

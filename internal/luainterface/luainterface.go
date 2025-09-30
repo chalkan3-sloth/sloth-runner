@@ -368,7 +368,8 @@ func RegisterAllModules(L *lua.LState) {
 	OpenAWS(L)
 	
 	// Register advanced infrastructure modules
-	L.PreloadModule("salt", NewSaltModule().Loader)
+	L.PreloadModule("salt", NewComprehensiveSaltModule().Loader)
+	L.PreloadModule("salt_object_oriented", ObjectOrientedSaltLoader)
 	L.PreloadModule("pulumi", NewPulumiModule().Loader)
 	L.PreloadModule("terraform", NewTerraformModule().Loader)
 	
