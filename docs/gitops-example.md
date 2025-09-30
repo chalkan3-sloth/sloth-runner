@@ -125,17 +125,17 @@ local deploy_terraform_task = task("deploy-terraform")
         
         -- Load configuration from values.yaml with safety checks
         local terraform_config = {}
-        if Values and Values.terraform then
+        if values and values.terraform then
             log.info("📋 Loading Terraform configuration from values.yaml")
             terraform_config = {
-                do_token = Values.terraform.do_token or "",
-                droplet_name = Values.terraform.droplet_name or "sloth-runner-demo",
-                droplet_region = Values.terraform.droplet_region or "nyc3",
-                droplet_size = Values.terraform.droplet_size or "s-1vcpu-1gb",
-                environment = Values.terraform.environment or "dev",
-                project_name = Values.terraform.project_name or "sloth-demo",
-                enable_backups = Values.terraform.enable_backups or false,
-                droplet_tags = Values.terraform.droplet_tags or { "sloth-runner", "demo", "terraform" }
+                do_token = values.terraform.do_token or "",
+                droplet_name = values.terraform.droplet_name or "sloth-runner-demo",
+                droplet_region = values.terraform.droplet_region or "nyc3",
+                droplet_size = values.terraform.droplet_size or "s-1vcpu-1gb",
+                environment = values.terraform.environment or "dev",
+                project_name = values.terraform.project_name or "sloth-demo",
+                enable_backups = values.terraform.enable_backups or false,
+                droplet_tags = values.terraform.droplet_tags or { "sloth-runner", "demo", "terraform" }
             }
         else
             log.warn("⚠️ Values table not found, using default values")
@@ -251,17 +251,17 @@ workflow:
 -- Safe configuration loading with fallbacks
 local terraform_config = {}
 
-if Values and Values.terraform then
+if values and values.terraform then
     log.info("📋 Loading Terraform configuration from values.yaml")
     terraform_config = {
-        do_token = Values.terraform.do_token or "",
-        droplet_name = Values.terraform.droplet_name or "sloth-runner-demo",
-        droplet_region = Values.terraform.droplet_region or "nyc3",
-        droplet_size = Values.terraform.droplet_size or "s-1vcpu-1gb",
-        environment = Values.terraform.environment or "dev",
-        project_name = Values.terraform.project_name or "sloth-demo",
-        enable_backups = Values.terraform.enable_backups or false,
-        droplet_tags = Values.terraform.droplet_tags or { "sloth-runner", "demo", "terraform" }
+        do_token = values.terraform.do_token or "",
+        droplet_name = values.terraform.droplet_name or "sloth-runner-demo",
+        droplet_region = values.terraform.droplet_region or "nyc3",
+        droplet_size = values.terraform.droplet_size or "s-1vcpu-1gb",
+        environment = values.terraform.environment or "dev",
+        project_name = values.terraform.project_name or "sloth-demo",
+        enable_backups = values.terraform.enable_backups or false,
+        droplet_tags = values.terraform.droplet_tags or { "sloth-runner", "demo", "terraform" }
     }
 else
     log.warn("⚠️ Values table not found, using default values")
