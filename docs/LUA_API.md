@@ -338,7 +338,7 @@ local api_key = utils.secret("external_api_key")
 Template rendering with variable substitution.
 
 ```lua
-local rendered = utils.template("Hello {{name}}", {
+local rendered = utils.template("Hello {% raw %}{{name}}{% endraw %}", {
     name = "World"
 })
 ```
