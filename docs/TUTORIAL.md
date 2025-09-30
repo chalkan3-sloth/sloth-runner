@@ -3,6 +3,8 @@
 > **Welcome to the world's most intelligent task orchestration platform!**  
 > This tutorial will get you up and running with AI-powered automation and GitOps workflows in just 5 minutes.
 
+> **📝 Important Note:** Starting with the current version, Sloth Runner workflow files use the `.sloth` extension instead of `.lua`. The Lua syntax remains the same - only the file extension has changed for better identification of Sloth Runner DSL files.
+
 ## 🎯 What You'll Learn
 
 By the end of this tutorial, you'll have:
@@ -40,10 +42,10 @@ sloth-runner --help
 
 ## 🤖 Step 2: Your First AI-Powered Task
 
-Create a file called `hello-ai.lua`:
+Create a file called `hello-ai.sloth`:
 
 ```lua
--- hello-ai.lua
+-- hello-ai.sloth
 local ai = require("ai")
 local log = require("log")
 
@@ -108,7 +110,7 @@ workflow.define("ai_tutorial", {
 ### Run Your AI-Powered Task
 
 ```bash
-sloth-runner run -f hello-ai.lua
+sloth-runner run -f hello-ai.sloth
 ```
 
 **Expected Output:**
@@ -125,10 +127,10 @@ Hello, AI-Powered World!
 
 ## 🔄 Step 3: Your First GitOps Workflow
 
-Create a file called `hello-gitops.lua`:
+Create a file called `hello-gitops.sloth`:
 
 ```lua
--- hello-gitops.lua
+-- hello-gitops.sloth
 local gitops = require("gitops")
 local log = require("log")
 
@@ -213,7 +215,7 @@ workflow.define("gitops_tutorial", {
 ### Run Your GitOps Workflow
 
 ```bash
-sloth-runner run -f hello-gitops.lua
+sloth-runner run -f hello-gitops.sloth
 ```
 
 **Expected Output:**
@@ -241,10 +243,10 @@ sloth-runner run -f hello-gitops.lua
 
 ## ⚡ Step 4: Intelligent Pipeline (AI + GitOps)
 
-Create a file called `intelligent-pipeline.lua`:
+Create a file called `intelligent-pipeline.sloth`:
 
 ```lua
--- intelligent-pipeline.lua  
+-- intelligent-pipeline.sloth  
 local ai = require("ai")
 local gitops = require("gitops")
 local log = require("log")
@@ -457,7 +459,7 @@ workflow.define("intelligent_pipeline", {
 ### Run Your Intelligent Pipeline
 
 ```bash
-sloth-runner run -f intelligent-pipeline.lua
+sloth-runner run -f intelligent-pipeline.sloth
 ```
 
 **Expected Output:**

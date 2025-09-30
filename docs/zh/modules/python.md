@@ -49,7 +49,7 @@
 此示例演示了一个完整的生命周期：创建虚拟环境、从 `requirements.txt` 文件安装依赖项以及运行 Python 脚本。
 
 ```lua
--- examples/python_venv_lifecycle_example.lua
+-- examples/python_venv_lifecycle_example.sloth
 
 Modern DSLs = {
   main = {

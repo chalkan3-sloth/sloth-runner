@@ -12,7 +12,7 @@ sloth-runner repl
 您还可以预加载一个工作流文件，以使其 `Modern DSLs` 和任何辅助函数在会话中可用。这对于调试现有的管道非常有用。
 
 ```bash
-sloth-runner repl -f /path/to/your/pipeline.lua
+sloth-runner repl -f /path/to/your/pipeline.sloth
 ```
 
 ## 功能

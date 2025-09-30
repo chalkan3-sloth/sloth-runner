@@ -84,7 +84,7 @@ Obtém os outputs da stack Pulumi.
 Este exemplo demonstra como fazer o deploy de duas stacks Pulumi, passando um output da primeira como input para a segunda.
 
 ```lua
--- examples/pulumi_example.lua
+-- examples/pulumi_example.sloth
 
 command = function()
     log.info("Iniciando exemplo de orquestração Pulumi...")

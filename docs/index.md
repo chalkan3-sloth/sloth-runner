@@ -2,6 +2,8 @@
 
 > 🚀 A powerful, modern task runner with Pulumi-style stack management, distributed execution, and comprehensive monitoring capabilities.
 
+> **📝 Important Note:** Starting with the current version, Sloth Runner workflow files use the `.sloth` extension instead of `.lua`. The Lua syntax remains the same - only the file extension has changed for better identification of Sloth Runner DSL files.
+
 [![🌐 Distributed](https://img.shields.io/badge/🌐-Distributed-blue)](docs/distributed.md)
 [![💾 Stateful](https://img.shields.io/badge/💾-Stateful-green)](docs/stack-management.md)  
 [![📊 Observable](https://img.shields.io/badge/📊-Observable-orange)](docs/advanced-features.md)
@@ -28,10 +30,11 @@
 
 ```bash
 # Create and run a stack with enhanced output
-sloth-runner run my-production-stack -f pipeline.lua --output enhanced
+sloth-runner stack new my-production-stack -d "Production deployment" -f pipeline.sloth
+sloth-runner run my-production-stack -f pipeline.sloth --output enhanced
 
 # Run with JSON output for CI/CD integration
-sloth-runner run my-stack -f workflow.lua --output json
+sloth-runner run my-stack -f workflow.sloth --output json
 
 # List all stacks with status and metrics
 sloth-runner stack list
@@ -40,7 +43,7 @@ sloth-runner stack list
 sloth-runner stack show my-production-stack
 
 # List tasks with unique IDs and dependencies
-sloth-runner list -f pipeline.lua
+sloth-runner list -f pipeline.sloth
 
 # Delete stacks with confirmation
 sloth-runner stack delete old-stack
@@ -190,13 +193,13 @@ sloth-runner workflow init my-app --interactive
 
 ```bash
 # Enhanced Pulumi-style output
-sloth-runner run my-stack -f workflow.lua --output enhanced
+sloth-runner run my-stack -f workflow.sloth --output enhanced
 
 # JSON output for automation
-sloth-runner run my-stack -f workflow.lua --output json
+sloth-runner run my-stack -f workflow.sloth --output json
 
 # List tasks with unique IDs
-sloth-runner list -f workflow.lua
+sloth-runner list -f workflow.sloth
 ```
 
 ### 🔧 Rich Module Ecosystem
@@ -220,10 +223,10 @@ sloth-runner list -f workflow.lua
 sloth-runner workflow init my-cicd --template cicd
 
 # Deploy to development environment
-sloth-runner run dev-app -f my-cicd.lua --output enhanced
+sloth-runner run dev-app -f my-cicd.sloth --output enhanced
 
 # Deploy to production with stack persistence
-sloth-runner run prod-app -f my-cicd.lua -o rich
+sloth-runner run prod-app -f my-cicd.sloth -o rich
 
 # Check deployment status and outputs
 sloth-runner stack show prod-app
@@ -258,7 +261,7 @@ workflow.define("production_deployment", {
 **Run with JSON output for automation:**
 ```bash
 # Get structured JSON output for CI/CD integration
-sloth-runner run prod-deployment -f deploy.lua --output json
+sloth-runner run prod-deployment -f deploy.sloth --output json
 
 # Example JSON output:
 {
@@ -291,11 +294,11 @@ sloth-runner run prod-deployment -f deploy.lua --output json
 ### Stack Management (NEW!)
 ```bash
 # Execute with stack persistence (NEW SYNTAX)
-sloth-runner run {stack-name} --file workflow.lua
+sloth-runner run {stack-name} --file workflow.sloth
 
 # Enhanced output styles
-sloth-runner run {stack-name} --file workflow.lua --output enhanced
-sloth-runner run {stack-name} --file workflow.lua --output json
+sloth-runner run {stack-name} --file workflow.sloth --output enhanced
+sloth-runner run {stack-name} --file workflow.sloth --output json
 
 # Manage stacks
 sloth-runner stack list                    # List all stacks
@@ -303,7 +306,7 @@ sloth-runner stack show production-app     # Show stack details with outputs
 sloth-runner stack delete old-env          # Delete stack
 
 # List tasks with unique IDs
-sloth-runner list --file workflow.lua      # Show tasks and groups with IDs
+sloth-runner list --file workflow.sloth      # Show tasks and groups with IDs
 ```
 
 ### Project Scaffolding
@@ -631,13 +634,13 @@ chmod +x sloth-runner && sudo mv sloth-runner /usr/local/bin/</code></pre>
   end)
   :build()
 
-workflow.define("greeting", { tasks = { hello } })' > hello.lua</code></pre>
+workflow.define("greeting", { tasks = { hello } })' > hello.sloth</code></pre>
   </div>
   
   <div class="step">
     <div class="step-number">3</div>
     <h4>Run Your Workflow</h4>
-    <pre><code>sloth-runner run -f hello.lua</code></pre>
+    <pre><code>sloth-runner run -f hello.sloth</code></pre>
   </div>
 </div>
 
@@ -808,10 +811,10 @@ curl -L https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/
 chmod +x sloth-runner && sudo mv sloth-runner /usr/local/bin/
 
 # Create your first workflow
-echo 'local hello_task = task("greet"):command(function() log.info("Hello World! 🚀") return true end):build(); workflow.define("hello", { tasks = { hello_task } })' > hello.lua
+echo 'local hello_task = task("greet"):command(function() log.info("Hello World! 🚀") return true end):build(); workflow.define("hello", { tasks = { hello_task } })' > hello.sloth
 
 # Run it!
-sloth-runner run -f hello.lua
+sloth-runner run -f hello.sloth
 ```
 
 ## 🤝 **Community & Support**

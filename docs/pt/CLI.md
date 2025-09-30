@@ -16,7 +16,7 @@ Você pode especificar o arquivo, variáveis de ambiente e direcionar tarefas ou
 
 **Flags:**
 
-*   `-f, --file string`: Caminho para o arquivo de configuração de tarefas Lua (padrão: "examples/basic_pipeline.lua")
+*   `-f, --file string`: Caminho para o arquivo de configuração de tarefas Lua (padrão: "examples/basic_pipeline.sloth")
 *   `-e, --env string`: Ambiente para as tarefas (ex: Development, Production) (padrão: "Development")
 *   `-p, --prod`: Definir como verdadeiro para ambiente de produção (padrão: false)
 *   `--shards string`: Lista de números de shard separados por vírgula (ex: 1,2,3) (padrão: "1,2,3")
@@ -39,7 +39,7 @@ O comando `list` exibe todos os grupos de tarefas e suas respectivas tarefas, ju
 
 **Flags:**
 
-*   `-f, --file string`: Caminho para o arquivo de configuração de tarefas Lua (padrão: "examples/basic_pipeline.lua")
+*   `-f, --file string`: Caminho para o arquivo de configuração de tarefas Lua (padrão: "examples/basic_pipeline.sloth")
 *   `-e, --env string`: Ambiente para as tarefas (ex: Development, Production) (padrão: "Development")
 *   `-p, --prod`: Definir como verdadeiro para ambiente de produção (padrão: false)
 *   `--shards string`: Lista de números de shard separados por vírgula (ex: 1,2,3) (padrão: "1,2,3")
@@ -56,7 +56,7 @@ O comando `validate` verifica um arquivo de tarefas Lua quanto a erros de sintax
 
 **Flags:**
 
-*   `-f, --file string`: Caminho para o arquivo de configuração de tarefas Lua (padrão: "examples/basic_pipeline.lua")
+*   `-f, --file string`: Caminho para o arquivo de configuração de tarefas Lua (padrão: "examples/basic_pipeline.sloth")
 *   `-e, --env string`: Ambiente para as tarefas (ex: Development, Production) (padrão: "Development")
 *   `-p, --prod`: Definir como verdadeiro para ambiente de produção (padrão: false)
 *   `--shards string`: Lista de números de shard separados por vírgula (ex: 1,2,3) (padrão: "1,2,3")

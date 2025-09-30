@@ -16,10 +16,10 @@ Imagine que você tem um projeto de infraestrutura Pulumi e um projeto de aplica
 4.  Executar `pulumi up` para provisionar ou atualizar a infraestrutura (por exemplo, um ambiente de staging).
 5.  Usar o Salt para configurar os servidores provisionados e implantar a aplicação.
 
-### Script Lua (`examples/pulumi_git_combined_example.lua`)
+### Script Lua (`examples/pulumi_git_combined_example.sloth`)
 
 ```lua
--- examples/pulumi_git_combined_example.lua
+-- examples/pulumi_git_combined_example.sloth
 
 command = function(params)
     log.info("Iniciando exemplo combinado Pulumi e Git...")

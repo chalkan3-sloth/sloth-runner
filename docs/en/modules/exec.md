@@ -26,7 +26,7 @@ A table containing the result of the command execution:
 This example demonstrates how to use `exec.run` with a custom working directory and environment variables.
 
 ```lua
--- examples/exec_module_example.lua
+-- examples/exec_module_example.sloth
 
 Modern DSLs = {
   main = {

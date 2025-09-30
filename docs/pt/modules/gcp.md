@@ -23,7 +23,7 @@ Uma tabela contendo o resultado da execução do comando com as seguintes chaves
 Este exemplo define uma tarefa que lista todas as instâncias do Compute Engine na região `us-central1` para um projeto específico.
 
 ```lua
--- examples/gcp_cli_example.lua
+-- examples/gcp_cli_example.sloth
 
 Modern DSLs = {
   main = {

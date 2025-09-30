@@ -49,7 +49,7 @@ Executa um script Python usando o interpretador Python do ambiente virtual.
 Este exemplo demonstra um ciclo de vida completo: criar um ambiente virtual, instalar dependências de um arquivo `requirements.txt` e executar um script Python.
 
 ```lua
--- examples/python_venv_lifecycle_example.lua
+-- examples/python_venv_lifecycle_example.sloth
 
 Modern DSLs = {
   main = {

@@ -7,7 +7,7 @@ The sloth-runner includes a built-in testing framework that allows you to write 
 You can run a test file using the `sloth-runner test` command. It requires two main files: the workflow you want to test and the test script itself.
 
 ```bash
-sloth-runner test -w <path_to_workflow.lua> -f <path_to_test_file.lua>
+sloth-runner test -w <path_to_workflow.sloth> -f <path_to_test_file.sloth>
 ```
 
 -   `-w, --workflow`: Specifies the path to the main `Modern DSLs` file that you want to test.
@@ -87,7 +87,7 @@ test.mock("terraform.output", {
 
 Let's say you have a task that calls `aws.exec` and has logic that depends on the output.
 
-**Task in `my_workflow.lua`:**
+**Task in `my_workflow.sloth`:**
 ```lua
 -- ...
 {
@@ -105,7 +105,7 @@ Let's say you have a task that calls `aws.exec` and has logic that depends on th
 -- ...
 ```
 
-**Test in `my_test.lua`:**
+**Test in `my_test.sloth`:**
 ```lua
 test.describe("Account Check Logic", function()
   test.it(function()

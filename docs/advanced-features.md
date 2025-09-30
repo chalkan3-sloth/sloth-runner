@@ -9,7 +9,7 @@ For complex workflows, it can be useful to step through tasks one by one, inspec
 To use the interactive runner, add the `--interactive` flag to the `sloth-runner run` command:
 
 ```bash
-sloth-runner run -f examples/basic_pipeline.lua --yes --interactive
+sloth-runner run -f examples/basic_pipeline.sloth --yes --interactive
 ```
 
 When enabled, the runner will pause before executing each task and prompt you for an action:
@@ -49,7 +49,7 @@ You can make your `values.yaml` files more dynamic by using Go template syntax t
 2.  **Create a Lua task that uses these values:**
 
     ```lua
-    -- my_task.lua
+    -- my_task.sloth
     Modern DSLs = {
       my_group = {
         tasks = {
@@ -72,7 +72,7 @@ You can make your `values.yaml` files more dynamic by using Go template syntax t
     export MY_API_KEY="supersecretkey12345"
     export AWS_REGION="us-west-2"
 
-    sloth-runner run -f my_task.lua -v values.yaml --yes
+    sloth-runner run -f my_task.sloth -v values.yaml --yes
     ```
 
 **Output:**

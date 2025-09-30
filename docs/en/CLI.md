@@ -28,16 +28,16 @@ sloth-runner run [flags]
 
 *   Run all tasks in a specific group:
     ```bash
-    sloth-runner run -f examples/basic_pipeline.lua -g my_group
+    sloth-runner run -f examples/basic_pipeline.sloth -g my_group
     ```
 *   Run a single, specific task:
     ```bash
 
-    sloth-runner run -f examples/basic_pipeline.lua -g my_group -t my_task
+    sloth-runner run -f examples/basic_pipeline.sloth -g my_group -t my_task
     ```
 *   Run multiple tasks and get their combined output as JSON:
     ```bash
-    sloth-runner run -f examples/export_example.lua -t export-data-task --return
+    sloth-runner run -f examples/export_example.sloth -t export-data-task --return
     ```
 
 ---
@@ -79,7 +79,7 @@ sloth-runner new <group-name> [flags]
 
 **Example:**
 ```bash
-sloth-runner new my-python-pipeline -t python -o my_pipeline.lua
+sloth-runner new my-python-pipeline -t python -o my_pipeline.sloth
 ```
 
 ---

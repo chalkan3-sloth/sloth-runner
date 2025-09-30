@@ -23,7 +23,7 @@ A table containing the result of the command execution with the following keys:
 This example defines a task that lists all Compute Engine instances in the `us-central1` region for a specific project.
 
 ```lua
--- examples/gcp_cli_example.lua
+-- examples/gcp_cli_example.sloth
 
 Modern DSLs = {
   main = {
