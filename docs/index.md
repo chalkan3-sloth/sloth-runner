@@ -2,7 +2,7 @@
 
 > 🚀 A powerful, modern task runner with Pulumi-style stack management, distributed execution, and comprehensive monitoring capabilities.
 
-> **📝 Important Note:** Starting with the current version, Sloth Runner workflow files use the `.sloth` extension instead of `.lua`. The Lua syntax remains the same - only the file extension has changed for better identification of Sloth Runner DSL files.
+> **📝 Important Note:** Starting with the current version, Sloth Runner workflow files use the `.sloth` extension instead of `.sloth`. The Lua syntax remains the same - only the file extension has changed for better identification of Sloth Runner DSL files.
 
 [![🌐 Distributed](https://img.shields.io/badge/🌐-Distributed-blue)](docs/distributed.md)
 [![💾 Stateful](https://img.shields.io/badge/💾-Stateful-green)](docs/stack-management.md)  

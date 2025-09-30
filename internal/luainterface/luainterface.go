@@ -367,9 +367,8 @@ func RegisterAllModules(L *lua.LState) {
 	OpenGCP(L)
 	OpenAWS(L)
 	
-	// Register advanced infrastructure modules
-	L.PreloadModule("salt", NewComprehensiveSaltModule().Loader)
-	L.PreloadModule("salt_object_oriented", ObjectOrientedSaltLoader)
+	// Register advanced infrastructure modules - Salt as Object Only
+	L.PreloadModule("salt", ObjectOrientedSaltLoader)
 	L.PreloadModule("pulumi", NewPulumiModule().Loader)
 	L.PreloadModule("terraform", NewTerraformModule().Loader)
 	

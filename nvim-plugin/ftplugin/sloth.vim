@@ -204,28 +204,35 @@ syntax spell toplevel
 augroup SlothRunner
   autocmd! * <buffer>
   
-  " Auto-format on save (if formatter available)
-  autocmd BufWritePre <buffer> call s:FormatSlothFile()
+  " Auto-format on save (disabled by default, enable with g:sloth_format_on_save = 1)
+  if exists('g:sloth_format_on_save') && g:sloth_format_on_save
+    autocmd BufWritePre <buffer> call s:FormatSlothFile()
+  endif
   
   " Highlight matching DSL constructs
   autocmd CursorMoved <buffer> call s:HighlightMatchingConstruct()
 augroup END
 
 function! s:FormatSlothFile()
-  " Check if sloth-runner is available and formatting is enabled
-  if !exists('g:sloth_format_on_save') || !g:sloth_format_on_save
+  " Only format .sloth files and only if explicitly enabled
+  if expand('%:e') !=# 'sloth' || !exists('g:sloth_format_on_save') || !g:sloth_format_on_save
     return
   endif
   
-  " Check if file is a .sloth file
-  if expand('%:e') !=# 'sloth'
+  " Check if buffer is modified and file exists
+  if !&modified || !filereadable(expand('%'))
     return
   endif
   
   " Simple indentation fix - safer than external commands
   let save_pos = getpos('.')
-  normal! gg=G
-  call setpos('.', save_pos)
+  try
+    normal! gg=G
+  catch
+    " Ignore any errors during formatting
+  finally
+    call setpos('.', save_pos)
+  endtry
 endfunction
 
 function! s:HighlightMatchingConstruct()

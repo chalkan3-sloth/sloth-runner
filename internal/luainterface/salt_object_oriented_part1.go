@@ -302,15 +302,6 @@ func (mod *ObjectOrientedSaltModule) saltConstructor(L *lua.LState) int {
 		"config_valid_fileproto": mod.saltConfigValidFileproto,
 		"config_backup_mode": mod.saltConfigBackupMode,
 		
-		// API integration
-		"api_login":        mod.saltApiLogin,
-		"api_logout":       mod.saltApiLogout,
-		"api_minions":      mod.saltApiMinions,
-		"api_jobs":         mod.saltApiJobs,
-		"api_stats":        mod.saltApiStats,
-		"api_events":       mod.saltApiEvents,
-		"api_hook":         mod.saltApiHook,
-		
 		// Template engines
 		"template_jinja":   mod.saltTemplateJinja,
 		"template_yaml":    mod.saltTemplateYaml,
