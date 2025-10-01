@@ -413,15 +413,36 @@ func (client *PulumiClient) up(L *lua.LState) int {
 		args = append(args, "--yes")
 	}
 	
-	output, err := client.module.pulumiCommandWithOutput(args...)
+	// Handle environment variables
+	cmd := exec.Command("pulumi", args...)
+	
+	// Set environment variables if provided
+	if envs := options.RawGetString("envs"); envs != lua.LNil {
+		if envTable, ok := envs.(*lua.LTable); ok {
+			var environ []string
+			environ = append(environ, os.Environ()...)
+			
+			envTable.ForEach(func(key, value lua.LValue) {
+				environ = append(environ, fmt.Sprintf("%s=%s", key.String(), value.String()))
+			})
+			
+			cmd.Env = environ
+		}
+	}
+	
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	
+	err := cmd.Run()
 	if err != nil {
 		L.Push(lua.LBool(false))
-		L.Push(lua.LString(err.Error()))
+		L.Push(lua.LString(fmt.Sprintf("pulumi up failed: %s", stderr.String())))
 		return 2
 	}
 	
 	L.Push(lua.LBool(true))
-	L.Push(lua.LString(output))
+	L.Push(lua.LString(stdout.String()))
 	return 2
 }
 
@@ -461,15 +482,36 @@ func (client *PulumiClient) destroy(L *lua.LState) int {
 		args = append(args, "--yes")
 	}
 	
-	output, err := client.module.pulumiCommandWithOutput(args...)
+	// Handle environment variables
+	cmd := exec.Command("pulumi", args...)
+	
+	// Set environment variables if provided
+	if envs := options.RawGetString("envs"); envs != lua.LNil {
+		if envTable, ok := envs.(*lua.LTable); ok {
+			var environ []string
+			environ = append(environ, os.Environ()...)
+			
+			envTable.ForEach(func(key, value lua.LValue) {
+				environ = append(environ, fmt.Sprintf("%s=%s", key.String(), value.String()))
+			})
+			
+			cmd.Env = environ
+		}
+	}
+	
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	
+	err := cmd.Run()
 	if err != nil {
 		L.Push(lua.LBool(false))
-		L.Push(lua.LString(err.Error()))
+		L.Push(lua.LString(fmt.Sprintf("pulumi destroy failed: %s", stderr.String())))
 		return 2
 	}
 	
 	L.Push(lua.LBool(true))
-	L.Push(lua.LString(output))
+	L.Push(lua.LString(stdout.String()))
 	return 2
 }
 
@@ -509,15 +551,36 @@ func (client *PulumiClient) refresh(L *lua.LState) int {
 		args = append(args, "--yes")
 	}
 	
-	output, err := client.module.pulumiCommandWithOutput(args...)
+	// Handle environment variables
+	cmd := exec.Command("pulumi", args...)
+	
+	// Set environment variables if provided
+	if envs := options.RawGetString("envs"); envs != lua.LNil {
+		if envTable, ok := envs.(*lua.LTable); ok {
+			var environ []string
+			environ = append(environ, os.Environ()...)
+			
+			envTable.ForEach(func(key, value lua.LValue) {
+				environ = append(environ, fmt.Sprintf("%s=%s", key.String(), value.String()))
+			})
+			
+			cmd.Env = environ
+		}
+	}
+	
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	
+	err := cmd.Run()
 	if err != nil {
 		L.Push(lua.LBool(false))
-		L.Push(lua.LString(err.Error()))
+		L.Push(lua.LString(fmt.Sprintf("pulumi refresh failed: %s", stderr.String())))
 		return 2
 	}
 	
 	L.Push(lua.LBool(true))
-	L.Push(lua.LString(output))
+	L.Push(lua.LString(stdout.String()))
 	return 2
 }
 
