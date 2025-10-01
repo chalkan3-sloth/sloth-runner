@@ -61,8 +61,6 @@ builds:
   - id: linux-arm64
     env:
       - CGO_ENABLED=1
-      - GOOS=linux
-      - GOARCH=arm64
       - CC=aarch64-linux-gnu-gcc
     ldflags:
       - -X main.version={{.Version}}
@@ -75,6 +73,9 @@ builds:
       - arm64
     main: ./cmd/sloth-runner
     binary: sloth-runner
+    skip: &arm64_skip
+      - goos: darwin
+        goarch: arm64
 
   - id: darwin-amd64
     env:
