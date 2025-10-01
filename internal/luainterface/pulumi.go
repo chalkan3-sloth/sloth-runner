@@ -206,16 +206,49 @@ func (client *PulumiClient) stack(L *lua.LState) int {
 	}
 	
 	if create {
-		// Try to create stack (ignore error if it already exists)
-		client.module.pulumiCommand("stack", "init", stackName)
-	}
-	
-	// Select the stack
-	err := client.module.pulumiCommand("stack", "select", stackName)
-	if err != nil {
-		L.Push(lua.LBool(false))
-		L.Push(lua.LString(err.Error()))
-		return 2
+		// First, try to select existing stack
+		selectCmd := exec.Command("pulumi", "stack", "select", stackName)
+		selectCmd.Stderr = nil // Ignore stderr for this check
+		selectErr := selectCmd.Run()
+		
+		if selectErr != nil {
+			// Stack doesn't exist, try to create it
+			createCmd := exec.Command("pulumi", "stack", "init", stackName)
+			var createStderr bytes.Buffer
+			createCmd.Stderr = &createStderr
+			
+			createErr := createCmd.Run()
+			if createErr != nil {
+				// If creation fails, check if it's because stack already exists
+				if strings.Contains(createStderr.String(), "already exists") {
+					// Stack exists but select failed, try select again
+					retrySelectCmd := exec.Command("pulumi", "stack", "select", stackName)
+					var retryStderr bytes.Buffer
+					retrySelectCmd.Stderr = &retryStderr
+					
+					if retrySelectErr := retrySelectCmd.Run(); retrySelectErr != nil {
+						L.Push(lua.LBool(false))
+						L.Push(lua.LString(fmt.Sprintf("Failed to select existing stack: %s", retryStderr.String())))
+						return 2
+					}
+				} else {
+					L.Push(lua.LBool(false))
+					L.Push(lua.LString(fmt.Sprintf("Failed to create stack: %s", createStderr.String())))
+					return 2
+				}
+			}
+		}
+	} else {
+		// Just try to select the stack
+		selectCmd := exec.Command("pulumi", "stack", "select", stackName)
+		var selectStderr bytes.Buffer
+		selectCmd.Stderr = &selectStderr
+		
+		if selectErr := selectCmd.Run(); selectErr != nil {
+			L.Push(lua.LBool(false))
+			L.Push(lua.LString(fmt.Sprintf("Failed to select stack '%s': %s", stackName, selectStderr.String())))
+			return 2
+		}
 	}
 	
 	client.currentStack = stackName

@@ -1,0 +1,61 @@
+-- Simple Pulumi Stack Test
+local test_stack = task("test_stack")
+    :description("Test Pulumi stack creation and selection")
+    :workdir("/tmp/pulumi-test")
+    :command(function(this, params)
+        local workdir_ensured = this.workdir.ensure()
+        if not workdir_ensured then 
+          return false, "Workdir problem"
+        end 
+
+        local git = require("git")
+        
+        log.info("📡 Cloning repository...")
+        local git_repository = git.clone(
+            "https://github.com/chalkan3/go-do-droplet",
+            this.workdir.get()
+        )
+        
+        log.info("✅ Repository cloned")
+        
+        local pulumi = require("pulumi")
+        
+        log.info("🔐 Testing Pulumi login...")
+        local client = pulumi.login("file://.", { login_local = true })
+        
+        if client.error then
+            log.error("❌ Login failed: " .. client.error)
+            return false, "Login failed"
+        end
+        
+        log.info("✅ Login successful")
+        
+        -- Set working directory
+        client:set_workdir(this.workdir:get())
+        
+        -- Test stack creation with detailed logging
+        log.info("📋 Testing stack creation...")
+        local stack_success, stack_msg = client:stack("test", { create = true })
+        
+        if stack_success then
+            log.info("✅ Stack operation successful: " .. stack_msg)
+            return true, "Stack test completed successfully"
+        else
+            log.error("❌ Stack operation failed: " .. stack_msg)
+            return false, "Stack operation failed: " .. stack_msg
+        end
+    end)
+    :timeout("5m")
+    :on_fail(function(this, params, output)
+        this.workdir:cleanup()
+    end)
+    :build()
+
+workflow.define("test_stack_workflow")
+    :description("Test Pulumi stack management")
+    :version("1.0.0")
+    :tasks({ test_stack })
+    :config({
+        timeout = "10m",
+        max_parallel_tasks = 1
+    })
