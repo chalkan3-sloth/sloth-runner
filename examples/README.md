@@ -1,117 +1,173 @@
 # Sloth Runner Examples
 
-This directory contains practical examples demonstrating Sloth Runner's capabilities.
+This directory contains comprehensive examples demonstrating various Sloth Runner capabilities organized by technology and use case.
 
-## 📁 Examples Overview
+## 📁 **Directory Structure**
 
-### `deploy_git_terraform.sloth`
-**Complete GitOps Workflow with Terraform and Values Configuration**
-
-This example demonstrates a complete GitOps workflow that:
-1. **Clones a Git repository** containing Terraform infrastructure code
-2. **Deploys infrastructure** using Terraform with configuration from `values.yaml`
-3. **Manages the complete lifecycle** from git clone to infrastructure deployment
-
-#### ✨ **Key Features Demonstrated:**
-- **Git Module Integration**: Clone repositories with the modern DSL
-- **Terraform Module Integration**: Automatic `terraform init`, `plan`, and `apply`
-- **Values Configuration**: External configuration using `values.yaml`
-- **Error Handling**: Comprehensive error handling and cleanup
-- **Workflow Orchestration**: Multi-task workflow with dependencies
-- **Logging**: Detailed logging throughout the process
-
-#### 🚀 **How to Run:**
-
-1. **Edit the configuration** in `values.yaml`:
-   ```yaml
-   terraform:
-     do_token: "your-actual-digitalocean-token"
-     droplet_name: "my-demo-droplet"
-     droplet_region: "nyc3"
-     # ... other configuration
-   ```
-
-2. **Run the workflow**:
-   ```bash
-   # With values file
-   sloth-runner run -f examples/deploy_git_terraform.sloth -v examples/values.yaml deploy_git_terraform
-   
-   # Or run specific tasks
-   sloth-runner run -f examples/deploy_git_terraform.sloth deploy_git_terraform
-   ```
-
-3. **Monitor the execution**:
-   - Watch the git clone progress
-   - See Terraform init output
-   - Review the Terraform plan
-   - Observe the apply process (if token is valid)
-
-#### 📋 **What This Example Does:**
-
-```mermaid
-graph TD
-    A[Start Workflow] --> B[Clone Git Repository]
-    B --> C[Check for Terraform Files]
-    C --> D[Run terraform init]
-    D --> E[Load values.yaml Configuration]
-    E --> F[Create terraform.tfvars]
-    F --> G[Run terraform plan]
-    G --> H[Run terraform apply]
-    H --> I[Infrastructure Deployed]
-    I --> J[Workflow Complete]
-    
-    C --> K[No Terraform Files] --> L[Skip Terraform Operations]
-    L --> J
+```
+examples/
+├── terraform/          # Terraform infrastructure examples
+├── pulumi/             # Pulumi infrastructure examples
+├── systemd/            # Systemd service management examples
+└── README.md          # This file
 ```
 
-#### 🔧 **Configuration via values.yaml:**
+## 🚀 **Quick Start Examples**
 
-The example shows how to use external configuration files instead of hardcoded values:
+### **Terraform - Infrastructure as Code**
+```bash
+# GitOps workflow with Terraform
+sloth-runner run -f examples/terraform/deploy_git_terraform.sloth -v examples/terraform/values.yaml deploy_git_terraform
+```
 
+### **Pulumi - Modern Infrastructure**
+```bash
+# Complete Pulumi workflow with preview
+sloth-runner run -f examples/pulumi/pulumi_config_example.sloth pulumi_complete_example
+
+# GitOps with Pulumi
+sloth-runner run -f examples/pulumi/deploy_git_pulumi.sloth -v examples/pulumi/values_pulumi.yaml deploy_git_pulumi
+```
+
+### **Systemd - Service Management**
+```bash
+# Comprehensive service management demo
+sudo sloth-runner run -f examples/systemd/systemd_demo.sloth systemd_demo_workflow
+```
+
+## 📋 **Examples by Category**
+
+### 🏗️ **Infrastructure as Code**
+
+| Technology | Example | Description |
+|------------|---------|-------------|
+| **Terraform** | `terraform/deploy_git_terraform.sloth` | Complete GitOps workflow with Terraform |
+| **Pulumi** | `pulumi/deploy_git_pulumi.sloth` | GitOps workflow with Pulumi and change detection |
+| **Pulumi** | `pulumi/pulumi_config_example.sloth` | Step-by-step Pulumi configuration and preview |
+
+### ⚙️ **Service Management**
+
+| Technology | Example | Description |
+|------------|---------|-------------|
+| **Systemd** | `systemd/systemd_demo.sloth` | Complete service lifecycle management |
+
+## 🎯 **Use Cases Demonstrated**
+
+### **GitOps Workflows**
+- ✅ Git repository cloning
+- ✅ Infrastructure deployment automation
+- ✅ Configuration management via values files
+- ✅ Error handling and rollback scenarios
+
+### **Infrastructure Management**
+- ✅ Terraform plan and apply operations
+- ✅ Pulumi preview and up with environment variables
+- ✅ Multi-stack deployments
+- ✅ Backend configuration (local, cloud, custom)
+
+### **Service Operations**
+- ✅ Service creation and configuration
+- ✅ Lifecycle management (start, stop, restart)
+- ✅ Health monitoring and status checks
+- ✅ Blue-green deployment patterns
+
+## 🔧 **Common Patterns**
+
+### **Configuration Management**
+All examples support external configuration via values files:
+```bash
+# Terraform
+sloth-runner run -f example.sloth -v values.yaml workflow_name
+
+# Pulumi
+sloth-runner run -f example.sloth -v values_pulumi.yaml workflow_name
+```
+
+### **Environment Variables**
+Secure credential management:
 ```lua
--- Instead of hardcoded values:
-do_token = "hardcoded-token"
-
--- Use values from YAML:
-do_token = Values.terraform.do_token or ""
+-- In your workflows
+local envs = {
+    CLOUD_TOKEN = os.getenv("CLOUD_TOKEN"),
+    DATABASE_URL = values.secrets.database_url
+}
 ```
 
-This approach provides:
-- **Environment-specific configurations**
-- **Secure token management** (keep tokens out of code)
-- **Reusable workflows** across different environments
-- **Easy customization** without modifying the `.sloth` file
+### **Error Handling**
+Robust error handling with cleanup:
+```lua
+:on_fail(function(this, params, output)
+    log.error("Task failed, cleaning up...")
+    this.workdir:cleanup()
+end)
+```
 
-#### 🎯 **Learning Outcomes:**
+## ⚙️ **Prerequisites**
 
-After running this example, you'll understand:
-- How to create multi-task workflows
-- How to integrate Git and Terraform modules
-- How to use external configuration files
-- How to handle errors and cleanup resources
-- How to implement comprehensive logging
-- How to structure complex GitOps workflows
+### **General Requirements**
+- Sloth Runner compiled and available in PATH
+- Git installed and configured
 
-#### ⚠️ **Prerequisites:**
+### **Technology-Specific Requirements**
 
-- `terraform` command available in PATH
-- `git` command available in PATH
-- Valid DigitalOcean token (for actual deployment)
-- Network access to GitHub and DigitalOcean APIs
+#### **Terraform Examples**
+- Terraform CLI installed (`terraform --version`)
+- Cloud provider credentials configured
 
-#### 🔒 **Security Note:**
+#### **Pulumi Examples**
+- Pulumi CLI installed (`pulumi version`)
+- Cloud provider credentials or tokens
 
-Never commit real API tokens to version control. Use environment variables or secure configuration management for production deployments.
+#### **Systemd Examples**
+- Linux system with systemd
+- Sudo privileges for service management
+
+## 📚 **Documentation**
+
+Each subdirectory contains detailed README files with:
+- 📖 **Comprehensive guides** for each example
+- ⚙️ **Configuration options** and customization
+- 🎯 **Use case scenarios** and best practices
+- 🔧 **Troubleshooting** and common issues
+
+### **Quick Links**
+- [Terraform Examples](terraform/README.md)
+- [Pulumi Examples](pulumi/README.md)  
+- [Systemd Examples](systemd/README.md)
+
+## 🛠️ **Development Workflow**
+
+### **Testing Examples**
+```bash
+# Test a specific example
+sloth-runner run -f examples/category/example.sloth workflow_name
+
+# With custom configuration
+sloth-runner run -f examples/category/example.sloth -v custom-values.yaml workflow_name
+```
+
+### **Creating New Examples**
+1. Choose the appropriate category directory
+2. Create your `.sloth` file
+3. Add corresponding values file if needed
+4. Update the category README.md
+5. Test thoroughly with different scenarios
+
+## 🎉 **Getting Started**
+
+1. **Choose your use case** from the categories above
+2. **Navigate to the relevant directory** (terraform/, pulumi/, systemd/)
+3. **Read the specific README** for detailed instructions
+4. **Run the example** with the provided commands
+5. **Customize** for your specific needs
+
+## 🔗 **Related Resources**
+
+- [Sloth Runner Documentation](../docs/)
+- [Module Reference](../docs/modules/)
+- [Configuration Guide](../docs/configuration/)
+- [Best Practices](../docs/best-practices/)
 
 ---
 
-## 📚 **Next Steps**
-
-Explore the code in `deploy_git_terraform.sloth` to see:
-- Modern DSL task definitions
-- Fluent API usage
-- Error handling patterns
-- Workflow orchestration
-- Integration with external tools
-
-For more examples and documentation, visit: [Sloth Runner Documentation](../docs/)
+**Start with any example that matches your infrastructure needs and explore the comprehensive capabilities of Sloth Runner!** 🚀
