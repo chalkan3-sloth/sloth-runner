@@ -158,31 +158,51 @@ local deploy_pulumi_task = task("deploy-pulumi")
             log.info("📊 Pulumi Preview Output:")
             log.print(preview_output)
             
-            -- Run Pulumi up
-            log.info("🚀 Running Pulumi up...")
-            local up_success, up_output = client:up({ auto_approve = true })
+            -- Check if user wants to proceed with deployment
+            local has_changes = string.find(preview_output, "create") ~= nil or 
+                               string.find(preview_output, "update") ~= nil or
+                               string.find(preview_output, "delete") ~= nil
             
-            if up_success then
-                log.info("🎉 Pulumi Up Output:")
-                log.print(up_output)
-                return true, "Pulumi deployment successful", {
-                    pulumi_used = true,
-                    login_success = true,
-                    stack_success = true,
-                    preview_success = true,
-                    up_success = true,
-                    infrastructure_deployed = true,
-                    config_source = "values.yaml"
-                }
+            if has_changes then
+                log.info("📊 Infrastructure changes detected, proceeding with deployment...")
+                
+                -- Run Pulumi up
+                log.info("🚀 Running Pulumi up...")
+                local up_success, up_output = client:up({ auto_approve = true })
+                
+                if up_success then
+                    log.info("🎉 Pulumi Up Output:")
+                    log.print(up_output)
+                    return true, "Pulumi deployment successful", {
+                        pulumi_used = true,
+                        login_success = true,
+                        stack_success = true,
+                        preview_success = true,
+                        up_success = true,
+                        infrastructure_deployed = true,
+                        config_source = "values.yaml"
+                    }
+                else
+                    log.error("❌ Pulumi up failed: " .. up_output)
+                    return false, "Pulumi up failed", {
+                        pulumi_used = true,
+                        login_success = true,
+                        stack_success = true,
+                        preview_success = true,
+                        up_success = false,
+                        error = up_output
+                    }
+                end
             else
-                log.error("❌ Pulumi up failed: " .. up_output)
-                return false, "Pulumi up failed", {
+                log.info("📊 No infrastructure changes detected")
+                return true, "Pulumi preview completed - no changes needed", {
                     pulumi_used = true,
                     login_success = true,
                     stack_success = true,
                     preview_success = true,
                     up_success = false,
-                    error = up_output
+                    no_changes = true,
+                    config_source = "values.yaml"
                 }
             end
         else
