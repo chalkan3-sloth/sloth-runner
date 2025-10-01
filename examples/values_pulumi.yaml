@@ -1,28 +1,15 @@
 # Values configuration for deploy_git_pulumi.sloth example
 # This file contains the configuration values used by the Pulumi deployment
+# These correspond to the pulumi config set commands
 
 pulumi:
-  # DigitalOcean API Token (set your real token here for actual deployment)
-  do_token: "your-digitalocean-token-here"
-  
   # Droplet Configuration
-  droplet_name: "sloth-runner-pulumi-demo"
-  droplet_region: "nyc3"
-  droplet_size: "s-1vcpu-1gb"
-  
-  # Environment and Project Settings
-  environment: "demo"
-  project_name: "sloth-pulumi-demo"
-  
-  # Backup Configuration
-  enable_backups: false
-  
-  # Tags for the droplet
-  droplet_tags:
-    - "sloth-runner"
-    - "demo"
-    - "pulumi"
-    - "gitops"
+  dropletName: "sloth-runner"          # pulumi config set dropletName sloth-runner
+  region: "nyc3"                       # pulumi config set region nyc3
+  size: "s-1vcpu-1gb"                  # pulumi config set size s-1vcpu-1gb
+  image: "ubuntu-22-04-x64"            # pulumi config set image ubuntu-22-04-x64
+  environment: "dev"                   # pulumi config set environment dev
+  project: "main"                      # pulumi config set project main
 
 # Git Configuration
 git:
