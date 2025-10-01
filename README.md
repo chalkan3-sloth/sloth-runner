@@ -123,15 +123,40 @@ local version = state.get("deployment_version")
 
 ### Installation
 
+**Quick Install (Recommended):**
+
 ```bash
-# Install latest version
-curl -sSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/main/install.sh | bash
+# One-line installation (Linux/macOS)
+curl -fsSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/install.sh | bash
+```
 
-# Or download from releases
-wget https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner-linux-amd64.tar.gz
+**Alternative Methods:**
 
-# Or build from source
-go install github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner@latest
+```bash
+# Install specific version
+bash install.sh --version v3.23.1
+
+# Install without sudo (to ~/.local/bin)
+bash install.sh --no-sudo
+
+# Download from releases manually
+wget https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner_v3.23.1_linux_amd64.tar.gz
+tar -xzf sloth-runner_*.tar.gz
+sudo mv sloth-runner /usr/local/bin/
+
+# Build from source
+git clone https://github.com/chalkan3-sloth/sloth-runner.git
+cd sloth-runner
+go build -o sloth-runner ./cmd/sloth-runner
+sudo mv sloth-runner /usr/local/bin/
+```
+
+📖 **[Complete Installation Guide](./INSTALL.md)** - Detailed instructions for all platforms
+
+**Verify Installation:**
+```bash
+sloth-runner --version
+# Output: sloth-runner version 3.23.1
 ```
 
 ### Your First GitOps Workflow
