@@ -1,0 +1,119 @@
+-- Simple Pulumi Configuration Example
+-- This example shows exactly how to use Pulumi configuration commands
+-- that correspond to: pulumi config set key value
+
+local setup_pulumi_config = task("setup_pulumi_config")
+    :description("Setup Pulumi configuration for DigitalOcean droplet")
+    :workdir("/tmp/pulumi-project")
+    :command(function(this, params)
+        log.info("🔧 Setting up Pulumi configuration...")
+        
+        local pulumi = require("pulumi")
+        
+        -- Login to local backend (equivalent to: pulumi login file://.)
+        log.info("🔐 Pulumi login (local backend)...")
+        local client = pulumi.login("file://.", { login_local = true })
+        
+        if client.error then
+            log.error("❌ Pulumi login failed: " .. client.error)
+            return false, "Login failed"
+        end
+        
+        log.info("✅ Pulumi login successful")
+        
+        -- Setup stack (equivalent to: pulumi stack init dev)
+        log.info("📋 Setting up Pulumi stack...")
+        local stack_success, stack_msg = client:stack("dev", { create = true })
+        if not stack_success then
+            log.error("❌ Stack setup failed: " .. stack_msg)
+            return false, "Stack setup failed"
+        end
+        
+        log.info("✅ Stack 'dev' ready")
+        
+        -- Set configuration values (equivalent to pulumi config set commands)
+        log.info("⚙️ Setting Pulumi configuration values...")
+        
+        local configs = {
+            { key = "dropletName", value = "sloth-runner" },          -- pulumi config set dropletName sloth-runner
+            { key = "region", value = "nyc3" },                      -- pulumi config set region nyc3
+            { key = "size", value = "s-1vcpu-1gb" },                 -- pulumi config set size s-1vcpu-1gb
+            { key = "image", value = "ubuntu-22-04-x64" },           -- pulumi config set image ubuntu-22-04-x64
+            { key = "environment", value = "dev" },                  -- pulumi config set environment dev
+            { key = "project", value = "main" }                      -- pulumi config set project main
+        }
+        
+        for _, config in ipairs(configs) do
+            log.info("Setting: " .. config.key .. " = " .. config.value)
+            local success, msg = client:set_config(config.key, config.value)
+            
+            if success then
+                log.info("  ✅ " .. config.key .. ": " .. config.value)
+            else
+                log.error("  ❌ Failed to set " .. config.key .. ": " .. msg)
+                return false, "Configuration failed"
+            end
+        end
+        
+        -- Verify configuration by reading back values
+        log.info("🔍 Verifying configuration...")
+        for _, config in ipairs(configs) do
+            local value, err = client:get_config(config.key)
+            if err then
+                log.warn("  ⚠️ Could not read " .. config.key .. ": " .. err)
+            else
+                log.info("  ✅ " .. config.key .. " = " .. (value or ""))
+            end
+        end
+        
+        return true, "Pulumi configuration completed successfully", {
+            login_successful = true,
+            stack_created = true,
+            config_set = true,
+            configs_applied = #configs
+        }
+    end)
+    :timeout("5m")
+    :on_success(function(this, params, output)
+        log.info("🎉 === PULUMI CONFIGURATION SUCCESS ===")
+        log.info("Configurations applied: " .. output.configs_applied)
+        log.info("Stack: dev")
+        log.info("Backend: local (file://)")
+    end)
+    :on_fail(function(this, params, output)
+        log.error("💥 Pulumi configuration failed")
+        if output and output.error then
+            log.error("Error: " .. output.error)
+        end
+    end)
+    :build()
+
+workflow.define("pulumi_config_example")
+    :description("Example showing how to set Pulumi configuration")
+    :version("1.0.0")
+    :tasks({ setup_pulumi_config })
+    :config({
+        timeout = "10m",
+        max_parallel_tasks = 1
+    })
+    :on_complete(function(success, results)
+        log.info("🎉 === PULUMI CONFIG WORKFLOW COMPLETED ===")
+        
+        if success then
+            log.info("✅ All Pulumi configurations were set successfully!")
+            log.info("")
+            log.info("📋 Equivalent commands that were executed:")
+            log.info("  pulumi login file://.")
+            log.info("  pulumi stack init dev")
+            log.info("  pulumi config set dropletName sloth-runner")
+            log.info("  pulumi config set region nyc3")
+            log.info("  pulumi config set size s-1vcpu-1gb")
+            log.info("  pulumi config set image ubuntu-22-04-x64")
+            log.info("  pulumi config set environment dev")
+            log.info("  pulumi config set project main")
+        else
+            log.error("❌ Pulumi configuration workflow failed")
+        end
+        
+        return true
+    end)

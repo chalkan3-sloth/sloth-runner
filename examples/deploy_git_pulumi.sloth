@@ -71,9 +71,9 @@ local deploy_pulumi_task = task("deploy-pulumi")
         
         local pulumi = require("pulumi")
         
-        -- Login to Pulumi
-        log.info("🔐 Logging into Pulumi...")
-        local client = pulumi.login("urllogin", { login_local = false })
+        -- Login to Pulumi (using local backend)
+        log.info("🔐 Logging into Pulumi (local backend)...")
+        local client = pulumi.login("file://.", { login_local = true })
         
         -- Check if login was successful
         if client.error then
@@ -111,47 +111,40 @@ local deploy_pulumi_task = task("deploy-pulumi")
         if values and values.pulumi then
             log.info("📋 Loading Pulumi configuration from values.yaml")
             pulumi_config = {
-                do_token = values.pulumi.do_token or "",
-                droplet_name = values.pulumi.droplet_name or "sloth-runner-demo",
-                droplet_region = values.pulumi.droplet_region or "nyc3",
-                droplet_size = values.pulumi.droplet_size or "s-1vcpu-1gb",
+                dropletName = values.pulumi.dropletName or "sloth-runner",
+                region = values.pulumi.region or "nyc3",
+                size = values.pulumi.size or "s-1vcpu-1gb",
+                image = values.pulumi.image or "ubuntu-22-04-x64",
                 environment = values.pulumi.environment or "dev",
-                project_name = values.pulumi.project_name or "sloth-demo",
-                enable_backups = values.pulumi.enable_backups or false,
-                droplet_tags = values.pulumi.droplet_tags or { "sloth-runner", "demo", "pulumi" }
+                project = values.pulumi.project or "main"
             }
         else
             log.warn("⚠️ values table or pulumi section not found, using default values")
             pulumi_config = {
-                do_token = "",
-                droplet_name = "sloth-runner-demo",
-                droplet_region = "nyc3",
-                droplet_size = "s-1vcpu-1gb",
+                dropletName = "sloth-runner",
+                region = "nyc3",
+                size = "s-1vcpu-1gb",
+                image = "ubuntu-22-04-x64",
                 environment = "dev",
-                project_name = "sloth-demo",
-                enable_backups = false,
-                droplet_tags = { "sloth-runner", "demo", "pulumi" }
+                project = "main"
             }
         end
         
-        -- Set configuration values
+        -- Set configuration values (equivalent to pulumi config set commands)
         log.info("⚙️ Setting Pulumi configuration...")
         for key, value in pairs(pulumi_config) do
-            if type(value) == "table" then
-                -- Handle arrays (like tags)
-                local array_str = ""
-                for i, tag in ipairs(value) do
-                    if i > 1 then array_str = array_str .. "," end
-                    array_str = array_str .. tag
-                end
-                client:set_config(key, array_str)
-                log.info("  " .. key .. ": [" .. array_str .. "]")
-            elseif type(value) == "boolean" then
-                client:set_config(key, tostring(value))
-                log.info("  " .. key .. ": " .. tostring(value))
+            local config_success, config_msg = client:set_config(key, tostring(value))
+            if config_success then
+                log.info("  ✅ " .. key .. ": " .. tostring(value))
             else
-                client:set_config(key, tostring(value))
-                log.info("  " .. key .. ": " .. tostring(value))
+                log.error("  ❌ Failed to set " .. key .. ": " .. config_msg)
+                return false, "Failed to set Pulumi configuration", {
+                    pulumi_used = true,
+                    login_success = true,
+                    stack_success = true,
+                    config_success = false,
+                    error = config_msg
+                }
             end
         end
         
