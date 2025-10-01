@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/chalkan3-sloth/sloth-runner/internal/ai"
+	"github.com/chalkan3-sloth/sloth-runner/internal/core"
 	"github.com/chalkan3-sloth/sloth-runner/internal/gitops"
 	"github.com/chalkan3-sloth/sloth-runner/internal/state"
 	"github.com/chalkan3-sloth/sloth-runner/internal/types"
@@ -249,10 +250,21 @@ func parseLuaTask(L *lua.LState, taskTable *lua.LTable) types.Task {
 	// Parse delegate_to
 	var delegateTo interface{}
 	luaDelegateTo := taskTable.RawGetString("delegate_to")
+	
+	// DEBUG: Log delegate_to parsing
+	slog.Info("DEBUG: Parsing delegate_to from Lua", 
+		"task_name", name,
+		"lua_delegate_to_type", luaDelegateTo.Type().String(),
+		"lua_delegate_to_value", luaDelegateTo.String())
+	
 	if luaDelegateTo.Type() == lua.LTString {
 		delegateTo = luaDelegateTo.String()
+		slog.Info("DEBUG: delegate_to parsed as string", "task_name", name, "value", delegateTo)
 	} else if luaDelegateTo.Type() == lua.LTTable {
 		delegateTo = LuaTableToGoMap(L, luaDelegateTo.(*lua.LTable))
+		slog.Info("DEBUG: delegate_to parsed as table", "task_name", name, "value", delegateTo)
+	} else {
+		slog.Info("DEBUG: delegate_to not found or invalid type", "task_name", name, "type", luaDelegateTo.Type().String())
 	}
 
 	return types.Task{
@@ -430,6 +442,13 @@ func RegisterAllModules(L *lua.LState) {
 	
 	// Register GitOps module
 	luaInterface.registerGitOpsModule()
+	
+	// Register modern DSL for fluent task definition
+	globalCore := core.GetGlobalCore()
+	if globalCore != nil {
+		modernDSL := NewModernDSL(globalCore)
+		modernDSL.RegisterModernDSL(L)
+	}
 	
 	// Register modules that may not exist yet
 	// OpenPkg is handled by the pkg.go file

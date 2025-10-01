@@ -1,0 +1,37 @@
+-- ✅ EXEMPLO FUNCIONAL - DSL Moderno com delegate_to
+-- Execução remota usando o DSL moderno
+
+local hello_task = task("hello")
+    :description("Executa comando simples no agente remoto")
+    :command(function(this, params)
+        log.info("🚀 Executando no agente remoto...")
+        
+        local output, err, failed = exec.run("echo 'Hello from remote agent!' && hostname")
+        
+        if not failed then
+            log.info("✅ Comando executado com sucesso!")
+            log.info("📋 Saída: " .. output)
+            return true, "Sucesso"
+        else
+            log.error("❌ Erro: " .. (err or "desconhecido"))
+            return false, "Falha"
+        end
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+workflow.define("hello_remote")
+    :description("Hello World remoto usando DSL moderno")
+    :version("1.0.0")
+    :tasks({ hello_task })
+    :config({ timeout = "1m" })
+    :on_complete(function(success, results)
+        if success then
+            log.info("✅ Execução remota concluída!")
+        else
+            log.error("❌ Falha na execução")
+        end
+        return true
+    end)
+
