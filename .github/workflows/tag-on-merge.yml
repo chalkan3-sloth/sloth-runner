@@ -94,6 +94,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Trigger Release Workflow
+        if: steps.create-tag.outputs.tag_created == 'true'
+        run: |
+          echo "🚀 Triggering release workflow for tag ${{ steps.create-tag.outputs.new_tag }}"
+          gh workflow run release.yml --ref ${{ steps.create-tag.outputs.new_tag }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
     outputs:
       tag_created: ${{ steps.create-tag.outputs.tag_created }}
       new_tag: ${{ steps.create-tag.outputs.new_tag }}
