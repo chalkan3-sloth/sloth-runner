@@ -178,8 +178,6 @@ detect_platform() {
 
 # Get latest release tag
 get_latest_release() {
-    info "Fetching latest release..."
-    
     # Try with gh CLI first
     if command -v gh &> /dev/null; then
         LATEST=$(gh release list --repo "$OWNER/$REPO" --limit 1 2>/dev/null | awk '{print $3}' | head -1)
@@ -204,8 +202,8 @@ get_latest_release() {
              sed -E 's/.*"([^"]+)".*/\1/')
     
     if [ -z "$LATEST" ]; then
-        error "Could not fetch latest release tag"
-        info "Please specify version with --version flag"
+        error "Could not fetch latest release tag" >&2
+        info "Please specify version with --version flag" >&2
         exit 1
     fi
     
@@ -379,6 +377,7 @@ main() {
     
     # Get version to install
     if [ -z "$VERSION" ]; then
+        info "Fetching latest release..."
         VERSION=$(get_latest_release)
     fi
     success "Version to install: $VERSION"
