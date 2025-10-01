@@ -51,7 +51,7 @@ syntax keyword slothModule docker kubernetes terraform pulumi
 syntax keyword slothModule git notification crypto utils
 
 " DSL chaining methods (highlighted differently)
-syntax match slothMethod '\v:\w+\ze\s*[\(\{"\[]'
+syntax match slothMethod '\v:\w+'
 
 " Function calls
 syntax match slothFunction '\v<\w+\ze\s*\('
@@ -78,7 +78,7 @@ syntax match slothEnvVar '\v\$[A-Z_][A-Z0-9_]*'
 
 " File paths
 syntax match slothPath '\v"[/~][\w/\-\.]*"'
-syntax match slothPath '\v'[/~][\w/\-\.]*''
+syntax match slothPath "\v'[/~][\\w/\\-\\.]*'"
 
 " Define highlight groups
 highlight default link slothComment     Comment
@@ -101,7 +101,7 @@ highlight default link slothPath        String
 if has('gui_running') || &t_Co >= 256
   highlight slothDSLKeyword  guifg=#569cd6 ctermfg=75  gui=bold
   highlight slothModule      guifg=#c586c0 ctermfg=176 gui=bold
-  highlight slothMethod      guifg=#4ec9b0 ctermfg=79
+  highlight slothMethod      guifg=#f9e79f ctermfg=222 gui=bold
   highlight slothFunction    guifg=#dcdcaa ctermfg=187
   highlight slothEnvVar      guifg=#ff6b6b ctermfg=203 gui=bold
   highlight slothPath        guifg=#98d8c8 ctermfg=116
