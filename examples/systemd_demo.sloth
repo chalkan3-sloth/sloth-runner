@@ -1,0 +1,276 @@
+-- Exemplo completo de uso do módulo systemd
+local create_app_service = task("create_app_service")
+    :description("Create and manage a Node.js application service")
+    :command(function(this, params)
+        local systemd = require("systemd")
+        
+        log.info("🔧 Creating systemd service for Node.js app...")
+        
+        -- Configuração do serviço
+        local service_config = {
+            description = "My Node.js Application",
+            after = "network.target",
+            
+            -- Configuração do serviço
+            exec_start = "/usr/bin/node /opt/myapp/server.js",
+            exec_reload = "/bin/kill -USR1 $MAINPID",
+            type = "simple",
+            user = "nodejs",
+            group = "nodejs",
+            working_directory = "/opt/myapp",
+            restart = "always",
+            restart_sec = "10",
+            
+            -- Variáveis de ambiente
+            environment = {
+                NODE_ENV = "production",
+                PORT = "3000",
+                LOG_LEVEL = "info"
+            },
+            
+            -- Target de instalação
+            wanted_by = "multi-user.target"
+        }
+        
+        -- Criar arquivo de serviço
+        local create_success, create_msg = systemd.create_service("myapp", service_config)
+        if not create_success then
+            log.error("❌ Failed to create service: " .. create_msg)
+            return false, "Service creation failed"
+        end
+        
+        log.info("✅ Service file created: " .. create_msg)
+        
+        -- Reload daemon para reconhecer novo serviço
+        log.info("🔄 Reloading systemd daemon...")
+        local reload_success, reload_msg = systemd.daemon_reload()
+        if not reload_success then
+            log.error("❌ Failed to reload daemon: " .. reload_msg)
+            return false, "Daemon reload failed"
+        end
+        
+        log.info("✅ Daemon reloaded successfully")
+        
+        -- Habilitar serviço para iniciar no boot
+        log.info("🚀 Enabling service...")
+        local enable_success, enable_msg = systemd.enable("myapp")
+        if not enable_success then
+            log.error("❌ Failed to enable service: " .. enable_msg)
+            return false, "Service enable failed"
+        end
+        
+        log.info("✅ Service enabled: " .. enable_msg)
+        
+        -- Iniciar serviço
+        log.info("▶️ Starting service...")
+        local start_success, start_msg = systemd.start("myapp")
+        if not start_success then
+            log.error("❌ Failed to start service: " .. start_msg)
+            return false, "Service start failed"
+        end
+        
+        log.info("✅ Service started: " .. start_msg)
+        
+        -- Verificar se serviço está ativo
+        local is_active, active_status = systemd.is_active("myapp")
+        log.info("📊 Service active status: " .. tostring(is_active) .. " (" .. active_status .. ")")
+        
+        -- Verificar se serviço está habilitado
+        local is_enabled, enabled_status = systemd.is_enabled("myapp")
+        log.info("📊 Service enabled status: " .. tostring(is_enabled) .. " (" .. enabled_status .. ")")
+        
+        return true, "Service created and started successfully", {
+            service_created = true,
+            service_enabled = is_enabled,
+            service_active = is_active,
+            service_name = "myapp"
+        }
+    end)
+    :timeout("5m")
+    :on_success(function(this, params, output)
+        log.info("🎉 === SERVICE DEPLOYMENT SUCCESS ===")
+        log.info("Service: " .. output.service_name)
+        log.info("Active: " .. tostring(output.service_active))
+        log.info("Enabled: " .. tostring(output.service_enabled))
+    end)
+    :on_fail(function(this, params, output)
+        log.error("💥 Service deployment failed")
+        if output and output.error then
+            log.error("Error details: " .. output.error)
+        end
+    end)
+    :build()
+
+local manage_service = task("manage_service")
+    :description("Demonstrate service management operations")
+    :command(function(this, params)
+        local systemd = require("systemd")
+        
+        log.info("🔧 Demonstrating service management...")
+        
+        local service_name = "myapp"
+        
+        -- Verificar status atual
+        log.info("📊 Checking current status...")
+        local status_output, status_error = systemd.status(service_name)
+        if status_error then
+            log.warn("⚠️ Status check warning: " .. status_error)
+        end
+        log.info("Status output preview:")
+        log.info(string.sub(status_output or "", 1, 200) .. "...")
+        
+        -- Reiniciar serviço
+        log.info("🔄 Restarting service...")
+        local restart_success, restart_msg = systemd.restart(service_name)
+        if restart_success then
+            log.info("✅ Service restarted successfully")
+        else
+            log.error("❌ Restart failed: " .. restart_msg)
+        end
+        
+        -- Aguardar um pouco para o serviço estabilizar
+        log.info("⏳ Waiting for service to stabilize...")
+        os.execute("sleep 3")
+        
+        -- Verificar se ainda está ativo
+        local is_active, active_status = systemd.is_active(service_name)
+        log.info("📊 Service status after restart: " .. tostring(is_active) .. " (" .. active_status .. ")")
+        
+        -- Demonstrar reload (se suportado)
+        log.info("🔄 Attempting service reload...")
+        local reload_success, reload_msg = systemd.reload(service_name)
+        if reload_success then
+            log.info("✅ Service reloaded successfully")
+        else
+            log.warn("⚠️ Reload not supported or failed: " .. reload_msg)
+        end
+        
+        return true, "Service management operations completed", {
+            service_restarted = restart_success,
+            service_active_after_restart = is_active,
+            reload_attempted = true
+        }
+    end)
+    :timeout("3m")
+    :build()
+
+local cleanup_service = task("cleanup_service")
+    :description("Clean up the demo service")
+    :command(function(this, params)
+        local systemd = require("systemd")
+        
+        log.info("🧹 Cleaning up demo service...")
+        
+        local service_name = "myapp"
+        
+        -- Parar serviço
+        log.info("⏹️ Stopping service...")
+        local stop_success, stop_msg = systemd.stop(service_name)
+        if stop_success then
+            log.info("✅ Service stopped")
+        else
+            log.warn("⚠️ Stop failed (may already be stopped): " .. stop_msg)
+        end
+        
+        -- Desabilitar serviço
+        log.info("🚫 Disabling service...")
+        local disable_success, disable_msg = systemd.disable(service_name)
+        if disable_success then
+            log.info("✅ Service disabled")
+        else
+            log.warn("⚠️ Disable failed: " .. disable_msg)
+        end
+        
+        -- Remover serviço
+        log.info("🗑️ Removing service file...")
+        local remove_success, remove_msg = systemd.remove_service(service_name)
+        if remove_success then
+            log.info("✅ Service removed: " .. remove_msg)
+        else
+            log.error("❌ Remove failed: " .. remove_msg)
+            return false, "Service removal failed"
+        end
+        
+        return true, "Service cleanup completed successfully", {
+            service_stopped = stop_success,
+            service_disabled = disable_success,
+            service_removed = remove_success
+        }
+    end)
+    :timeout("3m")
+    :build()
+
+local list_services_task = task("list_services")
+    :description("List systemd services for monitoring")
+    :command(function(this, params)
+        local systemd = require("systemd")
+        
+        log.info("📋 Listing systemd services...")
+        
+        -- Listar serviços ativos
+        log.info("🟢 Active services:")
+        local active_services, active_error = systemd.list_services({ state = "active", no_header = true })
+        if active_error then
+            log.error("❌ Failed to list active services: " .. active_error)
+        else
+            log.info("Active services count: " .. tostring(#string.split(active_services, "\n")))
+        end
+        
+        -- Listar serviços failed
+        log.info("🔴 Failed services:")
+        local failed_services, failed_error = systemd.list_services({ state = "failed", no_header = true })
+        if failed_error then
+            log.error("❌ Failed to list failed services: " .. failed_error)
+        else
+            local failed_lines = string.split(failed_services, "\n")
+            log.info("Failed services count: " .. tostring(#failed_lines))
+            if #failed_lines > 1 then
+                log.warn("⚠️ There are failed services that need attention!")
+                for i, line in ipairs(failed_lines) do
+                    if i <= 5 and line:match("%S") then -- Show first 5 non-empty lines
+                        log.warn("  " .. line)
+                    end
+                end
+            end
+        end
+        
+        return true, "Service listing completed", {
+            active_services_listed = active_error == nil,
+            failed_services_listed = failed_error == nil
+        }
+    end)
+    :timeout("2m")
+    :build()
+
+workflow.define("systemd_demo")
+    :description("Complete systemd module demonstration")
+    :version("1.0.0")
+    :tasks({ create_app_service, manage_service, list_services_task, cleanup_service })
+    :config({
+        timeout = "15m",
+        max_parallel_tasks = 1
+    })
+    :on_complete(function(success, results)
+        log.info("🎉 === SYSTEMD DEMO COMPLETED ===")
+        
+        if success then
+            log.info("✅ All systemd operations completed successfully!")
+            log.info("📊 Summary:")
+            
+            if results.create_app_service then
+                log.info("  ✅ Service creation: " .. tostring(results.create_app_service.service_created))
+            end
+            
+            if results.manage_service then
+                log.info("  ✅ Service management: " .. tostring(results.manage_service.service_restarted))
+            end
+            
+            if results.cleanup_service then
+                log.info("  ✅ Service cleanup: " .. tostring(results.cleanup_service.service_removed))
+            end
+        else
+            log.error("❌ Systemd demo had failures")
+        end
+        
+        return true
+    end)
