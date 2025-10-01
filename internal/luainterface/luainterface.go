@@ -400,6 +400,9 @@ func RegisterAllModules(L *lua.LState) {
 	
 	// Register systemd module
 	L.PreloadModule("systemd", SystemdLoader)
+	
+	// Register pulumi module
+	L.PreloadModule("pulumi", PulumiLoader)
 	OpenMetrics(L)
 	
 	// ✅ Register workdir functions
