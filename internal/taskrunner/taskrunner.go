@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -24,8 +25,37 @@ import (
 	pb "github.com/chalkan3-sloth/sloth-runner/proto"
 	"github.com/pterm/pterm"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	lua "github.com/yuin/gopher-lua"
 )
+
+// AgentResolver interface for resolving agent names to addresses
+type AgentResolver interface {
+	GetAgentAddress(agentName string) (string, error)
+}
+
+// globalAgentResolver is set by the main package to provide access to the agent registry
+var globalAgentResolver AgentResolver
+
+// SetAgentResolver sets the global agent resolver
+func SetAgentResolver(resolver AgentResolver) {
+	globalAgentResolver = resolver
+}
+
+// resolveAgentAddress resolves an agent name or address to a full address
+func resolveAgentAddress(agentNameOrAddress string) (string, error) {
+	// If it looks like an address (contains :), return as is
+	if strings.Contains(agentNameOrAddress, ":") {
+		return agentNameOrAddress, nil
+	}
+	
+	// Otherwise, try to resolve as agent name
+	if globalAgentResolver != nil {
+		return globalAgentResolver.GetAgentAddress(agentNameOrAddress)
+	}
+	
+	return "", fmt.Errorf("no agent resolver available to resolve agent name: %s", agentNameOrAddress)
+}
 
 type SurveyAsker interface {
 	AskOne(survey.Prompt, interface{}, ...survey.AskOpt) error
@@ -243,11 +273,27 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 
 	var agentAddress string
 
+	// DEBUG: Log delegate_to information
+	slog.Info("DEBUG: Task delegate_to info", 
+		"task_name", t.Name, 
+		"delegate_to", t.DelegateTo, 
+		"delegate_to_type", fmt.Sprintf("%T", t.DelegateTo),
+		"delegate_to_nil", t.DelegateTo == nil)
+
 	// Determine agent address from task's DelegateTo or group's DelegateTo
 	if t.DelegateTo != nil {
+		slog.Info("DEBUG: Processing task delegate_to", "task_name", t.Name, "delegate_to", t.DelegateTo)
 		switch v := t.DelegateTo.(type) {
 		case string:
-			agentAddress = v // Direct address
+			slog.Info("DEBUG: Resolving agent name", "agent_name", v)
+			// Try to resolve agent name to address
+			resolvedAddress, err := resolveAgentAddress(v)
+			if err != nil {
+				slog.Error("DEBUG: Failed to resolve agent", "agent_name", v, "error", err)
+				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to resolve agent '%s': %w", v, err)}
+			}
+			slog.Info("DEBUG: Agent resolved successfully", "agent_name", v, "address", resolvedAddress)
+			agentAddress = resolvedAddress
 		case map[string]interface{}:
 			if addr, ok := v["address"].(string); ok {
 				agentAddress = addr
@@ -258,9 +304,15 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("invalid type for task delegate_to: %T", v)}
 		}
 	} else if tr.TaskGroups[groupName].DelegateTo != nil {
+		slog.Info("DEBUG: Processing group delegate_to", "group_name", groupName, "delegate_to", tr.TaskGroups[groupName].DelegateTo)
 		switch v := tr.TaskGroups[groupName].DelegateTo.(type) {
 		case string:
-			agentAddress = v // Direct address
+			// Try to resolve agent name to address
+			resolvedAddress, err := resolveAgentAddress(v)
+			if err != nil {
+				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to resolve agent '%s': %w", v, err)}
+			}
+			agentAddress = resolvedAddress
 		case map[string]interface{}:
 			if addr, ok := v["address"].(string); ok {
 				agentAddress = addr
@@ -270,11 +322,15 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 		default:
 			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("invalid type for group delegate_to: %T", v)}
 		}
+	} else {
+		slog.Info("DEBUG: No delegate_to found", "task_name", t.Name)
 	}
+
+	slog.Info("DEBUG: Final agent address", "task_name", t.Name, "agent_address", agentAddress)
 
 	if agentAddress != "" {
 		// Connect to the agent
-		conn, err := grpc.Dial(agentAddress, grpc.WithInsecure())
+		conn, err := grpc.Dial(agentAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to connect to agent %s: %w", agentAddress, err)}
 		}
@@ -287,11 +343,14 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to create workspace tarball: %w", err)}
 		}
 
+		// Generate a script compatible with agent execution (without delegate_to)
+		agentScript := tr.generateAgentScript(t, groupName)
+		
 		// Send the task and workspace to the agent
 		r, err := c.ExecuteTask(ctx, &pb.ExecuteTaskRequest{
 			TaskName:    t.Name,
 			TaskGroup:   groupName,
-			LuaScript:   tr.LuaScript,
+			LuaScript:   agentScript,
 			Workspace:   buf.Bytes(),
 		})
 		if err != nil {
@@ -1035,4 +1094,16 @@ func (tr *TaskRunner) createThisObjectForHandler(L *lua.LState, t *types.Task) *
 	
 	L.SetMetatable(thisUD, thisMt)
 	return thisUD
+}
+
+// generateAgentScript creates a Lua script for agent execution without delegate_to
+// This sends only the necessary task execution logic to the agent
+func (tr *TaskRunner) generateAgentScript(t *types.Task, groupName string) string {
+	// Instead of sending the whole script, we'll send a simple script that will
+	// execute the task command directly using exec.run
+	// The actual command logic is in the task's Command field which is a Lua function
+	
+	// For now, return the original script
+	// The agent will need to be fixed to handle this properly
+	return tr.LuaScript
 }

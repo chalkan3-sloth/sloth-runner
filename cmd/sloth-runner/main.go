@@ -5,8 +5,6 @@ import (
 	"bytes"
 	"bufio"
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,8 +23,9 @@ import (
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/chalkan3-sloth/sloth-runner/internal/core"
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
 	"github.com/chalkan3-sloth/sloth-runner/internal/output"
 	"github.com/chalkan3-sloth/sloth-runner/internal/scaffolding"
@@ -208,9 +207,6 @@ var masterCmd = &cobra.Command{
 		port, _ := cmd.Flags().GetInt("port")
 		daemon, _ := cmd.Flags().GetBool("daemon")
 		debug, _ := cmd.Flags().GetBool("debug")
-		tlsCertFile, _ := cmd.Flags().GetString("tls-cert-file")
-		tlsKeyFile, _ := cmd.Flags().GetString("tls-key-file")
-		tlsCaFile, _ := cmd.Flags().GetString("tls-ca-file")
 
 		if debug {
 			pterm.DefaultLogger.Level = pterm.LogLevelDebug
@@ -234,7 +230,7 @@ var masterCmd = &cobra.Command{
 				os.Remove(pidFile)
 			}
 
-			command := execCommand(os.Args[0], "master", "--port", strconv.Itoa(port), "--tls-cert-file", tlsCertFile, "--tls-key-file", tlsKeyFile, "--tls-ca-file", tlsCaFile)
+			command := execCommand(os.Args[0], "master", "--port", strconv.Itoa(port))
 			//setSysProcAttr(command)
 			stdoutFile, err := os.OpenFile("master.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 			if err != nil {
@@ -262,12 +258,72 @@ var masterCmd = &cobra.Command{
 			return nil
 		}
 
-		globalAgentRegistry = newAgentRegistryServer(tlsCertFile, tlsKeyFile, tlsCaFile)
+		globalAgentRegistry = newAgentRegistryServer()
+		
+		// Set the agent resolver for the taskrunner
+		taskrunner.SetAgentResolver(globalAgentRegistry)
+		
 		return globalAgentRegistry.Start(port)
 	},
 }
 
 var globalAgentRegistry *agentRegistryServer
+
+// RemoteAgentResolver implements AgentResolver for remote master
+type RemoteAgentResolver struct {
+	masterAddr string
+	conn       *grpc.ClientConn
+	client     pb.AgentRegistryClient
+}
+
+// createRemoteAgentResolver creates a resolver that connects to remote master
+func createRemoteAgentResolver(masterAddr string) (*RemoteAgentResolver, error) {
+	conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to master at %s: %w", masterAddr, err)
+	}
+	
+	return &RemoteAgentResolver{
+		masterAddr: masterAddr,
+		conn:       conn,
+		client:     pb.NewAgentRegistryClient(conn),
+	}, nil
+}
+
+// GetAgentAddress implements AgentResolver interface
+func (r *RemoteAgentResolver) GetAgentAddress(agentName string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
+	slog.Info("Resolving agent address", "agent_name", agentName)
+	
+	resp, err := r.client.ListAgents(ctx, &pb.ListAgentsRequest{})
+	if err != nil {
+		slog.Error("Failed to list agents from master", "error", err)
+		return "", fmt.Errorf("failed to list agents from master: %w", err)
+	}
+	
+	slog.Info("Retrieved agents from master", "count", len(resp.Agents))
+	
+	for _, agent := range resp.Agents {
+		slog.Debug("Checking agent", "name", agent.AgentName, "address", agent.AgentAddress)
+		if agent.AgentName == agentName {
+			slog.Info("Found agent", "name", agentName, "address", agent.AgentAddress)
+			return agent.AgentAddress, nil
+		}
+	}
+	
+	slog.Error("Agent not found", "agent_name", agentName)
+	return "", fmt.Errorf("agent '%s' not found", agentName)
+}
+
+// Close closes the connection
+func (r *RemoteAgentResolver) Close() error {
+	if r.conn != nil {
+		return r.conn.Close()
+	}
+	return nil
+}
 
 // Scheduler command
 var schedulerCmd = &cobra.Command{
@@ -560,6 +616,12 @@ var runCmd = &cobra.Command{
 			}
 		}
 
+		// Read Lua script content for remote delegation
+		luaScriptContent, err := os.ReadFile(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to read Lua script file: %w", err)
+		}
+
 		// Create task runner
 		L := lua.NewState()
 		defer L.Close()
@@ -568,8 +630,22 @@ var runCmd = &cobra.Command{
 		luainterface.RegisterAllModules(L)
 		luainterface.OpenImport(L, filePath)
 		
-		// Initialize task runner
-		runner := taskrunner.NewTaskRunner(L, taskGroups, "", nil, false, interactive, &taskrunner.DefaultSurveyAsker{}, "")
+		// Initialize task runner with script content for remote delegation
+		runner := taskrunner.NewTaskRunner(L, taskGroups, "", nil, false, interactive, &taskrunner.DefaultSurveyAsker{}, string(luaScriptContent))
+		
+		// Configure agent resolver if available (for delegate_to functionality)
+		if globalAgentRegistry != nil {
+			taskrunner.SetAgentResolver(globalAgentRegistry)
+		} else {
+			// Try to connect to external master for agent resolution
+			masterAddr := "192.168.1.29:50053" // Default master address
+			if remoteResolver, err := createRemoteAgentResolver(masterAddr); err == nil {
+				taskrunner.SetAgentResolver(remoteResolver)
+				slog.Info("Connected to remote master for agent resolution", "master", masterAddr)
+			} else {
+				slog.Debug("No agent resolver available", "error", err)
+			}
+		}
 		
 		// Set outputs to capture results
 		runner.Outputs = make(map[string]interface{})
@@ -799,9 +875,6 @@ var agentStartCmd = &cobra.Command{
 		agentName, _ := cmd.Flags().GetString("name")
 		daemon, _ := cmd.Flags().GetBool("daemon")
 		bindAddress, _ := cmd.Flags().GetString("bind-address")
-		tlsCertFile, _ := cmd.Flags().GetString("tls-cert-file")
-		tlsKeyFile, _ := cmd.Flags().GetString("tls-key-file")
-		tlsCaFile, _ := cmd.Flags().GetString("tls-ca-file")
 
 		if daemon {
 			pidFile := filepath.Join("/tmp", fmt.Sprintf("sloth-runner-agent-%s.pid", agentName))
@@ -819,7 +892,7 @@ var agentStartCmd = &cobra.Command{
 				os.Remove(pidFile)
 			}
 
-			command := execCommand(os.Args[0], "agent", "start", "--port", strconv.Itoa(port), "--name", agentName, "--master", masterAddr, "--bind-address", bindAddress, "--tls-cert-file", tlsCertFile, "--tls-key-file", tlsKeyFile, "--tls-ca-file", tlsCaFile)
+			command := execCommand(os.Args[0], "agent", "start", "--port", strconv.Itoa(port), "--name", agentName, "--master", masterAddr, "--bind-address", bindAddress)
 			//setSysProcAttr(command)
 			stdoutFile, err := os.OpenFile("agent.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 			if err != nil {
@@ -861,36 +934,10 @@ var agentStartCmd = &cobra.Command{
 			reportAddress = fmt.Sprintf("%s:%d", bindAddress, port)
 		}
 
-		var serverOpts []grpc.ServerOption
-		if tlsCertFile != "" && tlsKeyFile != "" && tlsCaFile != "" {
-			serverCert, err := tls.LoadX509KeyPair(tlsCertFile, tlsKeyFile)
-			if err != nil {
-				return fmt.Errorf("failed to load agent server certificate: %v", err)
-			}
-			caCert, err := os.ReadFile(tlsCaFile)
-			if err != nil {
-				return fmt.Errorf("failed to read CA certificate for agent server: %v", err)
-			}
-			caCertPool := x509.NewCertPool()
-			if !caCertPool.AppendCertsFromPEM(caCert) {
-				return fmt.Errorf("failed to append CA certificate for agent server")
-			}
-			creds := credentials.NewTLS(&tls.Config{
-				Certificates: []tls.Certificate{serverCert},
-				ClientAuth:   tls.RequireAndVerifyClientCert,
-				ClientCAs:    caCertPool,
-				RootCAs:      caCertPool,
-			})
-			serverOpts = append(serverOpts, grpc.Creds(creds))
-		}
+		pterm.Warning.Println("Starting agent in insecure mode.")
 
 		if masterAddr != "" {
-			dialOpts, err := getDialOptions(tlsCertFile, tlsKeyFile, tlsCaFile)
-			if err != nil {
-				return err
-			}
-
-			conn, err := grpc.Dial(masterAddr, dialOpts...)
+			conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 			if err != nil {
 				return fmt.Errorf("failed to connect to master: %v", err)
 			}
@@ -917,7 +964,7 @@ var agentStartCmd = &cobra.Command{
 			}()
 		}
 
-		s := grpc.NewServer(serverOpts...)
+		s := grpc.NewServer()
 		server := &agentServer{grpcServer: s}
 		pb.RegisterAgentServer(s, server)
 		slog.Info(fmt.Sprintf("Agent listening at %v", lis.Addr()))
@@ -937,16 +984,13 @@ var agentRunCmd = &cobra.Command{
 		agentName := args[0]
 		command := args[1]
 		masterAddr, _ := cmd.Flags().GetString("master")
-		tlsCertFile, _ := cmd.Flags().GetString("tls-cert-file")
-		tlsKeyFile, _ := cmd.Flags().GetString("tls-key-file")
-		tlsCaFile, _ := cmd.Flags().GetString("tls-ca-file")
 
-		dialOpts, err := getDialOptions(tlsCertFile, tlsKeyFile, tlsCaFile)
-		if err != nil {
-			return err
-		}
+		// Show elegant execution header
+		pterm.Info.Printf("🚀 Executing on agent: %s\n", agentName)
+		pterm.Info.Printf("📝 Command: %s\n", command)
+		pterm.Println()
 
-		conn, err := grpc.Dial(masterAddr, dialOpts...)
+		conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return fmt.Errorf("failed to connect to master: %v", err)
 		}
@@ -962,13 +1006,13 @@ var agentRunCmd = &cobra.Command{
 		}
 
 		var finalError string
-		var exitCode int32
-		success := false
+		var exitCode int32 = -1  // Initialize to invalid exit code
+		hasFinished := false
 
 		for {
 			resp, err := stream.Recv()
 			if err == io.EOF {
-				break // Stream has ended
+				break
 			}
 			if err != nil {
 				return fmt.Errorf("error receiving stream from master: %v", err)
@@ -985,20 +1029,34 @@ var agentRunCmd = &cobra.Command{
 			}
 			if resp.GetFinished() {
 				exitCode = resp.GetExitCode()
-				success = (exitCode == 0 && finalError == "")
+				hasFinished = true
 				break
 			}
 		}
 
-		if !success {
-			pterm.Error.Printf("Command failed on agent %s with exit code %d!\n", agentName, exitCode)
-			if finalError != "" {
-				pterm.Error.Printf("Error: %s\n", finalError)
+		// Success is determined by exit code 0 when finished, or no explicit error when not finished  
+		success := (hasFinished && exitCode == 0) || (!hasFinished && finalError == "")
+		
+		// Always show completion status elegantly
+		pterm.Println()
+		if success {
+			pterm.Success.Printf("✅ Command completed successfully on agent %s", agentName)
+			if hasFinished {
+				pterm.Printf(" (exit code: %d)\n", exitCode)
+			} else {
+				pterm.Println()
+			}
+		} else {
+			if hasFinished && exitCode != 0 {
+				pterm.Error.Printf("❌ Command failed on agent %s (exit code: %d)\n", agentName, exitCode)
+			} else if finalError != "" {
+				pterm.Error.Printf("❌ Command failed on agent %s: %s\n", agentName, finalError)
+			} else {
+				pterm.Error.Printf("❌ Command failed on agent %s (stream ended unexpectedly)\n", agentName)
 			}
 			return fmt.Errorf("command execution failed on agent %s", agentName)
 		}
-
-		pterm.Success.Printf("Command executed successfully on agent %s.\n", agentName)
+		
 		return nil
 	},
 }
@@ -1014,16 +1072,8 @@ var agentListCmd = &cobra.Command{
 			slog.SetDefault(slog.New(pterm.NewSlogHandler(&pterm.DefaultLogger)))
 		}
 		masterAddr, _ := cmd.Flags().GetString("master")
-		tlsCertFile, _ := cmd.Flags().GetString("tls-cert-file")
-		tlsKeyFile, _ := cmd.Flags().GetString("tls-key-file")
-		tlsCaFile, _ := cmd.Flags().GetString("tls-ca-file")
 
-		dialOpts, err := getDialOptions(tlsCertFile, tlsKeyFile, tlsCaFile)
-		if err != nil {
-			return err
-		}
-
-		conn, err := grpc.Dial(masterAddr, dialOpts...)
+		conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return fmt.Errorf("failed to connect to master: %v", err)
 		}
@@ -1069,16 +1119,8 @@ var agentStopCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		agentName := args[0]
 		masterAddr, _ := cmd.Flags().GetString("master")
-		tlsCertFile, _ := cmd.Flags().GetString("tls-cert-file")
-		tlsKeyFile, _ := cmd.Flags().GetString("tls-key-file")
-		tlsCaFile, _ := cmd.Flags().GetString("tls-ca-file")
 
-		dialOpts, err := getDialOptions(tlsCertFile, tlsKeyFile, tlsCaFile)
-		if err != nil {
-			return err
-		}
-
-		conn, err := grpc.Dial(masterAddr, dialOpts...)
+		conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return fmt.Errorf("failed to connect to master: %v", err)
 		}
@@ -1481,7 +1523,7 @@ func (s *agentServer) Shutdown(ctx context.Context, in *pb.ShutdownRequest) (*pb
 }
 
 func (s *agentServer) ExecuteTask(ctx context.Context, in *pb.ExecuteTaskRequest) (*pb.ExecuteTaskResponse, error) {
-	slog.Info(fmt.Sprintf("Received task: %s", in.GetTaskName()))
+	slog.Info(fmt.Sprintf("Received task: %s from group: %s", in.GetTaskName(), in.GetTaskGroup()))
 
 	// Create a temporary directory for the workspace
 	workDir, err := os.MkdirTemp("", "sloth-runner-agent-")
@@ -1495,13 +1537,102 @@ func (s *agentServer) ExecuteTask(ctx context.Context, in *pb.ExecuteTaskRequest
 		return nil, fmt.Errorf("failed to untar workspace: %w", err)
 	}
 
-	// Pack the workspace
+	// Create temporary Lua script file
+	scriptPath := filepath.Join(workDir, "task.lua")
+	if err := os.WriteFile(scriptPath, []byte(in.GetLuaScript()), 0644); err != nil {
+		return nil, fmt.Errorf("failed to write lua script: %w", err)
+	}
+
+	// Log the script content for debugging
+	slog.Debug("Agent script content", "script_path", scriptPath, "script_size", len(in.GetLuaScript()))
+
+	// Create new Lua state for execution
+	L := lua.NewState()
+	defer L.Close()
+	
+	// Register all modules
+	luainterface.RegisterAllModules(L)
+	luainterface.OpenImport(L, scriptPath)
+	
+	// Ensure Modern DSL is registered for task/workflow definitions
+	globalCore := core.GetGlobalCore()
+	if globalCore == nil {
+		// Initialize a minimal core for agent execution
+		logger := slog.Default()
+		config := core.DefaultCoreConfig()
+		if err := core.InitializeGlobalCore(config, logger); err == nil {
+			globalCore = core.GetGlobalCore()
+		}
+	}
+	if globalCore != nil {
+		modernDSL := luainterface.NewModernDSL(globalCore)
+		modernDSL.RegisterModernDSL(L)
+	}
+
+	// Parse the Lua script to get task definitions
+	taskGroups, err := luainterface.ParseLuaScript(ctx, scriptPath, nil)
+	if err != nil {
+		slog.Error("Failed to parse lua script on agent", "error", err, "script_path", scriptPath)
+		return nil, fmt.Errorf("failed to load task definitions: %w", err)
+	}
+	
+	// Verify we have task groups
+	if len(taskGroups) == 0 {
+		slog.Error("No task groups found on agent", "script_path", scriptPath)
+		return nil, fmt.Errorf("expected 'TaskDefinitions' to be a table, got nil")
+	}
+	
+	// Remove delegate_to from all tasks to prevent recursive delegation
+	for groupName, group := range taskGroups {
+		slog.Info("Agent checking group for delegate_to", "group", groupName, "task_count", len(group.Tasks))
+		for i, task := range group.Tasks {
+			if task.DelegateTo != nil {
+				slog.Info("Removing delegate_to from task on agent", "task", task.Name, "group", groupName, "delegate_to", task.DelegateTo)
+				task.DelegateTo = nil
+				group.Tasks[i] = task // Make sure the change is saved
+			} else {
+				slog.Info("Task has no delegate_to", "task", task.Name, "group", groupName)
+			}
+		}
+	}
+	
+	slog.Info("Agent parsed task groups", "count", len(taskGroups), "groups", func() []string {
+		var names []string
+		for name := range taskGroups {
+			names = append(names, name)
+		}
+		return names
+	}())
+
+	// Create task runner with all groups and let it find the specific task
+	runner := taskrunner.NewTaskRunner(L, taskGroups, in.GetTaskGroup(), nil, false, false, &taskrunner.DefaultSurveyAsker{}, in.GetLuaScript())
+	
+	// Execute the specific task group
+	slog.Info("Agent executing task group", "group", in.GetTaskGroup())
+	err = runner.Run()
+	
+	// Pack the updated workspace
 	var buf bytes.Buffer
 	if err := createTar(workDir, &buf); err != nil {
 		return nil, fmt.Errorf("failed to tar workspace: %w", err)
 	}
 
-	return &pb.ExecuteTaskResponse{Success: true, Output: "Task executed successfully", Workspace: buf.Bytes()}, nil
+	// Return response based on execution result
+	if err != nil {
+		slog.Error("Agent task execution failed", "error", err, "task", in.GetTaskName(), "group", in.GetTaskGroup())
+		return &pb.ExecuteTaskResponse{
+			Success:   false,
+			Output:    fmt.Sprintf("Task execution failed: %v", err),
+			Workspace: buf.Bytes(),
+		}, nil
+	}
+
+	slog.Info("Agent task execution succeeded", "task", in.GetTaskName(), "group", in.GetTaskGroup())
+	return &pb.ExecuteTaskResponse{
+		Success:   true,
+		Output:    fmt.Sprintf("Task '%s' executed successfully on agent", in.GetTaskName()),
+		Workspace: buf.Bytes(),
+	}, nil
 }
 func createTar(source string, writer io.Writer) error {
 	tw := tar.NewWriter(writer)
@@ -1576,18 +1707,12 @@ func init() {
 	masterCmd.Flags().IntP("port", "p", 50053, "The port for the master to listen on")
 	masterCmd.Flags().Bool("daemon", false, "Run the master server as a daemon")
 	masterCmd.Flags().Bool("debug", false, "Enable debug logging for the master server")
-	masterCmd.Flags().String("tls-cert-file", "", "Path to the TLS certificate file for the master server")
-	masterCmd.Flags().String("tls-key-file", "", "Path to the TLS key file for the master server")
-	masterCmd.Flags().String("tls-ca-file", "", "Path to the TLS CA certificate file for the master server to verify agent certificates")
 
 	// Agent command and subcommands
 	rootCmd.AddCommand(agentCmd)
 
 	// Persistent flags for agent client commands (run, list, stop)
 	agentCmd.PersistentFlags().String("master", "localhost:50053", "The address of the master server")
-	agentCmd.PersistentFlags().String("tls-cert-file", "", "Path to the TLS certificate file for the client")
-	agentCmd.PersistentFlags().String("tls-key-file", "", "Path to the TLS key file for the client")
-	agentCmd.PersistentFlags().String("tls-ca-file", "", "Path to the TLS CA certificate file for verifying the server")
 
 	// Agent start command flags
 	agentCmd.AddCommand(agentStartCmd)

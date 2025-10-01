@@ -1,0 +1,79 @@
+-- ✅ EXEMPLO FUNCIONAL COMPLETO - DSL Moderno com delegate_to
+-- Demonstra execução remota usando :delegate_to() em múltiplos agentes
+
+local check_system = task("check_system")
+    :description("Verifica informações do sistema no agente")
+    :command(function(this, params)
+        log.info("ℹ️  Verificando sistema no agente remoto...")
+        
+        local output, err, failed = exec.run("uname -a")
+        
+        if not failed then
+            log.info("✅ Sistema verificado!")
+            log.info("📋 Sistema:\n" .. output)
+            return true, "Sistema OK"
+        else
+            log.error("❌ Falha: " .. (err or "erro"))
+            return false, "Erro"
+        end
+    end)
+    :delegate_to("ladyguica")
+    :timeout("60s")
+    :build()
+
+local hostname_remoto = task("hostname_remoto")
+    :description("Mostra hostname do agente remoto")
+    :command(function(this, params)
+        log.info("🖥️  Verificando hostname...")
+        
+        local output, err, failed = exec.run("hostname && whoami && date")
+        
+        if not failed then
+            log.info("✅ Hostname obtido com sucesso!")
+            log.info("📋 Resultado:\n" .. output)
+            return true, "Hostname verificado"
+        else
+            log.error("❌ Falha: " .. (err or "erro"))
+            return false, "Erro"
+        end
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+local list_home_files = task("list_home_files")
+    :description("Lista arquivos do HOME no agente")
+    :command(function(this, params)
+        log.info("📂 Listando arquivos no agente remoto...")
+        
+        local output, err, failed = exec.run("ls -lah $HOME | head -10")
+        
+        if not failed then
+            log.info("✅ Listagem realizada!")
+            log.info("📋 Primeiros 10 arquivos:\n" .. output)
+            return true, "Listagem OK"
+        else
+            log.error("❌ Falha: " .. (err or "erro"))
+            return false, "Erro"
+        end
+    end)
+    :delegate_to("keiteguica")
+    :timeout("60s")
+    :build()
+
+workflow.define("remote_via_cmd")
+    :description("Execução remota usando delegate_to")
+    :version("1.0.0")
+    :tasks({ check_system, hostname_remoto, list_home_files })
+    :config({ 
+        timeout = "3m",
+        max_parallel_tasks = 3
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("✅ Todas as tarefas remotas executadas com sucesso!")
+        else
+            log.error("❌ Algumas tarefas falharam")
+        end
+        return true
+    end)
