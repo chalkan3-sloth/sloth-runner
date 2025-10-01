@@ -166,6 +166,7 @@ nav:
     - '📦 Module Overview': 'modules/index.md'
     - '🔀 Git Module': 'modules/git.md'
     - '🏗️ Terraform Module': 'modules/terraform.md'
+    - '⚙️ Systemd Module': 'modules/systemd.md'
     - '💾 State Module': 'state-module.md'
     - '🔧 Lua API Reference': 'LUA_API.md'
   - '🎭 Examples & Tutorials':

@@ -397,6 +397,9 @@ func RegisterAllModules(L *lua.LState) {
 	
 	// Register state module
 	L.PreloadModule("state", StateLoader)
+	
+	// Register systemd module
+	L.PreloadModule("systemd", SystemdLoader)
 	OpenMetrics(L)
 	
 	// ✅ Register workdir functions
