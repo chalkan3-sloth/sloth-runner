@@ -1,6 +1,43 @@
--- Simple Pulumi Configuration Example
--- This example shows exactly how to use Pulumi configuration commands
--- that correspond to: pulumi config set key value
+-- Complete Pulumi Workflow Example with Git Clone and Preview
+-- This example shows the complete workflow: Clone -> Configure -> Preview
+
+local clone_repo_task = task("clone_go_droplet_repo")
+    :description("Clone the Go DigitalOcean droplet repository")
+    :workdir("/tmp/pulumi-project")
+    :command(function(this, params)
+        local workdir_ensured = this.workdir.ensure()
+        if not workdir_ensured then 
+          return false, "Workdir problem"
+        end 
+
+        local git = require("git")
+        
+        log.info("📡 Cloning Go DigitalOcean droplet repository...")
+        
+        local git_repository = git.clone(
+            "https://github.com/chalkan3/go-do-droplet",
+            this.workdir.get()
+        )
+        
+        log.info("✅ Repository cloned successfully!")
+        log.info("📊 Repo object: " .. tostring(git_repository))
+            
+        return true, "Git clone successful", { 
+            git_module_used = true,
+            repository_url = "https://github.com/chalkan3/go-do-droplet",
+            clone_destination = this.workdir.get()
+        }
+    end)
+    :timeout("5m")
+    :on_success(function(this, params, output)
+        log.info("✅ === CLONE SUCCESS ===")
+        log.info("Repository available at: " .. output.clone_destination)
+    end)
+    :on_fail(function(this, params, output)
+        log.error("❌ Clone failed, cleaning up...")
+        this.workdir:cleanup()
+    end)
+    :build()
 
 local setup_pulumi_config = task("setup_pulumi_config")
     :description("Setup Pulumi configuration for DigitalOcean droplet")
@@ -20,6 +57,9 @@ local setup_pulumi_config = task("setup_pulumi_config")
         end
         
         log.info("✅ Pulumi login successful")
+        
+        -- Set working directory to the cloned repository
+        client:set_workdir(this.workdir:get())
         
         -- Setup stack (equivalent to: pulumi stack init dev)
         log.info("📋 Setting up Pulumi stack...")
@@ -70,7 +110,8 @@ local setup_pulumi_config = task("setup_pulumi_config")
             login_successful = true,
             stack_created = true,
             config_set = true,
-            configs_applied = #configs
+            configs_applied = #configs,
+            client = client  -- Pass client to next task
         }
     end)
     :timeout("5m")
@@ -85,24 +126,117 @@ local setup_pulumi_config = task("setup_pulumi_config")
         if output and output.error then
             log.error("Error: " .. output.error)
         end
+        this.workdir:cleanup()
     end)
     :build()
 
-workflow.define("pulumi_config_example")
-    :description("Example showing how to set Pulumi configuration")
+local preview_infrastructure = task("preview_infrastructure")
+    :description("Preview the infrastructure changes with Pulumi")
+    :workdir("/tmp/pulumi-project")
+    :command(function(this, params)
+        log.info("🔍 Running Pulumi preview...")
+        
+        local pulumi = require("pulumi")
+        
+        -- Create new client for preview (since we can't pass objects between tasks)
+        log.info("🔐 Reconnecting to Pulumi...")
+        local client = pulumi.login("file://.", { login_local = true })
+        
+        if client.error then
+            log.error("❌ Pulumi login failed: " .. client.error)
+            return false, "Login failed for preview"
+        end
+        
+        -- Set working directory
+        client:set_workdir(this.workdir:get())
+        
+        -- Select the stack
+        log.info("📋 Selecting stack for preview...")
+        local stack_success, stack_msg = client:stack("dev", { create = false })
+        if not stack_success then
+            log.error("❌ Stack selection failed: " .. stack_msg)
+            return false, "Stack selection failed"
+        end
+        
+        -- Run preview
+        log.info("🔍 Executing Pulumi preview...")
+        local preview_success, preview_output = client:preview({})
+        
+        if preview_success then
+            log.info("📊 === PULUMI PREVIEW OUTPUT ===")
+            log.print(preview_output)
+            log.info("📊 === END PREVIEW OUTPUT ===")
+            
+            return true, "Preview completed successfully", {
+                preview_successful = true,
+                has_changes = string.find(preview_output, "create") ~= nil or 
+                             string.find(preview_output, "update") ~= nil or
+                             string.find(preview_output, "delete") ~= nil,
+                output_length = string.len(preview_output)
+            }
+        else
+            log.error("❌ Pulumi preview failed:")
+            log.error(preview_output)
+            return false, "Preview failed", {
+                preview_successful = false,
+                error = preview_output
+            }
+        end
+    end)
+    :timeout("10m")
+    :on_success(function(this, params, output)
+        log.info("🎉 === PREVIEW SUCCESS ===")
+        if output.has_changes then
+            log.info("📊 Infrastructure changes detected!")
+        else
+            log.info("📊 No infrastructure changes detected")
+        end
+        log.info("Output size: " .. output.output_length .. " characters")
+    end)
+    :on_fail(function(this, params, output)
+        log.error("💥 Preview failed")
+        if output and output.error then
+            log.error("Error details: " .. output.error)
+        end
+        this.workdir:cleanup()
+    end)
+    :build()
+
+workflow.define("pulumi_complete_example")
+    :description("Complete Pulumi workflow: Clone -> Configure -> Preview")
     :version("1.0.0")
-    :tasks({ setup_pulumi_config })
+    :tasks({ clone_repo_task, setup_pulumi_config, preview_infrastructure })
     :config({
-        timeout = "10m",
+        timeout = "20m",
         max_parallel_tasks = 1
     })
     :on_complete(function(success, results)
-        log.info("🎉 === PULUMI CONFIG WORKFLOW COMPLETED ===")
+        log.info("🎉 === COMPLETE PULUMI WORKFLOW COMPLETED ===")
         
         if success then
-            log.info("✅ All Pulumi configurations were set successfully!")
+            log.info("✅ All steps completed successfully!")
             log.info("")
-            log.info("📋 Equivalent commands that were executed:")
+            log.info("📋 Workflow Summary:")
+            
+            if results.clone_go_droplet_repo then
+                log.info("  ✅ Repository cloned from: " .. results.clone_go_droplet_repo.repository_url)
+            end
+            
+            if results.setup_pulumi_config then
+                log.info("  ✅ Pulumi configured with " .. results.setup_pulumi_config.configs_applied .. " settings")
+            end
+            
+            if results.preview_infrastructure then
+                if results.preview_infrastructure.has_changes then
+                    log.info("  📊 Preview shows infrastructure changes planned")
+                else
+                    log.info("  📊 Preview shows no changes needed")
+                end
+            end
+            
+            log.info("")
+            log.info("🎯 Equivalent CLI commands executed:")
+            log.info("  git clone https://github.com/chalkan3/go-do-droplet")
             log.info("  pulumi login file://.")
             log.info("  pulumi stack init dev")
             log.info("  pulumi config set dropletName sloth-runner")
@@ -111,8 +245,9 @@ workflow.define("pulumi_config_example")
             log.info("  pulumi config set image ubuntu-22-04-x64")
             log.info("  pulumi config set environment dev")
             log.info("  pulumi config set project main")
+            log.info("  pulumi preview")
         else
-            log.error("❌ Pulumi configuration workflow failed")
+            log.error("❌ Pulumi workflow failed at some step")
         end
         
         return true
