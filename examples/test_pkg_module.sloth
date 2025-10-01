@@ -1,0 +1,84 @@
+-- Teste simples do módulo pkg melhorado
+
+local pkg = require("pkg")
+
+TaskDefinitions = {
+    test_pkg_module = {
+        description = "Testa o módulo pkg melhorado",
+        tasks = {
+            {
+                name = "test_search",
+                description = "Testa busca de pacotes",
+                command = function()
+                    log.info("🔍 Testando busca de pacotes...")
+                    
+                    local success, output = pkg.search("curl")
+                    
+                    if success then
+                        log.info("✅ Busca funcionou!")
+                        local lines = 0
+                        for _ in output:gmatch("[^\r\n]+") do
+                            lines = lines + 1
+                        end
+                        log.info("📋 Encontrados " .. lines .. " resultados")
+                        return true, "Busca OK"
+                    else
+                        log.error("❌ Busca falhou: " .. output)
+                        return false, "Busca falhou"
+                    end
+                end,
+                timeout = "60s"
+            },
+            {
+                name = "test_info",
+                description = "Testa informações de pacote",
+                command = function()
+                    log.info("ℹ️  Testando informações de pacote...")
+                    
+                    local success, output = pkg.info("curl")
+                    
+                    if success then
+                        log.info("✅ Info funcionou!")
+                        local lines = 0
+                        for line in output:gmatch("[^\r\n]+") do
+                            if lines < 5 then
+                                log.info("  " .. line)
+                            end
+                            lines = lines + 1
+                        end
+                        return true, "Info OK"
+                    else
+                        log.error("❌ Info falhou: " .. output)
+                        return false, "Info falhou"
+                    end
+                end,
+                timeout = "30s"
+            },
+            {
+                name = "test_list",
+                description = "Testa listagem de pacotes",
+                command = function()
+                    log.info("📋 Testando listagem de pacotes...")
+                    
+                    local success, packages = pkg.list()
+                    
+                    if success then
+                        log.info("✅ Listagem funcionou!")
+                        if type(packages) == "table" then
+                            local count = 0
+                            for _ in pairs(packages) do
+                                count = count + 1
+                            end
+                            log.info("📦 Total de pacotes: " .. count)
+                        end
+                        return true, "Listagem OK"
+                    else
+                        log.error("❌ Listagem falhou")
+                        return false, "Listagem falhou"
+                    end
+                end,
+                timeout = "60s"
+            }
+        }
+    }
+}

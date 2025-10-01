@@ -1,0 +1,230 @@
+-- Exemplo Avançado do Módulo PKG - Versão 3.0
+-- Demonstra todas as funcionalidades avançadas
+
+local pkg = require("pkg")
+
+local check_manager = task("check_manager")
+    :description("Identifica o gerenciador de pacotes do sistema")
+    :command(function(this, params)
+        log.info("🔍 Identificando gerenciador de pacotes...")
+        
+        local manager, err = pkg.get_manager()
+        
+        if manager then
+            log.info("✅ Gerenciador detectado: " .. manager)
+            return true, "Manager: " .. manager
+        else
+            log.error("❌ Erro: " .. (err or "desconhecido"))
+            return false, "Erro"
+        end
+    end)
+    :timeout("10s")
+    :build()
+
+local check_installed = task("check_installed")
+    :description("Verifica se pacotes específicos estão instalados")
+    :command(function(this, params)
+        log.info("📦 Verificando pacotes instalados...")
+        
+        local packages_to_check = {"curl", "wget", "git", "vim"}
+        local installed = {}
+        local not_installed = {}
+        
+        for _, pkg_name in ipairs(packages_to_check) do
+            local is_inst, msg = pkg.is_installed(pkg_name)
+            
+            if is_inst then
+                table.insert(installed, pkg_name)
+                log.info("  ✅ " .. pkg_name .. " - instalado")
+            else
+                table.insert(not_installed, pkg_name)
+                log.info("  ❌ " .. pkg_name .. " - não instalado")
+            end
+        end
+        
+        log.info("\n📊 Resumo:")
+        log.info("  Instalados: " .. #installed)
+        log.info("  Não instalados: " .. #not_installed)
+        
+        return true, #installed .. "/" .. #packages_to_check .. " instalados"
+    end)
+    :depends_on({"check_manager"})
+    :timeout("60s")
+    :build()
+
+local find_executables = task("find_executables")
+    :description("Encontra o caminho de executáveis")
+    :command(function(this, params)
+        log.info("🔎 Procurando executáveis...")
+        
+        local executables = {"bash", "sh", "git", "curl"}
+        
+        for _, exec_name in ipairs(executables) do
+            local path, err = pkg.which(exec_name)
+            
+            if path then
+                log.info("  ✅ " .. exec_name .. " → " .. path)
+            else
+                log.info("  ❌ " .. exec_name .. " → não encontrado")
+            end
+        end
+        
+        return true, "Busca concluída"
+    end)
+    :timeout("30s")
+    :build()
+
+local check_versions = task("check_versions")
+    :description("Verifica versões de pacotes instalados")
+    :command(function(this, params)
+        log.info("📌 Verificando versões...")
+        
+        local packages = {"curl", "git"}
+        
+        for _, pkg_name in ipairs(packages) do
+            log.info("\n📦 " .. pkg_name .. ":")
+            local version, err = pkg.version(pkg_name)
+            
+            if version then
+                log.info("  " .. version)
+            else
+                log.warn("  Versão não disponível")
+            end
+        end
+        
+        return true, "Versões verificadas"
+    end)
+    :depends_on({"check_installed"})
+    :timeout("60s")
+    :build()
+
+local check_dependencies = task("check_dependencies")
+    :description("Mostra dependências de pacotes")
+    :command(function(this, params)
+        log.info("🔗 Verificando dependências...")
+        
+        local success, deps = pkg.deps("curl")
+        
+        if success then
+            log.info("✅ Dependências de curl:")
+            
+            local count = 0
+            for line in deps:gmatch("[^\r\n]+") do
+                if count < 10 then
+                    log.info("  " .. line)
+                end
+                count = count + 1
+            end
+            
+            if count > 10 then
+                log.info("  ... e mais " .. (count - 10) .. " dependências")
+            end
+            
+            return true, count .. " dependências"
+        else
+            log.warn("⚠️  Não foi possível listar dependências")
+            return true, "OK"
+        end
+    end)
+    :timeout("60s")
+    :build()
+
+local cleanup_system = task("cleanup_system")
+    :description("Limpa cache e pacotes desnecessários")
+    :command(function(this, params)
+        log.info("🧹 Limpando sistema...")
+        
+        -- Limpa cache
+        log.info("\n📦 Limpando cache de pacotes...")
+        local success, output = pkg.clean()
+        
+        if success then
+            log.info("  ✅ Cache limpo")
+        else
+            log.warn("  ⚠️  " .. output)
+        end
+        
+        -- Remove pacotes não utilizados
+        log.info("\n🗑️  Removendo pacotes não utilizados...")
+        success, output = pkg.autoremove()
+        
+        if success then
+            log.info("  ✅ Pacotes removidos")
+            if output and output ~= "" then
+                log.debug("  " .. output)
+            end
+        else
+            log.warn("  ⚠️  " .. output)
+        end
+        
+        return true, "Limpeza concluída"
+    end)
+    :timeout("180s")
+    :build()
+
+local system_summary = task("system_summary")
+    :description("Gera resumo do sistema")
+    :command(function(this, params)
+        log.info("\n")
+        log.info(string.rep("=", 60))
+        log.info("📊 RESUMO DO SISTEMA DE PACOTES")
+        log.info(string.rep("=", 60))
+        
+        -- Manager
+        local manager, _ = pkg.get_manager()
+        log.info("\n🔧 Gerenciador: " .. (manager or "desconhecido"))
+        
+        -- Total de pacotes
+        local success, packages = pkg.list()
+        if success and type(packages) == "table" then
+            local count = 0
+            for _ in pairs(packages) do count = count + 1 end
+            log.info("📦 Pacotes instalados: " .. count)
+        end
+        
+        -- Ferramentas importantes
+        log.info("\n🛠️  Ferramentas importantes:")
+        local tools = {"git", "curl", "wget", "vim"}
+        for _, tool in ipairs(tools) do
+            local is_inst = pkg.is_installed(tool)
+            if is_inst then
+                local path = pkg.which(tool)
+                log.info("  ✅ " .. tool .. " (" .. (path or "N/A") .. ")")
+            else
+                log.info("  ❌ " .. tool .. " (não instalado)")
+            end
+        end
+        
+        log.info("\n" .. string.rep("=", 60))
+        log.info("")
+        
+        return true, "Resumo gerado"
+    end)
+    :depends_on({"cleanup_system"})
+    :timeout("60s")
+    :build()
+
+workflow.define("advanced_package_management")
+    :description("Gerenciamento Avançado de Pacotes - PKG 3.0")
+    :version("3.0.0")
+    :tasks({
+        check_manager,
+        check_installed,
+        find_executables,
+        check_versions,
+        check_dependencies,
+        cleanup_system,
+        system_summary
+    })
+    :config({
+        timeout = "15m",
+        max_parallel_tasks = 1
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("\n🎉 Análise completa do sistema de pacotes concluída!")
+        else
+            log.error("\n❌ Falha na análise do sistema")
+        end
+        return true
+    end)
