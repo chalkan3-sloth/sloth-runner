@@ -1,0 +1,146 @@
+-- Exemplo de uso do módulo pkg - Gerenciamento de pacotes
+-- Demonstra todas as funcionalidades do módulo pkg melhorado
+
+TaskDefinitions = {
+    package_management_demo = {
+        description = "Demonstração do módulo pkg melhorado",
+        tasks = {
+            {
+                name = "update_package_list",
+                description = "Atualiza a lista de pacotes",
+                command = function()
+                    log.info("📦 Atualizando lista de pacotes...")
+                    
+                    local success, output = pkg.update()
+                    
+                    if success then
+                        log.info("✅ Lista de pacotes atualizada!")
+                        log.debug("Saída: " .. output)
+                        return true, "Lista atualizada"
+                    else
+                        log.error("❌ Falha ao atualizar lista: " .. output)
+                        return false, "Falha na atualização"
+                    end
+                end,
+                timeout = "120s"
+            },
+            {
+                name = "install_single_package",
+                description = "Instala um único pacote",
+                command = function()
+                    log.info("📦 Instalando htop...")
+                    
+                    local success, output = pkg.install("htop")
+                    
+                    if success then
+                        log.info("✅ htop instalado com sucesso!")
+                        return true, "Pacote instalado"
+                    else
+                        log.warn("⚠️  htop pode já estar instalado ou falhou: " .. output)
+                        return true, "OK (pode já existir)"
+                    end
+                end,
+                timeout = "180s",
+                depends_on = {"update_package_list"}
+            },
+            {
+                name = "install_multiple_packages",
+                description = "Instala múltiplos pacotes",
+                command = function()
+                    log.info("📦 Instalando múltiplos pacotes...")
+                    
+                    local packages = {"curl", "wget", "vim"}
+                    local success, output = pkg.install(packages)
+                    
+                    if success then
+                        log.info("✅ Pacotes instalados com sucesso!")
+                        return true, "Pacotes instalados"
+                    else
+                        log.warn("⚠️  Alguns pacotes podem já estar instalados: " .. output)
+                        return true, "OK"
+                    end
+                end,
+                timeout = "180s",
+                depends_on = {"install_single_package"}
+            },
+            {
+                name = "search_package",
+                description = "Busca por pacotes",
+                command = function()
+                    log.info("🔍 Buscando pacotes relacionados a 'python'...")
+                    
+                    local success, output = pkg.search("python")
+                    
+                    if success then
+                        log.info("✅ Busca realizada!")
+                        local lines = {}
+                        for line in output:gmatch("[^\r\n]+") do
+                            table.insert(lines, line)
+                        end
+                        log.info("📋 Encontrados " .. #lines .. " resultados")
+                        -- Mostra apenas os primeiros 5 resultados
+                        for i = 1, math.min(5, #lines) do
+                            log.info("  • " .. lines[i])
+                        end
+                        return true, "Busca concluída"
+                    else
+                        log.error("❌ Falha na busca: " .. output)
+                        return false, "Falha na busca"
+                    end
+                end,
+                timeout = "60s"
+            },
+            {
+                name = "get_package_info",
+                description = "Obtém informações de um pacote",
+                command = function()
+                    log.info("ℹ️  Obtendo informações do pacote curl...")
+                    
+                    local success, output = pkg.info("curl")
+                    
+                    if success then
+                        log.info("✅ Informações obtidas!")
+                        -- Mostra as primeiras linhas da info
+                        local count = 0
+                        for line in output:gmatch("[^\r\n]+") do
+                            if count < 10 then
+                                log.info("  " .. line)
+                                count = count + 1
+                            end
+                        end
+                        return true, "Info obtida"
+                    else
+                        log.error("❌ Falha ao obter info: " .. output)
+                        return false, "Falha"
+                    end
+                end,
+                timeout = "30s"
+            },
+            {
+                name = "list_installed_packages",
+                description = "Lista pacotes instalados",
+                command = function()
+                    log.info("📋 Listando pacotes instalados...")
+                    
+                    local success, packages = pkg.list()
+                    
+                    if success then
+                        local count = 0
+                        if type(packages) == "table" then
+                            -- Conta os pacotes
+                            for _ in pairs(packages) do
+                                count = count + 1
+                            end
+                        end
+                        log.info("✅ Total de pacotes instalados: " .. count)
+                        return true, count .. " pacotes"
+                    else
+                        log.error("❌ Falha ao listar pacotes")
+                        return false, "Falha"
+                    end
+                end,
+                timeout = "60s"
+            }
+        }
+    }
+}
