@@ -1,0 +1,116 @@
+-- Systemd Service Monitoring Example
+-- Shows how to monitor services with :delegate_to()
+
+local systemd = require("systemd")
+
+local check_service = task("check_service")
+    :description("Check critical services")
+    :command(function(this, params)
+        log.info("🔍 Checking critical services...")
+        log.info(string.rep("=", 60))
+        
+        local services = {
+            "sshd",
+            "cron",
+            "systemd-journald"
+        }
+        
+        local all_ok = true
+        
+        for _, service in ipairs(services) do
+            local active, state = systemd.is_active(service)
+            local enabled, enable_state = systemd.is_enabled(service)
+            
+            log.info("\n📦 " .. service .. ":")
+            log.info("  Active:  " .. (active and "✅ YES" or "❌ NO (" .. state .. ")"))
+            log.info("  Enabled: " .. (enabled and "✅ YES" or "⚠️  NO (" .. enable_state .. ")"))
+            
+            if not active then
+                all_ok = false
+                log.warn("  ⚠️  WARNING: Service is not running!")
+            end
+        end
+        
+        log.info("\n" .. string.rep("=", 60))
+        
+        if all_ok then
+            log.info("✅ All critical services are healthy")
+            return true, "All OK"
+        else
+            log.error("❌ Some services are down!")
+            return false, "Services down"
+        end
+    end)
+    :timeout("60s")
+    :build()
+
+local list_failed = task("list_failed")
+    :description("List failed services")
+    :command(function(this, params)
+        log.info("🔍 Checking for failed services...")
+        
+        local failed, err = systemd.list_services({
+            state = "failed",
+            no_header = true
+        })
+        
+        if failed and failed ~= "" then
+            log.warn("\n⚠️  Failed Services Found:")
+            log.warn(string.rep("-", 60))
+            log.warn(failed)
+            log.warn(string.rep("-", 60))
+            return false, "Failed services exist"
+        else
+            log.info("✅ No failed services")
+            return true, "All OK"
+        end
+    end)
+    :timeout("30s")
+    :build()
+
+local restart_if_needed = task("restart_if_needed")
+    :description("Restart service if not running")
+    :command(function(this, params)
+        local service = "example-web"
+        
+        log.info("🔄 Checking " .. service .. "...")
+        
+        local active, state = systemd.is_active(service)
+        
+        if not active then
+            log.warn("⚠️  Service is " .. state .. ", restarting...")
+            
+            local success, output = systemd.restart(service)
+            
+            if success then
+                -- Verify
+                active, state = systemd.is_active(service)
+                if active then
+                    log.info("✅ Service restarted successfully")
+                    return true, "Restarted"
+                else
+                    log.error("❌ Failed to restart: " .. state)
+                    return false, "Failed"
+                end
+            else
+                return false, "Restart failed"
+            end
+        else
+            log.info("✅ Service is already running")
+            return true, "Running"
+        end
+    end)
+    :timeout("60s")
+    :build()
+
+workflow.define("monitor_services")
+    :description("Monitor and maintain systemd services")
+    :version("1.0.0")
+    :tasks({
+        check_service,
+        list_failed,
+        restart_if_needed
+    })
+    :config({
+        timeout = "5m"
+    })
