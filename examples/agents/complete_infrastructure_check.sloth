@@ -1,0 +1,205 @@
+-- ✅ PIPELINE COMPLETO DE INFRAESTRUTURA - DSL Moderno com delegate_to
+-- Demonstra verificação completa de infraestrutura usando :delegate_to()
+
+local check_ladyguica = task("check_ladyguica")
+    :description("Verifica conectividade com ladyguica")
+    :command(function(this, params)
+        log.info("🔍 Verificando ladyguica...")
+        
+        local output, err, failed = exec.run("echo 'Ladyguica OK' && hostname")
+        
+        if not failed then
+            log.info("✅ Ladyguica está online!")
+            log.info("📋 " .. output)
+            return true, "Online"
+        else
+            log.error("❌ Ladyguica não respondeu")
+            return false, "Offline"
+        end
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+local check_keiteguica = task("check_keiteguica")
+    :description("Verifica conectividade com keiteguica")
+    :command(function(this, params)
+        log.info("🔍 Verificando keiteguica...")
+        
+        local output, err, failed = exec.run("echo 'Keiteguica OK' && hostname")
+        
+        if not failed then
+            log.info("✅ Keiteguica está online!")
+            log.info("📋 " .. output)
+            return true, "Online"
+        else
+            log.error("❌ Keiteguica não respondeu")
+            return false, "Offline"
+        end
+    end)
+    :delegate_to("keiteguica")
+    :timeout("30s")
+    :build()
+
+local system_info_ladyguica = task("system_info_ladyguica")
+    :description("Coleta informações do sistema - ladyguica")
+    :command(function(this, params)
+        log.info("📊 Coletando informações de ladyguica...")
+        log.info("\n=== Informações de ladyguica ===")
+        
+        -- Hostname
+        local hostname, _, failed = exec.run("hostname")
+        if not failed then
+            log.info("  🖥️  Hostname: " .. hostname:gsub("\n", ""))
+        end
+        
+        -- OS
+        local os_name, _, failed = exec.run("uname -s")
+        if not failed then
+            log.info("  💿 OS: " .. os_name:gsub("\n", ""))
+        end
+        
+        -- Arquitetura
+        local arch, _, failed = exec.run("uname -m")
+        if not failed then
+            log.info("  🔧 Arquitetura: " .. arch:gsub("\n", ""))
+        end
+        
+        log.info("✅ Informações coletadas!")
+        return true, "Info coletada"
+    end)
+    :delegate_to("ladyguica")
+    :depends_on({"check_ladyguica"})
+    :timeout("60s")
+    :build()
+
+local system_info_keiteguica = task("system_info_keiteguica")
+    :description("Coleta informações do sistema - keiteguica")
+    :command(function(this, params)
+        log.info("📊 Coletando informações de keiteguica...")
+        log.info("\n=== Informações de keiteguica ===")
+        
+        -- Hostname
+        local hostname, _, failed = exec.run("hostname")
+        if not failed then
+            log.info("  🖥️  Hostname: " .. hostname:gsub("\n", ""))
+        end
+        
+        -- OS
+        local os_name, _, failed = exec.run("uname -s")
+        if not failed then
+            log.info("  💿 OS: " .. os_name:gsub("\n", ""))
+        end
+        
+        -- Arquitetura
+        local arch, _, failed = exec.run("uname -m")
+        if not failed then
+            log.info("  🔧 Arquitetura: " .. arch:gsub("\n", ""))
+        end
+        
+        log.info("✅ Informações coletadas!")
+        return true, "Info coletada"
+    end)
+    :delegate_to("keiteguica")
+    :depends_on({"check_keiteguica"})
+    :timeout("60s")
+    :build()
+
+local check_resources_ladyguica = task("check_resources_ladyguica")
+    :description("Verifica recursos - ladyguica")
+    :command(function(this, params)
+        log.info("📈 Verificando recursos de ladyguica...")
+        log.info("\n=== Recursos de ladyguica ===")
+        
+        -- Memória
+        local mem, _, failed = exec.run("free -h | grep Mem")
+        if not failed then
+            log.info("  🧠 Memória: " .. mem:gsub("\n", ""))
+        end
+        
+        -- Disco
+        local disk, _, failed = exec.run("df -h / | tail -1")
+        if not failed then
+            log.info("  💾 Disco: " .. disk:gsub("\n", ""))
+        end
+        
+        log.info("✅ Recursos verificados!")
+        return true, "Recursos OK"
+    end)
+    :delegate_to("ladyguica")
+    :depends_on({"system_info_ladyguica"})
+    :timeout("60s")
+    :build()
+
+local check_resources_keiteguica = task("check_resources_keiteguica")
+    :description("Verifica recursos - keiteguica")
+    :command(function(this, params)
+        log.info("📈 Verificando recursos de keiteguica...")
+        log.info("\n=== Recursos de keiteguica ===")
+        
+        -- Memória
+        local mem, _, failed = exec.run("free -h | grep Mem")
+        if not failed then
+            log.info("  🧠 Memória: " .. mem:gsub("\n", ""))
+        end
+        
+        -- Disco
+        local disk, _, failed = exec.run("df -h / | tail -1")
+        if not failed then
+            log.info("  💾 Disco: " .. disk:gsub("\n", ""))
+        end
+        
+        log.info("✅ Recursos verificados!")
+        return true, "Recursos OK"
+    end)
+    :delegate_to("keiteguica")
+    :depends_on({"system_info_keiteguica"})
+    :timeout("60s")
+    :build()
+
+local generate_report = task("generate_report")
+    :description("Gera relatório final da verificação")
+    :command(function(this, params)
+        log.info("\n")
+        log.info(string.rep("=", 60))
+        log.info("📋 RELATÓRIO FINAL DE INFRAESTRUTURA")
+        log.info(string.rep("=", 60))
+        log.info("")
+        log.info("✅ Conectividade verificada (ladyguica + keiteguica)")
+        log.info("✅ Informações do sistema coletadas")
+        log.info("✅ Recursos verificados")
+        log.info("")
+        log.info("🎉 Todos os agentes estão funcionando corretamente!")
+        log.info(string.rep("=", 60))
+        log.info("")
+        
+        return true, "Relatório gerado"
+    end)
+    :timeout("30s")
+    :depends_on({"check_resources_ladyguica", "check_resources_keiteguica"})
+    :build()
+
+workflow.define("distributed_infrastructure_check")
+    :description("Verificação completa de infraestrutura usando delegate_to")
+    :version("1.0.0")
+    :tasks({ 
+        check_ladyguica, 
+        check_keiteguica,
+        system_info_ladyguica,
+        system_info_keiteguica,
+        check_resources_ladyguica,
+        check_resources_keiteguica,
+        generate_report
+    })
+    :config({ 
+        timeout = "5m",
+        max_parallel_tasks = 2
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("\n🎉 Pipeline de infraestrutura concluído com sucesso!")
+        else
+            log.error("\n❌ Pipeline de infraestrutura falhou")
+        end
+        return true
+    end)
