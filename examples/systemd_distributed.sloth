@@ -1,0 +1,125 @@
+-- Distributed Systemd Management
+-- Deploy and manage services across multiple agents
+
+local systemd = require("systemd")
+
+local deploy_to_agent = task("deploy_monitoring_agent")
+    :description("Deploy monitoring service on remote agent")
+    :command(function(this, params)
+        log.info("🚀 Deploying on " .. (this.agent or "local") .. "...")
+        
+        -- Create monitoring service
+        local config = {
+            description = "Sloth Runner Monitoring Agent",
+            after = "network.target",
+            exec_start = "/usr/local/bin/monitor-agent --daemon",
+            type = "simple",
+            user = "monitor",
+            working_directory = "/var/lib/monitor",
+            restart = "always",
+            restart_sec = "30s",
+            environment = {
+                LOG_LEVEL = "info",
+                METRICS_PORT = "9100"
+            },
+            wanted_by = "multi-user.target"
+        }
+        
+        local success, msg = systemd.create_service("monitor-agent", config)
+        
+        if not success then
+            return false, "Failed to create: " .. msg
+        end
+        
+        log.info("✅ Service file created")
+        
+        -- Reload, enable, start
+        systemd.daemon_reload()
+        systemd.enable("monitor-agent")
+        systemd.start("monitor-agent")
+        
+        -- Verify
+        local active, state = systemd.is_active("monitor-agent")
+        if active then
+            log.info("✅ Service is running on " .. (this.agent or "local"))
+            return true, "Deployed"
+        else
+            log.error("❌ Service failed to start: " .. state)
+            return false, "Not running"
+        end
+    end)
+    :delegate_to("ladyguica")
+    :timeout("120s")
+    :build()
+
+local verify_deployment = task("verify_deployment")
+    :description("Verify service is running on agent")
+    :command(function(this, params)
+        log.info("🔍 Verifying deployment on " .. (this.agent or "local") .. "...")
+        
+        -- Check status
+        local active, state = systemd.is_active("monitor-agent")
+        local enabled, enable_state = systemd.is_enabled("monitor-agent")
+        
+        log.info("\n📊 Service Status:")
+        log.info("  Agent: " .. (this.agent or "local"))
+        log.info("  Active: " .. (active and "✅ YES" or "❌ NO"))
+        log.info("  Enabled: " .. (enabled and "✅ YES" or "❌ NO"))
+        
+        if active and enabled then
+            log.info("✅ Deployment verified!")
+            return true, "Verified"
+        else
+            log.error("❌ Deployment verification failed")
+            return false, "Failed"
+        end
+    end)
+    :delegate_to("ladyguica")
+    :depends_on({"deploy_monitoring_agent"})
+    :timeout("30s")
+    :build()
+
+local health_check_all = task("health_check_all")
+    :description("Health check on all agents")
+    :command(function(this, params)
+        log.info("🏥 Health Check on " .. (this.agent or "local"))
+        
+        local services = {"monitor-agent", "sshd"}
+        local healthy = true
+        
+        for _, svc in ipairs(services) do
+            local active, state = systemd.is_active(svc)
+            if active then
+                log.info("  ✅ " .. svc)
+            else
+                log.warn("  ❌ " .. svc .. " (" .. state .. ")")
+                healthy = false
+            end
+        end
+        
+        return healthy, healthy and "Healthy" or "Unhealthy"
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+workflow.define("distributed_systemd")
+    :description("Distributed systemd service management")
+    :version("1.0.0")
+    :tasks({
+        deploy_to_agent,
+        verify_deployment,
+        health_check_all
+    })
+    :config({
+        timeout = "10m"
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("\n🎉 Distributed deployment successful!")
+            log.info("All services are running across agents")
+        else
+            log.error("\n❌ Deployment failed on some agents")
+        end
+        return true
+    end)
