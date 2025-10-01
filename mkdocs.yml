@@ -1,7 +1,7 @@
 site_name: 🦥 Sloth Runner - AI-Powered GitOps Task Orchestration Platform
 site_description: 'The world''s first AI-powered task orchestration platform with native GitOps capabilities. Features intelligent optimization, predictive analytics, automated deployments, and enterprise-grade reliability.'
 site_author: 'Sloth Runner Team'
-site_url: 'https://chalkan3-sloth.github.io/sloth-runner/'
+site_url: 'https://chalkan3-sloth.github.io/sloth-runner'
 
 # Repository
 repo_name: 'chalkan3-sloth/sloth-runner'
@@ -60,11 +60,9 @@ theme:
 # Additional CSS and JS
 extra_css:
   - stylesheets/extra.css
-  - stylesheets/termynal.css
 
 extra_javascript:
   - javascripts/extra.js
-  - javascripts/termynal.js
 
 # Plugins
 plugins:

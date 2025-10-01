@@ -79,7 +79,7 @@ The plugin automatically detects Sloth DSL files based on:
 ### Highlighted Elements
 
 - **Keywords**: `task`, `workflow`, `local`, `function`, etc.
-- **DSL Methods**: `:command()`, `:description()`, `:build()`, etc.
+- **DSL Chain Methods** 🌟: `:command()`, `:description()`, `:build()`, `:timeout()`, etc. (bright golden color)
 - **Modules**: `exec`, `fs`, `state`, `aws`, `kubernetes`, etc.
 - **Strings**: With special handling for templates and paths
 - **Comments**: Including TODO/FIXME highlighting
@@ -91,13 +91,16 @@ The plugin provides optimized colors for modern terminals:
 
 ```lua
 -- Modern terminal colors (256-color and GUI)
-DSL Keywords  → Bright Blue (#569cd6)
-Modules       → Purple (#c586c0) 
-Methods       → Teal (#4ec9b0)
-Functions     → Yellow (#dcdcaa)
-Env Variables → Red (#ff6b6b)
-File Paths    → Cyan (#98d8c8)
+DSL Keywords      → Bright Blue (#569cd6)
+Modules           → Purple (#c586c0) 
+Chain Methods (:) → Bright Golden (#f9e79f) - Enhanced visibility!
+Methods           → Teal (#4ec9b0)
+Functions         → Yellow (#dcdcaa)
+Env Variables     → Red (#ff6b6b)
+File Paths        → Cyan (#98d8c8)
 ```
+
+**✨ New in this version:** Chain methods (`:description`, `:command`, `:timeout`, etc.) now have enhanced golden highlighting for better visibility!
 
 ## ⌨️ Key Mappings
 
