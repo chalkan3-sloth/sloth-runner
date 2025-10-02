@@ -165,6 +165,7 @@ nav:
   - '🔧 Modules':
     - '🔧 Module Index': 'modules/index.md'
     - '⚡ Goroutine (Parallel) 🔥': 'modules/goroutine.md'
+    - '🧪 Infrastructure Testing 🔥': 'modules/infra_test.md'
     - '📦 Package Management': 'modules/pkg.md'
     - '🔀 Git Module': 'modules/git.md'
     - '🏗️ Terraform Module': 'modules/terraform.md'

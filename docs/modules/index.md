@@ -21,6 +21,13 @@ local log = require("log")
 - **[net](./net.md)** - Network operations (HTTP, TCP, DNS)
 - **[log](./log.md)** - Structured logging with levels
 
+### 🧪 Testing & Validation 🔥
+
+- **[infra_test](./infra_test.md)** - Infrastructure testing and validation (NEW!)
+  - Test files, permissions, services, ports, processes
+  - Remote agent testing support
+  - Fail-fast validation for deployments
+
 ### 💾 Data & State
 
 - **[state](../state-module.md)** - Persistent state management
@@ -142,11 +149,12 @@ Linux service management:
 - Journal logs
 
 ### 📦 Package Management
-Package manager integration:
-- apt (Debian/Ubuntu)
-- yum/dnf (RedHat/CentOS)
-- brew (macOS)
-- chocolatey (Windows)
+
+- **[pkg](./pkg.md)** - Package manager integration
+  - apt (Debian/Ubuntu)
+  - yum/dnf (RedHat/CentOS)
+  - pacman (Arch Linux)
+  - brew (macOS)
 
 ## Module Usage Patterns
 
@@ -275,6 +283,9 @@ log.info("Deployment " .. (result.success and "succeeded" or "failed"))
 ### Core
 - [exec](./exec.md) | [fs](./fs.md) | [net](./net.md) | [log](./log.md)
 
+### Testing 🔥
+- [infra_test](./infra_test.md) - Infrastructure testing and validation
+
 ### Cloud
 - [AWS](./aws.md) | [Azure](./azure.md) | [GCP](./gcp.md) | [DigitalOcean](./digitalocean.md)
 
@@ -282,7 +293,10 @@ log.info("Deployment " .. (result.success and "succeeded" or "failed"))
 - [Docker](./docker.md) | [Terraform](./terraform.md) | [Pulumi](./pulumi.md) | [Salt](./salt.md)
 
 ### Tools
-- [Git](./git.md) | [Systemd](./systemd.md) | [Notifications](./notifications.md)
+- [Git](./git.md) | [Pkg](./pkg.md) | [Systemd](./systemd.md) | [Notifications](./notifications.md)
+
+### Parallel & Testing 🔥
+- [Goroutine](./goroutine.md) | [infra_test](./infra_test.md)
 
 ## Learn More
 

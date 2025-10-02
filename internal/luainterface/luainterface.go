@@ -443,6 +443,9 @@ func RegisterAllModules(L *lua.LState) {
 	// Register goroutine module for parallel execution
 	RegisterGoroutineModule(L)
 	
+	// Register infra_test module for infrastructure testing
+	L.PreloadModule("infra_test", NewInfraTestModule().Loader)
+	
 	// Register AI module
 	luaInterface := &LuaInterface{L: L}
 	luaInterface.registerAIModule()
