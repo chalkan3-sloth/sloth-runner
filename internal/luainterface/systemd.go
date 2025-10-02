@@ -44,32 +44,39 @@ func (mod *SystemdModule) Loader(L *lua.LState) int {
 }
 
 // createService creates a systemd service file
+// Usage: systemd.create_service({name="myapp", description="My App", exec_start="/usr/bin/myapp", ...})
 func (mod *SystemdModule) createService(L *lua.LState) int {
-	serviceName := L.CheckString(1)
-	serviceConfig := L.CheckTable(2)
+	opts := L.CheckTable(1)
+	
+	serviceName := opts.RawGetString("name").String()
+	if serviceName == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("name parameter is required"))
+		return 2
+	}
 	
 	// Build systemd service content
 	var serviceContent strings.Builder
 	serviceContent.WriteString("[Unit]\n")
 	
 	// Unit section
-	if desc := serviceConfig.RawGetString("description"); desc != lua.LNil {
+	if desc := opts.RawGetString("description"); desc != lua.LNil && desc.String() != "" {
 		serviceContent.WriteString(fmt.Sprintf("Description=%s\n", desc.String()))
 	}
-	if after := serviceConfig.RawGetString("after"); after != lua.LNil {
+	if after := opts.RawGetString("after"); after != lua.LNil && after.String() != "" {
 		serviceContent.WriteString(fmt.Sprintf("After=%s\n", after.String()))
 	}
-	if wants := serviceConfig.RawGetString("wants"); wants != lua.LNil {
+	if wants := opts.RawGetString("wants"); wants != lua.LNil && wants.String() != "" {
 		serviceContent.WriteString(fmt.Sprintf("Wants=%s\n", wants.String()))
 	}
-	if requires := serviceConfig.RawGetString("requires"); requires != lua.LNil {
+	if requires := opts.RawGetString("requires"); requires != lua.LNil && requires.String() != "" {
 		serviceContent.WriteString(fmt.Sprintf("Requires=%s\n", requires.String()))
 	}
 	
 	// Service section
 	serviceContent.WriteString("\n[Service]\n")
 	
-	if execStart := serviceConfig.RawGetString("exec_start"); execStart != lua.LNil {
+	if execStart := opts.RawGetString("exec_start"); execStart != lua.LNil && execStart.String() != "" {
 		serviceContent.WriteString(fmt.Sprintf("ExecStart=%s\n", execStart.String()))
 	} else {
 		L.Push(lua.LBool(false))
@@ -77,39 +84,39 @@ func (mod *SystemdModule) createService(L *lua.LState) int {
 		return 2
 	}
 	
-	if execStop := serviceConfig.RawGetString("exec_stop"); execStop != lua.LNil {
+	if execStop := opts.RawGetString("exec_stop"); execStop != lua.LNil && execStop.String() != "" {
 		serviceContent.WriteString(fmt.Sprintf("ExecStop=%s\n", execStop.String()))
 	}
-	if execReload := serviceConfig.RawGetString("exec_reload"); execReload != lua.LNil {
+	if execReload := opts.RawGetString("exec_reload"); execReload != lua.LNil && execReload.String() != "" {
 		serviceContent.WriteString(fmt.Sprintf("ExecReload=%s\n", execReload.String()))
 	}
 	
-	if serviceType := serviceConfig.RawGetString("type"); serviceType != lua.LNil {
+	if serviceType := opts.RawGetString("type"); serviceType != lua.LNil && serviceType.String() != "" {
 		serviceContent.WriteString(fmt.Sprintf("Type=%s\n", serviceType.String()))
 	} else {
 		serviceContent.WriteString("Type=simple\n")
 	}
 	
-	if user := serviceConfig.RawGetString("user"); user != lua.LNil {
+	if user := opts.RawGetString("user"); user != lua.LNil && user.String() != "" {
 		serviceContent.WriteString(fmt.Sprintf("User=%s\n", user.String()))
 	}
-	if group := serviceConfig.RawGetString("group"); group != lua.LNil {
+	if group := opts.RawGetString("group"); group != lua.LNil && group.String() != "" {
 		serviceContent.WriteString(fmt.Sprintf("Group=%s\n", group.String()))
 	}
-	if workingDir := serviceConfig.RawGetString("working_directory"); workingDir != lua.LNil {
+	if workingDir := opts.RawGetString("working_directory"); workingDir != lua.LNil && workingDir.String() != "" {
 		serviceContent.WriteString(fmt.Sprintf("WorkingDirectory=%s\n", workingDir.String()))
 	}
-	if restart := serviceConfig.RawGetString("restart"); restart != lua.LNil {
+	if restart := opts.RawGetString("restart"); restart != lua.LNil && restart.String() != "" {
 		serviceContent.WriteString(fmt.Sprintf("Restart=%s\n", restart.String()))
 	} else {
 		serviceContent.WriteString("Restart=always\n")
 	}
-	if restartSec := serviceConfig.RawGetString("restart_sec"); restartSec != lua.LNil {
+	if restartSec := opts.RawGetString("restart_sec"); restartSec != lua.LNil && restartSec.String() != "" {
 		serviceContent.WriteString(fmt.Sprintf("RestartSec=%s\n", restartSec.String()))
 	}
 	
 	// Environment variables
-	if env := serviceConfig.RawGetString("environment"); env != lua.LNil {
+	if env := opts.RawGetString("environment"); env != lua.LNil {
 		if envTable, ok := env.(*lua.LTable); ok {
 			envTable.ForEach(func(key, value lua.LValue) {
 				serviceContent.WriteString(fmt.Sprintf("Environment=%s=%s\n", key.String(), value.String()))
@@ -119,7 +126,7 @@ func (mod *SystemdModule) createService(L *lua.LState) int {
 	
 	// Install section
 	serviceContent.WriteString("\n[Install]\n")
-	if wantedBy := serviceConfig.RawGetString("wanted_by"); wantedBy != lua.LNil {
+	if wantedBy := opts.RawGetString("wanted_by"); wantedBy != lua.LNil && wantedBy.String() != "" {
 		serviceContent.WriteString(fmt.Sprintf("WantedBy=%s\n", wantedBy.String()))
 	} else {
 		serviceContent.WriteString("WantedBy=multi-user.target\n")
@@ -161,8 +168,16 @@ func (mod *SystemdModule) systemdCommand(command, serviceName string) (string, e
 }
 
 // startService starts a systemd service
+// Usage: systemd.start({name="nginx"})
 func (mod *SystemdModule) startService(L *lua.LState) int {
-	serviceName := L.CheckString(1)
+	opts := L.CheckTable(1)
+	serviceName := opts.RawGetString("name").String()
+	
+	if serviceName == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("name parameter is required"))
+		return 2
+	}
 	
 	output, err := mod.systemdCommand("start", serviceName)
 	if err != nil {
@@ -177,8 +192,16 @@ func (mod *SystemdModule) startService(L *lua.LState) int {
 }
 
 // stopService stops a systemd service
+// Usage: systemd.stop({name="nginx"})
 func (mod *SystemdModule) stopService(L *lua.LState) int {
-	serviceName := L.CheckString(1)
+	opts := L.CheckTable(1)
+	serviceName := opts.RawGetString("name").String()
+	
+	if serviceName == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("name parameter is required"))
+		return 2
+	}
 	
 	output, err := mod.systemdCommand("stop", serviceName)
 	if err != nil {
@@ -193,8 +216,16 @@ func (mod *SystemdModule) stopService(L *lua.LState) int {
 }
 
 // restartService restarts a systemd service
+// Usage: systemd.restart({name="nginx"})
 func (mod *SystemdModule) restartService(L *lua.LState) int {
-	serviceName := L.CheckString(1)
+	opts := L.CheckTable(1)
+	serviceName := opts.RawGetString("name").String()
+	
+	if serviceName == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("name parameter is required"))
+		return 2
+	}
 	
 	output, err := mod.systemdCommand("restart", serviceName)
 	if err != nil {
@@ -209,8 +240,16 @@ func (mod *SystemdModule) restartService(L *lua.LState) int {
 }
 
 // reloadService reloads a systemd service
+// Usage: systemd.reload({name="nginx"})
 func (mod *SystemdModule) reloadService(L *lua.LState) int {
-	serviceName := L.CheckString(1)
+	opts := L.CheckTable(1)
+	serviceName := opts.RawGetString("name").String()
+	
+	if serviceName == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("name parameter is required"))
+		return 2
+	}
 	
 	output, err := mod.systemdCommand("reload", serviceName)
 	if err != nil {
@@ -225,8 +264,16 @@ func (mod *SystemdModule) reloadService(L *lua.LState) int {
 }
 
 // enableService enables a systemd service
+// Usage: systemd.enable({name="nginx"})
 func (mod *SystemdModule) enableService(L *lua.LState) int {
-	serviceName := L.CheckString(1)
+	opts := L.CheckTable(1)
+	serviceName := opts.RawGetString("name").String()
+	
+	if serviceName == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("name parameter is required"))
+		return 2
+	}
 	
 	output, err := mod.systemdCommand("enable", serviceName)
 	if err != nil {
@@ -241,8 +288,16 @@ func (mod *SystemdModule) enableService(L *lua.LState) int {
 }
 
 // disableService disables a systemd service
+// Usage: systemd.disable({name="nginx"})
 func (mod *SystemdModule) disableService(L *lua.LState) int {
-	serviceName := L.CheckString(1)
+	opts := L.CheckTable(1)
+	serviceName := opts.RawGetString("name").String()
+	
+	if serviceName == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("name parameter is required"))
+		return 2
+	}
 	
 	output, err := mod.systemdCommand("disable", serviceName)
 	if err != nil {
@@ -257,8 +312,16 @@ func (mod *SystemdModule) disableService(L *lua.LState) int {
 }
 
 // statusService gets the status of a systemd service
+// Usage: systemd.status({name="nginx"})
 func (mod *SystemdModule) statusService(L *lua.LState) int {
-	serviceName := L.CheckString(1)
+	opts := L.CheckTable(1)
+	serviceName := opts.RawGetString("name").String()
+	
+	if serviceName == "" {
+		L.Push(lua.LString(""))
+		L.Push(lua.LString("name parameter is required"))
+		return 2
+	}
 	
 	output, err := mod.systemdCommand("status", serviceName)
 	// Note: status can return non-zero exit codes for inactive services
@@ -274,8 +337,16 @@ func (mod *SystemdModule) statusService(L *lua.LState) int {
 }
 
 // isActiveService checks if a service is active
+// Usage: systemd.is_active({name="nginx"})
 func (mod *SystemdModule) isActiveService(L *lua.LState) int {
-	serviceName := L.CheckString(1)
+	opts := L.CheckTable(1)
+	serviceName := opts.RawGetString("name").String()
+	
+	if serviceName == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("name parameter is required"))
+		return 2
+	}
 	
 	output, err := mod.systemdCommand("is-active", serviceName)
 	isActive := err == nil && strings.TrimSpace(output) == "active"
@@ -286,8 +357,16 @@ func (mod *SystemdModule) isActiveService(L *lua.LState) int {
 }
 
 // isEnabledService checks if a service is enabled
+// Usage: systemd.is_enabled({name="nginx"})
 func (mod *SystemdModule) isEnabledService(L *lua.LState) int {
-	serviceName := L.CheckString(1)
+	opts := L.CheckTable(1)
+	serviceName := opts.RawGetString("name").String()
+	
+	if serviceName == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("name parameter is required"))
+		return 2
+	}
 	
 	output, err := mod.systemdCommand("is-enabled", serviceName)
 	isEnabled := err == nil && strings.TrimSpace(output) == "enabled"
@@ -312,8 +391,16 @@ func (mod *SystemdModule) daemonReload(L *lua.LState) int {
 }
 
 // removeService removes a systemd service file
+// Usage: systemd.remove_service({name="myapp"})
 func (mod *SystemdModule) removeService(L *lua.LState) int {
-	serviceName := L.CheckString(1)
+	opts := L.CheckTable(1)
+	serviceName := opts.RawGetString("name").String()
+	
+	if serviceName == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("name parameter is required"))
+		return 2
+	}
 	
 	// Stop and disable service first
 	mod.systemdCommand("stop", serviceName)
@@ -368,8 +455,16 @@ func (mod *SystemdModule) listServices(L *lua.LState) int {
 }
 
 // showService shows detailed information about a service
+// Usage: systemd.show({name="nginx"})
 func (mod *SystemdModule) showService(L *lua.LState) int {
-	serviceName := L.CheckString(1)
+	opts := L.CheckTable(1)
+	serviceName := opts.RawGetString("name").String()
+	
+	if serviceName == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("name parameter is required"))
+		return 2
+	}
 	
 	output, err := mod.systemdCommand("show", serviceName)
 	if err != nil {

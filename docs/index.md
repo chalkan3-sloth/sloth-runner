@@ -41,6 +41,62 @@ sloth-runner run -f examples/deploy_git_terraform.sloth -v examples/values.yaml 
 
 ---
 
+## 🔥 **New: Unified Module API**
+
+All modules now use a **modern, consistent, table-based API** for maximum clarity and flexibility:
+
+```lua
+-- Package Management
+task("setup_web_server", {
+    description = "Setup web server on remote host",
+    command = function()
+        -- Update package database
+        pkg.update({ delegate_to = "web-server" })
+        
+        -- Install packages
+        pkg.install({
+            packages = {"nginx", "certbot", "postgresql"},
+            delegate_to = "web-server"
+        })
+        
+        -- Configure systemd service
+        systemd.enable({
+            service = "nginx",
+            delegate_to = "web-server"
+        })
+        
+        systemd.start({
+            service = "nginx",
+            delegate_to = "web-server"
+        })
+        
+        -- Verify installation
+        infra_test.service_is_running({
+            name = "nginx",
+            delegate_to = "web-server"
+        })
+        
+        infra_test.port_is_listening({
+            port = 80,
+            delegate_to = "web-server"
+        })
+        
+        return true, "Web server configured successfully"
+    end
+})
+```
+
+**🎯 Key Benefits:**
+- ✅ **Named parameters** for self-documenting code
+- ✅ **Consistent API** across all modules
+- ✅ **Remote execution** via `delegate_to`
+- ✅ **Built-in testing** with `infra_test` module
+- ✅ **Parallel execution** with goroutines
+
+👉 **[See Complete API Examples →](modern-dsl/module-api-examples.md)**
+
+---
+
 ## ✨ **Revolutionary Features**
 
 ### 🎯 **Modern DSL for GitOps**

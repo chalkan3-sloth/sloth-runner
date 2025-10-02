@@ -48,13 +48,22 @@ func (f *FileOpsModule) exports() map[string]lua.LGFunction {
 }
 
 // copy copies a file from source to destination
+// Usage: file_ops.copy({src="/path/to/source", dest="/path/to/dest", mode="0644"})
 func (f *FileOpsModule) copy(L *lua.LState) int {
-	src := L.CheckString(1)
-	dst := L.CheckString(2)
-
-	options := &lua.LTable{}
-	if L.GetTop() >= 3 {
-		options = L.CheckTable(3)
+	opts := L.CheckTable(1)
+	
+	src := opts.RawGetString("src").String()
+	dst := opts.RawGetString("dest").String()
+	
+	if src == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("src parameter is required"))
+		return 2
+	}
+	if dst == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("dest parameter is required"))
+		return 2
 	}
 
 	// Check if source exists
@@ -97,10 +106,10 @@ func (f *FileOpsModule) copy(L *lua.LState) int {
 	}
 
 	// Set permissions if specified
-	if mode := options.RawGetString("mode"); mode != lua.LNil {
-		if modeStr, ok := mode.(lua.LString); ok {
+	if mode := opts.RawGetString("mode"); mode != lua.LNil {
+		if modeStr := mode.String(); modeStr != "" {
 			var perm os.FileMode
-			fmt.Sscanf(string(modeStr), "%o", &perm)
+			fmt.Sscanf(modeStr, "%o", &perm)
 			os.Chmod(dst, perm)
 		}
 	} else {
@@ -119,9 +128,23 @@ func (f *FileOpsModule) copy(L *lua.LState) int {
 }
 
 // fetch downloads a file from remote to local
+// Usage: file_ops.fetch({src="/path/to/source", dest="/path/to/dest"})
 func (f *FileOpsModule) fetch(L *lua.LState) int {
-	src := L.CheckString(1)
-	dst := L.CheckString(2)
+	opts := L.CheckTable(1)
+	
+	src := opts.RawGetString("src").String()
+	dst := opts.RawGetString("dest").String()
+	
+	if src == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("src parameter is required"))
+		return 2
+	}
+	if dst == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("dest parameter is required"))
+		return 2
+	}
 
 	// For now, treat as local copy (would need agent integration for remote)
 	srcFile, err := os.Open(src)
@@ -166,10 +189,24 @@ func (f *FileOpsModule) fetch(L *lua.LState) int {
 }
 
 // templateRender renders a template file with variables
+// Usage: file_ops.template({src="/path/template.tpl", dest="/path/output", vars={key="value"}})
 func (f *FileOpsModule) templateRender(L *lua.LState) int {
-	src := L.CheckString(1)
-	dst := L.CheckString(2)
-	vars := L.CheckTable(3)
+	opts := L.CheckTable(1)
+	
+	src := opts.RawGetString("src").String()
+	dst := opts.RawGetString("dest").String()
+	vars := opts.RawGetString("vars")
+	
+	if src == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("src parameter is required"))
+		return 2
+	}
+	if dst == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("dest parameter is required"))
+		return 2
+	}
 
 	// Read template file
 	tmplContent, err := os.ReadFile(src)
@@ -181,11 +218,14 @@ func (f *FileOpsModule) templateRender(L *lua.LState) int {
 
 	// Convert Lua table to map
 	data := make(map[string]interface{})
-	vars.ForEach(func(k, v lua.LValue) {
-		if key, ok := k.(lua.LString); ok {
-			data[string(key)] = luaValueToGoInterface(v)
-		}
-	})
+	if vars.Type() == lua.LTTable {
+		varsTable := vars.(*lua.LTable)
+		varsTable.ForEach(func(k, v lua.LValue) {
+			if key, ok := k.(lua.LString); ok {
+				data[string(key)] = luaValueToGoInterface(v)
+			}
+		})
+	}
 
 	// Parse and execute template
 	tmpl, err := template.New("template").Parse(string(tmplContent))
@@ -227,13 +267,22 @@ func (f *FileOpsModule) templateRender(L *lua.LState) int {
 }
 
 // lineinfile ensures a line exists in a file
+// Usage: file_ops.lineinfile({path="/path/file", line="content", state="present", regexp="pattern"})
 func (f *FileOpsModule) lineinfile(L *lua.LState) int {
-	path := L.CheckString(1)
-	line := L.CheckString(2)
-
-	options := &lua.LTable{}
-	if L.GetTop() >= 3 {
-		options = L.CheckTable(3)
+	opts := L.CheckTable(1)
+	
+	path := opts.RawGetString("path").String()
+	line := opts.RawGetString("line").String()
+	
+	if path == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("path parameter is required"))
+		return 2
+	}
+	if line == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("line parameter is required"))
+		return 2
 	}
 
 	// Read file or create if not exists
@@ -251,13 +300,13 @@ func (f *FileOpsModule) lineinfile(L *lua.LState) int {
 
 	// Check state (present/absent)
 	state := "present"
-	if stateVal := options.RawGetString("state"); stateVal != lua.LNil {
+	if stateVal := opts.RawGetString("state"); stateVal != lua.LNil && stateVal.String() != "" {
 		state = stateVal.String()
 	}
 
 	// Check if line exists with regexp
 	var re *regexp.Regexp
-	if regexpVal := options.RawGetString("regexp"); regexpVal != lua.LNil {
+	if regexpVal := opts.RawGetString("regexp"); regexpVal != lua.LNil && regexpVal.String() != "" {
 		re, err = regexp.Compile(regexpVal.String())
 		if err != nil {
 			L.Push(lua.LNil)
@@ -331,29 +380,38 @@ func (f *FileOpsModule) lineinfile(L *lua.LState) int {
 }
 
 // blockinfile inserts/updates/removes a block of lines in a file
+// Usage: file_ops.blockinfile({path="/path/file", block="content", state="present", marker_begin="# BEGIN", marker_end="# END"})
 func (f *FileOpsModule) blockinfile(L *lua.LState) int {
-	path := L.CheckString(1)
-	block := L.CheckString(2)
-
-	options := &lua.LTable{}
-	if L.GetTop() >= 3 {
-		options = L.CheckTable(3)
+	opts := L.CheckTable(1)
+	
+	path := opts.RawGetString("path").String()
+	block := opts.RawGetString("block").String()
+	
+	if path == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("path parameter is required"))
+		return 2
+	}
+	if block == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("block parameter is required"))
+		return 2
 	}
 
 	// Get markers
 	markerBegin := "# BEGIN MANAGED BLOCK"
 	markerEnd := "# END MANAGED BLOCK"
 
-	if mb := options.RawGetString("marker_begin"); mb != lua.LNil {
+	if mb := opts.RawGetString("marker_begin"); mb != lua.LNil && mb.String() != "" {
 		markerBegin = mb.String()
 	}
-	if me := options.RawGetString("marker_end"); me != lua.LNil {
+	if me := opts.RawGetString("marker_end"); me != lua.LNil && me.String() != "" {
 		markerEnd = me.String()
 	}
 
 	// Check state
 	state := "present"
-	if stateVal := options.RawGetString("state"); stateVal != lua.LNil {
+	if stateVal := opts.RawGetString("state"); stateVal != lua.LNil && stateVal.String() != "" {
 		state = stateVal.String()
 	}
 
@@ -444,10 +502,29 @@ func (f *FileOpsModule) blockinfile(L *lua.LState) int {
 }
 
 // replace replaces all occurrences of a pattern in a file
+// Usage: file_ops.replace({path="/path/file", pattern="regex", replacement="text"})
 func (f *FileOpsModule) replace(L *lua.LState) int {
-	path := L.CheckString(1)
-	pattern := L.CheckString(2)
-	replacement := L.CheckString(3)
+	opts := L.CheckTable(1)
+	
+	path := opts.RawGetString("path").String()
+	pattern := opts.RawGetString("pattern").String()
+	replacement := opts.RawGetString("replacement").String()
+	
+	if path == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("path parameter is required"))
+		return 2
+	}
+	if pattern == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("pattern parameter is required"))
+		return 2
+	}
+	if replacement == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("replacement parameter is required"))
+		return 2
+	}
 
 	// Read file
 	content, err := os.ReadFile(path)
@@ -486,9 +563,23 @@ func (f *FileOpsModule) replace(L *lua.LState) int {
 }
 
 // unarchive extracts an archive file
+// Usage: file_ops.unarchive({src="/path/file.tar.gz", dest="/path/dest"})
 func (f *FileOpsModule) unarchive(L *lua.LState) int {
-	src := L.CheckString(1)
-	dst := L.CheckString(2)
+	opts := L.CheckTable(1)
+	
+	src := opts.RawGetString("src").String()
+	dst := opts.RawGetString("dest").String()
+	
+	if src == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("src parameter is required"))
+		return 2
+	}
+	if dst == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("dest parameter is required"))
+		return 2
+	}
 
 	// Create destination directory
 	if err := os.MkdirAll(dst, 0755); err != nil {
@@ -530,8 +621,16 @@ func (f *FileOpsModule) unarchive(L *lua.LState) int {
 }
 
 // stat gets file information
+// Usage: file_ops.stat({path="/path/file"})
 func (f *FileOpsModule) stat(L *lua.LState) int {
-	path := L.CheckString(1)
+	opts := L.CheckTable(1)
+	
+	path := opts.RawGetString("path").String()
+	if path == "" {
+		L.Push(lua.LNil)
+		L.Push(lua.LString("path parameter is required"))
+		return 2
+	}
 
 	info, err := os.Stat(path)
 	if err != nil {
