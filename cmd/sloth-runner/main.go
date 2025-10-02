@@ -2381,6 +2381,99 @@ var modulesListCmd = &cobra.Command{
 	},
 }
 
+var fmtCmd = &cobra.Command{
+	Use:   "fmt [files...]",
+	Short: "Format Lua workflow files",
+	Long:  `Format Lua workflow files using stylua. If no files are specified, formats all .sloth files in the current directory.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		check, _ := cmd.Flags().GetBool("check")
+		configPath, _ := cmd.Flags().GetString("config")
+		
+		// Check if stylua is installed
+		styluaPath, err := exec.LookPath("stylua")
+		if err != nil {
+			pterm.Error.Println("stylua is not installed")
+			pterm.Info.Println("Install stylua with:")
+			pterm.Info.Println("  cargo install stylua")
+			pterm.Info.Println("  or")
+			pterm.Info.Println("  brew install stylua")
+			return fmt.Errorf("stylua not found in PATH")
+		}
+		
+		var files []string
+		
+		// If no files specified, find all .sloth files in current directory
+		if len(args) == 0 {
+			matches, err := filepath.Glob("*.sloth")
+			if err != nil {
+				return fmt.Errorf("failed to find .sloth files: %w", err)
+			}
+			files = matches
+			
+			if len(files) == 0 {
+				pterm.Warning.Println("No .sloth files found in current directory")
+				pterm.Info.Println("Usage: sloth-runner fmt [files...]")
+				return nil
+			}
+		} else {
+			files = args
+		}
+		
+		// Build stylua command arguments
+		cmdArgs := []string{}
+		
+		// Add check flag if specified
+		if check {
+			cmdArgs = append(cmdArgs, "--check")
+		}
+		
+		// Add config path if specified
+		if configPath != "" {
+			cmdArgs = append(cmdArgs, "--config-path", configPath)
+		}
+		
+		// Add files to format
+		cmdArgs = append(cmdArgs, files...)
+		
+		// Show what we're doing
+		if check {
+			pterm.Info.Printf("🔍 Checking formatting for %d file(s)...\n", len(files))
+		} else {
+			pterm.Info.Printf("✨ Formatting %d file(s)...\n", len(files))
+		}
+		
+		for _, file := range files {
+			pterm.Printf("  • %s\n", pterm.Cyan(file))
+		}
+		fmt.Println()
+		
+		// Run stylua
+		styluaCmd := exec.Command(styluaPath, cmdArgs...)
+		styluaCmd.Stdout = os.Stdout
+		styluaCmd.Stderr = os.Stderr
+		
+		err = styluaCmd.Run()
+		if err != nil {
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				if check {
+					pterm.Error.Println("❌ Some files are not formatted correctly")
+					pterm.Info.Println("Run 'sloth-runner fmt' to format them")
+					return exitErr
+				}
+			}
+			return fmt.Errorf("stylua failed: %w", err)
+		}
+		
+		if check {
+			pterm.Success.Println("✅ All files are correctly formatted!")
+		} else {
+			pterm.Success.Println("✅ Successfully formatted all files!")
+		}
+		
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.SetOut(os.Stdout)
 	rootCmd.SetErr(os.Stderr)
@@ -2483,6 +2576,11 @@ func init() {
 	uiCmd.Flags().IntP("port", "p", 8080, "The port for the UI server to listen on")
 	uiCmd.Flags().Bool("daemon", false, "Run the UI server as a daemon")
 	uiCmd.Flags().Bool("debug", false, "Enable debug logging for the UI server")
+
+	// Fmt command
+	rootCmd.AddCommand(fmtCmd)
+	fmtCmd.Flags().BoolP("check", "c", false, "Check if files are formatted without modifying them")
+	fmtCmd.Flags().String("config", "", "Path to stylua config file (default: stylua.toml in current directory)")
 }
 
 func Execute() error {
