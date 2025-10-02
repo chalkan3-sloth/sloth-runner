@@ -330,8 +330,13 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 
 	if agentAddress != "" {
 		// Connect to the agent
+		slog.Info("Connecting to agent", "agent_address", agentAddress, "task", t.Name)
 		conn, err := grpc.Dial(agentAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
+			slog.Error("Failed to connect to agent", 
+				"agent_address", agentAddress, 
+				"task", t.Name,
+				"error", err)
 			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to connect to agent %s: %w", agentAddress, err)}
 		}
 		defer conn.Close()
@@ -340,11 +345,19 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 		// Create a tarball of the workspace
 		var buf bytes.Buffer
 		if err := createTar(session.Workdir, &buf); err != nil {
+			slog.Error("Failed to create workspace tarball", 
+				"task", t.Name,
+				"error", err)
 			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to create workspace tarball: %w", err)}
 		}
 
 		// Generate a script compatible with agent execution (without delegate_to)
 		agentScript := tr.generateAgentScript(t, groupName)
+		
+		slog.Info("Sending task to agent", 
+			"agent_address", agentAddress, 
+			"task", t.Name,
+			"group", groupName)
 		
 		// Send the task and workspace to the agent
 		r, err := c.ExecuteTask(ctx, &pb.ExecuteTaskRequest{
@@ -354,15 +367,47 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 			Workspace:   buf.Bytes(),
 		})
 		if err != nil {
+			slog.Error("Failed to send task to agent", 
+				"agent_address", agentAddress, 
+				"task", t.Name,
+				"error", err)
 			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to execute task on agent %s: %w", agentAddress, err)}
 		}
 
 		if !r.GetSuccess() {
-			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("task failed on agent %s: %s", agentAddress, r.GetOutput())}
+			// Parse and display agent error clearly
+			agentError := r.GetOutput()
+			
+			// Log the full error from agent
+			slog.Error("╔═══════════════════════════════════════════════════════════════════════════════════")
+			slog.Error("║ AGENT EXECUTION FAILED")
+			slog.Error("╠═══════════════════════════════════════════════════════════════════════════════════")
+			slog.Error("║ Task Name    : " + t.Name)
+			slog.Error("║ Group Name   : " + groupName)
+			slog.Error("║ Agent Address: " + agentAddress)
+			slog.Error("╠═══════════════════════════════════════════════════════════════════════════════════")
+			slog.Error("║ AGENT ERROR OUTPUT:")
+			slog.Error("╠═══════════════════════════════════════════════════════════════════════════════════")
+			for _, line := range strings.Split(agentError, "\n") {
+				if line != "" {
+					slog.Error("║ " + line)
+				}
+			}
+			slog.Error("╚═══════════════════════════════════════════════════════════════════════════════════")
+			
+			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("AGENT ERROR (%s): %s", agentAddress, agentError)}
 		}
+
+		slog.Info("Task executed successfully on agent", 
+			"agent_address", agentAddress,
+			"task", t.Name)
 
 		// Extract the updated workspace
 		if err := extractTar(bytes.NewReader(r.GetWorkspace()), session.Workdir); err != nil {
+			slog.Error("Failed to extract updated workspace from agent", 
+				"agent_address", agentAddress,
+				"task", t.Name,
+				"error", err)
 			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to extract updated workspace from agent %s: %w", agentAddress, err)}
 		}
 
@@ -666,7 +711,13 @@ func (tr *TaskRunner) Run() error {
 
 		groupHadSuccess := len(groupErrors) == 0
 		if !groupHadSuccess {
-			allGroupErrors = append(allGroupErrors, fmt.Errorf("task group '%s' encountered errors", groupName))
+			// Include detailed error messages from failed tasks
+			var errorDetails []string
+			for _, err := range groupErrors {
+				errorDetails = append(errorDetails, err.Error())
+			}
+			groupErrorMsg := fmt.Sprintf("task group '%s' failed with errors:\n    - %s", groupName, strings.Join(errorDetails, "\n    - "))
+			allGroupErrors = append(allGroupErrors, fmt.Errorf("%s", groupErrorMsg))
 		}
 
 		mu.Lock()
@@ -717,7 +768,30 @@ func (tr *TaskRunner) Run() error {
 		errStr := ""
 		if result.Error != nil {
 			status = pterm.Red(result.Status)
-			errStr = result.Error.Error()
+			errMsg := result.Error.Error()
+			
+			// Extract clean error message for agent errors
+			if strings.Contains(errMsg, "AGENT ERROR") {
+				parts := strings.Split(errMsg, "AGENT ERROR")
+				if len(parts) > 1 {
+					// Get the part after "AGENT ERROR (address):"
+					agentPart := parts[1]
+					if idx := strings.Index(agentPart, "):"); idx != -1 {
+						errStr = strings.TrimSpace(agentPart[idx+2:])
+					} else {
+						errStr = strings.TrimSpace(agentPart)
+					}
+				} else {
+					errStr = errMsg
+				}
+			} else {
+				errStr = errMsg
+			}
+			
+			// Truncate very long errors for the table
+			if len(errStr) > 80 {
+				errStr = errStr[:77] + "..."
+			}
 		} else if result.Status == "Skipped" {
 			status = pterm.Yellow(result.Status)
 		} else if result.Status == "DryRun" {
@@ -728,6 +802,46 @@ func (tr *TaskRunner) Run() error {
 	pterm.DefaultTable.WithHasHeader().WithData(tableData).Render()
 
 	if len(allGroupErrors) > 0 {
+		// Enhanced error display
+		pterm.Error.Println("\n╔════════════════════════════════════════════════════════════════════════════")
+		pterm.Error.Println("║ TASK EXECUTION ERRORS")
+		pterm.Error.Println("╚════════════════════════════════════════════════════════════════════════════")
+		
+		for i, err := range allGroupErrors {
+			errMsg := err.Error()
+			
+			// Display agent errors more clearly
+			if strings.Contains(errMsg, "AGENT ERROR") {
+				pterm.Error.Printf("\n[Error %d] Agent Execution Failure:\n", i+1)
+				
+				// Extract agent address
+				if strings.Contains(errMsg, "AGENT ERROR (") {
+					start := strings.Index(errMsg, "AGENT ERROR (") + 13
+					end := strings.Index(errMsg[start:], "):")
+					if end != -1 {
+						agentAddr := errMsg[start : start+end]
+						pterm.Info.Printf("  Agent: %s\n", agentAddr)
+						
+						// Extract error message
+						errorContent := strings.TrimSpace(errMsg[start+end+2:])
+						pterm.Error.Printf("  Error: %s\n", errorContent)
+					}
+				}
+			} else {
+				pterm.Error.Printf("\n[Error %d]:\n", i+1)
+				
+				// Display multi-line errors nicely
+				lines := strings.Split(errMsg, "\n")
+				for _, line := range lines {
+					if strings.TrimSpace(line) != "" {
+						pterm.Error.Printf("  %s\n", line)
+					}
+				}
+			}
+		}
+		
+		pterm.Error.Println("\n════════════════════════════════════════════════════════════════════════════")
+		
 		var errorMessages []string
 		for _, err := range allGroupErrors {
 			errorMessages = append(errorMessages, err.Error())

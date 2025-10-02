@@ -96,12 +96,15 @@ func TestFileOpsCopy(t *testing.T) {
 			if tt.options != nil {
 				code = `
 					local file_ops = require('file_ops')
-					local opts = {`
+					return file_ops.copy({
+						src = "` + src + `",
+						dest = "` + dst + `",`
 				for k, v := range tt.options {
-					code += k + ` = "` + v + `",`
+					code += `
+						` + k + ` = "` + v + `",`
 				}
-				code += `}
-					return file_ops.copy("` + src + `", "` + dst + `", opts)
+				code += `
+					})
 				`
 			} else {
 				code = `
@@ -185,7 +188,11 @@ func TestFileOpsTemplate(t *testing.T) {
 	code := `
 		local file_ops = require('file_ops')
 		local vars = {Name = "Alice", Age = 30}
-		return file_ops.template("` + tmpl + `", "` + dst + `", vars)
+		return file_ops.template({
+			src = "` + tmpl + `",
+			dest = "` + dst + `",
+			vars = vars
+		})
 	`
 
 	if err := L.DoString(code); err != nil {
@@ -267,7 +274,9 @@ func TestFileOpsLineinfile(t *testing.T) {
 				code = `
 					local file_ops = require('file_ops')
 					local opts = ` + tt.options + `
-					return file_ops.lineinfile("` + path + `", "` + tt.line + `", opts)
+					opts.path = "` + path + `"
+					opts.line = "` + tt.line + `"
+					return file_ops.lineinfile(opts)
 				`
 			} else {
 				code = `
@@ -371,7 +380,9 @@ func TestFileOpsBlockinfile(t *testing.T) {
 				code = `
 					local file_ops = require('file_ops')
 					local opts = ` + tt.options + `
-					return file_ops.blockinfile("` + path + `", "` + tt.block + `", opts)
+					opts.path = "` + path + `"
+					opts.block = "` + tt.block + `"
+					return file_ops.blockinfile(opts)
 				`
 			} else {
 				code = `
@@ -448,7 +459,7 @@ func TestFileOpsReplace(t *testing.T) {
 
 			code := `
 				local file_ops = require('file_ops')
-				return file_ops.replace({path = "` + path + `", pattern = "` + tt.pattern + `", replace = "` + tt.replacement + `"})
+				return file_ops.replace({path = "` + path + `", pattern = "` + tt.pattern + `", replacement = "` + tt.replacement + `"})
 			`
 
 			if err := L.DoString(code); err != nil {
