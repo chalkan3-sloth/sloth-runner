@@ -382,7 +382,9 @@ type RemoteAgentResolver struct {
 
 // createRemoteAgentResolver creates a resolver that connects to remote master
 func createRemoteAgentResolver(masterAddr string) (*RemoteAgentResolver, error) {
-	conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(masterAddr, 
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	if err != nil {
 		return nil, formatConnectionError(err, masterAddr)
 	}
@@ -1074,13 +1076,17 @@ var agentStartCmd = &cobra.Command{
 				heartbeatInterval := 5 * time.Second
 				
 				for {
-					conn, err := grpc.Dial(masterAddr, 
+					// Create connection context with timeout
+					connCtx, connCancel := context.WithTimeout(context.Background(), 10*time.Second)
+					conn, err := grpc.DialContext(connCtx, masterAddr, 
 						grpc.WithTransportCredentials(insecure.NewCredentials()),
 						grpc.WithBlock(),
-						grpc.WithTimeout(10*time.Second),
 					)
+					connCancel()
+					
 					if err != nil {
 						slog.Error(fmt.Sprintf("Failed to connect to master at %s: %v. Retrying in %v...", masterAddr, err, reconnectDelay))
+						pterm.Warning.Printf("⚠ Cannot connect to master at %s. Retrying in %v...\n", masterAddr, reconnectDelay)
 						time.Sleep(reconnectDelay)
 						// Exponential backoff
 						reconnectDelay *= 2
@@ -1096,15 +1102,16 @@ var agentStartCmd = &cobra.Command{
 					registryClient := pb.NewAgentRegistryClient(conn)
 					
 					// Try to register with master
-					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-					_, err = registryClient.RegisterAgent(ctx, &pb.RegisterAgentRequest{
+					regCtx, regCancel := context.WithTimeout(context.Background(), 10*time.Second)
+					_, err = registryClient.RegisterAgent(regCtx, &pb.RegisterAgentRequest{
 						AgentName:    agentName,
 						AgentAddress: agentReportAddress,
 					})
-					cancel()
+					regCancel()
 					
 					if err != nil {
 						slog.Error(fmt.Sprintf("Failed to register with master: %v. Reconnecting...", err))
+						pterm.Warning.Printf("⚠ Failed to register with master: %v\n", err)
 						conn.Close()
 						time.Sleep(reconnectDelay)
 						continue
@@ -1121,9 +1128,9 @@ var agentStartCmd = &cobra.Command{
 					for connected {
 						time.Sleep(heartbeatInterval)
 						
-						ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-						_, err := registryClient.Heartbeat(ctx, &pb.HeartbeatRequest{AgentName: agentName})
-						cancel()
+						hbCtx, hbCancel := context.WithTimeout(context.Background(), 5*time.Second)
+						_, err := registryClient.Heartbeat(hbCtx, &pb.HeartbeatRequest{AgentName: agentName})
+						hbCancel()
 						
 						if err != nil {
 							consecutiveFailures++
@@ -1139,12 +1146,14 @@ var agentStartCmd = &cobra.Command{
 							if consecutiveFailures > 0 {
 								consecutiveFailures = 0
 								slog.Info("Heartbeat recovered, connection stable")
+								pterm.Success.Printf("✓ Connection to master recovered\n")
 							}
 						}
 					}
 					
 					// Close old connection before reconnecting
 					conn.Close()
+					slog.Info("Closed connection to master, preparing to reconnect")
 					
 					// Wait before attempting reconnection
 					pterm.Info.Printf("🔄 Reconnecting to master in %v...\n", reconnectDelay)
@@ -1179,14 +1188,24 @@ var agentRunCmd = &cobra.Command{
 		pterm.Info.Printf("📝 Command: %s\n", command)
 		pterm.Println()
 
-		conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		// Create a connection with a reasonable timeout
+		dialCtx, dialCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer dialCancel()
+
+		conn, err := grpc.DialContext(dialCtx, masterAddr, 
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
 		if err != nil {
 			return formatConnectionError(err, masterAddr)
 		}
 		defer conn.Close()
 
+		// Create context with timeout for the entire operation
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
 		registryClient := pb.NewAgentRegistryClient(conn)
-		stream, err := registryClient.ExecuteCommand(context.Background(), &pb.ExecuteCommandRequest{
+		stream, err := registryClient.ExecuteCommand(ctx, &pb.ExecuteCommandRequest{
 			AgentName: agentName,
 			Command:   command,
 		})
@@ -1262,7 +1281,12 @@ var agentListCmd = &cobra.Command{
 		}
 		masterAddr, _ := cmd.Flags().GetString("master")
 
-		conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		conn, err := grpc.Dial(masterAddr, 
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
 		if err != nil {
 			return formatConnectionError(err, masterAddr)
 		}
@@ -1270,7 +1294,7 @@ var agentListCmd = &cobra.Command{
 
 		registryClient := pb.NewAgentRegistryClient(conn)
 
-		resp, err := registryClient.ListAgents(context.Background(), &pb.ListAgentsRequest{})
+		resp, err := registryClient.ListAgents(ctx, &pb.ListAgentsRequest{})
 		if err != nil {
 			return formatConnectionError(err, masterAddr)
 		}
@@ -1309,14 +1333,19 @@ var agentStopCmd = &cobra.Command{
 		agentName := args[0]
 		masterAddr, _ := cmd.Flags().GetString("master")
 
-		conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		conn, err := grpc.Dial(masterAddr, 
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
 		if err != nil {
 			return formatConnectionError(err, masterAddr)
 		}
 		defer conn.Close()
 
 		registryClient := pb.NewAgentRegistryClient(conn)
-		_, err = registryClient.StopAgent(context.Background(), &pb.StopAgentRequest{
+		_, err = registryClient.StopAgent(ctx, &pb.StopAgentRequest{
 			AgentName: agentName,
 		})
 		if err != nil {
@@ -1354,14 +1383,19 @@ var agentDeleteCmd = &cobra.Command{
 			}
 		}
 
-		conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		conn, err := grpc.Dial(masterAddr, 
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
 		if err != nil {
 			return formatConnectionError(err, masterAddr)
 		}
 		defer conn.Close()
 
 		registryClient := pb.NewAgentRegistryClient(conn)
-		resp, err := registryClient.UnregisterAgent(context.Background(), &pb.UnregisterAgentRequest{
+		resp, err := registryClient.UnregisterAgent(ctx, &pb.UnregisterAgentRequest{
 			AgentName: agentName,
 		})
 		if err != nil {
