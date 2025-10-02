@@ -13,6 +13,7 @@ type FunctionDoc struct {
 	Description string
 	Example     string
 	Parameters  string
+	Returns     string
 }
 
 // GetAllModuleDocs returns documentation for all available modules
@@ -154,25 +155,29 @@ func GetAllModuleDocs() []ModuleDoc {
 					Name:        "user.create",
 					Description: "Create a new user",
 					Parameters:  "username (string), options (table): password, uid, gid, home, shell, groups, comment, system, create_home, no_create_home, expiry",
-					Example: `user.create("deploy", {
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.create("deploy", {
     password = "securepassword",
     home = "/home/deploy",
     shell = "/bin/bash",
     groups = "docker,sudo",
     comment = "Deployment User",
     create_home = true
-})`,
+})
+print(msg)`,
 				},
 				{
 					Name:        "user.delete",
 					Description: "Delete a user",
 					Parameters:  "username (string), remove_home (boolean, optional)",
-					Example: `user.delete("olduser", true)`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.delete("olduser", true)`,
 				},
 				{
 					Name:        "user.exists",
 					Description: "Check if a user exists",
 					Parameters:  "username (string)",
+					Returns:     "boolean (exists), string (message)",
 					Example: `local exists, msg = user.exists("deploy")
 if exists then
     print("User exists")
@@ -182,7 +187,8 @@ end`,
 					Name:        "user.modify",
 					Description: "Modify user properties",
 					Parameters:  "username (string), options (table): uid, gid, home, move_home, shell, groups, comment, expiry, lock, unlock",
-					Example: `user.modify("deploy", {
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.modify("deploy", {
     shell = "/bin/zsh",
     groups = "docker,sudo,www-data"
 })`,
@@ -191,18 +197,21 @@ end`,
 					Name:        "user.add_to_group",
 					Description: "Add user to a group",
 					Parameters:  "username (string), group (string)",
-					Example: `user.add_to_group("deploy", "docker")`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.add_to_group("deploy", "docker")`,
 				},
 				{
 					Name:        "user.remove_from_group",
 					Description: "Remove user from a group",
 					Parameters:  "username (string), group (string)",
-					Example: `user.remove_from_group("deploy", "sudo")`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.remove_from_group("deploy", "sudo")`,
 				},
 				{
 					Name:        "user.get_info",
 					Description: "Get user information",
 					Parameters:  "username (string)",
+					Returns:     "table (info: username, uid, gid, home, shell, comment) or nil, string (error message)",
 					Example: `local info, err = user.get_info("deploy")
 if info then
     print("UID: " .. info.uid)
@@ -214,12 +223,14 @@ end`,
 					Name:        "user.set_password",
 					Description: "Set user password",
 					Parameters:  "username (string), password (string)",
-					Example: `user.set_password("deploy", "newsecurepassword")`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.set_password("deploy", "newsecurepassword")`,
 				},
 				{
 					Name:        "user.list",
 					Description: "List all users",
 					Parameters:  "system_only (boolean, optional)",
+					Returns:     "table (array of user info tables) or nil, string (error message)",
 					Example: `local users, err = user.list(false)
 for i, u in ipairs(users) do
     print(u.username .. " - UID: " .. u.uid)
@@ -229,54 +240,65 @@ end`,
 					Name:        "user.lock",
 					Description: "Lock a user account",
 					Parameters:  "username (string)",
-					Example: `user.lock("tempuser")`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.lock("tempuser")`,
 				},
 				{
 					Name:        "user.unlock",
 					Description: "Unlock a user account",
 					Parameters:  "username (string)",
-					Example: `user.unlock("tempuser")`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.unlock("tempuser")`,
 				},
 				{
 					Name:        "user.is_locked",
 					Description: "Check if a user account is locked",
 					Parameters:  "username (string)",
+					Returns:     "boolean (locked), string (message)",
 					Example: `local locked, msg = user.is_locked("deploy")`,
 				},
 				{
 					Name:        "user.expire_password",
 					Description: "Expire a user's password",
 					Parameters:  "username (string)",
-					Example: `user.expire_password("deploy")`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.expire_password("deploy")`,
 				},
 				{
 					Name:        "user.set_shell",
 					Description: "Set the user's shell",
 					Parameters:  "username (string), shell (string)",
-					Example: `user.set_shell("deploy", "/bin/zsh")`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.set_shell("deploy", "/bin/zsh")`,
 				},
 				{
 					Name:        "user.set_home",
 					Description: "Set the user's home directory",
 					Parameters:  "username (string), home_dir (string), move_files (boolean, optional)",
-					Example: `user.set_home("deploy", "/opt/deploy", true)`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.set_home("deploy", "/opt/deploy", true)`,
 				},
 				{
 					Name:        "user.get_uid",
 					Description: "Get the UID of a user",
 					Parameters:  "username (string)",
-					Example: `local uid, err = user.get_uid("deploy")`,
+					Returns:     "number (uid) or nil, string (error message)",
+					Example: `local uid, err = user.get_uid("deploy")
+if uid then print("UID: " .. uid) end`,
 				},
 				{
 					Name:        "user.get_gid",
 					Description: "Get the primary GID of a user",
 					Parameters:  "username (string)",
-					Example: `local gid, err = user.get_gid("deploy")`,
+					Returns:     "number (gid) or nil, string (error message)",
+					Example: `local gid, err = user.get_gid("deploy")
+if gid then print("GID: " .. gid) end`,
 				},
 				{
 					Name:        "user.get_groups",
 					Description: "Get all groups a user belongs to",
 					Parameters:  "username (string)",
+					Returns:     "table (array of group names) or nil, string (error message)",
 					Example: `local groups, err = user.get_groups("deploy")
 for i, g in ipairs(groups) do
     print(g)
@@ -286,134 +308,178 @@ end`,
 					Name:        "user.set_primary_group",
 					Description: "Set the user's primary group",
 					Parameters:  "username (string), group (string)",
-					Example: `user.set_primary_group("deploy", "developers")`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.set_primary_group("deploy", "developers")`,
 				},
 				{
 					Name:        "user.get_home",
 					Description: "Get the user's home directory",
 					Parameters:  "username (string)",
-					Example: `local home, err = user.get_home("deploy")`,
+					Returns:     "string (home directory) or nil, string (error message)",
+					Example: `local home, err = user.get_home("deploy")
+if home then print("Home: " .. home) end`,
 				},
 				{
 					Name:        "user.get_shell",
 					Description: "Get the user's shell",
 					Parameters:  "username (string)",
-					Example: `local shell, err = user.get_shell("deploy")`,
+					Returns:     "string (shell) or nil, string (error message)",
+					Example: `local shell, err = user.get_shell("deploy")
+if shell then print("Shell: " .. shell) end`,
 				},
 				{
 					Name:        "user.get_comment",
 					Description: "Get the user's comment/GECOS field",
 					Parameters:  "username (string)",
-					Example: `local comment, err = user.get_comment("deploy")`,
+					Returns:     "string (comment) or nil, string (error message)",
+					Example: `local comment, err = user.get_comment("deploy")
+if comment then print("Comment: " .. comment) end`,
 				},
 				{
 					Name:        "user.set_comment",
 					Description: "Set the user's comment/GECOS field",
 					Parameters:  "username (string), comment (string)",
-					Example: `user.set_comment("deploy", "Deployment User - Updated")`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.set_comment("deploy", "Deployment User - Updated")`,
 				},
 				{
 					Name:        "user.is_system_user",
 					Description: "Check if a user is a system user (UID < 1000)",
 					Parameters:  "username (string)",
-					Example: `local is_system, err = user.is_system_user("deploy")`,
+					Returns:     "boolean (is_system) or nil, string (error message)",
+					Example: `local is_system, err = user.is_system_user("deploy")
+if is_system ~= nil then print("System user: " .. tostring(is_system)) end`,
 				},
 				{
 					Name:        "user.get_current",
 					Description: "Get the current user",
 					Parameters:  "none",
+					Returns:     "table (user info: username, uid, gid, home, shell) or nil, string (error message)",
 					Example: `local current, err = user.get_current()
-print("Current user: " .. current.username)`,
+if current then
+    print("Current user: " .. current.username)
+end`,
 				},
 				{
 					Name:        "user.group_create",
 					Description: "Create a new group",
 					Parameters:  "groupname (string), options (table, optional): gid, system",
-					Example: `user.group_create("developers", {gid = "5000"})`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.group_create("developers", {gid = "5000"})`,
 				},
 				{
 					Name:        "user.group_delete",
 					Description: "Delete a group",
 					Parameters:  "groupname (string)",
-					Example: `user.group_delete("oldgroup")`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.group_delete("oldgroup")`,
 				},
 				{
 					Name:        "user.group_exists",
 					Description: "Check if a group exists",
 					Parameters:  "groupname (string)",
+					Returns:     "boolean (exists), string (message)",
 					Example: `local exists, msg = user.group_exists("developers")`,
 				},
 				{
 					Name:        "user.group_get_info",
 					Description: "Get group information",
 					Parameters:  "groupname (string)",
-					Example: `local info, err = user.group_get_info("developers")`,
+					Returns:     "table (info: name, gid, members) or nil, string (error message)",
+					Example: `local info, err = user.group_get_info("developers")
+if info then
+    print("GID: " .. info.gid)
+    print("Members: " .. table.concat(info.members, ", "))
+end`,
 				},
 				{
 					Name:        "user.group_list",
 					Description: "List all groups",
 					Parameters:  "none",
-					Example: `local groups, err = user.group_list()`,
+					Returns:     "table (array of group info tables) or nil, string (error message)",
+					Example: `local groups, err = user.group_list()
+for i, g in ipairs(groups) do
+    print(g.name .. " - GID: " .. g.gid)
+end`,
 				},
 				{
 					Name:        "user.group_get_gid",
 					Description: "Get the GID of a group",
 					Parameters:  "groupname (string)",
-					Example: `local gid, err = user.group_get_gid("developers")`,
+					Returns:     "number (gid) or nil, string (error message)",
+					Example: `local gid, err = user.group_get_gid("developers")
+if gid then print("GID: " .. gid) end`,
 				},
 				{
 					Name:        "user.group_members",
 					Description: "Get all members of a group",
 					Parameters:  "groupname (string)",
-					Example: `local members, err = user.group_members("developers")`,
+					Returns:     "table (array of usernames) or nil, string (error message)",
+					Example: `local members, err = user.group_members("developers")
+for i, m in ipairs(members) do
+    print(m)
+end`,
 				},
 				{
 					Name:        "user.group_add_member",
 					Description: "Add a member to a group",
 					Parameters:  "groupname (string), username (string)",
-					Example: `user.group_add_member("developers", "deploy")`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.group_add_member("developers", "deploy")`,
 				},
 				{
 					Name:        "user.group_remove_member",
 					Description: "Remove a member from a group",
 					Parameters:  "groupname (string), username (string)",
-					Example: `user.group_remove_member("developers", "deploy")`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.group_remove_member("developers", "deploy")`,
 				},
 				{
 					Name:        "user.set_expiry",
 					Description: "Set when an account expires",
 					Parameters:  "username (string), expiry (string) - Format: YYYY-MM-DD",
-					Example: `user.set_expiry("tempuser", "2025-12-31")`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = user.set_expiry("tempuser", "2025-12-31")`,
 				},
 				{
 					Name:        "user.get_last_login",
 					Description: "Get the last login time for a user",
 					Parameters:  "username (string)",
-					Example: `local last_login, err = user.get_last_login("deploy")`,
+					Returns:     "string (timestamp) or nil, string (error message)",
+					Example: `local last_login, err = user.get_last_login("deploy")
+if last_login then print("Last login: " .. last_login) end`,
 				},
 				{
 					Name:        "user.get_failed_logins",
 					Description: "Get failed login attempts for a user",
 					Parameters:  "username (string)",
-					Example: `local failed, err = user.get_failed_logins("deploy")`,
+					Returns:     "number (count) or nil, string (error message)",
+					Example: `local failed, err = user.get_failed_logins("deploy")
+if failed then print("Failed logins: " .. failed) end`,
 				},
 				{
 					Name:        "user.validate_username",
 					Description: "Validate if a username follows Linux conventions",
 					Parameters:  "username (string)",
-					Example: `local valid, msg = user.validate_username("deploy-user")`,
+					Returns:     "boolean (valid), string (message)",
+					Example: `local valid, msg = user.validate_username("deploy-user")
+if not valid then print("Invalid: " .. msg) end`,
 				},
 				{
 					Name:        "user.is_root",
 					Description: "Check if the current user is root",
 					Parameters:  "none",
-					Example: `local is_root, err = user.is_root()`,
+					Returns:     "boolean (is_root) or nil, string (error message)",
+					Example: `local is_root, err = user.is_root()
+if is_root then print("Running as root") end`,
 				},
 				{
 					Name:        "user.run_as",
 					Description: "Run a command as a different user",
 					Parameters:  "username (string), command (string)",
-					Example: `user.run_as("deploy", "whoami")`,
+					Returns:     "string (output) or nil, string (error message)",
+					Example: `local output, err = user.run_as("deploy", "whoami")
+if output then print("Result: " .. output) end`,
 				},
 			},
 		},
