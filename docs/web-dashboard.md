@@ -3,12 +3,12 @@
 !!! info "📚 Documentation"
     For Web Dashboard and monitoring features, please visit:
     
-    - 🇺🇸 [Monitoring Documentation (English)](en/monitoring.md)
-    - 🇺🇸 [Enterprise Features (English)](en/enterprise-features.md)
+    - 🇺🇸 [Monitoring Documentation (English)](../en/monitoring/)
+    - 🇺🇸 [Enterprise Features (English)](../en/enterprise-features/)
 
 ---
 
-<meta http-equiv="refresh" content="0; url=en/monitoring" />
+<script>window.location.href="../en/monitoring/";</script>
 
 **Redirecting to Monitoring documentation...**
 

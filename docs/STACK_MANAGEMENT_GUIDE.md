@@ -3,12 +3,12 @@
 !!! info "📚 Documentation"
     For Stack Management Guide, please visit:
     
-    - 🇺🇸 [Stack Management (English)](en/stack-management.md)
-    - 🇺🇸 [Enterprise Features (English)](en/enterprise-features.md)
+    - 🇺🇸 [Stack Management (English)](../en/stack-management/)
+    - 🇺🇸 [Enterprise Features (English)](../en/enterprise-features/)
 
 ---
 
-<meta http-equiv="refresh" content="0; url=en/stack-management" />
+<script>window.location.href="../en/stack-management/";</script>
 
 **Redirecting to Stack Management documentation...**
 

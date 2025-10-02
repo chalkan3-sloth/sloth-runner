@@ -3,13 +3,13 @@
 !!! info "📚 Documentation"
     For REPL documentation, please visit:
     
-    - 🇺🇸 [English Version](en/repl.md)
-    - 🇧🇷 [Versão em Português](pt/repl.md)
-    - 🇨🇳 [中文版本](zh/repl.md)
+    - 🇺🇸 [English Version](../en/repl/)
+    - 🇧🇷 [Versão em Português](../pt/repl/)
+    - 🇨🇳 [中文版本](../zh/repl/)
 
 ---
 
-<meta http-equiv="refresh" content="0; url=en/repl" />
+<script>window.location.href="../en/repl/";</script>
 
 **Redirecting to English version...**
 
