@@ -670,6 +670,165 @@ sloth-runner run -f /tmp/quick_goroutines.sloth
 
 ---
 
+## 🧪 **Infrastructure Testing with infra_test** 🔥
+
+### **Test-Driven Infrastructure as Code**
+
+The `infra_test` module brings native infrastructure testing capabilities to Sloth Runner, inspired by tools like **Testinfra** and **InSpec**, but fully integrated with zero external dependencies!
+
+#### 🌟 **Why infra_test?**
+
+- ✅ **Native Integration**: Test within your deployment workflows
+- ✅ **Zero Dependencies**: No Python, Ruby, or external tools required
+- ✅ **Remote Testing**: Test across multiple agents seamlessly
+- ✅ **Fail-Fast**: Automatically stops deployment on test failure
+- ✅ **Comprehensive**: Files, services, ports, processes, commands, and more!
+
+#### 💡 **Real-World Example: Deploy + Test + Verify**
+
+```lua
+local infra_test = require("infra_test")
+local pkg = require("pkg")
+local systemd = require("systemd")
+
+workflow("production-deployment")
+  -- Step 1: Install and configure nginx
+  :task("install-nginx", function()
+    log.info("📦 Installing nginx...")
+    pkg.install("nginx")
+    
+    -- Create custom configuration
+    local config = [[
+server {
+    listen 80;
+    server_name example.com;
+    root /var/www/html;
+}
+]]
+    local fs = require("fs")
+    fs.write_file("/etc/nginx/sites-available/example", config)
+    fs.symlink(
+      "/etc/nginx/sites-available/example",
+      "/etc/nginx/sites-enabled/example"
+    )
+  end)
+  
+  -- Step 2: Start nginx service
+  :task("start-nginx", function()
+    log.info("🚀 Starting nginx...")
+    systemd.enable("nginx")
+    systemd.start("nginx")
+  end)
+  
+  -- Step 3: 🧪 VALIDATE EVERYTHING!
+  :task("validate-deployment", function()
+    log.info("🧪 Running infrastructure tests...")
+    
+    -- Test 1: File existence and permissions
+    infra_test.file_exists("/usr/sbin/nginx")
+    infra_test.file_exists("/etc/nginx/nginx.conf")
+    infra_test.file_mode("/etc/nginx/nginx.conf", "644")
+    infra_test.file_owner("/var/www/html", "www-data")
+    
+    -- Test 2: Service status
+    infra_test.service_is_running("nginx")
+    infra_test.service_is_enabled("nginx")
+    
+    -- Test 3: Port availability
+    infra_test.port_is_listening(80)
+    infra_test.port_is_tcp(80)
+    
+    -- Test 4: Process verification
+    infra_test.process_is_running("nginx")
+    infra_test.process_count("nginx", 4)  -- Master + 3 workers
+    
+    -- Test 5: Configuration validation
+    infra_test.file_contains("/etc/nginx/nginx.conf", "worker_processes")
+    infra_test.command_succeeds("nginx -t")  -- Test nginx config
+    
+    -- Test 6: HTTP response
+    infra_test.command_succeeds("curl -f http://localhost")
+    infra_test.command_stdout_contains(
+      "curl -s http://localhost",
+      "Welcome to nginx"
+    )
+    
+    log.info("✅ All infrastructure tests passed!")
+  end)
+  
+  :delegate_to("production-web-01")
+```
+
+#### 🌐 **Multi-Agent Testing**
+
+Test infrastructure across multiple servers in a single workflow:
+
+```lua
+local infra_test = require("infra_test")
+
+workflow("validate-cluster")
+  :task("test-all-web-servers", function()
+    local servers = {"web-01", "web-02", "web-03"}
+    
+    for _, server in ipairs(servers) do
+      log.info("🧪 Testing " .. server)
+      
+      -- Test each server remotely
+      infra_test.service_is_running("nginx", server)
+      infra_test.port_is_listening(80, server)
+      infra_test.port_is_listening(443, server)
+      infra_test.file_exists("/var/www/html/index.html", server)
+      
+      -- Test connectivity between servers
+      infra_test.can_connect("db-server.internal", 5432)
+      infra_test.ping("load-balancer", 5, server)
+    end
+    
+    log.info("✅ All servers validated!")
+  end)
+```
+
+#### 🎯 **Complete Test Categories**
+
+| Category | Functions | Example Use Case |
+|----------|-----------|------------------|
+| **Files** | `file_exists`, `is_directory`, `file_mode`, `file_owner`, `file_contains` | Validate config files, permissions, ownership |
+| **Network** | `port_is_listening`, `port_is_tcp`, `can_connect`, `ping` | Ensure services are accessible |
+| **Services** | `service_is_running`, `service_is_enabled` | Verify systemd services |
+| **Processes** | `process_is_running`, `process_count` | Monitor application processes |
+| **Commands** | `command_succeeds`, `command_stdout_contains` | Custom validation logic |
+
+#### 🚀 **Quick Example**
+
+```bash
+# Create a test workflow
+cat > test-deployment.sloth << 'EOF'
+local infra_test = require("infra_test")
+
+workflow("quick-test")
+  :task("validate", function()
+    -- These will fail fast if conditions aren't met!
+    infra_test.file_exists("/etc/hosts")
+    infra_test.service_is_running("sshd")
+    infra_test.port_is_listening(22)
+    infra_test.command_succeeds("which docker")
+    
+    log.info("✅ System validated!")
+  end)
+EOF
+
+# Run it!
+sloth-runner run -f test-deployment.sloth
+```
+
+#### 📖 **Learn More**
+
+- 📖 [Complete infra_test Documentation](./docs/modules/infra_test.md)
+- 🧪 [More Testing Examples](./examples/infra-test/)
+- 🎯 [Best Practices Guide](./docs/testing-best-practices.md)
+
+---
+
 ## 🔄 **Agent Auto-Reconnection** 🛡️
 
 ### **High Availability for Distributed Agents**
