@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"gopkg.in/yaml.v2"
 
 	"github.com/chalkan3-sloth/sloth-runner/internal/core"
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
@@ -680,12 +681,29 @@ var runCmd = &cobra.Command{
 		// Load values.yaml if specified
 		var valuesTable *lua.LTable
 		if values != "" {
-			// Load and parse values file (simplified for now)
+			// Load and parse values file
 			if enhancedOutput != nil {
 				enhancedOutput.Info(fmt.Sprintf("Loading values from: %s", values))
 			} else {
 				fmt.Fprintf(writer, "Loading values from: %s\n", values)
 			}
+			
+			// Read the values file
+			valuesData, err := os.ReadFile(values)
+			if err != nil {
+				return fmt.Errorf("failed to read values file: %w", err)
+			}
+			
+			// Parse YAML into a map
+			var valuesMap map[string]interface{}
+			if err := yaml.Unmarshal(valuesData, &valuesMap); err != nil {
+				return fmt.Errorf("failed to parse values file: %w", err)
+			}
+			
+			// Convert map to Lua table
+			tempL := lua.NewState()
+			defer tempL.Close()
+			valuesTable = mapToLuaTable(tempL, valuesMap)
 		}
 
 		// Parse the Lua script
@@ -2148,4 +2166,43 @@ func main() {
 		}
 		os.Exit(1)
 	}
+}
+
+// mapToLuaTable converts a Go map to a Lua table
+func mapToLuaTable(L *lua.LState, m map[string]interface{}) *lua.LTable {
+	table := L.NewTable()
+	for k, v := range m {
+		switch val := v.(type) {
+		case string:
+			table.RawSetString(k, lua.LString(val))
+		case int:
+			table.RawSetString(k, lua.LNumber(val))
+		case int64:
+			table.RawSetString(k, lua.LNumber(val))
+		case float64:
+			table.RawSetString(k, lua.LNumber(val))
+		case bool:
+			table.RawSetString(k, lua.LBool(val))
+		case map[string]interface{}:
+			table.RawSetString(k, mapToLuaTable(L, val))
+		case []interface{}:
+			arr := L.NewTable()
+			for i, item := range val {
+				switch itemVal := item.(type) {
+				case string:
+					arr.RawSetInt(i+1, lua.LString(itemVal))
+				case int:
+					arr.RawSetInt(i+1, lua.LNumber(itemVal))
+				case float64:
+					arr.RawSetInt(i+1, lua.LNumber(itemVal))
+				case bool:
+					arr.RawSetInt(i+1, lua.LBool(itemVal))
+				case map[string]interface{}:
+					arr.RawSetInt(i+1, mapToLuaTable(L, itemVal))
+				}
+			}
+			table.RawSetString(k, arr)
+		}
+	}
+	return table
 }

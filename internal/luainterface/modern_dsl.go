@@ -369,7 +369,32 @@ func (m *ModernDSL) taskBuilderIndex(L *lua.LState) int {
 		}))
 	case "delegate_to":
 		L.Push(L.NewFunction(func(L *lua.LState) int {
-			agentName := L.CheckString(2) // Agent name to delegate to
+			agentParam := L.CheckAny(2) // Agent name or value reference
+			
+			var agentName string
+			
+			// Check if it's a string or needs evaluation
+			switch agentParam.Type() {
+			case lua.LTString:
+				// Direct string value (may contain template like ${values.host})
+				agentName = agentParam.String()
+			case lua.LTFunction:
+				// Store the function for later evaluation
+				// We can't evaluate it now because values may not be available yet
+				// Instead, we'll store a special marker and the function
+				builder.definition.Delegation.Agent = "__FUNCTION__"
+				builder.definition.Metadata["delegate_to_func"] = agentParam
+				L.Push(ud) // Return self for chaining
+				return 1
+			default:
+				// Try to convert to string
+				if str := L.ToString(2); str != "" {
+					agentName = str
+				} else {
+					L.ArgError(2, "delegate_to expects a string or function")
+					return 0
+				}
+			}
 			
 			// Set the delegation configuration
 			builder.definition.Delegation.Agent = agentName
@@ -771,6 +796,7 @@ func (m *ModernDSL) taskBuilderFunc(L *lua.LState) int {
 			Name:      name,
 			CreatedAt: time.Now(),
 			UpdatedAt: time.Now(),
+			Metadata:  make(map[string]interface{}), // Initialize metadata map
 		},
 		context: &BuildContext{},
 		chain:   []BuildStep{},
