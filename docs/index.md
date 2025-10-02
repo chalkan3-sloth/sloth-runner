@@ -93,7 +93,7 @@ task("setup_web_server", {
 - ✅ **Built-in testing** with `infra_test` module
 - ✅ **Parallel execution** with goroutines
 
-👉 **[See Complete API Examples →](modern-dsl/module-api-examples.md)**
+👉 **[See Complete API Examples →](modern-dsl/module-api-examples/)**
 
 ---
 
