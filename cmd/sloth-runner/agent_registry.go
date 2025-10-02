@@ -82,10 +82,12 @@ func (s *agentRegistryServer) ListAgents(ctx context.Context, req *pb.ListAgents
 		
 		for _, agent := range dbAgents {
 			agents = append(agents, &pb.AgentInfo{
-				AgentName:     agent.Name,
-				AgentAddress:  agent.Address,
-				LastHeartbeat: agent.LastHeartbeat,
-				Status:        agent.Status,
+				AgentName:         agent.Name,
+				AgentAddress:      agent.Address,
+				LastHeartbeat:     agent.LastHeartbeat,
+				Status:            agent.Status,
+				LastInfoCollected: agent.LastInfoCollected,
+				SystemInfoJson:    agent.SystemInfo,
 			})
 		}
 	}
@@ -99,10 +101,19 @@ func (s *agentRegistryServer) Heartbeat(ctx context.Context, req *pb.HeartbeatRe
 	defer s.mu.Unlock()
 
 	if s.db != nil {
+		// Update heartbeat and optionally store system info
 		if err := s.db.UpdateHeartbeat(req.AgentName); err != nil {
 			pterm.Debug.Printf("Failed to update heartbeat for agent %s: %v\n", req.AgentName, err)
 			return &pb.HeartbeatResponse{Success: false, Message: "Agent not found"}, nil
 		}
+		
+		// If system info is provided, update it
+		if req.SystemInfoJson != "" {
+			if err := s.db.UpdateSystemInfo(req.AgentName, req.SystemInfoJson); err != nil {
+				pterm.Debug.Printf("Failed to update system info for agent %s: %v\n", req.AgentName, err)
+			}
+		}
+		
 		pterm.Debug.Printf("Heartbeat received from agent: %s\n", req.AgentName)
 		return &pb.HeartbeatResponse{Success: true, Message: "Heartbeat received"}, nil
 	}
@@ -218,6 +229,35 @@ func (s *agentRegistryServer) UnregisterAgent(ctx context.Context, req *pb.Unreg
 
 	pterm.Success.Printf("Agent unregistered: %s\n", req.AgentName)
 	return &pb.UnregisterAgentResponse{Success: true, Message: "Agent unregistered successfully"}, nil
+}
+
+// GetAgentInfo retrieves detailed information about a specific agent.
+func (s *agentRegistryServer) GetAgentInfo(ctx context.Context, req *pb.GetAgentInfoRequest) (*pb.GetAgentInfoResponse, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.db == nil {
+		return &pb.GetAgentInfoResponse{Success: false, Message: "Database not available"}, nil
+	}
+
+	// Get agent from database
+	agent, err := s.db.GetAgent(req.AgentName)
+	if err != nil {
+		return &pb.GetAgentInfoResponse{Success: false, Message: fmt.Sprintf("Agent not found: %s", req.AgentName)}, nil
+	}
+
+	return &pb.GetAgentInfoResponse{
+		Success: true,
+		Message: "Agent info retrieved successfully",
+		AgentInfo: &pb.AgentInfo{
+			AgentName:         agent.Name,
+			AgentAddress:      agent.Address,
+			LastHeartbeat:     agent.LastHeartbeat,
+			Status:            agent.Status,
+			LastInfoCollected: agent.LastInfoCollected,
+			SystemInfoJson:    agent.SystemInfo,
+		},
+	}, nil
 }
 
 // GetAgentAddress retrieves the address of an agent by name (new method for taskrunner)
