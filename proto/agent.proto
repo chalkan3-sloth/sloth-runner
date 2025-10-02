@@ -61,6 +61,15 @@ message StopAgentResponse {
   string message = 2;
 }
 
+message UnregisterAgentRequest {
+  string agent_name = 1;
+}
+
+message UnregisterAgentResponse {
+  bool success = 1;
+  string message = 2;
+}
+
 message ExecuteCommandRequest {
   string agent_name = 1;
   string command = 2;
@@ -83,6 +92,7 @@ service AgentRegistry {
   rpc RegisterAgent(RegisterAgentRequest) returns (RegisterAgentResponse);
   rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
   rpc StopAgent(StopAgentRequest) returns (StopAgentResponse);
+  rpc UnregisterAgent(UnregisterAgentRequest) returns (UnregisterAgentResponse);
   rpc ExecuteCommand(ExecuteCommandRequest) returns (stream StreamOutputResponse); // Changed to stream
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
 }
