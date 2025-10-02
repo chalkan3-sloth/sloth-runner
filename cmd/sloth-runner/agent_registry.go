@@ -195,6 +195,31 @@ func (s *agentRegistryServer) StopAgent(ctx context.Context, req *pb.StopAgentRe
 	return &pb.StopAgentResponse{Success: true, Message: "Agent stopped successfully"}, nil
 }
 
+// UnregisterAgent unregisters and removes an agent from the database.
+func (s *agentRegistryServer) UnregisterAgent(ctx context.Context, req *pb.UnregisterAgentRequest) (*pb.UnregisterAgentResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.db == nil {
+		return &pb.UnregisterAgentResponse{Success: false, Message: "Database not available"}, nil
+	}
+
+	// Check if agent exists (using GetAgent instead of GetAgentAddress to allow inactive agents)
+	_, err := s.db.GetAgent(req.AgentName)
+	if err != nil {
+		return &pb.UnregisterAgentResponse{Success: false, Message: fmt.Sprintf("Agent not found: %s", req.AgentName)}, nil
+	}
+
+	// Remove agent from database
+	if err := s.db.UnregisterAgent(req.AgentName); err != nil {
+		pterm.Error.Printf("Failed to unregister agent %s: %v\n", req.AgentName, err)
+		return &pb.UnregisterAgentResponse{Success: false, Message: fmt.Sprintf("Failed to unregister agent: %v", err)}, nil
+	}
+
+	pterm.Success.Printf("Agent unregistered: %s\n", req.AgentName)
+	return &pb.UnregisterAgentResponse{Success: true, Message: "Agent unregistered successfully"}, nil
+}
+
 // GetAgentAddress retrieves the address of an agent by name (new method for taskrunner)
 func (s *agentRegistryServer) GetAgentAddress(agentName string) (string, error) {
 	s.mu.RLock()

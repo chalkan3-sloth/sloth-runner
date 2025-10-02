@@ -226,6 +226,11 @@ func (adb *AgentDB) RemoveAgent(name string) error {
 	return nil
 }
 
+// UnregisterAgent removes an agent from the database (alias for RemoveAgent)
+func (adb *AgentDB) UnregisterAgent(name string) error {
+	return adb.RemoveAgent(name)
+}
+
 // CleanupInactiveAgents removes agents that haven't sent heartbeat for a specified duration
 func (adb *AgentDB) CleanupInactiveAgents(maxInactiveHours int) (int, error) {
 	cutoff := time.Now().Unix() - int64(maxInactiveHours*3600)

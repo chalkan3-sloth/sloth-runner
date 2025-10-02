@@ -201,11 +201,12 @@ var Agent_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	AgentRegistry_RegisterAgent_FullMethodName  = "/agent.AgentRegistry/RegisterAgent"
-	AgentRegistry_ListAgents_FullMethodName     = "/agent.AgentRegistry/ListAgents"
-	AgentRegistry_StopAgent_FullMethodName      = "/agent.AgentRegistry/StopAgent"
-	AgentRegistry_ExecuteCommand_FullMethodName = "/agent.AgentRegistry/ExecuteCommand"
-	AgentRegistry_Heartbeat_FullMethodName      = "/agent.AgentRegistry/Heartbeat"
+	AgentRegistry_RegisterAgent_FullMethodName   = "/agent.AgentRegistry/RegisterAgent"
+	AgentRegistry_ListAgents_FullMethodName      = "/agent.AgentRegistry/ListAgents"
+	AgentRegistry_StopAgent_FullMethodName       = "/agent.AgentRegistry/StopAgent"
+	AgentRegistry_UnregisterAgent_FullMethodName = "/agent.AgentRegistry/UnregisterAgent"
+	AgentRegistry_ExecuteCommand_FullMethodName  = "/agent.AgentRegistry/ExecuteCommand"
+	AgentRegistry_Heartbeat_FullMethodName       = "/agent.AgentRegistry/Heartbeat"
 )
 
 // AgentRegistryClient is the client API for AgentRegistry service.
@@ -215,6 +216,7 @@ type AgentRegistryClient interface {
 	RegisterAgent(ctx context.Context, in *RegisterAgentRequest, opts ...grpc.CallOption) (*RegisterAgentResponse, error)
 	ListAgents(ctx context.Context, in *ListAgentsRequest, opts ...grpc.CallOption) (*ListAgentsResponse, error)
 	StopAgent(ctx context.Context, in *StopAgentRequest, opts ...grpc.CallOption) (*StopAgentResponse, error)
+	UnregisterAgent(ctx context.Context, in *UnregisterAgentRequest, opts ...grpc.CallOption) (*UnregisterAgentResponse, error)
 	ExecuteCommand(ctx context.Context, in *ExecuteCommandRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamOutputResponse], error)
 	Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
 }
@@ -257,6 +259,16 @@ func (c *agentRegistryClient) StopAgent(ctx context.Context, in *StopAgentReques
 	return out, nil
 }
 
+func (c *agentRegistryClient) UnregisterAgent(ctx context.Context, in *UnregisterAgentRequest, opts ...grpc.CallOption) (*UnregisterAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnregisterAgentResponse)
+	err := c.cc.Invoke(ctx, AgentRegistry_UnregisterAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *agentRegistryClient) ExecuteCommand(ctx context.Context, in *ExecuteCommandRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamOutputResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &AgentRegistry_ServiceDesc.Streams[0], AgentRegistry_ExecuteCommand_FullMethodName, cOpts...)
@@ -293,6 +305,7 @@ type AgentRegistryServer interface {
 	RegisterAgent(context.Context, *RegisterAgentRequest) (*RegisterAgentResponse, error)
 	ListAgents(context.Context, *ListAgentsRequest) (*ListAgentsResponse, error)
 	StopAgent(context.Context, *StopAgentRequest) (*StopAgentResponse, error)
+	UnregisterAgent(context.Context, *UnregisterAgentRequest) (*UnregisterAgentResponse, error)
 	ExecuteCommand(*ExecuteCommandRequest, grpc.ServerStreamingServer[StreamOutputResponse]) error
 	Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
 	mustEmbedUnimplementedAgentRegistryServer()
@@ -313,6 +326,9 @@ func (UnimplementedAgentRegistryServer) ListAgents(context.Context, *ListAgentsR
 }
 func (UnimplementedAgentRegistryServer) StopAgent(context.Context, *StopAgentRequest) (*StopAgentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopAgent not implemented")
+}
+func (UnimplementedAgentRegistryServer) UnregisterAgent(context.Context, *UnregisterAgentRequest) (*UnregisterAgentResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UnregisterAgent not implemented")
 }
 func (UnimplementedAgentRegistryServer) ExecuteCommand(*ExecuteCommandRequest, grpc.ServerStreamingServer[StreamOutputResponse]) error {
 	return status.Errorf(codes.Unimplemented, "method ExecuteCommand not implemented")
@@ -395,6 +411,24 @@ func _AgentRegistry_StopAgent_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentRegistry_UnregisterAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnregisterAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentRegistryServer).UnregisterAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentRegistry_UnregisterAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentRegistryServer).UnregisterAgent(ctx, req.(*UnregisterAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AgentRegistry_ExecuteCommand_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(ExecuteCommandRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -442,6 +476,10 @@ var AgentRegistry_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StopAgent",
 			Handler:    _AgentRegistry_StopAgent_Handler,
+		},
+		{
+			MethodName: "UnregisterAgent",
+			Handler:    _AgentRegistry_UnregisterAgent_Handler,
 		},
 		{
 			MethodName: "Heartbeat",
