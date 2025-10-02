@@ -1224,6 +1224,56 @@ var agentStopCmd = &cobra.Command{
 	},
 }
 
+var agentDeleteCmd = &cobra.Command{
+	Use:   "delete <agent_name>",
+	Short: "Delete an agent from the registry",
+	Long:  `Removes an agent from the master's registry. This does not stop the agent process.`,
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		agentName := args[0]
+		masterAddr, _ := cmd.Flags().GetString("master")
+		skipConfirmation, _ := cmd.Flags().GetBool("yes")
+
+		// Ask for confirmation unless --yes flag is provided
+		if !skipConfirmation {
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Printf("⚠️  Are you sure you want to delete agent '%s'? This action cannot be undone. [y/N]: ", agentName)
+			response, err := reader.ReadString('\n')
+			if err != nil {
+				return fmt.Errorf("failed to read confirmation: %v", err)
+			}
+			
+			response = strings.TrimSpace(strings.ToLower(response))
+			if response != "y" && response != "yes" {
+				pterm.Info.Println("Operation cancelled.")
+				return nil
+			}
+		}
+
+		conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			return fmt.Errorf("failed to connect to master: %v", err)
+		}
+		defer conn.Close()
+
+		registryClient := pb.NewAgentRegistryClient(conn)
+		resp, err := registryClient.UnregisterAgent(context.Background(), &pb.UnregisterAgentRequest{
+			AgentName: agentName,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to delete agent %s: %v", agentName, err)
+		}
+
+		if !resp.Success {
+			pterm.Error.Printf("❌ %s\n", resp.Message)
+			return fmt.Errorf("failed to delete agent")
+		}
+
+		pterm.Success.Printf("✅ Agent '%s' deleted successfully.\n", agentName)
+		return nil
+	},
+}
+
 // Workflow command and subcommands
 var workflowCmd = &cobra.Command{
 	Use:   "workflow",
@@ -1814,6 +1864,8 @@ func init() {
 	agentCmd.AddCommand(agentListCmd)
 	agentListCmd.Flags().Bool("debug", false, "Enable debug logging for this command")
 	agentCmd.AddCommand(agentStopCmd)
+	agentCmd.AddCommand(agentDeleteCmd)
+	agentDeleteCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompt")
 
 	// Scheduler command and subcommands
 	rootCmd.AddCommand(schedulerCmd)

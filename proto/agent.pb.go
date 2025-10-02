@@ -569,6 +569,102 @@ func (x *StopAgentResponse) GetMessage() string {
 	return ""
 }
 
+type UnregisterAgentRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgentName     string                 `protobuf:"bytes,1,opt,name=agent_name,json=agentName,proto3" json:"agent_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnregisterAgentRequest) Reset() {
+	*x = UnregisterAgentRequest{}
+	mi := &file_proto_agent_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnregisterAgentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnregisterAgentRequest) ProtoMessage() {}
+
+func (x *UnregisterAgentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnregisterAgentRequest.ProtoReflect.Descriptor instead.
+func (*UnregisterAgentRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *UnregisterAgentRequest) GetAgentName() string {
+	if x != nil {
+		return x.AgentName
+	}
+	return ""
+}
+
+type UnregisterAgentResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnregisterAgentResponse) Reset() {
+	*x = UnregisterAgentResponse{}
+	mi := &file_proto_agent_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnregisterAgentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnregisterAgentResponse) ProtoMessage() {}
+
+func (x *UnregisterAgentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnregisterAgentResponse.ProtoReflect.Descriptor instead.
+func (*UnregisterAgentResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *UnregisterAgentResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *UnregisterAgentResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 type ExecuteCommandRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	AgentName     string                 `protobuf:"bytes,1,opt,name=agent_name,json=agentName,proto3" json:"agent_name,omitempty"`
@@ -579,7 +675,7 @@ type ExecuteCommandRequest struct {
 
 func (x *ExecuteCommandRequest) Reset() {
 	*x = ExecuteCommandRequest{}
-	mi := &file_proto_agent_proto_msgTypes[11]
+	mi := &file_proto_agent_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -591,7 +687,7 @@ func (x *ExecuteCommandRequest) String() string {
 func (*ExecuteCommandRequest) ProtoMessage() {}
 
 func (x *ExecuteCommandRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_agent_proto_msgTypes[11]
+	mi := &file_proto_agent_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -604,7 +700,7 @@ func (x *ExecuteCommandRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecuteCommandRequest.ProtoReflect.Descriptor instead.
 func (*ExecuteCommandRequest) Descriptor() ([]byte, []int) {
-	return file_proto_agent_proto_rawDescGZIP(), []int{11}
+	return file_proto_agent_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ExecuteCommandRequest) GetAgentName() string {
@@ -630,7 +726,7 @@ type RunCommandRequest struct {
 
 func (x *RunCommandRequest) Reset() {
 	*x = RunCommandRequest{}
-	mi := &file_proto_agent_proto_msgTypes[12]
+	mi := &file_proto_agent_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -642,7 +738,7 @@ func (x *RunCommandRequest) String() string {
 func (*RunCommandRequest) ProtoMessage() {}
 
 func (x *RunCommandRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_agent_proto_msgTypes[12]
+	mi := &file_proto_agent_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -655,7 +751,7 @@ func (x *RunCommandRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RunCommandRequest.ProtoReflect.Descriptor instead.
 func (*RunCommandRequest) Descriptor() ([]byte, []int) {
-	return file_proto_agent_proto_rawDescGZIP(), []int{12}
+	return file_proto_agent_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *RunCommandRequest) GetCommand() string {
@@ -679,7 +775,7 @@ type StreamOutputResponse struct {
 
 func (x *StreamOutputResponse) Reset() {
 	*x = StreamOutputResponse{}
-	mi := &file_proto_agent_proto_msgTypes[13]
+	mi := &file_proto_agent_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -691,7 +787,7 @@ func (x *StreamOutputResponse) String() string {
 func (*StreamOutputResponse) ProtoMessage() {}
 
 func (x *StreamOutputResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_agent_proto_msgTypes[13]
+	mi := &file_proto_agent_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -704,7 +800,7 @@ func (x *StreamOutputResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamOutputResponse.ProtoReflect.Descriptor instead.
 func (*StreamOutputResponse) Descriptor() ([]byte, []int) {
-	return file_proto_agent_proto_rawDescGZIP(), []int{13}
+	return file_proto_agent_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *StreamOutputResponse) GetStdoutChunk() string {
@@ -751,7 +847,7 @@ type HeartbeatRequest struct {
 
 func (x *HeartbeatRequest) Reset() {
 	*x = HeartbeatRequest{}
-	mi := &file_proto_agent_proto_msgTypes[14]
+	mi := &file_proto_agent_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -763,7 +859,7 @@ func (x *HeartbeatRequest) String() string {
 func (*HeartbeatRequest) ProtoMessage() {}
 
 func (x *HeartbeatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_agent_proto_msgTypes[14]
+	mi := &file_proto_agent_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -776,7 +872,7 @@ func (x *HeartbeatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatRequest.ProtoReflect.Descriptor instead.
 func (*HeartbeatRequest) Descriptor() ([]byte, []int) {
-	return file_proto_agent_proto_rawDescGZIP(), []int{14}
+	return file_proto_agent_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *HeartbeatRequest) GetAgentName() string {
@@ -796,7 +892,7 @@ type HeartbeatResponse struct {
 
 func (x *HeartbeatResponse) Reset() {
 	*x = HeartbeatResponse{}
-	mi := &file_proto_agent_proto_msgTypes[15]
+	mi := &file_proto_agent_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -808,7 +904,7 @@ func (x *HeartbeatResponse) String() string {
 func (*HeartbeatResponse) ProtoMessage() {}
 
 func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_agent_proto_msgTypes[15]
+	mi := &file_proto_agent_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -821,7 +917,7 @@ func (x *HeartbeatResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeartbeatResponse.ProtoReflect.Descriptor instead.
 func (*HeartbeatResponse) Descriptor() ([]byte, []int) {
-	return file_proto_agent_proto_rawDescGZIP(), []int{15}
+	return file_proto_agent_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *HeartbeatResponse) GetSuccess() bool {
@@ -877,6 +973,12 @@ const file_proto_agent_proto_rawDesc = "" +
 	"agent_name\x18\x01 \x01(\tR\tagentName\"G\n" +
 	"\x11StopAgentResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"7\n" +
+	"\x16UnregisterAgentRequest\x12\x1d\n" +
+	"\n" +
+	"agent_name\x18\x01 \x01(\tR\tagentName\"M\n" +
+	"\x17UnregisterAgentResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"P\n" +
 	"\x15ExecuteCommandRequest\x12\x1d\n" +
 	"\n" +
@@ -900,14 +1002,15 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\vExecuteTask\x12\x19.agent.ExecuteTaskRequest\x1a\x1a.agent.ExecuteTaskResponse\x12E\n" +
 	"\n" +
 	"RunCommand\x12\x18.agent.RunCommandRequest\x1a\x1b.agent.StreamOutputResponse0\x01\x12;\n" +
-	"\bShutdown\x12\x16.agent.ShutdownRequest\x1a\x17.agent.ShutdownResponse2\xed\x02\n" +
+	"\bShutdown\x12\x16.agent.ShutdownRequest\x1a\x17.agent.ShutdownResponse2\xbf\x03\n" +
 	"\rAgentRegistry\x12J\n" +
 	"\rRegisterAgent\x12\x1b.agent.RegisterAgentRequest\x1a\x1c.agent.RegisterAgentResponse\x12A\n" +
 	"\n" +
 	"ListAgents\x12\x18.agent.ListAgentsRequest\x1a\x19.agent.ListAgentsResponse\x12>\n" +
-	"\tStopAgent\x12\x17.agent.StopAgentRequest\x1a\x18.agent.StopAgentResponse\x12M\n" +
+	"\tStopAgent\x12\x17.agent.StopAgentRequest\x1a\x18.agent.StopAgentResponse\x12P\n" +
+	"\x0fUnregisterAgent\x12\x1d.agent.UnregisterAgentRequest\x1a\x1e.agent.UnregisterAgentResponse\x12M\n" +
 	"\x0eExecuteCommand\x12\x1c.agent.ExecuteCommandRequest\x1a\x1b.agent.StreamOutputResponse0\x01\x12>\n" +
-	"\tHeartbeat\x12\x17.agent.HeartbeatRequest\x1a\x18.agent.HeartbeatResponseB\tZ\a./protob\x06proto3"
+	"\tHeartbeat\x12\x17.agent.HeartbeatRequest\x1a\x18.agent.HeartbeatResponseB.Z,github.com/chalkan3-sloth/sloth-runner/protob\x06proto3"
 
 var (
 	file_proto_agent_proto_rawDescOnce sync.Once
@@ -921,45 +1024,49 @@ func file_proto_agent_proto_rawDescGZIP() []byte {
 	return file_proto_agent_proto_rawDescData
 }
 
-var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_proto_agent_proto_goTypes = []any{
-	(*ShutdownRequest)(nil),       // 0: agent.ShutdownRequest
-	(*ShutdownResponse)(nil),      // 1: agent.ShutdownResponse
-	(*ExecuteTaskRequest)(nil),    // 2: agent.ExecuteTaskRequest
-	(*ExecuteTaskResponse)(nil),   // 3: agent.ExecuteTaskResponse
-	(*RegisterAgentRequest)(nil),  // 4: agent.RegisterAgentRequest
-	(*RegisterAgentResponse)(nil), // 5: agent.RegisterAgentResponse
-	(*AgentInfo)(nil),             // 6: agent.AgentInfo
-	(*ListAgentsRequest)(nil),     // 7: agent.ListAgentsRequest
-	(*ListAgentsResponse)(nil),    // 8: agent.ListAgentsResponse
-	(*StopAgentRequest)(nil),      // 9: agent.StopAgentRequest
-	(*StopAgentResponse)(nil),     // 10: agent.StopAgentResponse
-	(*ExecuteCommandRequest)(nil), // 11: agent.ExecuteCommandRequest
-	(*RunCommandRequest)(nil),     // 12: agent.RunCommandRequest
-	(*StreamOutputResponse)(nil),  // 13: agent.StreamOutputResponse
-	(*HeartbeatRequest)(nil),      // 14: agent.HeartbeatRequest
-	(*HeartbeatResponse)(nil),     // 15: agent.HeartbeatResponse
+	(*ShutdownRequest)(nil),         // 0: agent.ShutdownRequest
+	(*ShutdownResponse)(nil),        // 1: agent.ShutdownResponse
+	(*ExecuteTaskRequest)(nil),      // 2: agent.ExecuteTaskRequest
+	(*ExecuteTaskResponse)(nil),     // 3: agent.ExecuteTaskResponse
+	(*RegisterAgentRequest)(nil),    // 4: agent.RegisterAgentRequest
+	(*RegisterAgentResponse)(nil),   // 5: agent.RegisterAgentResponse
+	(*AgentInfo)(nil),               // 6: agent.AgentInfo
+	(*ListAgentsRequest)(nil),       // 7: agent.ListAgentsRequest
+	(*ListAgentsResponse)(nil),      // 8: agent.ListAgentsResponse
+	(*StopAgentRequest)(nil),        // 9: agent.StopAgentRequest
+	(*StopAgentResponse)(nil),       // 10: agent.StopAgentResponse
+	(*UnregisterAgentRequest)(nil),  // 11: agent.UnregisterAgentRequest
+	(*UnregisterAgentResponse)(nil), // 12: agent.UnregisterAgentResponse
+	(*ExecuteCommandRequest)(nil),   // 13: agent.ExecuteCommandRequest
+	(*RunCommandRequest)(nil),       // 14: agent.RunCommandRequest
+	(*StreamOutputResponse)(nil),    // 15: agent.StreamOutputResponse
+	(*HeartbeatRequest)(nil),        // 16: agent.HeartbeatRequest
+	(*HeartbeatResponse)(nil),       // 17: agent.HeartbeatResponse
 }
 var file_proto_agent_proto_depIdxs = []int32{
 	6,  // 0: agent.ListAgentsResponse.agents:type_name -> agent.AgentInfo
 	2,  // 1: agent.Agent.ExecuteTask:input_type -> agent.ExecuteTaskRequest
-	12, // 2: agent.Agent.RunCommand:input_type -> agent.RunCommandRequest
+	14, // 2: agent.Agent.RunCommand:input_type -> agent.RunCommandRequest
 	0,  // 3: agent.Agent.Shutdown:input_type -> agent.ShutdownRequest
 	4,  // 4: agent.AgentRegistry.RegisterAgent:input_type -> agent.RegisterAgentRequest
 	7,  // 5: agent.AgentRegistry.ListAgents:input_type -> agent.ListAgentsRequest
 	9,  // 6: agent.AgentRegistry.StopAgent:input_type -> agent.StopAgentRequest
-	11, // 7: agent.AgentRegistry.ExecuteCommand:input_type -> agent.ExecuteCommandRequest
-	14, // 8: agent.AgentRegistry.Heartbeat:input_type -> agent.HeartbeatRequest
-	3,  // 9: agent.Agent.ExecuteTask:output_type -> agent.ExecuteTaskResponse
-	13, // 10: agent.Agent.RunCommand:output_type -> agent.StreamOutputResponse
-	1,  // 11: agent.Agent.Shutdown:output_type -> agent.ShutdownResponse
-	5,  // 12: agent.AgentRegistry.RegisterAgent:output_type -> agent.RegisterAgentResponse
-	8,  // 13: agent.AgentRegistry.ListAgents:output_type -> agent.ListAgentsResponse
-	10, // 14: agent.AgentRegistry.StopAgent:output_type -> agent.StopAgentResponse
-	13, // 15: agent.AgentRegistry.ExecuteCommand:output_type -> agent.StreamOutputResponse
-	15, // 16: agent.AgentRegistry.Heartbeat:output_type -> agent.HeartbeatResponse
-	9,  // [9:17] is the sub-list for method output_type
-	1,  // [1:9] is the sub-list for method input_type
+	11, // 7: agent.AgentRegistry.UnregisterAgent:input_type -> agent.UnregisterAgentRequest
+	13, // 8: agent.AgentRegistry.ExecuteCommand:input_type -> agent.ExecuteCommandRequest
+	16, // 9: agent.AgentRegistry.Heartbeat:input_type -> agent.HeartbeatRequest
+	3,  // 10: agent.Agent.ExecuteTask:output_type -> agent.ExecuteTaskResponse
+	15, // 11: agent.Agent.RunCommand:output_type -> agent.StreamOutputResponse
+	1,  // 12: agent.Agent.Shutdown:output_type -> agent.ShutdownResponse
+	5,  // 13: agent.AgentRegistry.RegisterAgent:output_type -> agent.RegisterAgentResponse
+	8,  // 14: agent.AgentRegistry.ListAgents:output_type -> agent.ListAgentsResponse
+	10, // 15: agent.AgentRegistry.StopAgent:output_type -> agent.StopAgentResponse
+	12, // 16: agent.AgentRegistry.UnregisterAgent:output_type -> agent.UnregisterAgentResponse
+	15, // 17: agent.AgentRegistry.ExecuteCommand:output_type -> agent.StreamOutputResponse
+	17, // 18: agent.AgentRegistry.Heartbeat:output_type -> agent.HeartbeatResponse
+	10, // [10:19] is the sub-list for method output_type
+	1,  // [1:10] is the sub-list for method input_type
 	1,  // [1:1] is the sub-list for extension type_name
 	1,  // [1:1] is the sub-list for extension extendee
 	0,  // [0:1] is the sub-list for field type_name
@@ -976,7 +1083,7 @@ func file_proto_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_agent_proto_rawDesc), len(file_proto_agent_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
