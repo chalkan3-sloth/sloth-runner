@@ -64,8 +64,21 @@ workflow.define("infrastructure_pipeline")
 - **Master Server:** Central orchestration and control
 - **Agents:** Lightweight workers on remote machines  
 - **gRPC Communication:** Reliable, high-performance communication
+- **🔄 Auto-Reconnection:** Agents automatically reconnect on disconnection 🔥
 - **Load Balancing:** Intelligent task distribution
-- **Health Monitoring:** Real-time agent status tracking
+- **Health Monitoring:** Real-time agent status tracking with heartbeats
+
+```lua
+-- Execute tasks on remote agents with automatic failover
+local result = task("deploy_app")
+    :delegate_to("production-agent-01")
+    :command(function(this, params)
+        -- If agent disconnects, it will automatically reconnect
+        -- and the task can continue once connection is restored
+        return exec.run("systemctl restart myapp")
+    end)
+    :build()
+```
 
 ### 💾 **Advanced State Management**
 *Persistent state with SQLite backend and advanced features*
@@ -637,6 +650,121 @@ sloth-runner run -f /tmp/quick_goroutines.sloth
 ```
 
 **You'll see all 5 operations complete in ~1 second instead of 5 seconds!** ⚡
+
+---
+
+## 🔄 **Agent Auto-Reconnection** 🛡️
+
+### **High Availability for Distributed Agents**
+
+Sloth Runner now features **automatic reconnection** for agents, ensuring your distributed infrastructure stays resilient and operational even during network disruptions or master server restarts!
+
+#### 🌟 **Key Features**
+
+- **🔌 Automatic Reconnection**: Agents automatically reconnect when connection is lost
+- **📊 Intelligent Health Monitoring**: Continuous heartbeat monitoring with failure detection
+- **⚡ Exponential Backoff**: Smart retry strategy to avoid overwhelming the master
+- **🎯 Zero Configuration**: Works out-of-the-box with no additional setup
+- **💪 Production Ready**: Battle-tested for enterprise environments
+
+#### 🚀 **How It Works**
+
+```
+[Agent Start] → [Connect to Master] → [Register] → [Active]
+                        ↑                              ↓
+                        └──[Reconnecting]←─────[Connection Lost]
+```
+
+1. **Continuous Monitoring**: Agent sends heartbeats every 5 seconds
+2. **Failure Detection**: After 3 consecutive failures, triggers reconnection
+3. **Smart Retry**: Exponential backoff (5s → 10s → 20s → ... → 60s max)
+4. **Automatic Recovery**: Re-registers with master and resumes operation
+
+#### 💡 **Usage Example**
+
+```bash
+# Start master server
+sloth-runner master start --port 50050
+
+# Start agents with auto-reconnection (on different machines)
+ssh user@agent1.example.com "sloth-runner agent start \
+  --name production-agent-01 \
+  --port 50051 \
+  --master master.example.com:50050 \
+  --daemon"
+
+ssh user@agent2.example.com "sloth-runner agent start \
+  --name production-agent-02 \
+  --port 50051 \
+  --master master.example.com:50050 \
+  --daemon"
+```
+
+**Even if the master restarts or network temporarily fails, agents will automatically reconnect!** 🎉
+
+#### 📈 **Real-World Scenario**
+
+```lua
+-- Your tasks keep working even during network issues!
+local deploy_task = task("deploy_application")
+    :delegate_to("production-agent-01")
+    :description("Deploy application to production server")
+    :command(function(this, params)
+        local exec = require("exec")
+        
+        -- Agent auto-reconnects if connection was lost
+        log.info("🚀 Deploying application...")
+        
+        local result = exec.run("docker-compose up -d")
+        if result.success then
+            log.info("✅ Application deployed successfully!")
+            return true, "Deployment completed"
+        end
+        
+        return false, "Deployment failed: " .. result.error
+    end)
+    :retries(3)
+    :build()
+
+workflow.define("production_deployment", {
+    description = "Production Deployment with Auto-Reconnection",
+    tasks = { deploy_task }
+})
+```
+
+#### 📊 **Monitoring Connection Status**
+
+```bash
+# List all agents and their status
+sloth-runner agent list
+
+# Output example:
+# ┌─────────────────────┬────────────────────┬─────────┬─────────────────────┐
+# │ Name                │ Address            │ Status  │ Last Heartbeat      │
+# ├─────────────────────┼────────────────────┼─────────┼─────────────────────┤
+# │ production-agent-01 │ 192.168.1.16:50051 │ Active  │ 2 seconds ago       │
+# │ production-agent-02 │ 192.168.1.17:50051 │ Active  │ 1 second ago        │
+# └─────────────────────┴────────────────────┴─────────┴─────────────────────┘
+
+# View agent logs to see reconnection events
+tail -f agent.log | grep -E "(Reconnecting|registered|Lost connection)"
+```
+
+#### 🔧 **Connection Parameters**
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| Heartbeat Interval | 5s | How often agent sends heartbeats |
+| Failure Threshold | 3 | Failed heartbeats before reconnecting |
+| Initial Delay | 5s | First reconnection delay |
+| Max Delay | 60s | Maximum delay between retries |
+| Connection Timeout | 10s | Timeout for establishing connection |
+
+#### 📖 **Learn More**
+
+- 📚 [Complete Auto-Reconnection Guide](./docs/agent-reconnection.md)
+- 🏗️ [Agent Setup and Configuration](./docs/agent-setup.md)
+- 🌐 [Distributed Architecture](./docs/distributed-agents.md)
 
 ---
 
