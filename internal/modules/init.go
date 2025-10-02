@@ -53,6 +53,7 @@ func InitializeCoreModules(registry *ModuleRegistry) error {
 		NewCoreModuleAdapter(core.NewNotificationModule()),
 		NewCoreModuleAdapter(core.NewDatabaseModule()),
 		NewCoreModuleAdapter(core.NewMonitoringModule()),
+		NewCoreModuleAdapter(core.NewGoroutineModule()),
 	}
 	
 	for _, module := range coreModules {

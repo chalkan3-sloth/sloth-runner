@@ -1,0 +1,39 @@
+-- ✅ EXEMPLO FUNCIONANDO: delegate_to usando exec.run
+-- Este exemplo executa comando ls no agent remoto usando exec.run
+
+local ls_task = task("ls_remote_exec")
+    :description("Lista arquivos usando exec.run no agent remoto")
+    :command(function(this, params)
+        log.info("🔍 Executando ls com exec.run no agent remoto...")
+        
+        -- Pegar hostname do agent
+        local hostname_out, _, hostname_failed = exec.run("hostname")
+        local hostname = hostname_out and hostname_out:gsub("\n", "") or "unknown"
+        
+        -- Executar ls com exec.run
+        local ls_out, ls_err, ls_failed = exec.run("ls -la $HOME")
+        
+        if not ls_failed then
+            log.info("✅ Sucesso no " .. hostname)
+            log.info("📂 Listagem de diretório:\n" .. ls_out)
+            return true, "Concluído no " .. hostname
+        else
+            log.error("❌ Falhou: " .. (ls_err or "unknown"))
+            return false, "Falhou no " .. hostname
+        end
+    end)
+    :delegate_to("ladyguica")  -- Nome do agent
+    :timeout("30s")
+    :build()
+
+workflow.define("ls_single_agent")
+    :description("Executa ls apenas no ladyguica")
+    :version("1.0.0")
+    :tasks({ ls_task })
+    :config({
+        timeout = "1m"
+    })
+    :on_complete(function(success, results)
+        log.info("📂 LS no agent único concluído: " .. tostring(success))
+        return true
+    end)

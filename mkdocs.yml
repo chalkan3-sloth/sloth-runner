@@ -162,6 +162,9 @@ nav:
     - '📚 Best Practices': 'modern-dsl/best-practices.md'
     - '📖 Reference Guide': 'modern-dsl/reference-guide.md'
   - '🔧 Modules':
+    - '🔧 Module Index': 'modules/index.md'
+    - '⚡ Goroutine (Parallel) 🔥': 'modules/goroutine.md'
+    - '📦 Package Management': 'modules/pkg.md'
     - '🔀 Git Module': 'modules/git.md'
     - '🏗️ Terraform Module': 'modules/terraform.md'
     - '⚙️ Systemd Module': 'modules/systemd.md'
@@ -179,6 +182,7 @@ nav:
   - '⚡ Enterprise Features':
     - '🤖 AI Integration': 'ai-integration.md'
     - '🌐 Distributed Agents': 'distributed-agents.md'
+    - '🤖 Agent Setup Guide': 'agent-setup.md'
     - '📊 Web Dashboard': 'web-dashboard.md'
     - '⏰ Advanced Scheduler': 'advanced-scheduler.md'
     - '☁️ Multi-Cloud': 'multi-cloud-excellence.md'

@@ -1,0 +1,84 @@
+-- Simple example: Execute 'ls' command on specific agents
+-- This is a minimal example showing how to run commands on different hosts
+
+-- Simple example: Execute 'ls' command on specific agents by name
+-- This example demonstrates task delegation to specific agents using agent names
+-- The system will automatically resolve agent names to IP addresses using SQLite database
+
+-- Task specifically for ladyguica agent
+local ls_task_ladyguica = task("ls_task_ladyguica")
+    :description("List files on ladyguica agent")
+    :command(function(this, params)
+        log.info("📂 Listing current directory on ladyguica...")
+        log.info("Agent executing: " .. (params.agent_name or "local"))
+        
+        -- Add hostname detection to verify which machine is executing
+        local handle_hostname = io.popen("hostname")
+        local hostname = handle_hostname:read("*a"):gsub("\n", "")
+        handle_hostname:close()
+        
+        local handle = io.popen("ls -la")
+        local result = handle:read("*a")
+        handle:close()
+        
+        log.info("Directory listing from " .. hostname .. ":\n" .. result)
+        return true, "Directory listing completed on " .. hostname, {
+            agent = "ladyguica",
+            hostname = hostname,
+            output = result,
+            timestamp = os.date()
+        }
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+-- Task specifically for keiteguica agent
+local ls_task_keiteguica = task("ls_task_keiteguica")
+    :description("List files on keiteguica agent")
+    :command(function(this, params)
+        log.info("📂 Listing current directory on keiteguica...")
+        log.info("Agent executing: " .. (params.agent_name or "local"))
+        
+        -- Add hostname detection to verify which machine is executing
+        local handle_hostname = io.popen("hostname")
+        local hostname = handle_hostname:read("*a"):gsub("\n", "")
+        handle_hostname:close()
+        
+        local handle = io.popen("ls -la")
+        local result = handle:read("*a")
+        handle:close()
+        
+        log.info("Directory listing from " .. hostname .. ":\n" .. result)
+        return true, "Directory listing completed on " .. hostname, {
+            agent = "keiteguica",
+            hostname = hostname,
+            output = result,
+            timestamp = os.date()
+        }
+    end)
+    :delegate_to("keiteguica")
+    :timeout("30s")
+    :build()
+
+-- Workflow for distributed execution with specific agent targeting by name
+workflow.define("distributed_ls_workflow")
+    :description("Execute ls command on specific agents using agent names")
+    :version("1.0.0")
+    :tasks({ ls_task_ladyguica, ls_task_keiteguica })
+    :config({
+        timeout = "2m",
+        max_parallel_tasks = 2
+    })
+    :on_complete(function(success, results)
+        log.info("🎉 Distributed ls workflow completed: " .. tostring(success))
+        if results then
+            log.info("📊 Execution summary:")
+            for i, result in ipairs(results) do
+                if result and result.hostname then
+                    log.info("  - Task " .. i .. " executed on: " .. result.hostname)
+                end
+            end
+        end
+        return true
+    end)

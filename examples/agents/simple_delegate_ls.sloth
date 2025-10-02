@@ -1,0 +1,31 @@
+-- Exemplo funcional de delegate_to com ls simples
+local ls_task = task("list_files")
+    :description("List files on remote agent")
+    :command(function(this, params)
+        local output, err, failed = exec.run("ls -la $HOME")
+        if not failed then
+            log.info("Files listed successfully:")
+            log.info(output)
+            return true, "Files listed"
+        else
+            log.error("Failed to list files: " .. (err or "unknown error"))
+            return false, "Failed to list files"
+        end
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+workflow.define("simple_ls_test")
+    :description("Simple LS test on remote agent")
+    :version("1.0.0")
+    :tasks({ ls_task })
+    :config({ timeout = "1m" })
+    :on_complete(function(success, results)
+        if success then
+            log.info("✅ LS remoto executado com sucesso!")
+        else
+            log.error("❌ Falha na execução do LS remoto")
+        end
+        return true
+    end)

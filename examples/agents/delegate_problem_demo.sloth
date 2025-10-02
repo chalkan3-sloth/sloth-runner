@@ -1,0 +1,78 @@
+-- 🚧 DELEGATE_TO: Estado atual e workaround
+-- Este arquivo demonstra o problema atual com delegate_to e oferece solução
+
+-- ❌ PROBLEMA: Este formato NÃO funciona ainda (falha na execução remota)
+local broken_remote_task = task("broken_ls_remote")
+    :description("Esta task falha quando enviada para agent")
+    :command(function(this, params)
+        log.info("🚧 Esta task deveria executar no agent remoto...")
+        log.info("❌ Mas falha com 'one or more task groups failed'")
+        
+        local ls_out, _, ls_failed = exec.run("ls -la $HOME")
+        if not ls_failed then
+            log.info("✅ LS executado localmente (não remotamente!)")
+            return true, "LS local OK"
+        else
+            return false, "LS local falhou"
+        end
+    end)
+    :delegate_to("ladyguica")  -- 🚧 Não funciona ainda
+    :timeout("30s")
+    :build()
+
+-- ✅ WORKAROUND: Task que chama agent run (funciona!)
+local working_remote_task = task("working_ls_remote")
+    :description("Workaround usando agent run")
+    :command(function(this, params)
+        log.info("✅ Executando LS remoto via agent run...")
+        
+        -- Usar io.popen para chamar agent run
+        local cmd = "sloth-runner agent run ladyguica 'hostname && ls -la $HOME | head -10' --master 192.168.1.29:50053"
+        local handle = io.popen(cmd)
+        local result = handle:read("*a")
+        local success = handle:close()
+        
+        if success then
+            log.info("✅ Comando remoto executado com sucesso!")
+            log.info("📂 Resultado:\n" .. (result or "sem saída"))
+            return true, "LS remoto OK via agent run"
+        else
+            log.error("❌ Comando remoto falhou")
+            return false, "LS remoto falhou"
+        end
+    end)
+    :timeout("45s")
+    :build()
+
+-- Workflow que demonstra ambos
+workflow.define("demo_delegate_problem")
+    :description("Demonstra problema com delegate_to e workaround")
+    :version("1.0.0")
+    :tasks({ working_remote_task })  -- Removemos broken_remote_task por enquanto
+    :config({
+        timeout = "2m"
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 WORKAROUND FUNCIONOU!")
+            log.info("💡 Use 'sloth-runner agent run' até delegate_to ser corrigido")
+        else
+            log.error("❌ Falha no workaround")
+        end
+        return true
+    end)
+
+-- Workflow para testar o problema (descomente se quiser ver a falha)
+--[[
+workflow.define("demo_broken_delegate")
+    :description("Demonstra o problema com delegate_to")
+    :version("1.0.0")
+    :tasks({ broken_remote_task })
+    :config({
+        timeout = "1m"
+    })
+    :on_complete(function(success, results)
+        log.info("🚧 Este workflow falha com delegate_to: " .. tostring(success))
+        return true
+    end)
+]]

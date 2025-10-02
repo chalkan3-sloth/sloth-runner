@@ -1,0 +1,41 @@
+-- Test distributed execution across agents
+local distributed_test = task("distributed_test")
+    :description("Test task distribution across multiple agents")
+    :command(function(this, params)
+        log.info("🎯 Running distributed test task")
+        log.info("Agent info: " .. (params.agent_name or "unknown"))
+        log.info("Task executed at: " .. os.date())
+        
+        -- Simple system info without external modules
+        log.info("🏠 Getting system hostname...")
+        local hostname = os.getenv("HOSTNAME") or "unknown"
+        log.info("🏠 Hostname: " .. hostname)
+        
+        -- Test basic functionality
+        local test_data = {
+            timestamp = os.date(),
+            agent = params.agent_name or "unknown",
+            hostname = hostname,
+            status = "running"
+        }
+        
+        log.info("✅ Test data collected: " .. tostring(test_data.timestamp))
+        
+        return true, "Distributed test completed successfully", test_data
+    end)
+    :timeout("30s")
+    :build()
+
+workflow.define("distributed_test_workflow")
+    :description("Test workflow for distributed execution")
+    :version("1.0.0")
+    :tasks({ distributed_test })
+    :config({
+        timeout = "5m",
+        max_parallel_tasks = 3
+    })
+    :on_complete(function(success, results)
+        log.info("🎉 Distributed test workflow completed")
+        log.info("Success: " .. tostring(success))
+        return true
+    end)

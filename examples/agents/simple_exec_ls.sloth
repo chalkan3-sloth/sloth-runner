@@ -1,0 +1,39 @@
+-- Exemplo usando exec.run nativo para executar ls no agent remoto
+
+local simple_ls = task("simple_ls")
+    :description("Executar ls usando exec.run no agent")
+    :command(function(this, params)
+        log.info("🔍 Executando ls usando exec.run...")
+        
+        -- Obter hostname primeiro
+        local hostname_out, _, hostname_failed = exec.run("hostname")
+        local hostname = hostname_out and hostname_out:gsub("\n", "") or "unknown"
+        
+        -- Executar ls -la no diretório home
+        local ls_out, ls_err, ls_failed = exec.run("ls -la $HOME")
+        
+        if not ls_failed then
+            log.info("✅ Sucesso em " .. hostname)
+            log.info("📂 Listagem de arquivos:\n" .. ls_out)
+            return true, "Concluído em " .. hostname
+        else
+            log.error("❌ Falha: " .. (ls_err or "erro desconhecido"))
+            return false, "Falha em " .. hostname
+        end
+    end)
+    :delegate_to("ladyguica")  -- Nome do agent
+    :timeout("30s")
+    :build()
+
+-- Workflow simples
+workflow.define("simple_remote_ls")
+    :description("Executar ls remoto simples")
+    :version("1.0.0")
+    :tasks({ simple_ls })
+    :config({
+        timeout = "1m"
+    })
+    :on_complete(function(success, results)
+        log.info("📊 LS remoto concluído: " .. tostring(success))
+        return true
+    end)

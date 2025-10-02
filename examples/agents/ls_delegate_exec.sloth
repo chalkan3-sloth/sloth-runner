@@ -1,0 +1,202 @@
+-- Remote LS execution using exec.run instead of io.popen
+-- This version uses the native sloth-runner exec module
+
+-- Task to list files on ladyguica agent using exec.run
+local ls_on_ladyguica = task("ls_on_ladyguica")
+    :description("Execute ls on ladyguica using exec.run")
+    :command(function(this, params)
+        log.info("🔍 Starting ls command on LADYGUICA agent using exec.run...")
+        log.info("Agent name: " .. (params.agent_name or "unknown"))
+        
+        -- Get hostname using exec.run
+        local hostname_stdout, hostname_stderr, hostname_error = exec.run("hostname")
+        local hostname = hostname_stdout and hostname_stdout:gsub("\n", "") or "unknown"
+        
+        log.info("📍 Executing on host: " .. hostname)
+        
+        -- Execute ls command using exec.run
+        local ls_command = "ls -la /home/chalkan3"
+        log.info("💻 Running: " .. ls_command)
+        
+        local ls_stdout, ls_stderr, ls_error = exec.run(ls_command)
+        
+        if not ls_error then
+            log.info("✅ Command executed successfully!")
+            log.info("📂 Directory listing:\n" .. (ls_stdout or "No output"))
+            
+            return true, "LS completed on " .. hostname, {
+                hostname = hostname,
+                output = ls_stdout,
+                agent_target = "ladyguica",
+                timestamp = os.date(),
+                method = "exec.run"
+            }
+        else
+            log.error("❌ Command failed!")
+            log.error("Error: " .. (ls_stderr or "Unknown error"))
+            
+            return false, "LS failed on " .. hostname, {
+                hostname = hostname,
+                error = ls_stderr,
+                agent_target = "ladyguica",
+                timestamp = os.date(),
+                method = "exec.run"
+            }
+        end
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+-- Task to list files on keiteguica agent using exec.run
+local ls_on_keiteguica = task("ls_on_keiteguica")
+    :description("Execute ls on keiteguica using exec.run")
+    :command(function(this, params)
+        log.info("🔍 Starting ls command on KEITEGUICA agent using exec.run...")
+        log.info("Agent name: " .. (params.agent_name or "unknown"))
+        
+        -- Get hostname using exec.run
+        local hostname_stdout, hostname_stderr, hostname_error = exec.run("hostname")
+        local hostname = hostname_stdout and hostname_stdout:gsub("\n", "") or "unknown"
+        
+        log.info("📍 Executing on host: " .. hostname)
+        
+        -- Execute ls command using exec.run
+        local ls_command = "ls -la /home/chalkan3"
+        log.info("💻 Running: " .. ls_command)
+        
+        local ls_stdout, ls_stderr, ls_error = exec.run(ls_command)
+        
+        if not ls_error then
+            log.info("✅ Command executed successfully!")
+            log.info("📂 Directory listing:\n" .. (ls_stdout or "No output"))
+            
+            return true, "LS completed on " .. hostname, {
+                hostname = hostname,
+                output = ls_stdout,
+                agent_target = "keiteguica",
+                timestamp = os.date(),
+                method = "exec.run"
+            }
+        else
+            log.error("❌ Command failed!")
+            log.error("Error: " .. (ls_stderr or "Unknown error"))
+            
+            return false, "LS failed on " .. hostname, {
+                hostname = hostname,
+                error = ls_stderr,
+                agent_target = "keiteguica",
+                timestamp = os.date(),
+                method = "exec.run"
+            }
+        end
+    end)
+    :delegate_to("keiteguica")
+    :timeout("30s")
+    :build()
+
+-- Task with additional system info using exec.run
+local sysinfo_task = task("sysinfo_task")
+    :description("Get system info using exec.run")
+    :command(function(this, params)
+        log.info("📊 Collecting system information using exec.run...")
+        
+        local results = {}
+        local commands = {
+            hostname = "hostname",
+            uptime = "uptime",
+            whoami = "whoami",
+            pwd = "pwd",
+            disk_usage = "df -h /",
+            memory = "free -h"
+        }
+        
+        for name, cmd in pairs(commands) do
+            log.info("Executing: " .. cmd)
+            local stdout, stderr, error = exec.run(cmd)
+            
+            if not error then
+                results[name] = {
+                    stdout = stdout and stdout:gsub("\n$", "") or "",
+                    success = true
+                }
+                log.info(name .. " result: " .. (results[name].stdout or ""))
+            else
+                results[name] = {
+                    stderr = stderr or "Unknown error",
+                    success = false
+                }
+                log.error(name .. " failed: " .. (results[name].stderr or ""))
+            end
+        end
+        
+        local hostname = results.hostname and results.hostname.stdout or "unknown"
+        log.info("✅ System info collected from: " .. hostname)
+        
+        return true, "System info from " .. hostname, {
+            hostname = hostname,
+            system_info = results,
+            agent_target = "ladyguica",
+            timestamp = os.date(),
+            method = "exec.run"
+        }
+    end)
+    :delegate_to("ladyguica")
+    :timeout("45s")
+    :build()
+
+-- Workflow that demonstrates exec.run usage
+workflow.define("exec_ls_workflow")
+    :description("Execute ls using exec.run on remote agents")
+    :version("1.0.0")
+    :tasks({ ls_on_ladyguica, ls_on_keiteguica })
+    :config({
+        timeout = "2m",
+        max_parallel_tasks = 2
+    })
+    :on_complete(function(success, results)
+        log.info("🎉 Exec.run LS workflow completed: " .. tostring(success))
+        
+        if results then
+            log.info("📊 Results summary:")
+            for i, result in ipairs(results) do
+                if result and result.hostname then
+                    log.info("  • Task " .. i .. " ran on: " .. result.hostname)
+                    if result.agent_target then
+                        log.info("    Target agent: " .. result.agent_target)
+                    end
+                    if result.method then
+                        log.info("    Method used: " .. result.method)
+                    end
+                end
+            end
+        end
+        
+        return true
+    end)
+
+-- Single task workflow with system info
+workflow.define("exec_sysinfo_workflow")
+    :description("Get system info using exec.run")
+    :version("1.0.0")
+    :tasks({ sysinfo_task })
+    :config({
+        timeout = "1m"
+    })
+    :on_complete(function(success, results)
+        log.info("📊 System info workflow completed: " .. tostring(success))
+        return true
+    end)
+
+-- Comparison workflow (both methods)
+workflow.define("exec_simple_test")
+    :description("Simple test with exec.run")
+    :version("1.0.0")
+    :tasks({ ls_on_ladyguica })
+    :config({
+        timeout = "1m"
+    })
+    :on_complete(function(success, results)
+        log.info("📂 Simple exec.run test completed: " .. tostring(success))
+        return true
+    end)

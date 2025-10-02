@@ -1,0 +1,20 @@
+-- Exemplo ainda mais simples para debug do delegate_to
+
+local simple_test = task("simple_test")
+    :description("Teste muito simples")
+    :command("hostname && whoami && pwd")  -- Usar string em vez de função para simplificar
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+workflow.define("debug_test")
+    :description("Debug de execução remota")
+    :version("1.0.0")
+    :tasks({ simple_test })
+    :config({
+        timeout = "1m"
+    })
+    :on_complete(function(success, results)
+        log.info("Debug test completed: " .. tostring(success))
+        return true
+    end)

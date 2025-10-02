@@ -1,0 +1,43 @@
+-- Exemplo simples de delegate_to com execução no agent remoto
+
+local remote_test = task("remote_test")
+    :description("Teste simples no agent remoto")
+    :command(function(this, params)
+        log.info("🚀 Executando teste remoto...")
+        
+        -- Obter informações básicas do host
+        local hostname, _, h_failed = exec.run("hostname")
+        local whoami, _, w_failed = exec.run("whoami")
+        local pwd, _, p_failed = exec.run("pwd")
+        
+        if not h_failed and not w_failed and not p_failed then
+            log.info("✅ Teste executado com sucesso!")
+            log.info("🖥️ Host: " .. (hostname and hostname:gsub("\n", "") or "unknown"))
+            log.info("👤 User: " .. (whoami and whoami:gsub("\n", "") or "unknown"))
+            log.info("📁 Directory: " .. (pwd and pwd:gsub("\n", "") or "unknown"))
+            return true, "Teste remoto concluído com sucesso"
+        else
+            log.error("❌ Falha no teste remoto")
+            return false, "Falha no teste"
+        end
+    end)
+    :delegate_to("ladyguica")  -- Executa no agent ladyguica
+    :timeout("30s")
+    :build()
+
+-- Workflow simples
+workflow.define("simple_remote_test")
+    :description("Teste simples de execução remota")
+    :version("1.0.0")
+    :tasks({ remote_test })
+    :config({
+        timeout = "1m"
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 Teste remoto concluído com sucesso!")
+        else
+            log.error("💥 Teste remoto falhou!")
+        end
+        return true
+    end)

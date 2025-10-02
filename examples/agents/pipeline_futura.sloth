@@ -1,0 +1,77 @@
+-- EXEMPLO FUTURO: Como deveria funcionar o delegate_to
+-- Este arquivo mostra como usar delegate_to quando estiver funcionando
+
+TaskDefinitions = {
+    pipeline_distribuida = {
+        description = "Pipeline distribuída em múltiplos agentes",
+        tasks = {
+            {
+                name = "coleta_info_ladyguica",
+                description = "Coleta informações do sistema no ladyguica",
+                command = function()
+                    log.info("🔍 Coletando informações do sistema...")
+                    
+                    local hostname, _, failed1 = exec.run("hostname")
+                    local uptime, _, failed2 = exec.run("uptime")
+                    local diskspace, _, failed3 = exec.run("df -h /")
+                    
+                    if not failed1 and not failed2 and not failed3 then
+                        log.info("✅ Informações coletadas:")
+                        log.info("🖥️  Hostname: " .. hostname:gsub("\n", ""))
+                        log.info("⏱️  Uptime: " .. uptime:gsub("\n", ""))
+                        log.info("💾 Disco: " .. diskspace:match("[^\n]*\n([^\n]*)"))
+                        
+                        return true, "Informações coletadas do ladyguica"
+                    else
+                        return false, "Falha na coleta de informações"
+                    end
+                end,
+                delegate_to = "ladyguica",
+                timeout = "60s"
+            },
+            {
+                name = "coleta_info_keiteguica", 
+                description = "Coleta informações do sistema no keiteguica",
+                command = function()
+                    log.info("🔍 Coletando informações do sistema...")
+                    
+                    local hostname, _, failed1 = exec.run("hostname")
+                    local uptime, _, failed2 = exec.run("uptime") 
+                    local diskspace, _, failed3 = exec.run("df -h /")
+                    
+                    if not failed1 and not failed2 and not failed3 then
+                        log.info("✅ Informações coletadas:")
+                        log.info("🖥️  Hostname: " .. hostname:gsub("\n", ""))
+                        log.info("⏱️  Uptime: " .. uptime:gsub("\n", ""))
+                        log.info("💾 Disco: " .. diskspace:match("[^\n]*\n([^\n]*)"))
+                        
+                        return true, "Informações coletadas do keiteguica"
+                    else
+                        return false, "Falha na coleta de informações"
+                    end
+                end,
+                delegate_to = "keiteguica",
+                timeout = "60s"
+            },
+            {
+                name = "consolidacao",
+                description = "Consolida resultados localmente",
+                depends_on = {"coleta_info_ladyguica", "coleta_info_keiteguica"},
+                command = function()
+                    log.info("📊 Consolidando resultados da pipeline distribuída...")
+                    log.info("✅ Pipeline distribuída concluída com sucesso!")
+                    log.info("📈 Dados coletados de múltiplos agentes")
+                    
+                    return true, "Consolidação concluída"
+                end,
+                timeout = "30s"
+            }
+        }
+    }
+}
+
+-- COMO EXECUTAR (quando delegate_to estiver funcionando):
+-- sloth-runner run -f examples/agents/pipeline_futura.sloth pipeline_distribuida
+
+-- ALTERNATIVA ATUAL (funcionando):
+-- ./examples/agents/demo_execucao_remota.sh

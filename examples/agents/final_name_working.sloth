@@ -1,0 +1,39 @@
+-- Teste FINAL com nomes de agents FUNCIONANDO
+local ls_task = task("ls_remote_by_name")
+    :description("List files using exec.run on remote agent BY NAME")
+    :command(function(this, params)
+        log.info("🔍 Using exec.run on remote agent by NAME...")
+        
+        local hostname_out, _, hostname_failed = exec.run("hostname")
+        local hostname = hostname_out and hostname_out:gsub("\n", "") or "unknown"
+        
+        log.info("📍 Executing on host: " .. hostname)
+        
+        local ls_out, ls_err, ls_failed = exec.run("ls -la $HOME | head -5")
+        
+        if not ls_failed then
+            log.info("✅ Success on " .. hostname)
+            log.info("📂 Directory listing:\n" .. ls_out)
+            return true, "Completed on " .. hostname
+        else
+            log.error("❌ Failed: " .. (ls_err or "unknown"))
+            return false, "Failed on " .. hostname
+        end
+    end)
+    :delegate_to("ladyguica")  -- NOME DO AGENT
+    :timeout("30s")
+    :build()
+
+workflow.define("ls_by_name_working")
+    :description("LS usando nome do agent (FUNCIONANDO)")
+    :version("1.0.0")
+    :tasks({ ls_task })
+    :config({ timeout = "1m" })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 SUCESSO: Execução remota por nome do agent funcionou!")
+        else
+            log.error("❌ FALHA: Execução remota não funcionou")
+        end
+        return true
+    end)

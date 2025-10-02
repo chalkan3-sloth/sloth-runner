@@ -500,25 +500,36 @@ var listCmd = &cobra.Command{
 
 // Run command
 var runCmd = &cobra.Command{
-	Use:   "run [stack-name]",
+	Use:   "run [file.sloth|stack-name]",
 	Short: "Run sloth-runner tasks",
 	Long:  `Run sloth-runner tasks from Lua files with configurable output styles. Optionally specify a stack name for state persistence.`,
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		filePath, _ := cmd.Flags().GetString("file")
-		if filePath == "" {
-			filePath = "examples/basic_pipeline.sloth"
-		}
 		
 		values, _ := cmd.Flags().GetString("values")
 		_, _ = cmd.Flags().GetBool("yes") // yes flag - for future use
 		interactive, _ := cmd.Flags().GetBool("interactive")
 		outputStyle, _ := cmd.Flags().GetString("output")
 		
-		// Get stack name from positional argument
+		// Determine if argument is a file path or stack name
 		var stackName string
 		if len(args) > 0 {
-			stackName = args[0]
+			arg := args[0]
+			// If argument ends with .sloth or is a path to an existing file, treat as file
+			if strings.HasSuffix(arg, ".sloth") || strings.Contains(arg, "/") || strings.Contains(arg, "\\") {
+				if filePath == "" {
+					filePath = arg
+				}
+			} else {
+				// Otherwise treat as stack name
+				stackName = arg
+			}
+		}
+		
+		// Default file path if none specified
+		if filePath == "" {
+			filePath = "examples/basic_pipeline.sloth"
 		}
 
 		// Use test output buffer if available, otherwise use stdout
@@ -875,6 +886,7 @@ var agentStartCmd = &cobra.Command{
 		agentName, _ := cmd.Flags().GetString("name")
 		daemon, _ := cmd.Flags().GetBool("daemon")
 		bindAddress, _ := cmd.Flags().GetString("bind-address")
+		reportAddress, _ := cmd.Flags().GetString("report-address")
 
 		if daemon {
 			pidFile := filepath.Join("/tmp", fmt.Sprintf("sloth-runner-agent-%s.pid", agentName))
@@ -892,7 +904,14 @@ var agentStartCmd = &cobra.Command{
 				os.Remove(pidFile)
 			}
 
-			command := execCommand(os.Args[0], "agent", "start", "--port", strconv.Itoa(port), "--name", agentName, "--master", masterAddr, "--bind-address", bindAddress)
+			cmdArgs := []string{"agent", "start", "--port", strconv.Itoa(port), "--name", agentName, "--master", masterAddr}
+			if bindAddress != "" {
+				cmdArgs = append(cmdArgs, "--bind-address", bindAddress)
+			}
+			if reportAddress != "" {
+				cmdArgs = append(cmdArgs, "--report-address", reportAddress)
+			}
+			command := execCommand(os.Args[0], cmdArgs...)
 			//setSysProcAttr(command)
 			stdoutFile, err := os.OpenFile("agent.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 			if err != nil {
@@ -929,9 +948,16 @@ var agentStartCmd = &cobra.Command{
 			return fmt.Errorf("failed to listen: %v", err)
 		}
 
-		reportAddress := lis.Addr().String()
-		if bindAddress != "" {
-			reportAddress = fmt.Sprintf("%s:%d", bindAddress, port)
+		agentReportAddress := lis.Addr().String()
+		if reportAddress != "" {
+			// Use the explicitly provided report address
+			agentReportAddress = reportAddress
+			// Add port if not specified
+			if !strings.Contains(reportAddress, ":") {
+				agentReportAddress = fmt.Sprintf("%s:%d", reportAddress, port)
+			}
+		} else if bindAddress != "" {
+			agentReportAddress = fmt.Sprintf("%s:%d", bindAddress, port)
 		}
 
 		pterm.Warning.Println("Starting agent in insecure mode.")
@@ -946,12 +972,12 @@ var agentStartCmd = &cobra.Command{
 			registryClient := pb.NewAgentRegistryClient(conn)
 			_, err = registryClient.RegisterAgent(context.Background(), &pb.RegisterAgentRequest{
 				AgentName:    agentName,
-				AgentAddress: reportAddress,
+				AgentAddress: agentReportAddress,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to register with master: %v", err)
 			}
-			slog.Info(fmt.Sprintf("Agent registered with master at %s, reporting address %s", masterAddr, reportAddress))
+			slog.Info(fmt.Sprintf("Agent registered with master at %s, reporting address %s", masterAddr, agentReportAddress))
 
 			go func() {
 				for {
@@ -1720,7 +1746,8 @@ func init() {
 	agentStartCmd.Flags().String("master", "", "The address of the master server to register with")
 	agentStartCmd.Flags().String("name", "", "The name of the agent")
 	agentStartCmd.Flags().Bool("daemon", false, "Run the agent as a daemon")
-	agentStartCmd.Flags().String("bind-address", "", "The IP address for the agent to bind to and report to the master")
+	agentStartCmd.Flags().String("bind-address", "", "The IP address for the agent to bind to")
+	agentStartCmd.Flags().String("report-address", "", "The IP address to report to the master (defaults to bind-address or auto-detected)")
 	// TLS flags for agent start are now persistent flags on the parent 'agent' command
 
 	// Agent client commands

@@ -1,0 +1,40 @@
+-- 🚀 EXEMPLO SIMPLES E FUNCIONANDO COM DELEGATE_TO
+-- Este arquivo .sloth executa um comando simples no agente remoto
+
+local simple_task = task("simple_remote_command")
+    :description("Execute simple command on remote agent")
+    :command(function(this, params)
+        log.info("🚀 Executing simple command on remote agent...")
+        
+        -- Simple command execution
+        local output, error, failed = exec.run("echo 'Hello from remote agent' && hostname")
+        
+        if not failed then
+            log.info("✅ Success!")
+            log.info("📝 Output: " .. output)
+            return true, "Command executed successfully"
+        else
+            log.error("❌ Failed: " .. (error or "unknown error"))
+            return false, "Command failed"
+        end
+    end)
+    :delegate_to("ladyguica")  -- Execute on ladyguica agent
+    :timeout("30s")
+    :build()
+
+-- Simple workflow
+workflow.define("simple_remote_workflow")
+    :description("Simple remote command execution")
+    :version("1.0.0")
+    :tasks({ simple_task })
+    :config({
+        timeout = "1m"
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 Remote execution completed successfully!")
+        else
+            log.error("❌ Remote execution failed")
+        end
+        return true
+    end)
