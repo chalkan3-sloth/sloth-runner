@@ -111,6 +111,110 @@ func luaValueToInterface(lv lua.LValue) interface{} {
 	}
 }
 
+// formatConnectionError formats gRPC connection errors in a user-friendly way
+func formatConnectionError(err error, masterAddr string) error {
+	if err == nil {
+		return nil
+	}
+	
+	errStr := strings.ToLower(err.Error())
+	
+	// Agent not found or inactive
+	if strings.Contains(errStr, "agent not found") || strings.Contains(errStr, "not found or inactive") {
+		// Extract agent name if possible
+		agentName := "unknown"
+		if idx := strings.LastIndex(err.Error(), ":"); idx != -1 {
+			agentName = strings.TrimSpace(err.Error()[idx+1:])
+		}
+		
+		return fmt.Errorf(
+			"%s\n\n"+
+			"Agent '%s' is not registered or not active in the master\n\n"+
+			"To check available agents:\n"+
+			"  %s\n\n"+
+			"To register a new agent:\n"+
+			"  %s",
+			pterm.Red("✗ Agent Not Found"),
+			pterm.Yellow(agentName),
+			pterm.Cyan("sloth-runner agent list"),
+			pterm.Cyan("sloth-runner agent start <name>"),
+		)
+	}
+	
+	// Connection refused
+	if strings.Contains(errStr, "connection refused") {
+		return fmt.Errorf(
+			"%s\n\n"+
+			"The master server is not running or not accessible at %s\n"+
+			"To start the master server, run:\n"+
+			"  %s\n\n"+
+			"If the master is running on a different host, use:\n"+
+			"  %s",
+			pterm.Red("✗ Connection Failed"),
+			pterm.Yellow(masterAddr),
+			pterm.Cyan("sloth-runner master --daemon"),
+			pterm.Cyan("sloth-runner agent list --master <host:port>"),
+		)
+	}
+	
+	// Timeout errors
+	if strings.Contains(errStr, "timeout") || strings.Contains(errStr, "deadline exceeded") {
+		return fmt.Errorf(
+			"%s\n\n"+
+			"The master server at %s is not responding\n"+
+			"Please check:\n"+
+			"  • Network connectivity\n"+
+			"  • Firewall settings\n"+
+			"  • Master server health",
+			pterm.Red("✗ Connection Timeout"),
+			pterm.Yellow(masterAddr),
+		)
+	}
+	
+	// Generic gRPC errors
+	if strings.Contains(errStr, "rpc error") {
+		// Extract the actual error message
+		if idx := strings.Index(errStr, "desc = "); idx != -1 {
+			msg := err.Error()[idx+7:]
+			msg = strings.Trim(msg, "\"")
+			
+			// Check if it's an agent not found error embedded in the RPC error
+			if strings.Contains(strings.ToLower(msg), "agent not found") || 
+			   strings.Contains(strings.ToLower(msg), "not found or inactive") {
+				agentName := "unknown"
+				if lastIdx := strings.LastIndex(msg, ":"); lastIdx != -1 {
+					agentName = strings.TrimSpace(msg[lastIdx+1:])
+				}
+				
+				return fmt.Errorf(
+					"%s\n\n"+
+					"Agent '%s' is not registered or not active\n\n"+
+					"To check available agents:\n"+
+					"  %s\n\n"+
+					"To register a new agent:\n"+
+					"  %s",
+					pterm.Red("✗ Agent Not Found"),
+					pterm.Yellow(agentName),
+					pterm.Cyan("sloth-runner agent list"),
+					pterm.Cyan("sloth-runner agent start <name>"),
+				)
+			}
+			
+			return fmt.Errorf(
+				"%s\n\n"+
+				"Error: %s\n"+
+				"Master: %s",
+				pterm.Red("✗ Master Communication Error"),
+				msg,
+				pterm.Yellow(masterAddr),
+			)
+		}
+	}
+	
+	// Return original error if no special handling applies
+	return fmt.Errorf("%s: %v", pterm.Red("✗ Error"), err)
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "sloth-runner",
 	Short: "A flexible sloth-runner with Lua scripting capabilities",
@@ -280,7 +384,7 @@ type RemoteAgentResolver struct {
 func createRemoteAgentResolver(masterAddr string) (*RemoteAgentResolver, error) {
 	conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to master at %s: %w", masterAddr, err)
+		return nil, formatConnectionError(err, masterAddr)
 	}
 	
 	return &RemoteAgentResolver{
@@ -300,7 +404,7 @@ func (r *RemoteAgentResolver) GetAgentAddress(agentName string) (string, error) 
 	resp, err := r.client.ListAgents(ctx, &pb.ListAgentsRequest{})
 	if err != nil {
 		slog.Error("Failed to list agents from master", "error", err)
-		return "", fmt.Errorf("failed to list agents from master: %w", err)
+		return "", formatConnectionError(err, r.masterAddr)
 	}
 	
 	slog.Info("Retrieved agents from master", "count", len(resp.Agents))
@@ -314,7 +418,7 @@ func (r *RemoteAgentResolver) GetAgentAddress(agentName string) (string, error) 
 	}
 	
 	slog.Error("Agent not found", "agent_name", agentName)
-	return "", fmt.Errorf("agent '%s' not found", agentName)
+	return "", fmt.Errorf("agent '%s' not found or not active", agentName)
 }
 
 // Close closes the connection
@@ -1077,7 +1181,7 @@ var agentRunCmd = &cobra.Command{
 
 		conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			return fmt.Errorf("failed to connect to master: %v", err)
+			return formatConnectionError(err, masterAddr)
 		}
 		defer conn.Close()
 
@@ -1087,7 +1191,7 @@ var agentRunCmd = &cobra.Command{
 			Command:   command,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to call ExecuteCommand on master: %v", err)
+			return formatConnectionError(err, masterAddr)
 		}
 
 		var finalError string
@@ -1100,7 +1204,7 @@ var agentRunCmd = &cobra.Command{
 				break
 			}
 			if err != nil {
-				return fmt.Errorf("error receiving stream from master: %v", err)
+				return formatConnectionError(err, masterAddr)
 			}
 
 			if resp.GetStdoutChunk() != "" {
@@ -1160,7 +1264,7 @@ var agentListCmd = &cobra.Command{
 
 		conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			return fmt.Errorf("failed to connect to master: %v", err)
+			return formatConnectionError(err, masterAddr)
 		}
 		defer conn.Close()
 
@@ -1168,7 +1272,7 @@ var agentListCmd = &cobra.Command{
 
 		resp, err := registryClient.ListAgents(context.Background(), &pb.ListAgentsRequest{})
 		if err != nil {
-			return fmt.Errorf("failed to list agents: %v", err)
+			return formatConnectionError(err, masterAddr)
 		}
 
 		if len(resp.GetAgents()) == 0 {
@@ -1207,7 +1311,7 @@ var agentStopCmd = &cobra.Command{
 
 		conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			return fmt.Errorf("failed to connect to master: %v", err)
+			return formatConnectionError(err, masterAddr)
 		}
 		defer conn.Close()
 
@@ -1216,7 +1320,7 @@ var agentStopCmd = &cobra.Command{
 			AgentName: agentName,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to stop agent %s: %v", agentName, err)
+			return formatConnectionError(err, masterAddr)
 		}
 
 		fmt.Printf("Stop signal sent to agent %s successfully.\n", agentName)
@@ -1252,7 +1356,7 @@ var agentDeleteCmd = &cobra.Command{
 
 		conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
-			return fmt.Errorf("failed to connect to master: %v", err)
+			return formatConnectionError(err, masterAddr)
 		}
 		defer conn.Close()
 
@@ -1261,12 +1365,11 @@ var agentDeleteCmd = &cobra.Command{
 			AgentName: agentName,
 		})
 		if err != nil {
-			return fmt.Errorf("failed to delete agent %s: %v", agentName, err)
+			return formatConnectionError(err, masterAddr)
 		}
 
 		if !resp.Success {
-			pterm.Error.Printf("❌ %s\n", resp.Message)
-			return fmt.Errorf("failed to delete agent")
+			return fmt.Errorf("%s\n\n%s", pterm.Red("✗ Failed to Delete Agent"), resp.Message)
 		}
 
 		pterm.Success.Printf("✅ Agent '%s' deleted successfully.\n", agentName)
@@ -1935,7 +2038,7 @@ func Execute() error {
 
 	err := rootCmd.Execute()
 	if err != nil {
-		slog.Error("DEBUG: rootCmd.Execute() returned error", "err", err)
+		slog.Debug("rootCmd.Execute() returned error", "err", err)
 	}
 	return err
 }
@@ -1944,7 +2047,10 @@ func main() {
 	slog.SetDefault(slog.New(pterm.NewSlogHandler(&pterm.DefaultLogger)))
 
 	if err := Execute(); err != nil {
-		slog.Error("execution failed", "err", err)
+		// Only log if not already formatted as a user-friendly error
+		if !strings.Contains(err.Error(), "✗") {
+			slog.Error("execution failed", "err", err)
+		}
 		os.Exit(1)
 	}
 }
