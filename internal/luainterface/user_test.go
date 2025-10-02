@@ -1089,3 +1089,115 @@ func BenchmarkValidateUsername(b *testing.B) {
 		L.Pop(2)
 	}
 }
+
+func TestUserCreateWithPassword(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows")
+	}
+
+	// Check if we can run user commands (requires root/sudo)
+	currentUser, err := user.Current()
+	if err != nil {
+		t.Skipf("Could not get current user: %v", err)
+	}
+	
+	if currentUser.Uid != "0" {
+		t.Skip("Skipping user creation test - requires root privileges")
+	}
+
+	L := lua.NewState()
+	defer L.Close()
+
+	module := NewUserModule()
+	L.PreloadModule("user", module.Loader)
+
+	t.Run("CreateUserWithPassword", func(t *testing.T) {
+		testUsername := "testuser_with_pass_12345"
+		
+		// Clean up before test
+		script := `
+			local user = require("user")
+			user.delete("` + testUsername + `", true)
+		`
+		L.DoString(script) // Ignore errors if user doesn't exist
+		
+		// Create user with password
+		script = `
+			local user = require("user")
+			local ok, msg = user.create("` + testUsername + `", {
+				password = "TestPassword123!",
+				home = "/home/` + testUsername + `",
+				shell = "/bin/bash",
+				create_home = true,
+				comment = "Test user with password"
+			})
+			return ok, msg
+		`
+
+		if err := L.DoString(script); err != nil {
+			t.Fatalf("Script execution failed: %v", err)
+		}
+
+		ok := L.ToBool(-2)
+		msg := L.ToString(-1)
+		
+		if !ok {
+			t.Errorf("Failed to create user with password: %s", msg)
+		} else {
+			t.Logf("User created successfully with password: %s", msg)
+		}
+		
+		L.Pop(2)
+		
+		// Clean up after test
+		cleanupScript := `
+			local user = require("user")
+			user.delete("` + testUsername + `", true)
+		`
+		L.DoString(cleanupScript)
+	})
+
+	t.Run("CreateUserWithoutPassword", func(t *testing.T) {
+		testUsername := "testuser_no_pass_12345"
+		
+		// Clean up before test
+		script := `
+			local user = require("user")
+			user.delete("` + testUsername + `", true)
+		`
+		L.DoString(script) // Ignore errors if user doesn't exist
+		
+		// Create user without password
+		script = `
+			local user = require("user")
+			local ok, msg = user.create("` + testUsername + `", {
+				home = "/home/` + testUsername + `",
+				shell = "/bin/bash",
+				create_home = true
+			})
+			return ok, msg
+		`
+
+		if err := L.DoString(script); err != nil {
+			t.Fatalf("Script execution failed: %v", err)
+		}
+
+		ok := L.ToBool(-2)
+		msg := L.ToString(-1)
+		
+		if !ok {
+			t.Errorf("Failed to create user without password: %s", msg)
+		} else {
+			t.Logf("User created successfully without password: %s", msg)
+		}
+		
+		L.Pop(2)
+		
+		// Clean up after test
+		cleanupScript := `
+			local user = require("user")
+			user.delete("` + testUsername + `", true)
+		`
+		L.DoString(cleanupScript)
+	})
+}

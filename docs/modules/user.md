@@ -18,6 +18,7 @@ Cria um novo usuário no sistema.
 **Parâmetros:**
 - `username` (string): Nome do usuário a ser criado
 - `options` (table, opcional): Opções de configuração do usuário
+  - `password`: Senha do usuário (será configurada automaticamente)
   - `home`: Diretório home do usuário
   - `shell`: Shell padrão do usuário
   - `uid`: UID específico para o usuário
@@ -44,8 +45,9 @@ task("create-user", {
             error("Failed to create user: " .. msg)
         end
         
-        -- Criar usuário com opções avançadas
+        -- Criar usuário com opções avançadas e senha
         local ok, msg = user.create("devops", {
+            password = "SecureP@ssw0rd!",
             home = "/home/devops",
             shell = "/bin/bash",
             groups = "docker,wheel",
@@ -65,9 +67,10 @@ task("create-remote-user", {
     action = function()
         local user = require("user")
         
-        -- Criar usuário em servidor remoto
+        -- Criar usuário em servidor remoto com senha
         delegate_to("production-server", function()
             local ok, msg = user.create("appuser", {
+                password = "MyS3cretP@ss",
                 shell = "/bin/bash",
                 groups = "www-data",
                 system = true,

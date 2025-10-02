@@ -168,6 +168,26 @@ func (u *UserModule) createUser(L *lua.LState) int {
 		return 2
 	}
 	
+	// Set password if provided
+	if password, ok := options["password"]; ok && password != "" {
+		var passArgs []string
+		if u.needsSudo() {
+			passArgs = append(passArgs, "sudo")
+		}
+		
+		passArgs = append(passArgs, "chpasswd")
+		
+		passCmd := exec.Command(passArgs[0], passArgs[1:]...)
+		passCmd.Stdin = strings.NewReader(fmt.Sprintf("%s:%s\n", username, password))
+		
+		passOutput, passErr := passCmd.CombinedOutput()
+		if passErr != nil {
+			L.Push(lua.LFalse)
+			L.Push(lua.LString(fmt.Sprintf("User created but failed to set password: %s\n%s", passErr, string(passOutput))))
+			return 2
+		}
+	}
+	
 	L.Push(lua.LTrue)
 	L.Push(lua.LString(string(output)))
 	return 2
