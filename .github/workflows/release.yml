@@ -36,22 +36,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential sqlite3 libsqlite3-dev gcc-aarch64-linux-gnu
 
-      - name: Go Mod Tidy
-        run: go mod tidy
-        env:
-          CGO_ENABLED: 1
-
       - name: Go Mod Download
         run: go mod download
         env:
           CGO_ENABLED: 1
-
-      - name: Commit go.mod changes if any
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git add go.mod go.sum
-          git diff --staged --quiet || git commit -m "chore: Update go.mod and go.sum for release"
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
