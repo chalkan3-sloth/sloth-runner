@@ -2,6 +2,8 @@ package core
 
 import (
 	"errors"
+	"io"
+	"log/slog"
 	"strings"
 	"testing"
 )
@@ -181,5 +183,287 @@ func TestSlothError_MultipleSeverities(t *testing.T) {
 		if err.Severity != sev {
 			t.Errorf("Expected severity %v, got %v", sev, err.Severity)
 		}
+	}
+}
+
+func TestErrorCollector_Collect(t *testing.T) {
+	collector := NewErrorCollector(10)
+	
+	err1 := errors.New("error 1")
+	err2 := NewSlothError("CODE2", "error 2", SeverityHigh)
+	
+	collector.Collect(err1)
+	collector.Collect(err2)
+	
+	if !collector.HasErrors() {
+		t.Error("Expected collector to have errors")
+	}
+	
+	collectedErrors := collector.GetErrors()
+	if len(collectedErrors) != 2 {
+		t.Errorf("Expected 2 errors, got %d", len(collectedErrors))
+	}
+}
+
+func TestErrorCollector_MaxSize(t *testing.T) {
+	collector := NewErrorCollector(3)
+	
+	// Add more errors than max size
+	for i := 0; i < 5; i++ {
+		collector.Collect(errors.New("error"))
+	}
+	
+	errors := collector.GetErrors()
+	if len(errors) > 3 {
+		t.Errorf("Expected max 3 errors, got %d", len(errors))
+	}
+}
+
+func TestErrorCollector_GetBySeverity(t *testing.T) {
+	collector := NewErrorCollector(10)
+	
+	collector.Collect(NewSlothError("E1", "error 1", SeverityLow))
+	collector.Collect(NewSlothError("E2", "error 2", SeverityHigh))
+	collector.Collect(NewSlothError("E3", "error 3", SeverityHigh))
+	collector.Collect(NewSlothError("E4", "error 4", SeverityLow))
+	
+	highErrors := collector.GetBySeverity(SeverityHigh)
+	if len(highErrors) != 2 {
+		t.Errorf("Expected 2 high severity errors, got %d", len(highErrors))
+	}
+	
+	lowErrors := collector.GetBySeverity(SeverityLow)
+	if len(lowErrors) != 2 {
+		t.Errorf("Expected 2 low severity errors, got %d", len(lowErrors))
+	}
+}
+
+func TestErrorCollector_Clear(t *testing.T) {
+	collector := NewErrorCollector(10)
+	
+	collector.Collect(errors.New("error 1"))
+	collector.Collect(errors.New("error 2"))
+	
+	if !collector.HasErrors() {
+		t.Error("Expected collector to have errors")
+	}
+	
+	collector.Clear()
+	
+	if collector.HasErrors() {
+		t.Error("Expected collector to be empty after Clear")
+	}
+}
+
+func TestErrorRecovery_SafeExecute(t *testing.T) {
+	// Create a simple logger for testing
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	recovery := NewErrorRecovery(logger)
+	
+	// Test normal execution
+	recovered, err := recovery.SafeExecute(func() error {
+		return nil
+	})
+	
+	if recovered {
+		t.Error("Expected no recovery for normal execution")
+	}
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	
+	// Test with error
+	testErr := errors.New("test error")
+	recovered, err = recovery.SafeExecute(func() error {
+		return testErr
+	})
+	
+	if recovered {
+		t.Error("Expected no recovery for returned error")
+	}
+	if err != testErr {
+		t.Errorf("Expected test error, got %v", err)
+	}
+}
+
+func TestErrorRecovery_SafeExecute_Panic(t *testing.T) {
+	// Create a simple logger for testing
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	recovery := NewErrorRecovery(logger)
+	
+	recovered, err := recovery.SafeExecute(func() error {
+		panic("test panic")
+	})
+	
+	if !recovered {
+		t.Error("Expected panic to be recovered")
+	}
+	
+	if err == nil {
+		t.Error("Expected error after panic recovery")
+	}
+	
+	slothErr, ok := err.(*SlothError)
+	if !ok {
+		t.Error("Expected SlothError after panic")
+	}
+	
+	if slothErr.Code != "PANIC_RECOVERED" {
+		t.Errorf("Expected PANIC_RECOVERED code, got %s", slothErr.Code)
+	}
+}
+
+func TestErrorAggregator_Add(t *testing.T) {
+	aggregator := NewErrorAggregator()
+	
+	err1 := errors.New("error 1")
+	err2 := errors.New("error 2")
+	
+	aggregator.Add(err1)
+	aggregator.Add(err2)
+	aggregator.Add(nil) // Should be ignored
+	
+	if !aggregator.HasErrors() {
+		t.Error("Expected aggregator to have errors")
+	}
+	
+	if aggregator.Count() != 2 {
+		t.Errorf("Expected 2 errors, got %d", aggregator.Count())
+	}
+}
+
+func TestErrorAggregator_ToError(t *testing.T) {
+	aggregator := NewErrorAggregator()
+	
+	// No errors
+	err := aggregator.ToError()
+	if err != nil {
+		t.Error("Expected nil error when aggregator is empty")
+	}
+	
+	// Single error
+	singleErr := errors.New("single error")
+	aggregator.Add(singleErr)
+	err = aggregator.ToError()
+	if err != singleErr {
+		t.Error("Expected same error for single error")
+	}
+	
+	// Multiple errors
+	aggregator.Clear()
+	aggregator.Add(errors.New("error 1"))
+	aggregator.Add(errors.New("error 2"))
+	err = aggregator.ToError()
+	
+	if err == nil {
+		t.Error("Expected error for multiple errors")
+	}
+	
+	if !strings.Contains(err.Error(), "Multiple errors occurred") {
+		t.Errorf("Expected 'Multiple errors occurred', got %s", err.Error())
+	}
+}
+
+func TestErrorAggregator_Clear(t *testing.T) {
+	aggregator := NewErrorAggregator()
+	
+	aggregator.Add(errors.New("error 1"))
+	aggregator.Add(errors.New("error 2"))
+	
+	if !aggregator.HasErrors() {
+		t.Error("Expected aggregator to have errors")
+	}
+	
+	aggregator.Clear()
+	
+	if aggregator.HasErrors() {
+		t.Error("Expected aggregator to be empty after Clear")
+	}
+	
+	if aggregator.Count() != 0 {
+		t.Errorf("Expected 0 errors after Clear, got %d", aggregator.Count())
+	}
+}
+
+func TestClassifyError(t *testing.T) {
+	tests := []struct {
+		err      error
+		expected ErrorSeverity
+	}{
+		{nil, SeverityLow},
+		{errors.New("panic occurred"), SeverityCritical},
+		{errors.New("fatal error"), SeverityCritical},
+		{errors.New("timeout exceeded"), SeverityHigh},
+		{errors.New("connection refused"), SeverityHigh},
+		{errors.New("permission denied"), SeverityHigh},
+		{errors.New("file not found"), SeverityHigh},
+		{errors.New("invalid input"), SeverityMedium},
+		{errors.New("failed to connect"), SeverityMedium},
+		{errors.New("cannot parse"), SeverityMedium},
+		{errors.New("some other error"), SeverityLow},
+	}
+	
+	for _, tt := range tests {
+		result := ClassifyError(tt.err)
+		if result != tt.expected {
+			errMsg := "nil"
+			if tt.err != nil {
+				errMsg = tt.err.Error()
+			}
+			t.Errorf("ClassifyError(%s): expected %s, got %s", 
+				errMsg, tt.expected.String(), result.String())
+		}
+	}
+}
+
+func TestIsRetryableError(t *testing.T) {
+	tests := []struct {
+		err      error
+		expected bool
+	}{
+		{nil, false},
+		{errors.New("permission denied"), false},
+		{errors.New("unauthorized"), false},
+		{errors.New("not found"), false},
+		{errors.New("invalid argument"), false},
+		{errors.New("timeout exceeded"), true},
+		{errors.New("connection refused"), true},
+		{errors.New("connection reset"), true},
+		{errors.New("temporary failure"), true},
+		{errors.New("service unavailable"), true},
+		{errors.New("too many requests"), true},
+		{errors.New("internal server error"), true},
+		{errors.New("bad gateway"), true},
+		{errors.New("gateway timeout"), true},
+		{errors.New("some random error"), false},
+	}
+	
+	for _, tt := range tests {
+		result := IsRetryableError(tt.err)
+		if result != tt.expected {
+			errMsg := "nil"
+			if tt.err != nil {
+				errMsg = tt.err.Error()
+			}
+			t.Errorf("IsRetryableError(%s): expected %v, got %v", 
+				errMsg, tt.expected, result)
+		}
+	}
+}
+
+func TestIsRetryableError_SlothError(t *testing.T) {
+	// Test with explicit retryable flag
+	retryableErr := NewSlothError("TEST", "test error", SeverityHigh).
+		WithRetryable(true)
+	
+	if !IsRetryableError(retryableErr) {
+		t.Error("Expected retryable error to return true")
+	}
+	
+	nonRetryableErr := NewSlothError("TEST", "test error", SeverityHigh).
+		WithRetryable(false)
+	
+	if IsRetryableError(nonRetryableErr) {
+		t.Error("Expected non-retryable error to return false")
 	}
 }

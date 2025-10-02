@@ -1,0 +1,332 @@
+-- Exemplo de uso do módulo file_ops
+-- Demonstra todas as funcionalidades do módulo inspirado no Ansible
+
+-- Configuração
+local config = {
+  app_name = "MyWebApp",
+  version = "2.5.0",
+  environment = "production",
+  servers = {"web1", "web2", "web3"}
+}
+
+-- Task 1: Copiar arquivos de configuração
+task("copy_configs", function()
+  log.info("=== Copying configuration files ===")
+  
+  -- Copiar arquivo com permissões específicas
+  local result = file_ops.copy(
+    "/source/config/app.conf",
+    "/tmp/backup/app.conf",
+    {mode = "0600"}
+  )
+  
+  if result and result.changed then
+    log.info(string.format("✓ Copied %d bytes to backup", result.size))
+  end
+end)
+
+-- Task 2: Renderizar templates
+task("render_templates", function()
+  :depends_on("copy_configs")
+  
+  log.info("=== Rendering configuration templates ===")
+  
+  -- Template de configuração Nginx
+  local nginx_vars = {
+    ServerName = "example.com",
+    Port = 80,
+    Workers = 4,
+    ClientMaxBodySize = "10M",
+    EnableGzip = true
+  }
+  
+  file_ops.template(
+    "/templates/nginx.conf.tmpl",
+    "/tmp/nginx.conf",
+    nginx_vars
+  )
+  
+  log.info("✓ Nginx configuration rendered")
+  
+  -- Template de aplicação
+  local app_vars = {
+    AppName = config.app_name,
+    Version = config.version,
+    Environment = config.environment,
+    DatabaseHost = "db.internal",
+    DatabasePort = 5432,
+    RedisHost = "cache.internal",
+    RedisPort = 6379
+  }
+  
+  file_ops.template(
+    "/templates/app.json.tmpl",
+    "/tmp/app.json",
+    app_vars
+  )
+  
+  log.info("✓ Application configuration rendered")
+end)
+
+-- Task 3: Gerenciar linhas em arquivos
+task("manage_config_lines", function()
+  :depends_on("render_templates")
+  
+  log.info("=== Managing configuration lines ===")
+  
+  -- Adicionar entrada no /etc/hosts
+  file_ops.lineinfile(
+    "/tmp/hosts",
+    "192.168.1.100 api.internal"
+  )
+  
+  log.info("✓ Added host entry")
+  
+  -- Atualizar linha existente com regexp
+  file_ops.lineinfile(
+    "/tmp/app.conf",
+    "max_connections=500",
+    {regexp = "^max_connections="}
+  )
+  
+  log.info("✓ Updated max_connections")
+  
+  -- Remover linha
+  file_ops.lineinfile(
+    "/tmp/app.conf",
+    "debug_mode=true",
+    {state = "absent"}
+  )
+  
+  log.info("✓ Removed debug mode")
+end)
+
+-- Task 4: Gerenciar blocos de configuração
+task("manage_config_blocks", function()
+  :depends_on("manage_config_lines")
+  
+  log.info("=== Managing configuration blocks ===")
+  
+  -- Adicionar bloco de cron jobs
+  local cron_block = [[
+# Backup diário às 2h
+0 2 * * * /usr/local/bin/backup.sh
+# Limpeza às 3h
+0 3 * * * /usr/local/bin/cleanup.sh
+# Relatório semanal aos domingos às 4h
+0 4 * * 0 /usr/local/bin/weekly-report.sh]]
+  
+  file_ops.blockinfile(
+    "/tmp/crontab",
+    cron_block,
+    {
+      marker_begin = "# BEGIN APP CRON JOBS",
+      marker_end = "# END APP CRON JOBS"
+    }
+  )
+  
+  log.info("✓ Cron jobs configured")
+  
+  -- Adicionar regras de firewall
+  local firewall_rules = [[
+-A INPUT -p tcp --dport 80 -j ACCEPT
+-A INPUT -p tcp --dport 443 -j ACCEPT
+-A INPUT -p tcp --dport 22 -s 10.0.0.0/8 -j ACCEPT]]
+  
+  file_ops.blockinfile(
+    "/tmp/iptables.rules",
+    firewall_rules,
+    {
+      marker_begin = "# BEGIN CUSTOM RULES",
+      marker_end = "# END CUSTOM RULES"
+    }
+  )
+  
+  log.info("✓ Firewall rules configured")
+end)
+
+-- Task 5: Substituir padrões
+task("replace_patterns", function()
+  :depends_on("manage_config_blocks")
+  
+  log.info("=== Replacing configuration patterns ===")
+  
+  -- Atualizar versão
+  file_ops.replace(
+    "/tmp/version.txt",
+    "version=\\d+\\.\\d+\\.\\d+",
+    "version=" .. config.version
+  )
+  
+  log.info("✓ Version updated")
+  
+  -- Atualizar endpoint de API
+  file_ops.replace(
+    "/tmp/config.json",
+    "http://old-api\\.example\\.com",
+    "https://api.example.com"
+  )
+  
+  log.info("✓ API endpoint updated")
+end)
+
+-- Task 6: Extrair archives
+task("extract_releases", function()
+  :depends_on("replace_patterns")
+  
+  log.info("=== Extracting release archives ===")
+  
+  -- Simular extração de ZIP
+  log.info("Note: Create test archives before running this task")
+  
+  -- Exemplo de uso:
+  -- file_ops.unarchive(
+  --   "/downloads/app-v2.5.0.zip",
+  --   "/opt/myapp"
+  -- )
+  
+  log.info("✓ Extraction examples ready")
+end)
+
+-- Task 7: Verificar estados de arquivos
+task("verify_file_states", function()
+  :depends_on("extract_releases")
+  
+  log.info("=== Verifying file states ===")
+  
+  -- Verificar arquivos críticos
+  local files_to_check = {
+    "/tmp/nginx.conf",
+    "/tmp/app.json",
+    "/tmp/hosts"
+  }
+  
+  for _, file in ipairs(files_to_check) do
+    local info = file_ops.stat(file)
+    
+    if info.exists then
+      log.info(string.format(
+        "✓ %s: %d bytes, mode: %s, mtime: %s",
+        file,
+        info.size,
+        info.mode,
+        os.date("%Y-%m-%d %H:%M:%S", info.mtime)
+      ))
+      
+      -- Verificar permissões
+      if info.mode == "600" or info.mode == "644" then
+        log.info(string.format("  ✓ Permissions OK"))
+      else
+        log.warn(string.format("  ⚠ Unusual permissions: %s", info.mode))
+      end
+    else
+      log.error(string.format("✗ %s: not found!", file))
+    end
+  end
+end)
+
+-- Task 8: Deploy completo em múltiplos servidores
+task("deploy_to_servers", function()
+  :depends_on("verify_file_states")
+  
+  log.info("=== Deploying to servers ===")
+  
+  for _, server in ipairs(config.servers) do
+    -- Usar delegate_to para executar em cada servidor
+    log.info(string.format("Deploying to %s...", server))
+    
+    -- Em produção, você usaria:
+    -- task("deploy_" .. server, function()
+    --   :delegate_to(server)
+    --   
+    --   -- Backup atual
+    --   file_ops.copy(
+    --     "/opt/myapp/app.jar",
+    --     "/backup/app.jar." .. os.date("%Y%m%d%H%M%S")
+    --   )
+    --   
+    --   -- Deploy nova versão
+    --   file_ops.copy(
+    --     "/dist/app.jar",
+    --     "/opt/myapp/app.jar",
+    --     {mode = "0755"}
+    --   )
+    --   
+    --   -- Renderizar config
+    --   file_ops.template(
+    --     "/templates/app.conf.tmpl",
+    --     "/opt/myapp/config/app.conf",
+    --     {ServerID = server, Environment = config.environment}
+    --   )
+    --   
+    --   log.info(string.format("✓ Deployed to %s", server))
+    -- end)
+  end
+  
+  log.info("✓ Deployment plan ready")
+end)
+
+-- Task 9: Exemplo de integração com systemd
+task("integrate_with_systemd", function()
+  :depends_on("deploy_to_servers")
+  
+  log.info("=== Integration example with systemd ===")
+  
+  -- Exemplo de uso integrado:
+  log.info([[
+  
+  Integration pattern:
+  
+  1. file_ops.template() - Render systemd unit file
+  2. file_ops.copy() - Copy to /etc/systemd/system/
+  3. systemd.daemon_reload() - Reload systemd
+  4. systemd.enable() - Enable service
+  5. systemd.start() - Start service
+  6. file_ops.stat() - Verify service file
+  
+  Example code:
+  
+  file_ops.template(
+    "/templates/myapp.service.tmpl",
+    "/etc/systemd/system/myapp.service",
+    {User = "appuser", WorkingDir = "/opt/myapp"}
+  )
+  
+  systemd.daemon_reload()
+  systemd.enable("myapp")
+  systemd.start("myapp")
+  ]])
+  
+  log.info("✓ Integration examples ready")
+end)
+
+-- Task principal que executa tudo
+task("run_all_examples", function()
+  :depends_on(
+    "copy_configs",
+    "render_templates",
+    "manage_config_lines",
+    "manage_config_blocks",
+    "replace_patterns",
+    "extract_releases",
+    "verify_file_states",
+    "deploy_to_servers",
+    "integrate_with_systemd"
+  )
+  
+  log.info("\n" .. string.rep("=", 60))
+  log.info("✓ ALL FILE_OPS EXAMPLES COMPLETED SUCCESSFULLY!")
+  log.info(string.rep("=", 60) .. "\n")
+  
+  log.info("Summary:")
+  log.info("  • file_ops.copy()        - File copying with permissions")
+  log.info("  • file_ops.fetch()       - Fetch files from remote")
+  log.info("  • file_ops.template()    - Template rendering")
+  log.info("  • file_ops.lineinfile()  - Line management")
+  log.info("  • file_ops.blockinfile() - Block management")
+  log.info("  • file_ops.replace()     - Pattern replacement")
+  log.info("  • file_ops.unarchive()   - Archive extraction")
+  log.info("  • file_ops.stat()        - File information")
+  
+  log.info("\nFor more examples, see: docs/modules/file_ops.md")
+end)
