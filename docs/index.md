@@ -193,7 +193,7 @@ local terraform_config = {
     
     Perfeito para APIs com rate limiting.
 
--   :material-async:{ .lg .middle } **Async/Await**
+-   :material-clock-fast:{ .lg .middle } **Async/Await**
 
     ---
 
