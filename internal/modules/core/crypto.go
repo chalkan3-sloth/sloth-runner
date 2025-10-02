@@ -45,20 +45,21 @@ func (c *CryptoModule) Info() CoreModuleInfo {
 // Loader loads the crypto module into Lua
 func (c *CryptoModule) Loader(L *lua.LState) int {
 	mod := L.SetFuncs(L.NewTable(), map[string]lua.LGFunction{
-		"md5":           c.luaMD5,
-		"sha1":          c.luaSHA1,
-		"sha256":        c.luaSHA256,
-		"sha512":        c.luaSHA512,
-		"bcrypt_hash":   c.luaBcryptHash,
-		"bcrypt_check":  c.luaBcryptCheck,
-		"base64_encode": c.luaBase64Encode,
-		"base64_decode": c.luaBase64Decode,
-		"hex_encode":    c.luaHexEncode,
-		"hex_decode":    c.luaHexDecode,
-		"aes_encrypt":   c.luaAESEncrypt,
-		"aes_decrypt":   c.luaAESDecrypt,
-		"random_bytes":  c.luaRandomBytes,
-		"random_string": c.luaRandomString,
+		"md5":               c.luaMD5,
+		"sha1":              c.luaSHA1,
+		"sha256":            c.luaSHA256,
+		"sha512":            c.luaSHA512,
+		"bcrypt_hash":       c.luaBcryptHash,
+		"bcrypt_check":      c.luaBcryptCheck,
+		"base64_encode":     c.luaBase64Encode,
+		"base64_decode":     c.luaBase64Decode,
+		"hex_encode":        c.luaHexEncode,
+		"hex_decode":        c.luaHexDecode,
+		"aes_encrypt":       c.luaAESEncrypt,
+		"aes_decrypt":       c.luaAESDecrypt,
+		"random_bytes":      c.luaRandomBytes,
+		"random_string":     c.luaRandomString,
+		"generate_password": c.luaGeneratePassword,
 	})
 
 	L.Push(mod)
@@ -282,7 +283,8 @@ func (c *CryptoModule) luaRandomBytes(L *lua.LState) int {
 		return 2
 	}
 	
-	L.Push(lua.LString(hex.EncodeToString(bytes)))
+	// Return raw bytes as string, not hex-encoded
+	L.Push(lua.LString(string(bytes)))
 	return 1
 }
 
@@ -294,6 +296,28 @@ func (c *CryptoModule) luaRandomString(L *lua.LState) int {
 	if L.GetTop() > 1 {
 		charset = L.CheckString(2)
 	}
+	
+	bytes := make([]byte, length)
+	for i := range bytes {
+		randomIndex := make([]byte, 1)
+		rand.Read(randomIndex)
+		bytes[i] = charset[int(randomIndex[0])%len(charset)]
+	}
+	
+	L.Push(lua.LString(string(bytes)))
+	return 1
+}
+
+// luaGeneratePassword generates a secure random password
+func (c *CryptoModule) luaGeneratePassword(L *lua.LState) int {
+	length := 16 // default length
+	
+	if L.GetTop() > 0 && L.Get(1) != lua.LNil {
+		length = L.CheckInt(1)
+	}
+	
+	// Password charset with special characters for better security
+	charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}|;:,.<>?"
 	
 	bytes := make([]byte, length)
 	for i := range bytes {

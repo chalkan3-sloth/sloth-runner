@@ -3,104 +3,109 @@
 -- Demonstrates concurrent HTTP requests with goroutines
 
 local parallel_health_check = task("check_services_health")
-    :description("Check health of multiple services in parallel")
-    :command(function(this, params)
-        local goroutine = require("goroutine")
-        local http = require("http")
-        
-        -- List of services to check
-        local services = {
-            {name = "API Gateway", url = "http://localhost:8080/health"},
-            {name = "Auth Service", url = "http://localhost:8081/health"},
-            {name = "Database Service", url = "http://localhost:8082/health"},
-            {name = "Cache Service", url = "http://localhost:8083/health"},
-            {name = "Queue Service", url = "http://localhost:8084/health"},
-        }
-        
-        log.info("🏥 Starting parallel health checks for " .. #services .. " services...")
-        
-        -- Create async handles for parallel health checks
-        local handles = {}
-        for _, service in ipairs(services) do
-            local handle = goroutine.async(function()
-                local start_time = os.clock()
-                
-                -- Make HTTP request
-                local success, response = pcall(function()
-                    return http.get(service.url, {
-                        timeout = 5,
-                        headers = {
-                            ["User-Agent"] = "Sloth-Runner-HealthCheck/1.0"
-                        }
-                    })
-                end)
-                
-                local elapsed = (os.clock() - start_time) * 1000  -- Convert to ms
-                
-                if success and response and response.status_code == 200 then
-                    return service.name, "healthy", elapsed, response.body or ""
-                else
-                    local error_msg = response and response.error or "Connection failed"
-                    return service.name, "unhealthy", elapsed, error_msg
-                end
-            end)
-            
-            table.insert(handles, handle)
-        end
-        
-        log.info("⏳ Waiting for all health checks to complete...")
-        
-        -- Wait for all async operations
-        local results = goroutine.await_all(handles)
-        
-        -- Process and display results
-        local healthy_count = 0
-        local unhealthy_count = 0
-        
-        log.info("\n🏥 Health Check Results:")
-        log.info("═══════════════════════════════════════════════")
-        
-        for _, result in ipairs(results) do
-            if result.success then
-                local name = result.values[1]
-                local status = result.values[2]
-                local time_ms = string.format("%.2f", result.values[3])
-                
-                if status == "healthy" then
-                    healthy_count = healthy_count + 1
-                    log.info("✅ " .. name .. ": " .. status .. " (" .. time_ms .. "ms)")
-                else
-                    unhealthy_count = unhealthy_count + 1
-                    local error = result.values[4]
-                    log.error("❌ " .. name .. ": " .. status .. " (" .. time_ms .. "ms) - " .. error)
-                end
-            else
-                unhealthy_count = unhealthy_count + 1
-                log.error("❌ Error checking service: " .. (result.error or "Unknown error"))
-            end
-        end
-        
-        log.info("═══════════════════════════════════════════════")
-        log.info("📊 Summary: " .. healthy_count .. " healthy, " .. unhealthy_count .. " unhealthy")
-        
-        -- Return results
-        local all_healthy = unhealthy_count == 0
-        return all_healthy, 
-               all_healthy and "All services are healthy" or "Some services are unhealthy",
-               {
-                   total = #services,
-                   healthy = healthy_count,
-                   unhealthy = unhealthy_count
-               }
-    end)
-    :timeout("30s")
-    :build()
+	:description("Check health of multiple services in parallel")
+	:command(function(this, params)
+		local goroutine = require("goroutine")
+		local http = require("http")
+
+		-- List of services to check
+		local services = {
+			{ name = "API Gateway", url = "http://localhost:8080/health" },
+			{ name = "Auth Service", url = "http://localhost:8081/health" },
+			{ name = "Database Service", url = "http://localhost:8082/health" },
+			{ name = "Cache Service", url = "http://localhost:8083/health" },
+			{ name = "Queue Service", url = "http://localhost:8084/health" },
+		}
+
+		log.info("🏥 Starting parallel health checks for " .. #services .. " services...")
+
+		-- Create async handles for parallel health checks
+		local handles = {}
+		for _, service in ipairs(services) do
+			local handle = goroutine.async(function()
+				local start_time = os.clock()
+
+				-- Make HTTP request
+				local success, response = pcall(function()
+					return http.get(service.url, {
+						timeout = 5,
+						headers = {
+							["User-Agent"] = "Sloth-Runner-HealthCheck/1.0",
+						},
+					})
+				end)
+
+				local elapsed = (os.clock() - start_time) * 1000 -- Convert to ms
+
+				if success and response and response.status_code == 200 then
+					return service.name, "healthy", elapsed, response.body or ""
+				else
+					local error_msg = response and response.error or "Connection failed"
+					return service.name, "unhealthy", elapsed, error_msg
+				end
+			end)
+
+			table.insert(handles, handle)
+		end
+
+		log.info("⏳ Waiting for all health checks to complete...")
+
+		-- Wait for all async operations
+		local results = goroutine.await_all(handles)
+
+		-- Process and display results
+		local healthy_count = 0
+		local unhealthy_count = 0
+
+		log.info("\n🏥 Health Check Results:")
+		log.info(
+			"═══════════════════════════════════════════════"
+		)
+
+		for _, result in ipairs(results) do
+			if result.success then
+				local name = result.values[1]
+				local status = result.values[2]
+				local time_ms = string.format("%.2f", result.values[3])
+
+				if status == "healthy" then
+					healthy_count = healthy_count + 1
+					log.info("✅ " .. name .. ": " .. status .. " (" .. time_ms .. "ms)")
+				else
+					unhealthy_count = unhealthy_count + 1
+					local error = result.values[4]
+					log.error("❌ " .. name .. ": " .. status .. " (" .. time_ms .. "ms) - " .. error)
+				end
+			else
+				unhealthy_count = unhealthy_count + 1
+				log.error("❌ Error checking service: " .. (result.error or "Unknown error"))
+			end
+		end
+
+		log.info(
+			"═══════════════════════════════════════════════"
+		)
+		log.info("📊 Summary: " .. healthy_count .. " healthy, " .. unhealthy_count .. " unhealthy")
+
+		-- Return results
+		local all_healthy = unhealthy_count == 0
+		return all_healthy,
+			all_healthy and "All services are healthy" or "Some services are unhealthy",
+			{
+				total = #services,
+				healthy = healthy_count,
+				unhealthy = unhealthy_count,
+			}
+	end)
+	:timeout("30s")
+	:build()
 
 -- Create workflow
-workflow.define("health_check_workflow")
-    :description("Parallel health check for multiple services")
-    :version("1.0.0")
-    :tasks({ parallel_health_check })
-    :config({
-        timeout = "1m"
-    })
+workflow
+	.define("health_check_workflow")
+	:description("Parallel health check for multiple services")
+	:version("1.0.0")
+	:tasks({ parallel_health_check })
+	:config({
+		timeout = "1m",
+	})

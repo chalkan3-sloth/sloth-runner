@@ -14,88 +14,99 @@ local replicas = values and values.config and values.config.replicas or 1
 
 -- Task 1: Deploy Web
 local deploy_web = task("deploy_web")
-    :description(string.format("Deploy web to %s (%s)", web_agent, env))
-    :command(function(this, params)
-        log.info("🌐 Deploying Web Application...")
-        log.info("Environment: " .. env)
-        log.info("Replicas: " .. tostring(replicas))
-        
-        local hostname_out, _, _ = exec.run("hostname")
-        local hostname = hostname_out and hostname_out:gsub("\n", "") or "unknown"
-        log.info("📍 Running on: " .. hostname)
-        
-        -- Simula deploy
-        exec.run("echo 'Web deployed successfully'")
-        
-        return true, "Web deployed", {
-            component = "web",
-            host = hostname,
-            environment = env
-        }
-    end)
-    :delegate_to(web_agent)  -- ✨ Delegação dinâmica via values
-    :timeout("5m")
-    :build()
+	:description(string.format("Deploy web to %s (%s)", web_agent, env))
+	:command(function(this, params)
+		log.info("🌐 Deploying Web Application...")
+		log.info("Environment: " .. env)
+		log.info("Replicas: " .. tostring(replicas))
+
+		local hostname_out, _, _ = exec.run("hostname")
+		local hostname = hostname_out and hostname_out:gsub("\n", "") or "unknown"
+		log.info("📍 Running on: " .. hostname)
+
+		-- Simula deploy
+		exec.run("echo 'Web deployed successfully'")
+
+		return true, "Web deployed", {
+			component = "web",
+			host = hostname,
+			environment = env,
+		}
+	end)
+	:delegate_to(web_agent) -- ✨ Delegação dinâmica via values
+	:timeout("5m")
+	:build()
 
 -- Task 2: Deploy Database
 local deploy_db = task("deploy_db")
-    :description(string.format("Deploy DB to %s (%s)", db_agent, env))
-    :command(function(this, params)
-        log.info("🗄️ Deploying Database...")
-        log.info("Environment: " .. env)
-        
-        local hostname_out, _, _ = exec.run("hostname")
-        local hostname = hostname_out and hostname_out:gsub("\n", "") or "unknown"
-        log.info("📍 Running on: " .. hostname)
-        
-        -- Backup em produção
-        if env == "production" then
-            log.info("💾 Creating backup...")
-            exec.run("echo 'Backup created'")
-        end
-        
-        exec.run("echo 'Database deployed successfully'")
-        
-        return true, "DB deployed", {
-            component = "database",
-            host = hostname,
-            environment = env
-        }
-    end)
-    :delegate_to(db_agent)  -- ✨ Delegação dinâmica via values
-    :timeout("10m")
-    :build()
+	:description(string.format("Deploy DB to %s (%s)", db_agent, env))
+	:command(function(this, params)
+		log.info("🗄️ Deploying Database...")
+		log.info("Environment: " .. env)
+
+		local hostname_out, _, _ = exec.run("hostname")
+		local hostname = hostname_out and hostname_out:gsub("\n", "") or "unknown"
+		log.info("📍 Running on: " .. hostname)
+
+		-- Backup em produção
+		if env == "production" then
+			log.info("💾 Creating backup...")
+			exec.run("echo 'Backup created'")
+		end
+
+		exec.run("echo 'Database deployed successfully'")
+
+		return true, "DB deployed", {
+			component = "database",
+			host = hostname,
+			environment = env,
+		}
+	end)
+	:delegate_to(db_agent) -- ✨ Delegação dinâmica via values
+	:timeout("10m")
+	:build()
 
 -- Workflow
-workflow.define("deploy")
-    :description(string.format("Deploy to %s environment", env))
-    :version("1.0.0")
-    :tasks({ deploy_web, deploy_db })
-    :config({
-        timeout = "15m",
-        max_parallel_tasks = 2
-    })
-    :on_start(function()
-        log.info("╔════════════════════════════════════╗")
-        log.info("║  🚀 Starting Deployment            ║")
-        log.info("╠════════════════════════════════════╣")
-        log.info("║  Environment:  " .. env)
-        log.info("║  Web Agent:    " .. web_agent)
-        log.info("║  DB Agent:     " .. db_agent)
-        log.info("║  Replicas:     " .. tostring(replicas))
-        log.info("╚════════════════════════════════════╝")
-        return true
-    end)
-    :on_complete(function(success, results)
-        if success then
-            log.info("")
-            log.info("╔════════════════════════════════════╗")
-            log.info("║  ✅ DEPLOYMENT SUCCESSFUL          ║")
-            log.info("╚════════════════════════════════════╝")
-            log.info("")
-            log.info("🎉 Stack is live in " .. env .. "!")
-        else
-            log.error("❌ Deployment failed!")
-        end
-        return true
-    end)
+workflow
+	.define("deploy")
+	:description(string.format("Deploy to %s environment", env))
+	:version("1.0.0")
+	:tasks({ deploy_web, deploy_db })
+	:config({
+		timeout = "15m",
+		max_parallel_tasks = 2,
+	})
+	:on_start(function()
+		log.info(
+			"╔════════════════════════════════════╗"
+		)
+		log.info("║  🚀 Starting Deployment            ║")
+		log.info(
+			"╠════════════════════════════════════╣"
+		)
+		log.info("║  Environment:  " .. env)
+		log.info("║  Web Agent:    " .. web_agent)
+		log.info("║  DB Agent:     " .. db_agent)
+		log.info("║  Replicas:     " .. tostring(replicas))
+		log.info(
+			"╚════════════════════════════════════╝"
+		)
+		return true
+	end)
+	:on_complete(function(success, results)
+		if success then
+			log.info("")
+			log.info(
+				"╔════════════════════════════════════╗"
+			)
+			log.info("║  ✅ DEPLOYMENT SUCCESSFUL          ║")
+			log.info(
+				"╚════════════════════════════════════╝"
+			)
+			log.info("")
+			log.info("🎉 Stack is live in " .. env .. "!")
+		else
+			log.error("❌ Deployment failed!")
+		end
+		return true
+	end)

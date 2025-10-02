@@ -40,6 +40,7 @@ func RegisterStringModule(L *lua.LState) {
 	L.SetField(stringsTable, "contains", L.NewFunction(module.luaStringContains))
 	L.SetField(stringsTable, "starts_with", L.NewFunction(module.luaStringStartsWith))
 	L.SetField(stringsTable, "ends_with", L.NewFunction(module.luaStringEndsWith))
+	L.SetField(stringsTable, "count", L.NewFunction(module.luaStringCount))
 	
 	// Regular expressions
 	L.SetField(stringsTable, "match", L.NewFunction(module.luaStringMatch))
@@ -167,6 +168,15 @@ func (s *StringModule) luaStringEndsWith(L *lua.LState) int {
 	
 	result := strings.HasSuffix(str, suffix)
 	L.Push(lua.LBool(result))
+	return 1
+}
+
+func (s *StringModule) luaStringCount(L *lua.LState) int {
+	str := L.CheckString(1)
+	substr := L.CheckString(2)
+	
+	result := strings.Count(str, substr)
+	L.Push(lua.LNumber(result))
 	return 1
 }
 

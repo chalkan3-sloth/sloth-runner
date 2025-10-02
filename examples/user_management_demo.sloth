@@ -5,246 +5,246 @@ print("🦥 User Management Demo - Creating users with passwords")
 
 -- Example 1: Create a simple user with password
 task("create-basic-user", {
-    action = function()
-        print("📝 Creating basic user with password...")
-        
-        local ok, msg = user.create("webuser", {
-            password = "W3bU$er2024!",
-            home = "/home/webuser",
-            shell = "/bin/bash",
-            create_home = true,
-            comment = "Web Application User"
-        })
-        
-        if ok then
-            print("✅ User 'webuser' created successfully!")
-            print("   Home: /home/webuser")
-            print("   Shell: /bin/bash")
-        else
-            print("❌ Failed to create user: " .. msg)
-        end
-    end
+	action = function()
+		print("📝 Creating basic user with password...")
+
+		local ok, msg = user.create("webuser", {
+			password = "W3bU$er2024!",
+			home = "/home/webuser",
+			shell = "/bin/bash",
+			create_home = true,
+			comment = "Web Application User",
+		})
+
+		if ok then
+			print("✅ User 'webuser' created successfully!")
+			print("   Home: /home/webuser")
+			print("   Shell: /bin/bash")
+		else
+			print("❌ Failed to create user: " .. msg)
+		end
+	end,
 })
 
 -- Example 2: Create a system user with password
 task("create-system-user", {
-    action = function()
-        print("\n📝 Creating system user with password...")
-        
-        local ok, msg = user.create("appservice", {
-            password = "AppServ1ce!2024",
-            shell = "/bin/false",
-            system = true,
-            no_create_home = true,
-            comment = "Application Service Account"
-        })
-        
-        if ok then
-            print("✅ System user 'appservice' created successfully!")
-            print("   Type: System user")
-            print("   Shell: /bin/false (no login)")
-        else
-            print("❌ Failed to create system user: " .. msg)
-        end
-    end
+	action = function()
+		print("\n📝 Creating system user with password...")
+
+		local ok, msg = user.create("appservice", {
+			password = "AppServ1ce!2024",
+			shell = "/bin/false",
+			system = true,
+			no_create_home = true,
+			comment = "Application Service Account",
+		})
+
+		if ok then
+			print("✅ System user 'appservice' created successfully!")
+			print("   Type: System user")
+			print("   Shell: /bin/false (no login)")
+		else
+			print("❌ Failed to create system user: " .. msg)
+		end
+	end,
 })
 
 -- Example 3: Create a DevOps user with multiple groups and password
 task("create-devops-user", {
-    action = function()
-        print("\n📝 Creating DevOps user with groups and password...")
-        
-        local ok, msg = user.create("devops", {
-            password = "D3vOp$Secure!2024",
-            home = "/home/devops",
-            shell = "/bin/bash",
-            groups = "docker,sudo,wheel",
-            comment = "DevOps Engineer",
-            create_home = true
-        })
-        
-        if ok then
-            print("✅ DevOps user 'devops' created successfully!")
-            print("   Home: /home/devops")
-            print("   Groups: docker, sudo, wheel")
-            print("   Shell: /bin/bash")
-            
-            -- Get user info to confirm
-            local info, err = user.get_info("devops")
-            if info then
-                print("   UID: " .. info.uid)
-                print("   GID: " .. info.gid)
-            end
-        else
-            print("❌ Failed to create DevOps user: " .. msg)
-        end
-    end
+	action = function()
+		print("\n📝 Creating DevOps user with groups and password...")
+
+		local ok, msg = user.create("devops", {
+			password = "D3vOp$Secure!2024",
+			home = "/home/devops",
+			shell = "/bin/bash",
+			groups = "docker,sudo,wheel",
+			comment = "DevOps Engineer",
+			create_home = true,
+		})
+
+		if ok then
+			print("✅ DevOps user 'devops' created successfully!")
+			print("   Home: /home/devops")
+			print("   Groups: docker, sudo, wheel")
+			print("   Shell: /bin/bash")
+
+			-- Get user info to confirm
+			local info, err = user.get_info("devops")
+			if info then
+				print("   UID: " .. info.uid)
+				print("   GID: " .. info.gid)
+			end
+		else
+			print("❌ Failed to create DevOps user: " .. msg)
+		end
+	end,
 })
 
 -- Example 4: Create database user with specific UID/GID and password
 task("create-db-user", {
-    action = function()
-        print("\n📝 Creating database user with specific UID/GID and password...")
-        
-        -- First, create the database group if it doesn't exist
-        local group_ok, _ = user.group_create("database", {
-            gid = "5432"
-        })
-        
-        local ok, msg = user.create("postgres", {
-            password = "P0stgr3$SQL!2024",
-            uid = "5432",
-            gid = "5432",
-            home = "/var/lib/postgresql",
-            shell = "/bin/bash",
-            comment = "PostgreSQL Database User",
-            create_home = true
-        })
-        
-        if ok then
-            print("✅ Database user 'postgres' created successfully!")
-            print("   UID: 5432")
-            print("   GID: 5432")
-            print("   Home: /var/lib/postgresql")
-        else
-            print("❌ Failed to create database user: " .. msg)
-        end
-    end
+	action = function()
+		print("\n📝 Creating database user with specific UID/GID and password...")
+
+		-- First, create the database group if it doesn't exist
+		local group_ok, _ = user.group_create("database", {
+			gid = "5432",
+		})
+
+		local ok, msg = user.create("postgres", {
+			password = "P0stgr3$SQL!2024",
+			uid = "5432",
+			gid = "5432",
+			home = "/var/lib/postgresql",
+			shell = "/bin/bash",
+			comment = "PostgreSQL Database User",
+			create_home = true,
+		})
+
+		if ok then
+			print("✅ Database user 'postgres' created successfully!")
+			print("   UID: 5432")
+			print("   GID: 5432")
+			print("   Home: /var/lib/postgresql")
+		else
+			print("❌ Failed to create database user: " .. msg)
+		end
+	end,
 })
 
 -- Example 5: Create multiple users with different configurations
 task("create-team-users", {
-    action = function()
-        print("\n📝 Creating team users with passwords...")
-        
-        local users = {
-            {
-                name = "john",
-                password = "J0hn$ecure!2024",
-                comment = "John Doe - Frontend Developer",
-                groups = "docker,developers"
-            },
-            {
-                name = "jane",
-                password = "J@ne$ecure!2024",
-                comment = "Jane Smith - Backend Developer",
-                groups = "docker,developers,database"
-            },
-            {
-                name = "bob",
-                password = "B0b$ecure!2024",
-                comment = "Bob Johnson - QA Engineer",
-                groups = "developers,testers"
-            }
-        }
-        
-        for _, u in ipairs(users) do
-            local ok, msg = user.create(u.name, {
-                password = u.password,
-                home = "/home/" .. u.name,
-                shell = "/bin/bash",
-                groups = u.groups,
-                comment = u.comment,
-                create_home = true
-            })
-            
-            if ok then
-                print("✅ User '" .. u.name .. "' created successfully!")
-            else
-                print("❌ Failed to create user '" .. u.name .. "': " .. msg)
-            end
-        end
-    end
+	action = function()
+		print("\n📝 Creating team users with passwords...")
+
+		local users = {
+			{
+				name = "john",
+				password = "J0hn$ecure!2024",
+				comment = "John Doe - Frontend Developer",
+				groups = "docker,developers",
+			},
+			{
+				name = "jane",
+				password = "J@ne$ecure!2024",
+				comment = "Jane Smith - Backend Developer",
+				groups = "docker,developers,database",
+			},
+			{
+				name = "bob",
+				password = "B0b$ecure!2024",
+				comment = "Bob Johnson - QA Engineer",
+				groups = "developers,testers",
+			},
+		}
+
+		for _, u in ipairs(users) do
+			local ok, msg = user.create(u.name, {
+				password = u.password,
+				home = "/home/" .. u.name,
+				shell = "/bin/bash",
+				groups = u.groups,
+				comment = u.comment,
+				create_home = true,
+			})
+
+			if ok then
+				print("✅ User '" .. u.name .. "' created successfully!")
+			else
+				print("❌ Failed to create user '" .. u.name .. "': " .. msg)
+			end
+		end
+	end,
 })
 
 -- Example 6: Create user with password expiration
 task("create-temp-user", {
-    action = function()
-        print("\n📝 Creating temporary user with password expiration...")
-        
-        local ok, msg = user.create("contractor", {
-            password = "C0ntr@ct0r!2024",
-            home = "/home/contractor",
-            shell = "/bin/bash",
-            create_home = true,
-            comment = "Temporary Contractor Account",
-            expiry = "2024-12-31"  -- Account expires on Dec 31, 2024
-        })
-        
-        if ok then
-            print("✅ Temporary user 'contractor' created successfully!")
-            print("   Account expires: 2024-12-31")
-            
-            -- Force password change on first login
-            local expire_ok, _ = user.expire_password("contractor")
-            if expire_ok then
-                print("   Password will expire on first login ✓")
-            end
-        else
-            print("❌ Failed to create temporary user: " .. msg)
-        end
-    end
+	action = function()
+		print("\n📝 Creating temporary user with password expiration...")
+
+		local ok, msg = user.create("contractor", {
+			password = "C0ntr@ct0r!2024",
+			home = "/home/contractor",
+			shell = "/bin/bash",
+			create_home = true,
+			comment = "Temporary Contractor Account",
+			expiry = "2024-12-31", -- Account expires on Dec 31, 2024
+		})
+
+		if ok then
+			print("✅ Temporary user 'contractor' created successfully!")
+			print("   Account expires: 2024-12-31")
+
+			-- Force password change on first login
+			local expire_ok, _ = user.expire_password("contractor")
+			if expire_ok then
+				print("   Password will expire on first login ✓")
+			end
+		else
+			print("❌ Failed to create temporary user: " .. msg)
+		end
+	end,
 })
 
 -- Example 7: Create user and then change password
 task("create-and-change-password", {
-    action = function()
-        print("\n📝 Creating user and updating password...")
-        
-        -- Create user with initial password
-        local ok, msg = user.create("testuser", {
-            password = "Initial!Pass123",
-            home = "/home/testuser",
-            shell = "/bin/bash",
-            create_home = true
-        })
-        
-        if ok then
-            print("✅ User 'testuser' created with initial password")
-            
-            -- Simulate password change
-            print("🔄 Changing password...")
-            local pass_ok, pass_msg = user.set_password("testuser", "N3wP@ssw0rd!2024")
-            
-            if pass_ok then
-                print("✅ Password updated successfully!")
-            else
-                print("❌ Failed to update password: " .. pass_msg)
-            end
-        else
-            print("❌ Failed to create user: " .. msg)
-        end
-    end
+	action = function()
+		print("\n📝 Creating user and updating password...")
+
+		-- Create user with initial password
+		local ok, msg = user.create("testuser", {
+			password = "Initial!Pass123",
+			home = "/home/testuser",
+			shell = "/bin/bash",
+			create_home = true,
+		})
+
+		if ok then
+			print("✅ User 'testuser' created with initial password")
+
+			-- Simulate password change
+			print("🔄 Changing password...")
+			local pass_ok, pass_msg = user.set_password("testuser", "N3wP@ssw0rd!2024")
+
+			if pass_ok then
+				print("✅ Password updated successfully!")
+			else
+				print("❌ Failed to update password: " .. pass_msg)
+			end
+		else
+			print("❌ Failed to create user: " .. msg)
+		end
+	end,
 })
 
 -- Example 8: Remote user creation with delegate_to
 task("create-remote-users", {
-    action = function()
-        print("\n📝 Creating users on remote servers...")
-        
-        local servers = {"web-server-01", "web-server-02", "db-server-01"}
-        
-        for _, server in ipairs(servers) do
-            print("\n🌐 Creating deployment user on: " .. server)
-            
-            delegate_to(server, function()
-                local ok, msg = user.create("deployer", {
-                    password = "D3pl0y3r!2024",
-                    home = "/home/deployer",
-                    shell = "/bin/bash",
-                    groups = "docker,sudo",
-                    comment = "Deployment User",
-                    create_home = true
-                })
-                
-                if ok then
-                    print("✅ User created on " .. server)
-                else
-                    print("❌ Failed on " .. server .. ": " .. msg)
-                end
-            end)
-        end
-    end
+	action = function()
+		print("\n📝 Creating users on remote servers...")
+
+		local servers = { "web-server-01", "web-server-02", "db-server-01" }
+
+		for _, server in ipairs(servers) do
+			print("\n🌐 Creating deployment user on: " .. server)
+
+			delegate_to(server, function()
+				local ok, msg = user.create("deployer", {
+					password = "D3pl0y3r!2024",
+					home = "/home/deployer",
+					shell = "/bin/bash",
+					groups = "docker,sudo",
+					comment = "Deployment User",
+					create_home = true,
+				})
+
+				if ok then
+					print("✅ User created on " .. server)
+				else
+					print("❌ Failed on " .. server .. ": " .. msg)
+				end
+			end)
+		end
+	end,
 })
 
 print("\n" .. string.rep("=", 60))
