@@ -5,7 +5,7 @@
 [![Go CI](https://github.com/chalkan3-sloth/sloth-runner/actions/workflows/ci.yml/badge.svg)](https://github.com/chalkan3-sloth/sloth-runner/actions/workflows/ci.yml)
 [![Go Version](https://img.shields.io/badge/Go-1.24+-blue.svg)](https://golang.org/)
 [![Lua Powered](https://img.shields.io/badge/Lua-Powered-purple.svg)](https://www.lua.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/chalkan3-sloth/sloth-runner/blob/main/LICENSE)
 
 ---
 
@@ -266,7 +266,7 @@ workflow.define("parallel_deployment")
 | 🏥 Health check 20 serviços | 1 minuto | **5 segundos** | **12x** ⚡ |
 | 📊 Processar 1000 itens | 10 segundos | **1 segundo** | **10x** ⚡ |
 
-**[📖 Documentação Completa de Goroutines](modules/goroutine.md)** | **[🧪 Mais Exemplos](https://github.com/chalkan3-sloth/sloth-runner/tree/main/examples)**
+**[📖 Documentação Completa de Goroutines](modules/goroutine/)** | **[🧪 Mais Exemplos](https://github.com/chalkan3-sloth/sloth-runner/tree/main/examples)**
 
 ---
 
@@ -1003,61 +1003,61 @@ sloth-runner agent run agent-1 "deploy-script.sh"
 ## 📚 **Documentation by Language**
 
 ### 🇺🇸 **English Documentation**
-- 📖 [Getting Started](en/getting-started.md)
-- 🧠 [Core Concepts](en/core-concepts.md)
-- ⚡ [Quick Start](en/quick-start.md)
-- 💻 [CLI Reference](en/CLI.md)
-- 🔄 [Interactive REPL](en/repl.md)
-- 🎯 [Advanced Features](en/advanced-features.md)
-- 🚀 [Agent Improvements](en/agent-improvements.md)
+- 📖 [Getting Started](en/getting-started/)
+- 🧠 [Core Concepts](en/core-concepts/)
+- ⚡ [Quick Start](en/quick-start/)
+- 💻 [CLI Reference](en/CLI/)
+- 🔄 [Interactive REPL](en/repl/)
+- 🎯 [Advanced Features](en/advanced-features/)
+- 🚀 [Agent Improvements](en/agent-improvements/)
 
 ### 🇧🇷 **Documentação em Português**
-- 📖 [Primeiros Passos](pt/getting-started.md)
-- 🧠 [Conceitos Fundamentais](pt/core-concepts.md)
-- ⚡ [Início Rápido](pt/quick-start.md)
-- 💻 [Referência CLI](pt/CLI.md)
-- 🔄 [REPL Interativo](pt/repl.md)
-- 🎯 [Recursos Avançados](pt/advanced-features.md)
-- 🚀 [Melhorias dos Agentes](pt/agent-improvements.md)
+- 📖 [Primeiros Passos](pt/getting-started/)
+- 🧠 [Conceitos Fundamentais](pt/core-concepts/)
+- ⚡ [Início Rápido](pt/quick-start/)
+- 💻 [Referência CLI](pt/CLI/)
+- 🔄 [REPL Interativo](pt/repl/)
+- 🎯 [Recursos Avançados](pt/advanced-features/)
+- 🚀 [Melhorias dos Agentes](pt/agent-improvements/)
 
 ### 🇨🇳 **中文文档**
-- 📖 [入门指南](zh/getting-started.md)
-- 🧠 [核心概念](zh/core-concepts.md)
-- ⚡ [快速开始](zh/quick-start.md)
-- 💻 [CLI参考](zh/CLI.md)
-- 🔄 [交互式REPL](zh/repl.md)
-- 🎯 [高级功能](zh/advanced-features.md)
-- 🚀 [代理改进](zh/agent-improvements.md)
+- 📖 [入门指南](zh/getting-started/)
+- 🧠 [核心概念](zh/core-concepts/)
+- ⚡ [快速开始](zh/quick-start/)
+- 💻 [CLI参考](zh/CLI/)
+- 🔄 [交互式REPL](zh/repl/)
+- 🎯 [高级功能](zh/advanced-features/)
+- 🚀 [代理改进](zh/agent-improvements/)
 
 ## 🔧 **Module Reference**
 
 ### **📦 Built-in Modules**
 | Module | Description | Language Support |
 |--------|-------------|------------------|
-| [💾 **State**](en/modules/state.md) | Persistent state management | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
-| [📊 **Metrics**](en/modules/metrics.md) | Monitoring and observability | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
-| [⚡ **Exec**](en/modules/exec.md) | Command execution | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
-| [📁 **FS**](en/modules/fs.md) | File system operations | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
-| [📡 **Net**](en/modules/net.md) | Network operations | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
-| [📋 **Data**](en/modules/data.md) | Data processing utilities | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
-| [📝 **Log**](en/modules/log.md) | Structured logging | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
+| [💾 **State**](en/modules/state/) | Persistent state management | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
+| [📊 **Metrics**](en/modules/metrics/) | Monitoring and observability | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
+| [⚡ **Exec**](en/modules/exec/) | Command execution | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
+| [📁 **FS**](en/modules/fs/) | File system operations | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
+| [📡 **Net**](en/modules/net/) | Network operations | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
+| [📋 **Data**](en/modules/data/) | Data processing utilities | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
+| [📝 **Log**](en/modules/log/) | Structured logging | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
 
 ### **☁️ Cloud Provider Modules**
 | Module | Description | Status |
 |--------|-------------|---------|
-| [☁️ **AWS**](en/modules/aws.md) | Amazon Web Services | <span class="status-indicator implemented">Ready</span> |
-| [🌩️ **GCP**](en/modules/gcp.md) | Google Cloud Platform | <span class="status-indicator implemented">Ready</span> |
-| [🔷 **Azure**](en/modules/azure.md) | Microsoft Azure | <span class="status-indicator implemented">Ready</span> |
-| [🌊 **DigitalOcean**](en/modules/digitalocean.md) | DigitalOcean | <span class="status-indicator beta">Beta</span> |
+| [☁️ **AWS**](en/modules/aws/) | Amazon Web Services | <span class="status-indicator implemented">Ready</span> |
+| [🌩️ **GCP**](en/modules/gcp/) | Google Cloud Platform | <span class="status-indicator implemented">Ready</span> |
+| [🔷 **Azure**](en/modules/azure/) | Microsoft Azure | <span class="status-indicator implemented">Ready</span> |
+| [🌊 **DigitalOcean**](en/modules/digitalocean/) | DigitalOcean | <span class="status-indicator beta">Beta</span> |
 
 ### **🛠️ Infrastructure Modules**
 | Module | Description | Status |
 |--------|-------------|---------|
-| [🐳 **Docker**](en/modules/docker.md) | Container management | <span class="status-indicator implemented">Ready</span> |
-| [🏗️ **Pulumi**](en/modules/pulumi.md) | Modern IaC | <span class="status-indicator implemented">Ready</span> |
-| [🌍 **Terraform**](en/modules/terraform.md) | Infrastructure provisioning | <span class="status-indicator implemented">Ready</span> |
-| [🧂 **Salt**](en/modules/salt.md) | Configuration management | <span class="status-indicator beta">Beta</span> |
-| [🐍 **Python**](en/modules/python.md) | Python integration | <span class="status-indicator beta">Beta</span> |
+| [🐳 **Docker**](en/modules/docker/) | Container management | <span class="status-indicator implemented">Ready</span> |
+| [🏗️ **Pulumi**](en/modules/pulumi/) | Modern IaC | <span class="status-indicator implemented">Ready</span> |
+| [🌍 **Terraform**](en/modules/terraform/) | Infrastructure provisioning | <span class="status-indicator implemented">Ready</span> |
+| [🧂 **Salt**](en/modules/salt/) | Configuration management | <span class="status-indicator beta">Beta</span> |
+| [🐍 **Python**](en/modules/python/) | Python integration | <span class="status-indicator beta">Beta</span> |
 
 ## 🚀 **Get Started Today**
 
