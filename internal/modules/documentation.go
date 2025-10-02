@@ -153,86 +153,267 @@ func GetAllModuleDocs() []ModuleDoc {
 				{
 					Name:        "user.create",
 					Description: "Create a new user",
-					Parameters:  "{username = 'name', password = 'pass', uid = num, gid = num, home = 'path', shell = 'path', groups = {...}, system = bool, create_home = bool, target = 'agent_name'}",
-					Example: `user.create({
-    username = "deploy",
+					Parameters:  "username (string), options (table): password, uid, gid, home, shell, groups, comment, system, create_home, no_create_home, expiry",
+					Example: `user.create("deploy", {
     password = "securepassword",
     home = "/home/deploy",
     shell = "/bin/bash",
-    groups = {"docker", "sudo"},
-    create_home = true,
-    target = "web-server"
+    groups = "docker,sudo",
+    comment = "Deployment User",
+    create_home = true
 })`,
 				},
 				{
 					Name:        "user.delete",
 					Description: "Delete a user",
-					Parameters:  "{username = 'name', remove_home = bool, target = 'agent_name'}",
-					Example: `user.delete({
-    username = "olduser",
-    remove_home = true,
-    target = "web-server"
-})`,
+					Parameters:  "username (string), remove_home (boolean, optional)",
+					Example: `user.delete("olduser", true)`,
 				},
 				{
 					Name:        "user.exists",
 					Description: "Check if a user exists",
-					Parameters:  "{username = 'name', target = 'agent_name'}",
-					Example: `local exists = user.exists({
-    username = "deploy",
-    target = "web-server"
-})`,
+					Parameters:  "username (string)",
+					Example: `local exists, msg = user.exists("deploy")
+if exists then
+    print("User exists")
+end`,
 				},
 				{
 					Name:        "user.modify",
 					Description: "Modify user properties",
-					Parameters:  "{username = 'name', uid = num, gid = num, home = 'path', shell = 'path', groups = {...}, target = 'agent_name'}",
-					Example: `user.modify({
-    username = "deploy",
+					Parameters:  "username (string), options (table): uid, gid, home, move_home, shell, groups, comment, expiry, lock, unlock",
+					Example: `user.modify("deploy", {
     shell = "/bin/zsh",
-    groups = {"docker", "sudo", "www-data"},
-    target = "web-server"
+    groups = "docker,sudo,www-data"
 })`,
 				},
 				{
 					Name:        "user.add_to_group",
 					Description: "Add user to a group",
-					Parameters:  "{username = 'name', group = 'name', target = 'agent_name'}",
-					Example: `user.add_to_group({
-    username = "deploy",
-    group = "docker",
-    target = "web-server"
-})`,
+					Parameters:  "username (string), group (string)",
+					Example: `user.add_to_group("deploy", "docker")`,
 				},
 				{
 					Name:        "user.remove_from_group",
 					Description: "Remove user from a group",
-					Parameters:  "{username = 'name', group = 'name', target = 'agent_name'}",
-					Example: `user.remove_from_group({
-    username = "deploy",
-    group = "sudo",
-    target = "web-server"
-})`,
+					Parameters:  "username (string), group (string)",
+					Example: `user.remove_from_group("deploy", "sudo")`,
 				},
 				{
 					Name:        "user.get_info",
 					Description: "Get user information",
-					Parameters:  "{username = 'name', target = 'agent_name'}",
-					Example: `local info = user.get_info({
-    username = "deploy",
-    target = "web-server"
-})
-print("UID: " .. info.uid)`,
+					Parameters:  "username (string)",
+					Example: `local info, err = user.get_info("deploy")
+if info then
+    print("UID: " .. info.uid)
+    print("Home: " .. info.home)
+    print("Shell: " .. info.shell)
+end`,
 				},
 				{
 					Name:        "user.set_password",
 					Description: "Set user password",
-					Parameters:  "{username = 'name', password = 'encrypted', target = 'agent_name'}",
-					Example: `user.set_password({
-    username = "deploy",
-    password = "$6$salt$hash...",
-    target = "web-server"
-})`,
+					Parameters:  "username (string), password (string)",
+					Example: `user.set_password("deploy", "newsecurepassword")`,
+				},
+				{
+					Name:        "user.list",
+					Description: "List all users",
+					Parameters:  "system_only (boolean, optional)",
+					Example: `local users, err = user.list(false)
+for i, u in ipairs(users) do
+    print(u.username .. " - UID: " .. u.uid)
+end`,
+				},
+				{
+					Name:        "user.lock",
+					Description: "Lock a user account",
+					Parameters:  "username (string)",
+					Example: `user.lock("tempuser")`,
+				},
+				{
+					Name:        "user.unlock",
+					Description: "Unlock a user account",
+					Parameters:  "username (string)",
+					Example: `user.unlock("tempuser")`,
+				},
+				{
+					Name:        "user.is_locked",
+					Description: "Check if a user account is locked",
+					Parameters:  "username (string)",
+					Example: `local locked, msg = user.is_locked("deploy")`,
+				},
+				{
+					Name:        "user.expire_password",
+					Description: "Expire a user's password",
+					Parameters:  "username (string)",
+					Example: `user.expire_password("deploy")`,
+				},
+				{
+					Name:        "user.set_shell",
+					Description: "Set the user's shell",
+					Parameters:  "username (string), shell (string)",
+					Example: `user.set_shell("deploy", "/bin/zsh")`,
+				},
+				{
+					Name:        "user.set_home",
+					Description: "Set the user's home directory",
+					Parameters:  "username (string), home_dir (string), move_files (boolean, optional)",
+					Example: `user.set_home("deploy", "/opt/deploy", true)`,
+				},
+				{
+					Name:        "user.get_uid",
+					Description: "Get the UID of a user",
+					Parameters:  "username (string)",
+					Example: `local uid, err = user.get_uid("deploy")`,
+				},
+				{
+					Name:        "user.get_gid",
+					Description: "Get the primary GID of a user",
+					Parameters:  "username (string)",
+					Example: `local gid, err = user.get_gid("deploy")`,
+				},
+				{
+					Name:        "user.get_groups",
+					Description: "Get all groups a user belongs to",
+					Parameters:  "username (string)",
+					Example: `local groups, err = user.get_groups("deploy")
+for i, g in ipairs(groups) do
+    print(g)
+end`,
+				},
+				{
+					Name:        "user.set_primary_group",
+					Description: "Set the user's primary group",
+					Parameters:  "username (string), group (string)",
+					Example: `user.set_primary_group("deploy", "developers")`,
+				},
+				{
+					Name:        "user.get_home",
+					Description: "Get the user's home directory",
+					Parameters:  "username (string)",
+					Example: `local home, err = user.get_home("deploy")`,
+				},
+				{
+					Name:        "user.get_shell",
+					Description: "Get the user's shell",
+					Parameters:  "username (string)",
+					Example: `local shell, err = user.get_shell("deploy")`,
+				},
+				{
+					Name:        "user.get_comment",
+					Description: "Get the user's comment/GECOS field",
+					Parameters:  "username (string)",
+					Example: `local comment, err = user.get_comment("deploy")`,
+				},
+				{
+					Name:        "user.set_comment",
+					Description: "Set the user's comment/GECOS field",
+					Parameters:  "username (string), comment (string)",
+					Example: `user.set_comment("deploy", "Deployment User - Updated")`,
+				},
+				{
+					Name:        "user.is_system_user",
+					Description: "Check if a user is a system user (UID < 1000)",
+					Parameters:  "username (string)",
+					Example: `local is_system, err = user.is_system_user("deploy")`,
+				},
+				{
+					Name:        "user.get_current",
+					Description: "Get the current user",
+					Parameters:  "none",
+					Example: `local current, err = user.get_current()
+print("Current user: " .. current.username)`,
+				},
+				{
+					Name:        "user.group_create",
+					Description: "Create a new group",
+					Parameters:  "groupname (string), options (table, optional): gid, system",
+					Example: `user.group_create("developers", {gid = "5000"})`,
+				},
+				{
+					Name:        "user.group_delete",
+					Description: "Delete a group",
+					Parameters:  "groupname (string)",
+					Example: `user.group_delete("oldgroup")`,
+				},
+				{
+					Name:        "user.group_exists",
+					Description: "Check if a group exists",
+					Parameters:  "groupname (string)",
+					Example: `local exists, msg = user.group_exists("developers")`,
+				},
+				{
+					Name:        "user.group_get_info",
+					Description: "Get group information",
+					Parameters:  "groupname (string)",
+					Example: `local info, err = user.group_get_info("developers")`,
+				},
+				{
+					Name:        "user.group_list",
+					Description: "List all groups",
+					Parameters:  "none",
+					Example: `local groups, err = user.group_list()`,
+				},
+				{
+					Name:        "user.group_get_gid",
+					Description: "Get the GID of a group",
+					Parameters:  "groupname (string)",
+					Example: `local gid, err = user.group_get_gid("developers")`,
+				},
+				{
+					Name:        "user.group_members",
+					Description: "Get all members of a group",
+					Parameters:  "groupname (string)",
+					Example: `local members, err = user.group_members("developers")`,
+				},
+				{
+					Name:        "user.group_add_member",
+					Description: "Add a member to a group",
+					Parameters:  "groupname (string), username (string)",
+					Example: `user.group_add_member("developers", "deploy")`,
+				},
+				{
+					Name:        "user.group_remove_member",
+					Description: "Remove a member from a group",
+					Parameters:  "groupname (string), username (string)",
+					Example: `user.group_remove_member("developers", "deploy")`,
+				},
+				{
+					Name:        "user.set_expiry",
+					Description: "Set when an account expires",
+					Parameters:  "username (string), expiry (string) - Format: YYYY-MM-DD",
+					Example: `user.set_expiry("tempuser", "2025-12-31")`,
+				},
+				{
+					Name:        "user.get_last_login",
+					Description: "Get the last login time for a user",
+					Parameters:  "username (string)",
+					Example: `local last_login, err = user.get_last_login("deploy")`,
+				},
+				{
+					Name:        "user.get_failed_logins",
+					Description: "Get failed login attempts for a user",
+					Parameters:  "username (string)",
+					Example: `local failed, err = user.get_failed_logins("deploy")`,
+				},
+				{
+					Name:        "user.validate_username",
+					Description: "Validate if a username follows Linux conventions",
+					Parameters:  "username (string)",
+					Example: `local valid, msg = user.validate_username("deploy-user")`,
+				},
+				{
+					Name:        "user.is_root",
+					Description: "Check if the current user is root",
+					Parameters:  "none",
+					Example: `local is_root, err = user.is_root()`,
+				},
+				{
+					Name:        "user.run_as",
+					Description: "Run a command as a different user",
+					Parameters:  "username (string), command (string)",
+					Example: `user.run_as("deploy", "whoami")`,
 				},
 			},
 		},

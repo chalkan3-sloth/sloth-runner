@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -28,9 +29,45 @@ type SystemInfo struct {
 	Virtualization  string            `json:"virtualization"`
 	CollectedAt     time.Time         `json:"collected_at"`
 	Packages        *PackageInfo      `json:"packages"`
-	Services        []string          `json:"services"`
-	Users           []string          `json:"users"`
+	Services        []ServiceInfo     `json:"services"`
+	Users           []UserInfo        `json:"users"`
 	Environment     map[string]string `json:"environment"`
+	Processes       *ProcessInfo      `json:"processes"`
+	Mounts          []MountInfo       `json:"mounts"`
+	Timezone        string            `json:"timezone"`
+	BootTime        int64             `json:"boot_time"`
+}
+
+// ServiceInfo holds service information
+type ServiceInfo struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
+	State  string `json:"state"`
+}
+
+// UserInfo holds user information
+type UserInfo struct {
+	Username string `json:"username"`
+	UID      string `json:"uid"`
+	GID      string `json:"gid"`
+	Home     string `json:"home"`
+	Shell    string `json:"shell"`
+}
+
+// ProcessInfo holds process statistics
+type ProcessInfo struct {
+	Total   int `json:"total"`
+	Running int `json:"running"`
+	Sleeping int `json:"sleeping"`
+	Zombie  int `json:"zombie"`
+}
+
+// MountInfo holds filesystem mount information
+type MountInfo struct {
+	Device     string `json:"device"`
+	Mountpoint string `json:"mountpoint"`
+	FSType     string `json:"fstype"`
+	Options    string `json:"options"`
 }
 
 // MemoryInfo holds memory information
@@ -67,9 +104,19 @@ type NetworkInfo struct {
 
 // PackageInfo holds package manager information
 type PackageInfo struct {
-	Manager        string   `json:"manager"`
-	InstalledCount int      `json:"installed_count"`
-	UpdatesAvailable int    `json:"updates_available"`
+	Manager          string              `json:"manager"`
+	InstalledCount   int                 `json:"installed_count"`
+	UpdatesAvailable int                 `json:"updates_available"`
+	Packages         []PackageDetail     `json:"packages"`
+	Updates          []PackageDetail     `json:"updates"`
+}
+
+// PackageDetail holds detailed package information
+type PackageDetail struct {
+	Name        string `json:"name"`
+	Version     string `json:"version"`
+	Architecture string `json:"architecture,omitempty"`
+	Description string `json:"description,omitempty"`
 }
 
 // CollectSystemInfo collects comprehensive system information
@@ -122,6 +169,18 @@ func CollectSystemInfo() (*SystemInfo, error) {
 
 	// Users
 	info.Users = collectUsers()
+
+	// Processes
+	info.Processes = collectProcessInfo()
+
+	// Mounts
+	info.Mounts = collectMounts()
+
+	// Timezone
+	info.Timezone = getTimezone()
+
+	// Boot time
+	info.BootTime = getBootTime()
 
 	// Select environment variables
 	for _, env := range []string{"PATH", "HOME", "USER", "SHELL", "LANG"} {
@@ -528,92 +587,214 @@ func detectVirtualization() string {
 
 // collectPackageInfo collects package manager information
 func collectPackageInfo() *PackageInfo {
-	info := &PackageInfo{}
+	info := &PackageInfo{
+		Packages: []PackageDetail{},
+		Updates:  []PackageDetail{},
+	}
 	
-	// Detect package manager and count packages
+	// Detect package manager and collect detailed package information
 	if _, err := exec.LookPath("dpkg"); err == nil {
 		info.Manager = "dpkg"
-		if output, err := exec.Command("dpkg", "-l").Output(); err == nil {
+		// Get installed packages with details
+		if output, err := exec.Command("dpkg-query", "-W", "-f=${Package}\t${Version}\t${Architecture}\t${binary:Summary}\n").Output(); err == nil {
 			lines := strings.Split(string(output), "\n")
-			count := 0
 			for _, line := range lines {
-				if strings.HasPrefix(line, "ii ") {
-					count++
+				if strings.TrimSpace(line) == "" {
+					continue
+				}
+				fields := strings.Split(line, "\t")
+				if len(fields) >= 2 {
+					pkg := PackageDetail{
+						Name:    fields[0],
+						Version: fields[1],
+					}
+					if len(fields) >= 3 {
+						pkg.Architecture = fields[2]
+					}
+					if len(fields) >= 4 {
+						pkg.Description = fields[3]
+					}
+					info.Packages = append(info.Packages, pkg)
 				}
 			}
-			info.InstalledCount = count
+			info.InstalledCount = len(info.Packages)
 		}
 		// Check for updates
 		if output, err := exec.Command("apt", "list", "--upgradable").Output(); err == nil {
 			lines := strings.Split(string(output), "\n")
-			info.UpdatesAvailable = len(lines) - 1 // Subtract header
-			if info.UpdatesAvailable < 0 {
-				info.UpdatesAvailable = 0
+			for _, line := range lines {
+				if strings.TrimSpace(line) == "" || strings.HasPrefix(line, "Listing") {
+					continue
+				}
+				// Parse: package/distro version arch [upgradable from: oldversion]
+				fields := strings.Fields(line)
+				if len(fields) >= 2 {
+					nameParts := strings.Split(fields[0], "/")
+					pkg := PackageDetail{
+						Name:    nameParts[0],
+						Version: fields[1],
+					}
+					if len(fields) >= 3 {
+						pkg.Architecture = fields[2]
+					}
+					info.Updates = append(info.Updates, pkg)
+				}
 			}
+			info.UpdatesAvailable = len(info.Updates)
 		}
 	} else if _, err := exec.LookPath("rpm"); err == nil {
 		info.Manager = "rpm"
-		if output, err := exec.Command("rpm", "-qa").Output(); err == nil {
+		// Get installed packages with details
+		if output, err := exec.Command("rpm", "-qa", "--queryformat", "%{NAME}\t%{VERSION}-%{RELEASE}\t%{ARCH}\t%{SUMMARY}\n").Output(); err == nil {
 			lines := strings.Split(string(output), "\n")
-			info.InstalledCount = len(lines) - 1
-		}
-		// Check for updates
-		if output, err := exec.Command("yum", "check-update").Output(); err == nil {
-			lines := strings.Split(string(output), "\n")
-			count := 0
 			for _, line := range lines {
-				if strings.TrimSpace(line) != "" && !strings.Contains(line, "Last metadata") {
-					count++
+				if strings.TrimSpace(line) == "" {
+					continue
+				}
+				fields := strings.Split(line, "\t")
+				if len(fields) >= 2 {
+					pkg := PackageDetail{
+						Name:    fields[0],
+						Version: fields[1],
+					}
+					if len(fields) >= 3 {
+						pkg.Architecture = fields[2]
+					}
+					if len(fields) >= 4 {
+						pkg.Description = fields[3]
+					}
+					info.Packages = append(info.Packages, pkg)
 				}
 			}
-			info.UpdatesAvailable = count
+			info.InstalledCount = len(info.Packages)
+		}
+		// Check for updates with yum or dnf
+		var updateCmd *exec.Cmd
+		if _, err := exec.LookPath("dnf"); err == nil {
+			updateCmd = exec.Command("dnf", "check-update", "-q")
+		} else {
+			updateCmd = exec.Command("yum", "check-update", "-q")
+		}
+		if output, err := updateCmd.Output(); err == nil {
+			lines := strings.Split(string(output), "\n")
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if line == "" || strings.Contains(line, "Last metadata") || strings.Contains(line, "Security") {
+					continue
+				}
+				fields := strings.Fields(line)
+				if len(fields) >= 2 {
+					pkg := PackageDetail{
+						Name:    fields[0],
+						Version: fields[1],
+					}
+					if len(fields) >= 3 {
+						pkg.Architecture = fields[2]
+					}
+					info.Updates = append(info.Updates, pkg)
+				}
+			}
+			info.UpdatesAvailable = len(info.Updates)
 		}
 	} else if _, err := exec.LookPath("pacman"); err == nil {
 		info.Manager = "pacman"
+		// Get installed packages with details
 		if output, err := exec.Command("pacman", "-Q").Output(); err == nil {
 			lines := strings.Split(string(output), "\n")
-			info.InstalledCount = len(lines) - 1
+			for _, line := range lines {
+				if strings.TrimSpace(line) == "" {
+					continue
+				}
+				fields := strings.Fields(line)
+				if len(fields) >= 2 {
+					pkg := PackageDetail{
+						Name:    fields[0],
+						Version: fields[1],
+					}
+					info.Packages = append(info.Packages, pkg)
+				}
+			}
+			info.InstalledCount = len(info.Packages)
 		}
 		// Check for updates
 		if output, err := exec.Command("pacman", "-Qu").Output(); err == nil {
 			lines := strings.Split(string(output), "\n")
-			info.UpdatesAvailable = len(lines) - 1
-			if info.UpdatesAvailable < 0 {
-				info.UpdatesAvailable = 0
+			for _, line := range lines {
+				if strings.TrimSpace(line) == "" {
+					continue
+				}
+				fields := strings.Fields(line)
+				if len(fields) >= 4 {
+					pkg := PackageDetail{
+						Name:    fields[0],
+						Version: fields[3], // New version
+					}
+					info.Updates = append(info.Updates, pkg)
+				}
 			}
+			info.UpdatesAvailable = len(info.Updates)
 		}
 	} else if _, err := exec.LookPath("brew"); err == nil {
 		info.Manager = "brew"
-		if output, err := exec.Command("brew", "list").Output(); err == nil {
+		// Get installed packages with details
+		if output, err := exec.Command("brew", "list", "--versions").Output(); err == nil {
 			lines := strings.Split(string(output), "\n")
-			info.InstalledCount = len(lines) - 1
+			for _, line := range lines {
+				if strings.TrimSpace(line) == "" {
+					continue
+				}
+				fields := strings.Fields(line)
+				if len(fields) >= 2 {
+					pkg := PackageDetail{
+						Name:    fields[0],
+						Version: strings.Join(fields[1:], " "),
+					}
+					info.Packages = append(info.Packages, pkg)
+				}
+			}
+			info.InstalledCount = len(info.Packages)
 		}
 		// Check for updates
 		if output, err := exec.Command("brew", "outdated").Output(); err == nil {
 			lines := strings.Split(string(output), "\n")
-			info.UpdatesAvailable = len(lines) - 1
-			if info.UpdatesAvailable < 0 {
-				info.UpdatesAvailable = 0
+			for _, line := range lines {
+				if strings.TrimSpace(line) == "" {
+					continue
+				}
+				fields := strings.Fields(line)
+				if len(fields) >= 3 {
+					pkg := PackageDetail{
+						Name:    fields[0],
+						Version: fields[2], // New version (format: name (old) < new)
+					}
+					info.Updates = append(info.Updates, pkg)
+				}
 			}
+			info.UpdatesAvailable = len(info.Updates)
 		}
 	}
 	
 	return info
 }
 
-// collectServices collects running services (systemd-based systems)
-func collectServices() []string {
-	var services []string
+// collectServices collects running services with detailed information
+func collectServices() []ServiceInfo {
+	var services []ServiceInfo
 	
 	if _, err := exec.LookPath("systemctl"); err == nil {
-		output, err := exec.Command("systemctl", "list-units", "--type=service", "--state=running", "--no-pager", "--no-legend").Output()
+		output, err := exec.Command("systemctl", "list-units", "--type=service", "--all", "--no-pager", "--no-legend").Output()
 		if err == nil {
 			lines := strings.Split(string(output), "\n")
 			for _, line := range lines {
 				fields := strings.Fields(line)
-				if len(fields) > 0 {
+				if len(fields) >= 4 {
 					serviceName := strings.TrimSuffix(fields[0], ".service")
-					services = append(services, serviceName)
+					service := ServiceInfo{
+						Name:   serviceName,
+						Status: fields[1], // loaded/not-found
+						State:  fields[2], // active/inactive/failed
+					}
+					services = append(services, service)
 				}
 			}
 		}
@@ -622,9 +803,9 @@ func collectServices() []string {
 	return services
 }
 
-// collectUsers collects system users
-func collectUsers() []string {
-	var users []string
+// collectUsers collects system users with detailed information
+func collectUsers() []UserInfo {
+	var users []UserInfo
 	
 	switch runtime.GOOS {
 	case "linux", "darwin":
@@ -632,14 +813,193 @@ func collectUsers() []string {
 			lines := strings.Split(string(data), "\n")
 			for _, line := range lines {
 				fields := strings.Split(line, ":")
-				if len(fields) > 0 && fields[0] != "" {
-					users = append(users, fields[0])
+				if len(fields) >= 7 && fields[0] != "" {
+					user := UserInfo{
+						Username: fields[0],
+						UID:      fields[2],
+						GID:      fields[3],
+						Home:     fields[5],
+						Shell:    fields[6],
+					}
+					users = append(users, user)
 				}
 			}
 		}
 	}
 	
 	return users
+}
+
+// collectProcessInfo collects process statistics
+func collectProcessInfo() *ProcessInfo {
+	info := &ProcessInfo{}
+	
+	switch runtime.GOOS {
+	case "linux":
+		// Read /proc for process count
+		if entries, err := os.ReadDir("/proc"); err == nil {
+			for _, entry := range entries {
+				if !entry.IsDir() {
+					continue
+				}
+				// Check if directory name is a number (PID)
+				if _, err := fmt.Sscanf(entry.Name(), "%d", new(int)); err == nil {
+					info.Total++
+					
+					// Read status file to get process state
+					statusPath := filepath.Join("/proc", entry.Name(), "status")
+					if data, err := os.ReadFile(statusPath); err == nil {
+						lines := strings.Split(string(data), "\n")
+						for _, line := range lines {
+							if strings.HasPrefix(line, "State:") {
+								fields := strings.Fields(line)
+								if len(fields) >= 2 {
+									switch fields[1] {
+									case "R":
+										info.Running++
+									case "S", "D":
+										info.Sleeping++
+									case "Z":
+										info.Zombie++
+									}
+								}
+								break
+							}
+						}
+					}
+				}
+			}
+		}
+	case "darwin":
+		// Use ps command
+		if output, err := exec.Command("ps", "axo", "state").Output(); err == nil {
+			lines := strings.Split(string(output), "\n")
+			for i, line := range lines {
+				if i == 0 { // Skip header
+					continue
+				}
+				state := strings.TrimSpace(line)
+				if state == "" {
+					continue
+				}
+				info.Total++
+				// macOS process states: R=running, S=sleeping, Z=zombie, etc.
+				switch state[0] {
+				case 'R':
+					info.Running++
+				case 'S', 'I':
+					info.Sleeping++
+				case 'Z':
+					info.Zombie++
+				}
+			}
+		}
+	}
+	
+	return info
+}
+
+// collectMounts collects filesystem mount information
+func collectMounts() []MountInfo {
+	var mounts []MountInfo
+	
+	switch runtime.GOOS {
+	case "linux":
+		if data, err := os.ReadFile("/proc/mounts"); err == nil {
+			lines := strings.Split(string(data), "\n")
+			for _, line := range lines {
+				fields := strings.Fields(line)
+				if len(fields) >= 4 {
+					mount := MountInfo{
+						Device:     fields[0],
+						Mountpoint: fields[1],
+						FSType:     fields[2],
+						Options:    fields[3],
+					}
+					mounts = append(mounts, mount)
+				}
+			}
+		}
+	case "darwin":
+		if output, err := exec.Command("mount").Output(); err == nil {
+			lines := strings.Split(string(output), "\n")
+			for _, line := range lines {
+				// Format: device on mountpoint (fstype, options)
+				if strings.Contains(line, " on ") {
+					parts := strings.Split(line, " on ")
+					if len(parts) == 2 {
+						device := parts[0]
+						rest := parts[1]
+						
+						// Extract mountpoint and details
+						if idx := strings.Index(rest, " ("); idx != -1 {
+							mountpoint := rest[:idx]
+							details := strings.Trim(rest[idx+2:], ")")
+							
+							mount := MountInfo{
+								Device:     device,
+								Mountpoint: mountpoint,
+							}
+							
+							// Parse details (fstype, options)
+							detailParts := strings.SplitN(details, ", ", 2)
+							if len(detailParts) >= 1 {
+								mount.FSType = detailParts[0]
+							}
+							if len(detailParts) >= 2 {
+								mount.Options = detailParts[1]
+							}
+							
+							mounts = append(mounts, mount)
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	return mounts
+}
+
+// getTimezone returns the system timezone
+func getTimezone() string {
+	now := time.Now()
+	zone, _ := now.Zone()
+	return zone
+}
+
+// getBootTime returns the system boot time as Unix timestamp
+func getBootTime() int64 {
+	switch runtime.GOOS {
+	case "linux":
+		if data, err := os.ReadFile("/proc/stat"); err == nil {
+			lines := strings.Split(string(data), "\n")
+			for _, line := range lines {
+				if strings.HasPrefix(line, "btime ") {
+					fields := strings.Fields(line)
+					if len(fields) >= 2 {
+						var btime int64
+						fmt.Sscanf(fields[1], "%d", &btime)
+						return btime
+					}
+				}
+			}
+		}
+	case "darwin":
+		if output, err := exec.Command("sysctl", "-n", "kern.boottime").Output(); err == nil {
+			// Parse: { sec = 1234567890, usec = 0 } Mon Jan  1 00:00:00 2024
+			line := string(output)
+			if idx := strings.Index(line, "sec = "); idx != -1 {
+				line = line[idx+6:]
+				if idx := strings.Index(line, ","); idx != -1 {
+					var bootTime int64
+					fmt.Sscanf(line[:idx], "%d", &bootTime)
+					return bootTime
+				}
+			}
+		}
+	}
+	return 0
 }
 
 // ToJSON converts SystemInfo to JSON string
