@@ -4,13 +4,13 @@ The `pulumi` module provides a fluent API to orchestrate Pulumi stacks, enabling
 
 ---
 
-## `pulumi.stack(name, options)`
+## `pulumi.stack(params)`
 
 Creates a Pulumi stack object.
 
 *   **Parameters:**
-    *   `name` (string): The full name of the stack (e.g., `"my-org/my-project/dev"`).
-    *   `options` (table): A table of options.
+    *   `params` (table):
+        *   `name` (string): **Required.** The full name of the stack (e.g., `"my-org/my-project/dev"`).
         *   `workdir` (string): **Required.** The path to the Pulumi project directory.
 *   **Returns:**
     *   `stack` (object): A `PulumiStack` object.
@@ -69,10 +69,11 @@ This example shows a common pattern: deploying a networking stack (VPC) and then
 
 ```lua
 command = function()
-  local pulumi = require("pulumi")
-
   -- 1. Define the VPC stack
-  local vpc_stack = pulumi.stack("my-org/vpc/prod", { workdir = "./pulumi/vpc" })
+  local vpc_stack = pulumi.stack({
+    name = "my-org/vpc/prod",
+    workdir = "./pulumi/vpc"
+  })
   
   -- 2. Deploy the VPC
   log.info("Deploying VPC stack...")
@@ -90,7 +91,10 @@ command = function()
   local vpc_id = vpc_outputs.vpcId
 
   -- 4. Define the App stack
-  local app_stack = pulumi.stack("my-org/app/prod", { workdir = "./pulumi/app" })
+  local app_stack = pulumi.stack({
+    name = "my-org/app/prod",
+    workdir = "./pulumi/app"
+  })
 
   -- 5. Deploy the App, passing the vpcId as configuration
   log.info("Deploying App stack into VPC: " .. vpc_id)
