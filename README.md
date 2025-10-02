@@ -285,6 +285,277 @@ This example demonstrates:
 - 📊 **Comprehensive error handling and logging**
 - 🎯 **Modern DSL syntax and best practices**
 
+---
+
+## ⚡ **Parallel Execution with Goroutines**
+
+**Sloth Runner brings the power of Go's goroutines to Lua!** Execute multiple operations concurrently within a single task, dramatically improving performance for I/O-bound operations.
+
+### 🚀 **Why Goroutines in Sloth Runner?**
+
+- **🔥 True Parallelism**: Execute multiple operations simultaneously
+- **⚡ Lightning Fast**: Reduce execution time from minutes to seconds
+- **🎯 Simple API**: Easy-to-use interface for concurrent operations
+- **🛡️ Safe & Reliable**: Built-in timeout and error handling
+- **📊 Real Results**: Wait for all operations and collect results
+
+### 💡 **Real-World Example: Multi-Server Deployment**
+
+Deploy your application to multiple servers in parallel instead of sequentially:
+
+**Sequential Deployment (OLD WAY):** `10 servers × 30 seconds = 5 minutes` ⏱️  
+**Parallel Deployment (WITH GOROUTINES):** `30 seconds total` ⚡
+
+```lua
+-- parallel_deployment.sloth
+-- Deploy to 10 servers in parallel using goroutines
+
+local deploy_to_servers = task("deploy_multi_server")
+    :description("Deploy application to multiple servers in parallel")
+    :command(function(this, params)
+        local go = require("goroutine")
+        
+        -- List of target servers
+        local servers = {
+            {name = "web-01", host = "192.168.1.10"},
+            {name = "web-02", host = "192.168.1.11"},
+            {name = "web-03", host = "192.168.1.12"},
+            {name = "api-01", host = "192.168.1.20"},
+            {name = "api-02", host = "192.168.1.21"},
+            {name = "db-01", host = "192.168.1.30"},
+        }
+        
+        log.info("🚀 Starting parallel deployment to " .. #servers .. " servers...")
+        
+        -- Create goroutines for parallel deployment
+        local goroutines = {}
+        for _, server in ipairs(servers) do
+            -- Each server deployment runs in its own goroutine
+            local g = go.create(function()
+                log.info("📦 Deploying to " .. server.name .. " (" .. server.host .. ")")
+                
+                -- Simulate deployment steps
+                local steps = {
+                    "Uploading application files...",
+                    "Installing dependencies...",
+                    "Restarting services...",
+                    "Running health checks..."
+                }
+                
+                for _, step in ipairs(steps) do
+                    log.info("  → " .. server.name .. ": " .. step)
+                    os.execute("sleep 0.5")  -- Simulate work
+                end
+                
+                -- Return deployment result
+                return {
+                    server = server.name,
+                    host = server.host,
+                    status = "success",
+                    deployed_at = os.date("%Y-%m-%d %H:%M:%S")
+                }
+            end)
+            
+            table.insert(goroutines, g)
+        end
+        
+        log.info("⏳ Waiting for all deployments to complete...")
+        
+        -- Wait for all goroutines to complete (with 60 second timeout)
+        local results = go.wait_all(goroutines, 60)
+        
+        -- Process results
+        local success_count = 0
+        local failed_count = 0
+        
+        log.info("\n📊 Deployment Results:")
+        log.info("═══════════════════════════════════════")
+        
+        for _, result in ipairs(results) do
+            if result.success then
+                success_count = success_count + 1
+                log.info("✅ " .. result.value.server .. " → Deployed successfully at " .. result.value.deployed_at)
+            else
+                failed_count = failed_count + 1
+                log.error("❌ " .. (result.error or "Unknown deployment failure"))
+            end
+        end
+        
+        log.info("═══════════════════════════════════════")
+        log.info("📈 Summary: " .. success_count .. " successful, " .. failed_count .. " failed")
+        
+        if failed_count > 0 then
+            return false, "Some deployments failed", {
+                total = #servers,
+                success = success_count,
+                failed = failed_count
+            }
+        end
+        
+        return true, "All deployments completed successfully!", {
+            total = #servers,
+            success = success_count,
+            duration = "~30 seconds (parallel)"
+        }
+    end)
+    :timeout("2m")
+    :build()
+
+-- Create workflow
+workflow.define("parallel_deployment", {
+    description = "Deploy to multiple servers in parallel using goroutines",
+    version = "1.0.0",
+    tasks = { deploy_to_servers },
+    
+    config = {
+        timeout = "5m"
+    }
+})
+```
+
+**Run the example:**
+```bash
+sloth-runner run -f parallel_deployment.sloth
+```
+
+**Expected Output:**
+```
+🚀 Starting parallel deployment to 6 servers...
+📦 Deploying to web-01 (192.168.1.10)
+📦 Deploying to web-02 (192.168.1.11)
+📦 Deploying to web-03 (192.168.1.12)
+📦 Deploying to api-01 (192.168.1.20)
+📦 Deploying to api-02 (192.168.1.21)
+📦 Deploying to db-01 (192.168.1.30)
+⏳ Waiting for all deployments to complete...
+
+📊 Deployment Results:
+═══════════════════════════════════════
+✅ web-01 → Deployed successfully at 2025-01-10 15:30:45
+✅ web-02 → Deployed successfully at 2025-01-10 15:30:45
+✅ web-03 → Deployed successfully at 2025-01-10 15:30:45
+✅ api-01 → Deployed successfully at 2025-01-10 15:30:45
+✅ api-02 → Deployed successfully at 2025-01-10 15:30:45
+✅ db-01 → Deployed successfully at 2025-01-10 15:30:45
+═══════════════════════════════════════
+📈 Summary: 6 successful, 0 failed
+```
+
+### 🎯 **More Goroutine Examples**
+
+#### **Parallel Health Checks**
+```lua
+-- Check health of multiple services simultaneously
+local health_check = task("parallel_health_check")
+    :command(function(this, params)
+        local go = require("goroutine")
+        local net = require("net")
+        
+        local endpoints = {
+            {name = "API", url = "https://api.example.com/health"},
+            {name = "Database", url = "https://db.example.com/health"},
+            {name = "Cache", url = "https://cache.example.com/health"},
+            {name = "Queue", url = "https://queue.example.com/health"}
+        }
+        
+        local goroutines = {}
+        for _, endpoint in ipairs(endpoints) do
+            local g = go.create(function()
+                local response = net.get(endpoint.url, {timeout = 5})
+                return {
+                    name = endpoint.name,
+                    status = response.status_code == 200 and "healthy" or "unhealthy",
+                    response_time = response.time_ms
+                }
+            end)
+            table.insert(goroutines, g)
+        end
+        
+        local results = go.wait_all(goroutines, 10)
+        
+        -- All checks completed in parallel!
+        for _, result in ipairs(results) do
+            if result.success then
+                log.info("🏥 " .. result.value.name .. ": " .. result.value.status .. 
+                        " (" .. result.value.response_time .. "ms)")
+            end
+        end
+        
+        return true, "Health check completed"
+    end)
+    :build()
+```
+
+#### **Parallel Data Processing**
+```lua
+-- Process large datasets in parallel chunks
+local process_data = task("parallel_data_processing")
+    :command(function(this, params)
+        local go = require("goroutine")
+        
+        -- Split data into chunks for parallel processing
+        local data_chunks = split_into_chunks(large_dataset, 10)
+        
+        local goroutines = {}
+        for i, chunk in ipairs(data_chunks) do
+            local g = go.create(function()
+                log.info("Processing chunk " .. i)
+                return process_chunk(chunk)
+            end)
+            table.insert(goroutines, g)
+        end
+        
+        -- Wait for all chunks to be processed
+        local results = go.wait_all(goroutines, 120)
+        
+        -- Merge results
+        local merged_result = merge_results(results)
+        
+        return true, "Data processed in parallel", merged_result
+    end)
+    :build()
+```
+
+### 📚 **Goroutine API Reference**
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `go.create(fn)` | Create a new goroutine | `local g = go.create(function() return "done" end)` |
+| `go.wait_all(goroutines, timeout)` | Wait for all goroutines with timeout | `local results = go.wait_all({g1, g2}, 30)` |
+| `go.wait_any(goroutines, timeout)` | Wait for first to complete | `local result = go.wait_any({g1, g2}, 30)` |
+
+**Result Structure:**
+```lua
+{
+    success = true,      -- boolean: did the goroutine succeed?
+    value = {...},       -- any: the returned value
+    error = "msg",       -- string: error message (if failed)
+    duration = 1.5       -- number: execution time in seconds
+}
+```
+
+### 🎓 **Best Practices**
+
+✅ **DO:**
+- Use goroutines for I/O-bound operations (network, file operations)
+- Always set reasonable timeouts
+- Handle errors from each goroutine
+- Use for parallel deployment, health checks, data processing
+
+❌ **DON'T:**
+- Use for CPU-intensive operations (Go runtime handles that)
+- Create thousands of goroutines (start with 10-50)
+- Forget timeout handling
+- Ignore error results
+
+### 🔗 **Learn More**
+
+- 📖 [Complete Goroutine Documentation](./docs/modules/goroutine.md)
+- 🧪 [More Goroutine Examples](./examples/goroutines/)
+- 🎯 [Performance Benchmarks](./docs/performance.md)
+
+---
+
 ### Hello World Example
 
 Create your first workflow with the Modern DSL:
@@ -530,58 +801,200 @@ workflow.define("ci_cd_pipeline", {
 
 ### Distributed Task Execution
 
+#### Quick Start: Setting Up Master and Agents
+
+**1. Start the Master Server:**
+```bash
+# On your master machine (e.g., 192.168.1.29)
+./sloth-runner master start --port 50053 --bind-address 192.168.1.29 --daemon
+
+# Or use the helper script
+./start_master.sh
+```
+
+**2. Start an Agent on a Remote Machine:**
+```bash
+# SSH to the remote machine
+ssh user@192.168.1.16
+
+# Start the agent
+./sloth-runner agent start \
+  --name "agent1" \
+  --port 50051 \
+  --master "192.168.1.29:50053" \
+  --bind-address "192.168.1.16" \
+  --daemon
+
+# Or use the helper script
+./manage_remote_agent.sh start user@192.168.1.16 agent1 192.168.1.16
+```
+
+**3. Verify Agents are Connected:**
+```bash
+./sloth-runner agent list --master 192.168.1.29:50053
+```
+
+**4. Execute Tasks on Specific Agents:**
+```lua
+-- Use :delegate_to() to run tasks on specific agents
+local deploy_task = task("deploy_app")
+    :description("Deploy application on remote server")
+    :delegate_to("agent1")  -- Executes on agent named 'agent1'
+    :command(function(this, params)
+        local exec = require("exec")
+        log.info("🚀 Deploying on " .. this.agent.get())
+        
+        local result = exec.run("systemctl restart myapp")
+        return result.exit_code == 0, result.stdout
+    end)
+    :timeout("2m")
+    :build()
+
+deploy_task:run()
+```
+
+📖 **[Complete Agent Setup Guide](./docs/agent-setup.md)** - Detailed instructions for distributed setup
+
+#### Advanced Distributed Workflows
+
 ```lua
 -- distributed-workflow.sloth
-local web_deploy = task("deploy_web_servers")
-    :description("Deploy to web servers")
-    :agent_selector("web-server-*")  -- Select agents matching pattern
-    :command(function(params, deps)
-        log.info("🌐 Deploying to web server: " .. params.agent_name)
-        return exec.run("docker pull myapp:latest && docker-compose up -d")
+-- Deploy to multiple agents in parallel
+local check_nginx = task("check_nginx_all")
+    :description("Check nginx status on all agents")
+    :command(function(this, params)
+        local agents = {"agent1", "agent2", "agent3"}
+        local results = {}
+        
+        for _, agent_name in ipairs(agents) do
+            log.info("🔍 Checking " .. agent_name)
+            
+            -- Create subtask for each agent
+            local check = task("check_" .. agent_name)
+                :delegate_to(agent_name)
+                :command(function(t, p)
+                    local systemd = require("systemd")
+                    local status = systemd.status("nginx")
+                    return status.is_active, status
+                end)
+                :timeout("10s")
+                :build()
+            
+            local success, output = check:run()
+            results[agent_name] = {success = success, status = output}
+        end
+        
+        -- Report summary
+        for agent, result in pairs(results) do
+            if result.success then
+                log.info("✅ " .. agent .. ": nginx is active")
+            else
+                log.warn("⚠️ " .. agent .. ": nginx is inactive")
+            end
+        end
+        
+        return true, "Health check completed"
     end)
-    :parallel(true)  -- Run on all matching agents in parallel
+    :timeout("1m")
     :build()
 
+-- Deploy web application to multiple servers
+local deploy_web = task("deploy_web_app")
+    :description("Deploy web application to all web servers")
+    :command(function(this, params)
+        local web_servers = {"web-server-1", "web-server-2"}
+        
+        for _, server in ipairs(web_servers) do
+            log.info("🌐 Deploying to " .. server)
+            
+            local deploy = task("deploy_" .. server)
+                :delegate_to(server)
+                :command(function(t, p)
+                    local exec = require("exec")
+                    local pkg = require("pkg")
+                    
+                    -- Update application
+                    pkg.install({"nginx", "nodejs"})
+                    
+                    -- Restart services
+                    exec.run("systemctl restart nginx")
+                    exec.run("pm2 restart app")
+                    
+                    return true, "Deployed successfully"
+                end)
+                :timeout("5m")
+                :retries(2, "linear")
+                :build()
+            
+            deploy:run()
+        end
+        
+        return true, "Deployment completed on all servers"
+    end)
+    :build()
+
+-- Run database migration on specific server
 local db_migrate = task("run_db_migrations")
     :description("Run database migrations")
-    :agent_selector("db-server-1")  -- Run only on specific agent
-    :command(function(params, deps)
+    :delegate_to("db-server-1")  -- Run only on specific agent
+    :command(function(this, params)
+        local exec = require("exec")
         log.info("🗄️ Running database migrations...")
-        return exec.run("./migrate.sh --env=production")
-    end)
-    :build()
-
-local health_check = task("verify_deployment")
-    :description("Verify deployment health")
-    :depends_on({"deploy_web_servers", "run_db_migrations"})
-    :command(function(params, deps)
-        log.info("🏥 Checking application health...")
         
-        local health_url = "http://loadbalancer:8080/health"
-        local response = net.get(health_url, {timeout = 30})
+        local result = exec.run("cd /opt/app && ./migrate.sh --env=production")
         
-        if response.status_code == 200 then
-            log.info("✅ Health check passed!")
-            return true, "Health check successful"
+        if result.exit_code == 0 then
+            log.info("✅ Migrations completed successfully")
+            return true, result.stdout
         else
-            log.error("❌ Health check failed!")
-            return false, "Health check failed: " .. response.status_code
+            log.error("❌ Migrations failed: " .. result.stderr)
+            return false, result.stderr
         end
     end)
-    :retries(3, "exponential")
+    :timeout("10m")
     :build()
 
+-- Complete distributed deployment workflow
 workflow.define("distributed_deployment", {
     description = "Distributed Application Deployment",
     version = "1.0.0",
-    tasks = { web_deploy, db_migrate, health_check },
+    tasks = { check_nginx, deploy_web, db_migrate },
     
     config = {
         timeout = "30m",
-        require_all_agents = false  -- Continue even if some agents are offline
-    }
+        max_parallel_tasks = 3,
+        environment = "production"
+    },
+    
+    on_complete = function(success, results)
+        if success then
+            log.info("🎉 Distributed deployment completed successfully!")
+        else
+            log.error("❌ Deployment failed on one or more agents")
+        end
+    end
 })
 ```
+
+**Helper Scripts for Agent Management:**
+
+```bash
+# Start master server
+./start_master.sh
+
+# Start local agent for testing
+./start_local_agent.sh my-agent 192.168.1.29 50051
+
+# Manage remote agents via SSH
+./manage_remote_agent.sh start user@192.168.1.16 agent1 192.168.1.16
+./manage_remote_agent.sh status user@192.168.1.16 agent1
+./manage_remote_agent.sh stop user@192.168.1.16 agent1
+
+# Install sloth-runner on remote machine
+./manage_remote_agent.sh install user@192.168.1.16
+```
+
+**Complete example:** See [`examples/distributed_execution.sloth`](./examples/distributed_execution.sloth)
 
 ## 📚 **Documentation**
 
