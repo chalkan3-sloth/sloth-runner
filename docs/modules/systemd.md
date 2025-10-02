@@ -1,74 +1,71 @@
-# Systemd Module Documentation
+# ⚙️ Systemd Module
 
-The Systemd module provides comprehensive systemd service management functionality, allowing you to create, manage, and monitor systemd services directly from your Sloth Runner workflows.
+The `systemd` module provides comprehensive systemd service management functionality for Linux systems. It allows you to create, manage, and monitor systemd services programmatically.
 
-## 📋 **Overview**
+## 🎯 Overview
 
-The Systemd module enables you to:
-- Create systemd service files with full configuration
-- Start, stop, restart, reload services
-- Enable and disable services for boot
-- Check service status and health
-- List and monitor services
-- Clean up and remove services
+The systemd module enables you to:
+- Create and configure systemd service files
+- Start, stop, restart, and reload services
+- Enable and disable services
+- Check service status and activity
+- List all services
+- Manage systemd daemon configuration
 
-## 🚀 **Quick Start**
+## 📚 Functions Overview
 
-### Basic Service Creation and Management
+| Function | Description |
+|----------|-------------|
+| `systemd.create_service(name, config)` | Create a new systemd service |
+| `systemd.start(service)` | Start a service |
+| `systemd.stop(service)` | Stop a service |
+| `systemd.restart(service)` | Restart a service |
+| `systemd.reload(service)` | Reload a service |
+| `systemd.enable(service)` | Enable service at boot |
+| `systemd.disable(service)` | Disable service at boot |
+| `systemd.status(service)` | Get service status |
+| `systemd.is_active(service)` | Check if service is active |
+| `systemd.is_enabled(service)` | Check if service is enabled |
+| `systemd.daemon_reload()` | Reload systemd daemon |
+| `systemd.remove_service(service)` | Remove a service |
+| `systemd.list_services(opts)` | List all services |
+| `systemd.show(service)` | Show detailed service info |
 
-```lua
-local systemd = require("systemd")
+## 📖 Detailed Documentation
 
--- Create a service
-local service_config = {
-    description = "My Application",
-    exec_start = "/usr/bin/myapp",
-    user = "myuser",
-    restart = "always"
-}
+### Service Creation
 
-local success, msg = systemd.create_service("myapp", service_config)
-if success then
-    systemd.daemon_reload()
-    systemd.enable("myapp")
-    systemd.start("myapp")
-end
-```
+#### `systemd.create_service(name, config)`
 
-## 🔧 **API Reference**
-
-### `systemd.create_service(name, config)`
-
-Creates a systemd service file with the specified configuration.
+Creates a new systemd service file at `/etc/systemd/system/{name}.service`.
 
 **Parameters:**
 - `name` (string): Service name (without .service extension)
-- `config` (table): Service configuration options
+- `config` (table): Service configuration
 
 **Configuration Options:**
+
 ```lua
 {
     -- [Unit] section
     description = "Service description",
     after = "network.target",
-    wants = "network-online.target",
-    requires = "postgresql.service",
+    wants = "other.service",
+    requires = "required.service",
     
-    -- [Service] section
-    exec_start = "/path/to/executable",      -- Required
-    exec_stop = "/path/to/stop/command",
-    exec_reload = "/bin/kill -USR1 $MAINPID",
-    type = "simple",                         -- simple, forking, oneshot, notify, etc.
+    -- [Service] section (required)
+    exec_start = "/path/to/executable",
+    exec_stop = "/path/to/stop/script",
+    exec_reload = "/path/to/reload/script",
+    type = "simple",  -- simple, forking, oneshot, dbus, notify, idle
     user = "username",
-    group = "groupname", 
+    group = "groupname",
     working_directory = "/path/to/workdir",
-    restart = "always",                      -- always, on-failure, no, etc.
-    restart_sec = "10",
-    
-    -- Environment variables
+    restart = "always",  -- no, on-success, on-failure, on-abnormal, on-abort, always
+    restart_sec = "5s",
     environment = {
-        NODE_ENV = "production",
-        PORT = "3000"
+        VAR1 = "value1",
+        VAR2 = "value2"
     },
     
     -- [Install] section
@@ -77,427 +74,595 @@ Creates a systemd service file with the specified configuration.
 ```
 
 **Returns:**
-- `success` (boolean): True if service file was created
-- `message` (string): Success message or error details
+- `success` (boolean): `true` if service was created
+- `message` (string): Result message
+
+**Examples:**
+
+=== "Modern DSL"
+    ```lua
+    local systemd = require("systemd")
+    
+    local create_web_service = task("create_web_service")
+        :description("Create web application service")
+        :command(function(this, params)
+            log.info("Creating web service...")
+            
+            local config = {
+                description = "Web Application Server",
+                after = "network.target",
+                exec_start = "/usr/bin/node /app/server.js",
+                type = "simple",
+                user = "webapp",
+                working_directory = "/app",
+                restart = "always",
+                restart_sec = "10s",
+                environment = {
+                    NODE_ENV = "production",
+                    PORT = "3000"
+                }
+            }
+            
+            local success, msg = systemd.create_service("webapp", config)
+            
+            if success then
+                log.info("✅ Service created!")
+                -- Reload daemon and enable
+                systemd.daemon_reload()
+                systemd.enable("webapp")
+                systemd.start("webapp")
+                return true, "Service deployed"
+            else
+                log.error("❌ Failed: " .. msg)
+                return false, msg
+            end
+        end)
+        :timeout("60s")
+        :build()
+    
+    workflow.define("deploy_service")
+        :tasks({ create_web_service })
+    ```
+
+=== "With delegate_to"
+    ```lua
+    local systemd = require("systemd")
+    
+    local deploy_remote_service = task("deploy_remote_service")
+        :description("Deploy service on remote agent")
+        :command(function(this, params)
+            local config = {
+                description = "Remote Monitoring Agent",
+                after = "network.target",
+                exec_start = "/opt/monitor/agent",
+                type = "simple",
+                user = "monitor",
+                restart = "always"
+            }
+            
+            local success, msg = systemd.create_service("monitor-agent", config)
+            
+            if success then
+                systemd.daemon_reload()
+                systemd.enable("monitor-agent")
+                systemd.start("monitor-agent")
+                log.info("✅ Deployed on " .. (this.agent or "local"))
+                return true, "OK"
+            end
+            
+            return false, "Failed"
+        end)
+        :delegate_to("production-server")
+        :timeout("60s")
+        :build()
+    
+    workflow.define("remote_deploy")
+        :tasks({ deploy_remote_service })
+    ```
+
+### Service Control
+
+#### `systemd.start(service)`
+
+Starts a systemd service.
+
+**Parameters:**
+- `service` (string): Service name
+
+**Returns:**
+- `success` (boolean), `output` (string)
 
 **Example:**
 ```lua
-local config = {
-    description = "Node.js Web Application",
-    after = "network.target",
-    exec_start = "/usr/bin/node /opt/webapp/server.js",
-    type = "simple",
-    user = "nodejs",
-    working_directory = "/opt/webapp",
-    restart = "always",
-    restart_sec = "5",
-    environment = {
-        NODE_ENV = "production",
-        PORT = "8080"
-    }
-}
-
-local success, msg = systemd.create_service("webapp", config)
+local success, output = systemd.start("nginx")
+if success then
+    log.info("✅ Nginx started")
+end
 ```
 
-### Service Control Functions
+#### `systemd.stop(service)`
 
-#### `systemd.start(service_name)`
-Starts a systemd service.
-
-#### `systemd.stop(service_name)`
 Stops a systemd service.
 
-#### `systemd.restart(service_name)`
+**Example:**
+```lua
+local success, output = systemd.stop("nginx")
+```
+
+#### `systemd.restart(service)`
+
 Restarts a systemd service.
 
-#### `systemd.reload(service_name)`
-Reloads a systemd service (if supported by the service).
+**Example:**
+```lua
+local success, output = systemd.restart("nginx")
+```
 
-#### `systemd.enable(service_name)`
-Enables a service to start at boot.
+#### `systemd.reload(service)`
 
-#### `systemd.disable(service_name)`
+Reloads a systemd service configuration without restarting.
+
+**Example:**
+```lua
+local success, output = systemd.reload("nginx")
+```
+
+### Service Status
+
+#### `systemd.status(service)`
+
+Gets detailed status of a service.
+
+**Returns:**
+- `status` (string): Status output
+- `error` (string): Error message if any
+
+**Example:**
+```lua
+local status, err = systemd.status("nginx")
+log.info("Status:\n" .. status)
+```
+
+#### `systemd.is_active(service)`
+
+Checks if a service is currently active/running.
+
+**Returns:**
+- `active` (boolean): `true` if active
+- `state` (string): Service state
+
+**Example:**
+```lua
+local active, state = systemd.is_active("nginx")
+if active then
+    log.info("✅ Service is running")
+else
+    log.warn("❌ Service is " .. state)
+end
+```
+
+#### `systemd.is_enabled(service)`
+
+Checks if a service is enabled to start at boot.
+
+**Returns:**
+- `enabled` (boolean): `true` if enabled
+- `state` (string): Enable state
+
+**Example:**
+```lua
+local enabled, state = systemd.is_enabled("nginx")
+```
+
+### Service Management
+
+#### `systemd.enable(service)`
+
+Enables a service to start automatically at boot.
+
+**Example:**
+```lua
+local success, output = systemd.enable("nginx")
+```
+
+#### `systemd.disable(service)`
+
 Disables a service from starting at boot.
 
-**All control functions return:**
-- `success` (boolean): True if operation succeeded
-- `output` (string): Command output or error message
-
-### Service Status Functions
-
-#### `systemd.status(service_name)`
-Gets detailed status information for a service.
-
-**Returns:**
-- `output` (string): Full status output
-- `error` (string or nil): Error message if any
-
-#### `systemd.is_active(service_name)`
-Checks if a service is currently active.
-
-**Returns:**
-- `active` (boolean): True if service is active
-- `status` (string): Status string ("active", "inactive", etc.)
-
-#### `systemd.is_enabled(service_name)`
-Checks if a service is enabled for boot.
-
-**Returns:**
-- `enabled` (boolean): True if service is enabled
-- `status` (string): Status string ("enabled", "disabled", etc.)
-
-### System Management Functions
+**Example:**
+```lua
+local success, output = systemd.disable("nginx")
+```
 
 #### `systemd.daemon_reload()`
-Reloads systemd daemon configuration.
 
-**Returns:**
-- `success` (boolean): True if reload succeeded
-- `output` (string): Command output
+Reloads systemd daemon configuration. Required after creating or modifying service files.
 
-#### `systemd.remove_service(service_name)`
-Stops, disables, and removes a service file.
+**Example:**
+```lua
+local success, output = systemd.daemon_reload()
+```
 
-**Returns:**
-- `success` (boolean): True if removal succeeded
-- `message` (string): Success or error message
+#### `systemd.remove_service(service)`
+
+Removes a systemd service completely (stops, disables, and deletes the service file).
+
+**Example:**
+```lua
+local success, msg = systemd.remove_service("old-service")
+```
+
+### Service Information
 
 #### `systemd.list_services(options)`
-Lists systemd services with optional filtering.
+
+Lists systemd services with optional filters.
 
 **Parameters:**
-- `options` (table, optional): Filtering options
-  - `state` (string): Filter by state ("active", "failed", etc.)
-  - `no_header` (boolean): Omit header from output
+- `options` (table, optional): Filter options
+  - `state`: Filter by state (e.g., "active", "failed", "inactive")
+  - `no_header`: Boolean, exclude header in output
 
 **Returns:**
-- `output` (string): Service listing output
-- `error` (string or nil): Error message if any
+- `list` (string): Service list
+- `error` (string): Error if any
 
-#### `systemd.show(service_name)`
-Shows detailed service properties.
+**Example:**
+```lua
+-- List all services
+local list, err = systemd.list_services()
+log.info(list)
+
+-- List only active services
+local active, err = systemd.list_services({ state = "active" })
+
+-- List failed services without header
+local failed, err = systemd.list_services({ 
+    state = "failed", 
+    no_header = true 
+})
+```
+
+#### `systemd.show(service)`
+
+Shows detailed properties of a service.
 
 **Returns:**
-- `output` (string): Detailed service information
-- `error` (string or nil): Error message if any
+- `info` (string): Detailed service information
+- `error` (string): Error if any
 
-## 💡 **Complete Examples**
+**Example:**
+```lua
+local info, err = systemd.show("nginx")
+log.info("Service details:\n" .. info)
+```
 
-### Example 1: Deploy Web Application
+## 🎯 Complete Examples
+
+### Web Application Deployment
 
 ```lua
+local systemd = require("systemd")
+
 local deploy_webapp = task("deploy_webapp")
-    :description("Deploy web application as systemd service")
-    :command(function()
-        local systemd = require("systemd")
+    :description("Deploy and configure web application")
+    :command(function(this, params)
+        log.info("🚀 Deploying web application...")
         
-        -- Service configuration
+        -- Create service
         local config = {
-            description = "Production Web Application",
+            description = "Node.js Web Application",
             after = "network.target postgresql.service",
-            exec_start = "/opt/webapp/bin/server",
-            exec_reload = "/bin/kill -USR1 $MAINPID",
+            requires = "postgresql.service",
+            exec_start = "/usr/bin/node /var/www/app/server.js",
+            exec_reload = "/bin/kill -HUP $MAINPID",
             type = "simple",
             user = "webapp",
             group = "webapp",
-            working_directory = "/opt/webapp",
+            working_directory = "/var/www/app",
             restart = "always",
-            restart_sec = "10",
+            restart_sec = "10s",
             environment = {
                 NODE_ENV = "production",
-                DATABASE_URL = "postgresql://localhost/webapp",
-                PORT = "8080"
-            }
+                PORT = "3000",
+                DB_HOST = "localhost"
+            },
+            wanted_by = "multi-user.target"
         }
         
-        -- Create and start service
         local success, msg = systemd.create_service("webapp", config)
         if not success then
             return false, "Failed to create service: " .. msg
         end
         
+        log.info("✅ Service file created")
+        
+        -- Reload daemon
         systemd.daemon_reload()
-        systemd.enable("webapp")
-        systemd.start("webapp")
-        
-        -- Verify service is running
-        local is_active = systemd.is_active("webapp")
-        if not is_active then
-            return false, "Service failed to start"
-        end
-        
-        return true, "Web application deployed successfully"
-    end)
-    :build()
-```
-
-### Example 2: Database Service Management
-
-```lua
-local manage_database = task("manage_database")
-    :description("Manage database service")
-    :command(function()
-        local systemd = require("systemd")
-        
-        local db_config = {
-            description = "PostgreSQL Database Server",
-            after = "network.target",
-            exec_start = "/usr/bin/postgres -D /var/lib/postgresql/data",
-            exec_reload = "/bin/kill -HUP $MAINPID",
-            type = "forking",
-            user = "postgres",
-            group = "postgres",
-            working_directory = "/var/lib/postgresql",
-            restart = "always",
-            restart_sec = "5"
-        }
-        
-        -- Create database service
-        systemd.create_service("custom-postgres", db_config)
-        systemd.daemon_reload()
+        log.info("✅ Daemon reloaded")
         
         -- Enable and start
-        systemd.enable("custom-postgres")
-        systemd.start("custom-postgres")
+        systemd.enable("webapp")
+        log.info("✅ Service enabled")
         
-        -- Wait for startup
-        for i = 1, 10 do
-            local is_active = systemd.is_active("custom-postgres")
-            if is_active then
-                log.info("✅ Database service is active")
-                break
+        systemd.start("webapp")
+        log.info("✅ Service started")
+        
+        -- Verify it's running
+        local active, state = systemd.is_active("webapp")
+        if active then
+            log.info("✅ Service is running!")
+            return true, "Deployment successful"
+        else
+            log.error("❌ Service failed to start: " .. state)
+            return false, "Service not running"
+        end
+    end)
+    :timeout("120s")
+    :build()
+
+workflow.define("deploy")
+    :tasks({ deploy_webapp })
+```
+
+### Service Health Check
+
+```lua
+local systemd = require("systemd")
+
+local health_check = task("health_check")
+    :description("Check critical services health")
+    :command(function(this, params)
+        log.info("🔍 Health Check Starting...")
+        log.info(string.rep("=", 60))
+        
+        local services = {
+            "nginx",
+            "postgresql",
+            "redis",
+            "webapp"
+        }
+        
+        local all_healthy = true
+        
+        for _, service in ipairs(services) do
+            local active, state = systemd.is_active(service)
+            local enabled, enable_state = systemd.is_enabled(service)
+            
+            log.info("\n📦 " .. service .. ":")
+            log.info("  Active: " .. (active and "✅ YES" or "❌ NO (" .. state .. ")"))
+            log.info("  Enabled: " .. (enabled and "✅ YES" or "⚠️  NO"))
+            
+            if not active then
+                all_healthy = false
+                log.warn("  ⚠️  Service is not running!")
             end
-            log.info("⏳ Waiting for database startup...")
+        end
+        
+        log.info("\n" .. string.rep("=", 60))
+        
+        if all_healthy then
+            log.info("✅ All services healthy")
+            return true, "All OK"
+        else
+            log.error("❌ Some services are down")
+            return false, "Services down"
+        end
+    end)
+    :timeout("60s")
+    :build()
+
+workflow.define("health_check")
+    :tasks({ health_check })
+```
+
+### Distributed Service Management
+
+```lua
+local systemd = require("systemd")
+
+local restart_all_servers = task("restart_nginx")
+    :description("Restart nginx on all servers")
+    :command(function(this, params)
+        log.info("🔄 Restarting nginx...")
+        
+        local success, output = systemd.restart("nginx")
+        
+        if success then
+            -- Wait a bit for restart
             os.execute("sleep 2")
-        end
-        
-        return true, "Database service configured"
-    end)
-    :build()
-```
-
-### Example 3: Service Monitoring and Health Checks
-
-```lua
-local monitor_services = task("monitor_services")
-    :description("Monitor critical services")
-    :command(function()
-        local systemd = require("systemd")
-        
-        local critical_services = {"webapp", "database", "nginx", "redis"}
-        local failed_services = {}
-        
-        for _, service in ipairs(critical_services) do
-            local is_active, status = systemd.is_active(service)
-            local is_enabled = systemd.is_enabled(service)
             
-            log.info("Service: " .. service)
-            log.info("  Active: " .. tostring(is_active) .. " (" .. status .. ")")
-            log.info("  Enabled: " .. tostring(is_enabled))
-            
-            if not is_active then
-                table.insert(failed_services, service)
-                
-                -- Try to restart failed services
-                log.warn("🔄 Attempting to restart " .. service)
-                local restart_ok = systemd.restart(service)
-                
-                if restart_ok then
-                    log.info("✅ Successfully restarted " .. service)
-                else
-                    log.error("❌ Failed to restart " .. service)
-                end
+            -- Verify it's running
+            local active, state = systemd.is_active("nginx")
+            if active then
+                log.info("✅ Nginx restarted on " .. (this.agent or "local"))
+                return true, "OK"
+            else
+                log.error("❌ Nginx failed to start: " .. state)
+                return false, "Failed"
             end
         end
         
-        -- Check for any failed services system-wide
-        local failed_list, error = systemd.list_services({state = "failed"})
-        if not error and failed_list and failed_list ~= "" then
-            log.warn("⚠️ System has failed services:")
-            log.warn(failed_list)
-        end
-        
-        return #failed_services == 0, 
-               #failed_services == 0 and "All services healthy" or "Some services failed",
-               { failed_services = failed_services }
+        return false, "Restart failed"
     end)
+    :delegate_to("web-server-1")
+    :timeout("60s")
     :build()
+
+workflow.define("rolling_restart")
+    :tasks({ restart_all_servers })
 ```
 
-### Example 4: Blue-Green Deployment
+### Service Monitoring
 
 ```lua
-local blue_green_deploy = task("blue_green_deploy")
-    :description("Blue-green deployment using systemd")
-    :command(function()
-        local systemd = require("systemd")
-        local state = require("state")
+local systemd = require("systemd")
+
+local monitor_services = task("monitor_services")
+    :description("Monitor and report service status")
+    :command(function(this, params)
+        log.info("📊 Service Monitoring Report")
+        log.info(string.rep("=", 60))
         
-        -- Determine current and new colors
-        local current_color = state.get("active_color") or "blue"
-        local new_color = current_color == "blue" and "green" or "blue"
+        -- List all failed services
+        local failed, _ = systemd.list_services({ 
+            state = "failed",
+            no_header = true 
+        })
         
-        log.info("Current active: " .. current_color)
-        log.info("Deploying to: " .. new_color)
+        if failed and failed ~= "" then
+            log.warn("\n⚠️  Failed Services:")
+            log.warn(failed)
+        else
+            log.info("\n✅ No failed services")
+        end
         
-        -- Configure new service
+        -- List active services count
+        local active, _ = systemd.list_services({ 
+            state = "active",
+            no_header = true 
+        })
+        
+        if active then
+            local count = 0
+            for _ in active:gmatch("[^\r\n]+") do
+                count = count + 1
+            end
+            log.info("\n📊 Active services: " .. count)
+        end
+        
+        log.info("\n" .. string.rep("=", 60))
+        return true, "Report complete"
+    end)
+    :timeout("60s")
+    :build()
+
+workflow.define("monitor")
+    :tasks({ monitor_services })
+```
+
+### Service Update Workflow
+
+```lua
+local systemd = require("systemd")
+
+local update_service = task("update_service")
+    :description("Update service configuration")
+    :command(function(this, params)
+        local service_name = "webapp"
+        
+        log.info("🔄 Updating " .. service_name .. "...")
+        
+        -- Check if running
+        local was_active, _ = systemd.is_active(service_name)
+        
+        -- Stop if running
+        if was_active then
+            log.info("Stopping service...")
+            systemd.stop(service_name)
+        end
+        
+        -- Update service configuration
         local new_config = {
-            description = "Web App " .. string.upper(new_color),
-            exec_start = "/opt/webapp-" .. new_color .. "/bin/server",
+            description = "Updated Web Application",
+            after = "network.target",
+            exec_start = "/usr/bin/node /app/server.js",
+            type = "simple",
             user = "webapp",
-            working_directory = "/opt/webapp-" .. new_color,
+            working_directory = "/app",
             restart = "always",
             environment = {
                 NODE_ENV = "production",
-                PORT = new_color == "blue" and "8080" or "8081"
+                PORT = "3000",
+                VERSION = "2.0"  -- New version
             }
         }
         
-        -- Deploy new version
-        systemd.create_service("webapp-" .. new_color, new_config)
+        systemd.create_service(service_name, new_config)
         systemd.daemon_reload()
-        systemd.enable("webapp-" .. new_color)
-        systemd.start("webapp-" .. new_color)
         
-        -- Verify new service is healthy
-        local is_active = systemd.is_active("webapp-" .. new_color)
-        if not is_active then
-            return false, "New service failed to start"
+        -- Start if it was running before
+        if was_active then
+            log.info("Starting service...")
+            systemd.start(service_name)
+            
+            -- Verify
+            local active, _ = systemd.is_active(service_name)
+            if active then
+                log.info("✅ Service updated and running")
+                return true, "Updated"
+            end
         end
         
-        -- Switch traffic (update load balancer config here)
-        log.info("🔄 Switching traffic to " .. new_color)
-        
-        -- Stop old service
-        systemd.stop("webapp-" .. current_color)
-        systemd.disable("webapp-" .. current_color)
-        
-        -- Update state
-        state.set("active_color", new_color)
-        
-        return true, "Blue-green deployment completed", {
-            previous_color = current_color,
-            active_color = new_color
-        }
+        return true, "Configuration updated"
     end)
+    :timeout("120s")
     :build()
+
+workflow.define("update")
+    :tasks({ update_service })
 ```
 
-## 🛡️ **Best Practices**
+## 🚀 Best Practices
 
-### 1. Always Use daemon-reload After Creating Services
+1. **Always reload daemon after creating/modifying services:**
+   ```lua
+   systemd.create_service("myservice", config)
+   systemd.daemon_reload()
+   ```
 
-```lua
-systemd.create_service("myapp", config)
-systemd.daemon_reload()  -- Required!
-systemd.enable("myapp")
-```
+2. **Verify service started successfully:**
+   ```lua
+   systemd.start("myservice")
+   local active, state = systemd.is_active("myservice")
+   if not active then
+       log.error("Service failed: " .. state)
+   end
+   ```
 
-### 2. Check Service Status Before Operations
+3. **Enable services for persistence:**
+   ```lua
+   systemd.enable("myservice")  -- Start at boot
+   ```
 
-```lua
-local is_active = systemd.is_active("myapp")
-if is_active then
-    log.info("Service is already running")
-else
-    systemd.start("myapp")
-end
-```
+4. **Use proper service types:**
+   - `simple`: Default, process doesn't fork
+   - `forking`: Process forks and parent exits
+   - `oneshot`: Process exits before systemd continues
+   - `notify`: Process sends notification when ready
 
-### 3. Handle Errors Gracefully
+5. **Set restart policies:**
+   ```lua
+   restart = "always"  -- Always restart
+   restart_sec = "10s"  -- Wait 10s between restarts
+   ```
 
-```lua
-local success, msg = systemd.start("myapp")
-if not success then
-    log.error("Failed to start service: " .. msg)
-    
-    -- Check what went wrong
-    local status, error = systemd.status("myapp")
-    if error then
-        log.error("Status check failed: " .. error)
-    else
-        log.info("Service status: " .. status)
-    end
-    
-    return false, "Service startup failed"
-end
-```
+6. **Use delegate_to for distributed management:**
+   ```lua
+   :delegate_to("server-name")
+   ```
 
-### 4. Use Proper Service Types
+## ⚠️ Security Considerations
 
-```lua
--- For simple long-running processes
-type = "simple"
+- Service files are created in `/etc/systemd/system/` (requires root/sudo)
+- Always specify `user` and `group` to avoid running as root
+- Use `WorkingDirectory` to isolate service environment
+- Validate environment variables before setting them
+- Use proper file permissions (0644 for service files)
 
--- For services that fork
-type = "forking"
+## 🐧 Platform Support
 
--- For one-time execution
-type = "oneshot"
+- **Linux**: Full support (systemd-based distributions)
+- **Ubuntu/Debian**: ✅ Supported
+- **CentOS/RHEL**: ✅ Supported
+- **Fedora**: ✅ Supported
+- **Arch Linux**: ✅ Supported
+- **macOS**: ❌ Not supported (use launchd instead)
+- **Windows**: ❌ Not supported (use sc.exe or nssm)
 
--- For services that notify systemd when ready
-type = "notify"
-```
+## 🔗 See Also
 
-### 5. Set Appropriate Restart Policies
-
-```lua
--- Always restart on exit
-restart = "always"
-
--- Only restart on failure
-restart = "on-failure"
-
--- Never restart
-restart = "no"
-
--- Restart delay
-restart_sec = "10"
-```
-
-## 🔗 **Integration with Other Modules**
-
-### With State Module (Service Coordination)
-
-```lua
-local state = require("state")
-local systemd = require("systemd")
-
--- Wait for dependency service
-while not systemd.is_active("database") do
-    log.info("Waiting for database...")
-    os.execute("sleep 2")
-end
-
--- Record deployment
-state.set("last_webapp_deploy", os.time())
-systemd.start("webapp")
-```
-
-### With Git Module (GitOps Deployment)
-
-```lua
-local git = require("git")
-local systemd = require("systemd")
-
--- Clone latest code
-git.clone("https://github.com/company/webapp", "/opt/webapp")
-
--- Update service and restart
-systemd.restart("webapp")
-```
-
-## 🚨 **Security Considerations**
-
-1. **Run services as non-root users**
-2. **Use specific working directories**
-3. **Limit service capabilities**
-4. **Set proper file permissions**
-5. **Use environment variables for secrets**
-
-## 📚 **Related Documentation**
-
-- [State Module](state.md) - For service coordination
-- [Git Module](git.md) - For GitOps deployments
-- [Modern DSL](../modern-dsl/syntax.md) - Task definition syntax
+- [exec Module](exec.md) - For running custom systemctl commands
+- [Modern DSL Guide](../modern-dsl/overview.md) - DSL syntax reference
+- [Distributed Agents](../distributed.md) - Remote execution with delegate_to
+- [Official systemd documentation](https://www.freedesktop.org/wiki/Software/systemd/)

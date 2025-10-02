@@ -12,6 +12,19 @@ O `infra_test` é inspirado em ferramentas como Testinfra e InSpec, mas é nativ
 - ✅ **Asserções Nativas**: Interrompe a execução da task em caso de falha
 - ✅ **Zero Dependências**: Não requer instalação de ferramentas externas
 - ✅ **Integração Total**: Funciona perfeitamente com o sistema de agents do Sloth Runner
+- ✅ **Detecção Automática de Pacotes**: Suporta apt, yum, pacman, apk e brew automaticamente
+- ✅ **Validação de Versões**: Verifica versões específicas de pacotes instalados
+
+## Módulos de Teste Disponíveis
+
+O `infra_test` oferece 6 categorias de testes:
+
+1. **🗂️ Testes de Arquivo** - Verifica existência, permissões, conteúdo e proprietários
+2. **🌐 Testes de Rede** - Valida portas, conectividade TCP/UDP e ping
+3. **⚙️ Testes de Serviço** - Verifica status de serviços systemd/init
+4. **🔄 Testes de Processo** - Valida processos em execução
+5. **💻 Testes de Comando** - Executa comandos e valida saídas
+6. **📦 Testes de Pacote** - Verifica instalação e versões de pacotes (NOVO!)
 
 ## Parâmetro Target
 
@@ -22,6 +35,44 @@ Todas as funções de teste aceitam um parâmetro opcional `target` para especif
 | Omitido ou `"local"` | Executa no agente local (onde a task está rodando) |
 | String (nome do agente) | O teste é delegado ao agente remoto especificado |
 | `"localhost"` | Força o teste no agente onde a task foi agendada |
+
+## Referência Rápida de Funções
+
+### 🗂️ Testes de Arquivo
+- `file_exists(path, [target])` - Verifica existência
+- `is_directory(path, [target])` - Verifica se é diretório
+- `is_file(path, [target])` - Verifica se é arquivo
+- `file_contains(path, pattern, [target])` - Verifica conteúdo
+- `file_mode(path, mode, [target])` - Verifica permissões
+- `file_owner(path, user, [target])` - Verifica proprietário
+- `file_group(path, group, [target])` - Verifica grupo
+- `file_size(path, bytes, [target])` - Verifica tamanho
+
+### 🌐 Testes de Rede
+- `port_is_listening(port, [target])` - Verifica porta aberta
+- `port_is_tcp(port, [target])` - Verifica porta TCP
+- `port_is_udp(port, [target])` - Verifica porta UDP
+- `can_connect(host, port, [timeout])` - Testa conectividade TCP
+- `ping(host, [count], [target])` - Testa conectividade ICMP
+
+### ⚙️ Testes de Serviço
+- `service_is_running(name, [target])` - Verifica se serviço está ativo
+- `service_is_enabled(name, [target])` - Verifica se está habilitado
+
+### 🔄 Testes de Processo
+- `process_is_running(pattern, [target])` - Verifica processo
+- `process_count(pattern, count, [target])` - Conta processos
+
+### 💻 Testes de Comando
+- `command_succeeds(cmd, [target])` - Verifica exit code 0
+- `command_fails(cmd, [target])` - Verifica exit code != 0
+- `command_stdout_contains(cmd, pattern, [target])` - Verifica saída
+- `command_stderr_is_empty(cmd, [target])` - Verifica stderr vazio
+- `command_output_equals(cmd, expected, [target])` - Verifica saída exata
+
+### 📦 Testes de Pacote
+- `package_is_installed(name, [target])` - Verifica instalação
+- `package_version(name, version, [target])` - Verifica versão
 
 ## Modelo de Retorno
 
@@ -319,6 +370,62 @@ infra_test.command_output_equals("cat /etc/hostname", "web-01", "web-server")
 
 ---
 
+## Testes de Pacote (Package Tests)
+
+### package_is_installed(package_name, [target])
+
+Verifica se um pacote está instalado no sistema. O módulo detecta automaticamente o gerenciador de pacotes disponível (apt/dpkg, yum/rpm, pacman, apk, brew).
+
+**Parâmetros:**
+- `package_name` (string): Nome do pacote
+- `target` (string, opcional): Agente onde executar o teste
+
+**Gerenciadores Suportados:**
+- **Debian/Ubuntu**: dpkg
+- **RedHat/CentOS/Fedora**: rpm
+- **Arch Linux**: pacman
+- **Alpine Linux**: apk
+- **macOS**: brew
+
+**Exemplo:**
+```lua
+local infra_test = require("infra_test")
+
+-- Verifica se nginx está instalado localmente
+infra_test.package_is_installed("nginx")
+
+-- Verifica em agente remoto
+infra_test.package_is_installed("postgresql", "db-server")
+
+-- Verifica múltiplos pacotes
+infra_test.package_is_installed("docker-ce")
+infra_test.package_is_installed("docker-compose")
+infra_test.package_is_installed("git")
+```
+
+### package_version(package_name, expected_version, [target])
+
+Verifica a versão de um pacote instalado. Aceita versão exata ou prefixo.
+
+**Parâmetros:**
+- `package_name` (string): Nome do pacote
+- `expected_version` (string): Versão esperada (ou prefixo da versão)
+- `target` (string, opcional): Agente onde executar o teste
+
+**Exemplo:**
+```lua
+-- Verifica versão exata
+infra_test.package_version("nginx", "1.18.0")
+
+-- Verifica prefixo de versão (ex: 1.18.x)
+infra_test.package_version("nginx", "1.18", "web-server")
+
+-- Verifica versão major
+infra_test.package_version("postgresql", "14", "db-server")
+```
+
+---
+
 ## Exemplos Completos
 
 ### Exemplo 1: Teste de Deploy de Aplicação
@@ -333,7 +440,10 @@ workflow("deploy-and-test-app")
   end)
   
   :task("verify-installation", function()
-    -- Verifica se o nginx foi instalado
+    -- Verifica se o pacote foi instalado
+    infra_test.package_is_installed("nginx")
+    
+    -- Verifica se os arquivos existem
     infra_test.file_exists("/usr/sbin/nginx")
     infra_test.file_exists("/etc/nginx/nginx.conf")
     
@@ -478,6 +588,106 @@ workflow("security-audit")
   :delegate_to("prod-server")
 ```
 
+### Exemplo 5: Teste de Pacotes e Dependências
+
+```lua
+local infra_test = require("infra_test")
+local pkg = require("pkg")
+
+workflow("setup-development-environment")
+  :task("install-packages", function()
+    pkg.install("git")
+    pkg.install("docker-ce")
+    pkg.install("nodejs")
+    pkg.install("python3")
+  end)
+  
+  :task("verify-packages", function()
+    -- Verifica se todos os pacotes foram instalados
+    infra_test.package_is_installed("git")
+    infra_test.package_is_installed("docker-ce")
+    infra_test.package_is_installed("nodejs")
+    infra_test.package_is_installed("python3")
+    
+    -- Verifica versões específicas
+    infra_test.package_version("nodejs", "18")
+    infra_test.package_version("python3", "3.10")
+    
+    -- Verifica binários disponíveis
+    infra_test.command_succeeds("which git")
+    infra_test.command_succeeds("which docker")
+    infra_test.command_succeeds("which node")
+    infra_test.command_succeeds("which python3")
+    
+    -- Verifica versões via comando
+    infra_test.command_stdout_contains("node --version", "v18")
+    infra_test.command_stdout_contains("python3 --version", "Python 3.10")
+  end)
+  
+  :task("verify-docker-service", function()
+    infra_test.service_is_running("docker")
+    infra_test.service_is_enabled("docker")
+    infra_test.port_is_listening(2375)
+  end)
+  
+  :delegate_to("dev-machine")
+```
+
+### Exemplo 6: Auditoria de Pacotes Multi-Agent
+
+```lua
+local infra_test = require("infra_test")
+
+workflow("audit-packages")
+  :task("audit-web-servers", function()
+    local servers = {"web-01", "web-02", "web-03"}
+    local required_packages = {
+      "nginx",
+      "certbot",
+      "ufw",
+      "fail2ban"
+    }
+    
+    for _, server in ipairs(servers) do
+      print("Auditing " .. server)
+      
+      for _, pkg_name in ipairs(required_packages) do
+        infra_test.package_is_installed(pkg_name, server)
+      end
+      
+      -- Verifica versão do nginx
+      infra_test.package_version("nginx", "1.18", server)
+      
+      -- Verifica que pacotes inseguros não estão instalados
+      infra_test.command_fails("dpkg -l telnetd", server)
+      infra_test.command_fails("dpkg -l rsh-server", server)
+    end
+  end)
+  
+  :task("audit-database-servers", function()
+    local db_servers = {"db-01", "db-02"}
+    
+    for _, server in ipairs(db_servers) do
+      print("Auditing database: " .. server)
+      
+      -- Verifica pacotes do PostgreSQL
+      infra_test.package_is_installed("postgresql-14", server)
+      infra_test.package_is_installed("postgresql-contrib", server)
+      
+      -- Verifica serviço
+      infra_test.service_is_running("postgresql", server)
+      infra_test.port_is_listening(5432, server)
+      
+      -- Verifica versão
+      infra_test.command_stdout_contains(
+        "psql --version",
+        "14.",
+        server
+      )
+    end
+  end)
+```
+
 ---
 
 ## Melhores Práticas
@@ -487,6 +697,47 @@ workflow("security-audit")
 3. **Teste Progressivamente**: Comece com testes básicos (existência) e avance para testes complexos (conteúdo, permissões)
 4. **Teste em Múltiplos Agentes**: Use o parâmetro `target` para validar configurações em vários servidores
 5. **Combine com Módulos**: Integre `infra_test` com `pkg`, `systemd`, e outros módulos para ciclos completos de deploy+teste
+6. **Valide Pacotes**: Sempre verifique se pacotes foram instalados corretamente após operações de instalação
+7. **Use Versões Específicas**: Para ambientes de produção, valide versões específicas de pacotes críticos
+
+## Casos de Uso Recomendados
+
+### 1. Deploy com Validação
+Combine instalação de pacotes com validação imediata:
+```lua
+workflow("deploy-with-validation")
+  :task("install", function()
+    pkg.install("nginx")
+  end)
+  :task("validate", function()
+    infra_test.package_is_installed("nginx")
+    infra_test.service_is_running("nginx")
+    infra_test.port_is_listening(80)
+  end)
+```
+
+### 2. Auditoria de Conformidade
+Valide que todos os servidores estão em conformidade:
+```lua
+workflow("compliance-check")
+  :task("check-security-packages", function()
+    infra_test.package_is_installed("fail2ban")
+    infra_test.package_is_installed("ufw")
+    infra_test.service_is_running("fail2ban")
+  end)
+```
+
+### 3. Validação de Dependências
+Verifique que todas as dependências necessárias estão presentes:
+```lua
+workflow("check-dependencies")
+  :task("verify", function()
+    local deps = {"python3", "python3-pip", "python3-venv"}
+    for _, dep in ipairs(deps) do
+      infra_test.package_is_installed(dep)
+    end
+  end)
+```
 
 ## Notas Importantes
 
