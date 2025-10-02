@@ -867,6 +867,7 @@ workflow.define("gitops_pipeline", {
       <li>🔄 GitOps workflow integration</li>
     </ul>
   </div>
+</div>
 
 ---
 
