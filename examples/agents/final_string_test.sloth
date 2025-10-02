@@ -1,0 +1,21 @@
+-- Exemplo final usando apenas string commands para máxima compatibilidade
+
+local string_command_test = task("string_command_test")
+    :description("Teste com comando de string simples")
+    :command("echo 'Executando no agent remoto:' && hostname && whoami && ls -la $HOME | head -5")
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+-- Workflow
+workflow.define("final_string_test")
+    :description("Teste final com string command")
+    :version("1.0.0")  
+    :tasks({ string_command_test })
+    :config({
+        timeout = "1m"
+    })
+    :on_complete(function(success, results)
+        log.info("📋 Teste final concluído: " .. tostring(success))
+        return true
+    end)

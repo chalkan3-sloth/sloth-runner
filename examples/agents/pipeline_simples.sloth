@@ -1,0 +1,55 @@
+-- 🎯 PIPELINE SIMPLES PARA TESTE
+-- Comandos básicos que funcionam 100%
+
+-- Task no ladyguica
+local task_ladyguica = task("hostname_ladyguica")
+    :description("🏠 Get hostname from ladyguica")
+    :command(function(this, params)
+        log.info("🔍 Executando no ladyguica...")
+        
+        local out, _, failed = exec.run("hostname && date")
+        if not failed then
+            log.info("✅ Resultado:")
+            log.info(out)
+            return true, "Sucesso no ladyguica"
+        else
+            return false, "Falha no ladyguica"
+        end
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+-- Task no keiteguica  
+local task_keiteguica = task("hostname_keiteguica")
+    :description("🏠 Get hostname from keiteguica")
+    :command(function(this, params)
+        log.info("🔍 Executando no keiteguica...")
+        
+        local out, _, failed = exec.run("hostname && date")
+        if not failed then
+            log.info("✅ Resultado:")
+            log.info(out)
+            return true, "Sucesso no keiteguica"
+        else
+            return false, "Falha no keiteguica"
+        end
+    end)
+    :delegate_to("keiteguica")
+    :timeout("30s")
+    :build()
+
+-- Workflow
+workflow.define("pipeline_simples")
+    :description("🚀 Pipeline simples nos dois agents")
+    :version("1.0.0")
+    :tasks({ task_ladyguica, task_keiteguica })
+    :config({ timeout = "2m" })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 PIPELINE SIMPLES: SUCESSO!")
+        else
+            log.error("❌ Pipeline simples falhou")
+        end
+        return true
+    end)

@@ -1,0 +1,52 @@
+-- EXEMPLO SIMPLES: Execução remota usando exec.run nativo
+-- Este formato funciona bem para execução remota
+-- Usa os módulos nativos do sistema
+
+TaskDefinitions = {
+    execucao_remota_simples = {
+        description = "Teste simples de execução remota com exec.run",
+        tasks = {
+            {
+                name = "teste_hostname_ladyguica",
+                description = "Executa hostname no agente ladyguica usando exec.run",
+                command = function()
+                    log.info("🚀 Executando comando remoto no ladyguica usando exec.run...")
+                    
+                    -- Usa exec.run do sistema nativo
+                    local output, error, failed = exec.run("hostname && echo 'Data:' && date")
+                    
+                    if not failed then
+                        log.info("✅ Sucesso! Saída: " .. output)
+                        return true, "Comando executado com sucesso no agente"
+                    else
+                        log.error("❌ Falha: " .. (error or "erro desconhecido"))
+                        return false, "Comando falhou no agente"
+                    end
+                end,
+                delegate_to = "ladyguica",
+                timeout = "30s"
+            },
+            {
+                name = "teste_ls_keiteguica",
+                description = "Lista arquivos no agente keiteguica usando exec.run",
+                command = function()
+                    log.info("🔍 Listando arquivos no keiteguica usando exec.run...")
+                    
+                    -- Usa exec.run do sistema nativo
+                    local output, error, failed = exec.run("ls -la $HOME | head -10")
+                    
+                    if not failed then
+                        log.info("✅ Listagem realizada com sucesso!")
+                        log.info("📂 Arquivos:\n" .. output)
+                        return true, "Listagem concluída no agente"
+                    else
+                        log.error("❌ Falha na listagem: " .. (error or "erro desconhecido"))
+                        return false, "Listagem falhou no agente"
+                    end
+                end,
+                delegate_to = "keiteguica",
+                timeout = "30s"
+            }
+        }
+    }
+}

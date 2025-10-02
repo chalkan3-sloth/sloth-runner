@@ -1,0 +1,61 @@
+-- Exemplo simples para executar ls nos dois agents usando delegate_to
+
+-- Task para executar ls no ladyguica
+local ls_ladyguica = task("ls_ladyguica")
+    :description("Listar arquivos no agent ladyguica")
+    :command(function(this, params)
+        log.info("🔍 Executando ls no ladyguica...")
+        
+        -- Usar exec.run para executar comando no agent
+        local output, err, failed = exec.run("ls -la $HOME")
+        
+        if not failed then
+            log.info("✅ Sucesso no ladyguica")
+            log.info("📂 Listagem de arquivos:\n" .. output)
+            return true, "Concluído no ladyguica"
+        else
+            log.error("❌ Falha: " .. (err or "erro desconhecido"))
+            return false, "Falha no ladyguica"
+        end
+    end)
+    :delegate_to("ladyguica")  -- Nome do agent
+    :timeout("30s")
+    :build()
+
+-- Task para executar ls no keiteguica
+local ls_keiteguica = task("ls_keiteguica")
+    :description("Listar arquivos no agent keiteguica")
+    :command(function(this, params)
+        log.info("🔍 Executando ls no keiteguica...")
+        
+        -- Usar exec.run para executar comando no agent
+        local output, err, failed = exec.run("ls -la $HOME")
+        
+        if not failed then
+            log.info("✅ Sucesso no keiteguica")
+            log.info("📂 Listagem de arquivos:\n" .. output)
+            return true, "Concluído no keiteguica"
+        else
+            log.error("❌ Falha: " .. (err or "erro desconhecido"))
+            return false, "Falha no keiteguica"
+        end
+    end)
+    :delegate_to("keiteguica")  -- Nome do agent
+    :timeout("30s")
+    :build()
+
+-- Workflow para executar ambas as tasks
+workflow.define("ls_multi_agents")
+    :description("Executar ls em múltiplos agents")
+    :version("1.0.0")
+    :tasks({ ls_ladyguica, ls_keiteguica })
+    :config({
+        timeout = "2m"
+    })
+    :on_complete(function(success, results)
+        log.info("📊 Execução em múltiplos agents concluída: " .. tostring(success))
+        for _, result in ipairs(results) do
+            log.info("Task: " .. result.name .. " - Status: " .. result.status)
+        end
+        return true
+    end)

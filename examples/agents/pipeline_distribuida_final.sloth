@@ -1,0 +1,70 @@
+-- Exemplo final de pipeline distribuída funcionando
+-- Execute com: sloth-runner run -f examples/agents/pipeline_distribuida_final.sloth verificacao_distribuida
+
+local check_ladyguica = task("check_ladyguica_status")
+    :description("Verificar status do ladyguica")
+    :command(function(this, params)
+        local hostname_out, _, hostname_failed = exec.run("hostname")
+        local uptime_out, _, uptime_failed = exec.run("uptime")
+        
+        if not hostname_failed and not uptime_failed then
+            local hostname = hostname_out:gsub("\n", "")
+            log.info("🟢 Agente " .. hostname .. " operacional")
+            log.info("📊 Uptime: " .. uptime_out:gsub("\n", ""))
+            return true, "Agente " .. hostname .. " OK"
+        else
+            log.error("❌ Falha na verificação do agente")
+            return false, "Falha na verificação"
+        end
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+local check_keiteguica = task("check_keiteguica_status")
+    :description("Verificar status do keiteguica")
+    :command(function(this, params)
+        local hostname_out, _, hostname_failed = exec.run("hostname")
+        local uptime_out, _, uptime_failed = exec.run("uptime")
+        
+        if not hostname_failed and not uptime_failed then
+            local hostname = hostname_out:gsub("\n", "")
+            log.info("🟢 Agente " .. hostname .. " operacional")
+            log.info("📊 Uptime: " .. uptime_out:gsub("\n", ""))
+            return true, "Agente " .. hostname .. " OK"
+        else
+            log.error("❌ Falha na verificação do agente")
+            return false, "Falha na verificação"
+        end
+    end)
+    :delegate_to("keiteguica")
+    :timeout("30s")
+    :build()
+
+local consolidate = task("consolidate_results")
+    :description("Consolidar resultados da verificação")
+    :command(function(this, params)
+        log.info("📋 Consolidando resultados da verificação distribuída")
+        log.info("✅ Verificação de infraestrutura distribuída completa")
+        return true, "Consolidação concluída"
+    end)
+    :timeout("15s")
+    :build()
+
+workflow.define("verificacao_distribuida")
+    :description("Verificação distribuída de infraestrutura")
+    :version("1.0.0")
+    :tasks({ check_ladyguica, check_keiteguica, consolidate })
+    :config({
+        timeout = "2m",
+        parallel = false
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 VERIFICAÇÃO DISTRIBUÍDA: SUCESSO!")
+            log.info("✅ Todos os agentes estão operacionais")
+        else
+            log.error("❌ FALHA na verificação distribuída")
+        end
+        return true
+    end)

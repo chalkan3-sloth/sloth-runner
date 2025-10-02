@@ -1,0 +1,356 @@
+-- Exemplo completo de uso do Sloth Runner com agents distribuídos
+-- Este script demonstra como executar tarefas em agents remotos usando :delegate_to()
+
+log.info("🚀 Iniciando exemplo de execução distribuída")
+
+-- ============================================================================
+-- EXEMPLO 1: Tarefa simples em um agent específico
+-- ============================================================================
+
+local check_hostname = task("check_hostname_ladyguica")
+    :description("Verificar hostname do agent ladyguica")
+    :delegate_to("ladyguica")  -- Executa no agent 'ladyguica'
+    :command(function(this, params)
+        local exec = require("exec")
+        
+        log.info("🔍 Verificando hostname em " .. this.agent.get())
+        
+        local result = exec.run("hostname")
+        
+        if result.exit_code == 0 then
+            log.info("✅ Hostname: " .. result.stdout)
+            return true, result.stdout
+        else
+            return false, "Erro: " .. result.stderr
+        end
+    end)
+    :timeout("10s")
+    :build()
+
+-- ============================================================================
+-- EXEMPLO 2: Tarefa com verificação de sistema operacional
+-- ============================================================================
+
+local check_os = task("check_os_keiteguica")
+    :description("Verificar informações do sistema no agent keiteguica")
+    :delegate_to("keiteguica")  -- Executa no agent 'keiteguica'
+    :command(function(this, params)
+        local exec = require("exec")
+        
+        log.info("🖥️  Verificando sistema operacional em " .. this.agent.get())
+        
+        -- Verificar distribuição Linux
+        local os_result = exec.run("cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2 | tr -d '\"'")
+        
+        if os_result.exit_code == 0 then
+            log.info("Sistema: " .. os_result.stdout)
+        end
+        
+        -- Verificar uptime
+        local uptime_result = exec.run("uptime -p")
+        if uptime_result.exit_code == 0 then
+            log.info("Uptime: " .. uptime_result.stdout)
+        end
+        
+        -- Verificar memória
+        local mem_result = exec.run("free -h | grep Mem | awk '{print $2}'")
+        if mem_result.exit_code == 0 then
+            log.info("Memória Total: " .. mem_result.stdout)
+        end
+        
+        return true, "Verificação concluída"
+    end)
+    :timeout("15s")
+    :build()
+
+-- ============================================================================
+-- EXEMPLO 3: Deploy de aplicação em múltiplos agents
+-- ============================================================================
+
+local deploy_nginx = task("deploy_nginx")
+    :description("Instalar/atualizar nginx em agent remoto")
+    :delegate_to("ladyguica")
+    :command(function(this, params)
+        local systemd = require("systemd")
+        local pkg = require("pkg")
+        
+        log.info("📦 Instalando nginx em " .. this.agent.get())
+        
+        -- Instalar nginx
+        local install_result = pkg.install({"nginx"})
+        
+        if not install_result.success then
+            return false, "Falha ao instalar nginx: " .. (install_result.error or "unknown")
+        end
+        
+        log.info("✅ Nginx instalado com sucesso")
+        
+        -- Iniciar e habilitar serviço
+        log.info("🔧 Configurando serviço nginx...")
+        
+        systemd.enable("nginx")
+        local start_result = systemd.start("nginx")
+        
+        if start_result.success then
+            log.info("✅ Nginx iniciado e habilitado")
+            return true, "Deploy concluído com sucesso"
+        else
+            return false, "Falha ao iniciar nginx"
+        end
+    end)
+    :timeout("2m")
+    :retries(2, "linear")
+    :build()
+
+-- ============================================================================
+-- EXEMPLO 4: Verificar status de serviço em múltiplos agents
+-- ============================================================================
+
+local check_nginx_status = task("check_nginx_status_all")
+    :description("Verificar status do nginx em todos os agents")
+    :command(function(this, params)
+        local agents = {"ladyguica", "keiteguica"}
+        local results = {}
+        
+        for _, agent_name in ipairs(agents) do
+            log.info("🔍 Verificando nginx em " .. agent_name)
+            
+            -- Criar subtarefa para verificar cada agent
+            local check = task("check_nginx_" .. agent_name)
+                :delegate_to(agent_name)
+                :command(function(t, p)
+                    local systemd = require("systemd")
+                    
+                    local status = systemd.status("nginx")
+                    
+                    if status.is_active then
+                        log.info("✅ Nginx ativo em " .. agent_name)
+                        return true, "active"
+                    else
+                        log.warn("⚠️  Nginx inativo em " .. agent_name)
+                        return false, "inactive"
+                    end
+                end)
+                :timeout("10s")
+                :build()
+            
+            local success, output = check:run()
+            results[agent_name] = {success = success, status = output}
+        end
+        
+        -- Resumo
+        log.info("")
+        log.info("📊 Resumo:")
+        for agent, result in pairs(results) do
+            if result.success then
+                log.info("  ✅ " .. agent .. ": " .. result.status)
+            else
+                log.warn("  ❌ " .. agent .. ": " .. result.status)
+            end
+        end
+        
+        return true, "Verificação concluída"
+    end)
+    :timeout("1m")
+    :build()
+
+-- ============================================================================
+-- EXEMPLO 5: Backup de configurações
+-- ============================================================================
+
+local backup_configs = task("backup_configs")
+    :description("Fazer backup de configurações em agent remoto")
+    :delegate_to("ladyguica")
+    :command(function(this, params)
+        local exec = require("exec")
+        local fs = require("fs")
+        
+        log.info("💾 Iniciando backup de configurações...")
+        
+        -- Criar diretório de backup
+        local backup_dir = "/tmp/backup_" .. os.date("%Y%m%d_%H%M%S")
+        fs.mkdir(backup_dir)
+        
+        -- Arquivos para backup
+        local files_to_backup = {
+            "/etc/nginx/nginx.conf",
+            "/etc/hosts",
+            "/etc/hostname"
+        }
+        
+        local backed_up = {}
+        
+        for _, file in ipairs(files_to_backup) do
+            if fs.exists(file) then
+                local filename = file:match("([^/]+)$")
+                local dest = backup_dir .. "/" .. filename
+                
+                local result = exec.run("cp " .. file .. " " .. dest)
+                
+                if result.exit_code == 0 then
+                    log.info("✅ Backup: " .. file)
+                    table.insert(backed_up, file)
+                else
+                    log.warn("⚠️  Falha no backup de: " .. file)
+                end
+            end
+        end
+        
+        -- Criar arquivo tar.gz
+        local tar_file = backup_dir .. ".tar.gz"
+        local tar_result = exec.run("tar -czf " .. tar_file .. " -C " .. backup_dir .. " .")
+        
+        if tar_result.exit_code == 0 then
+            log.info("✅ Backup compactado: " .. tar_file)
+            
+            -- Limpar diretório temporário
+            exec.run("rm -rf " .. backup_dir)
+            
+            return true, "Backup criado: " .. tar_file
+        else
+            return false, "Falha ao compactar backup"
+        end
+    end)
+    :timeout("30s")
+    :build()
+
+-- ============================================================================
+-- EXEMPLO 6: Workflow completo de deploy
+-- ============================================================================
+
+local deploy_workflow = workflow.define("complete_deploy")
+    :description("Deploy completo em ambiente distribuído")
+    :tasks({
+        -- 1. Verificar conectividade
+        task("verify_connectivity")
+            :description("Verificar conectividade com agents")
+            :command(function(this, params)
+                local agents = {"ladyguica", "keiteguica"}
+                
+                for _, agent_name in ipairs(agents) do
+                    log.info("🔌 Verificando " .. agent_name .. "...")
+                    
+                    local ping = task("ping_" .. agent_name)
+                        :delegate_to(agent_name)
+                        :command(function(t, p)
+                            return true, "connected"
+                        end)
+                        :timeout("5s")
+                        :build()
+                    
+                    local success = ping:run()
+                    
+                    if not success then
+                        return false, "Agent " .. agent_name .. " não está acessível"
+                    end
+                    
+                    log.info("  ✅ " .. agent_name .. " conectado")
+                end
+                
+                return true, "Todos os agents conectados"
+            end)
+            :build(),
+        
+        -- 2. Fazer backup antes do deploy
+        backup_configs,
+        
+        -- 3. Deploy da aplicação
+        deploy_nginx,
+        
+        -- 4. Verificar status após deploy
+        check_nginx_status
+    })
+    :config({
+        timeout = "10m",
+        max_parallel_tasks = 1,
+        on_task_failure = "stop"
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("")
+            log.info("🎉 Deploy completo realizado com sucesso!")
+        else
+            log.error("❌ Deploy falhou!")
+        end
+    end)
+
+-- ============================================================================
+-- EXECUTAR EXEMPLOS
+-- ============================================================================
+
+log.info("")
+log.info("=" .. string.rep("=", 78))
+log.info("Escolha um exemplo para executar:")
+log.info("=" .. string.rep("=", 78))
+log.info("")
+log.info("1. Verificar hostname do agent ladyguica")
+log.info("2. Verificar informações do sistema no agent keiteguica")
+log.info("3. Deploy do nginx no agent ladyguica")
+log.info("4. Verificar status do nginx em todos os agents")
+log.info("5. Fazer backup de configurações")
+log.info("6. Executar workflow completo de deploy")
+log.info("")
+
+-- Para executar um exemplo específico, descomente a linha correspondente:
+
+-- check_hostname:run()
+-- check_os:run()
+-- deploy_nginx:run()
+-- check_nginx_status:run()
+-- backup_configs:run()
+-- deploy_workflow:run()
+
+-- Por padrão, vamos executar a verificação de conectividade
+log.info("🚀 Executando verificação de conectividade...")
+log.info("")
+
+local connectivity_check = task("connectivity_test")
+    :description("Teste de conectividade com agents")
+    :command(function(this, params)
+        local agents = {"ladyguica", "keiteguica"}
+        local connected = {}
+        local failed = {}
+        
+        for _, agent_name in ipairs(agents) do
+            log.info("🔌 Testando " .. agent_name .. "...")
+            
+            local ping = task("ping_" .. agent_name)
+                :delegate_to(agent_name)
+                :command(function(t, p)
+                    local exec = require("exec")
+                    local hostname_result = exec.run("hostname")
+                    return true, hostname_result.stdout
+                end)
+                :timeout("10s")
+                :build()
+            
+            local success, output = ping:run()
+            
+            if success then
+                table.insert(connected, agent_name)
+                log.info("  ✅ " .. agent_name .. " - Hostname: " .. (output or "N/A"))
+            else
+                table.insert(failed, agent_name)
+                log.error("  ❌ " .. agent_name .. " - Falha na conexão")
+            end
+        end
+        
+        log.info("")
+        log.info("📊 Resultado:")
+        log.info("  Conectados: " .. #connected .. "/" .. #agents)
+        
+        if #failed > 0 then
+            log.warn("  Falhas: " .. table.concat(failed, ", "))
+        end
+        
+        return #failed == 0, "Teste concluído"
+    end)
+    :timeout("1m")
+    :build()
+
+connectivity_check:run()
+
+log.info("")
+log.info("✅ Exemplo concluído!")
+log.info("")
+log.info("Para executar outros exemplos, edite o arquivo e descomente as linhas apropriadas.")

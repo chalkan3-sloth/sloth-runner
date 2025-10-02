@@ -1,0 +1,35 @@
+-- 🧪 Teste Simples do Agente Vagrant
+-- Executa um comando simples no agente mariguica
+
+local test_task = task("simple_test")
+    :description("Teste simples no agente Vagrant")
+    :command(function(this, params)
+        log.info("🧪 Executando no agente mariguica...")
+        
+        local output, err, failed = exec.run("uname -a")
+        
+        if not failed then
+            log.info("✅ Comando executado com sucesso!")
+            log.info("📋 Sistema: " .. output)
+            return true, "Sucesso"
+        else
+            log.error("❌ Erro: " .. (err or "desconhecido"))
+            return false, "Falha"
+        end
+    end)
+    :delegate_to("mariguica")
+    :timeout("30s")
+    :build()
+
+workflow.define("vagrant_test")
+    :description("Teste simples do agente Vagrant")
+    :version("1.0.0")
+    :tasks({ test_task })
+    :on_complete(function(success, results)
+        if success then
+            log.info("✅ Teste concluído com sucesso!")
+        else
+            log.error("❌ Teste falhou!")
+        end
+        return true
+    end)

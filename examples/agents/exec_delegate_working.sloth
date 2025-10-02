@@ -1,0 +1,57 @@
+-- Exemplo funcional usando exec nativo do sloth-runner
+
+local exec_test = task("exec_test")
+    :description("Teste usando exec.run no agent")
+    :command(function(this, params)
+        -- Log de início
+        print("🚀 Iniciando teste no agent remoto...")
+        
+        -- Executar hostname
+        local hostname_out, hostname_err, hostname_failed = exec.run("hostname")
+        if hostname_failed then
+            print("❌ Erro ao executar hostname: " .. (hostname_err or "erro desconhecido"))
+            return false, "Falha no hostname"
+        end
+        
+        -- Executar whoami
+        local whoami_out, whoami_err, whoami_failed = exec.run("whoami")
+        if whoami_failed then
+            print("❌ Erro ao executar whoami: " .. (whoami_err or "erro desconhecido"))
+            return false, "Falha no whoami"
+        end
+        
+        -- Executar ls
+        local ls_out, ls_err, ls_failed = exec.run("ls -la $HOME | head -5")
+        if ls_failed then
+            print("❌ Erro ao executar ls: " .. (ls_err or "erro desconhecido"))
+            return false, "Falha no ls"
+        end
+        
+        -- Log de sucesso
+        print("✅ Teste executado com sucesso!")
+        print("🖥️ Host: " .. (hostname_out and hostname_out:gsub("\n", "") or "unknown"))
+        print("👤 User: " .. (whoami_out and whoami_out:gsub("\n", "") or "unknown"))
+        print("📂 Files:\n" .. (ls_out or "no output"))
+        
+        return true, "Teste concluído com sucesso"
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+-- Workflow usando DSL moderna mas compatível
+workflow.define("exec_delegate_test")
+    :description("Teste de exec com delegate_to")
+    :version("1.0.0")
+    :tasks({ exec_test })
+    :config({
+        timeout = "1m"
+    })
+    :on_complete(function(success, results)
+        if success then
+            print("🎉 Workflow concluído com sucesso!")
+        else
+            print("💥 Workflow falhou!")
+        end
+        return true
+    end)

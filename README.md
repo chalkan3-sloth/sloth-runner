@@ -350,7 +350,7 @@ Server 1, 2, 3, 4... ALL AT ONCE! 🔥
 local deploy_to_servers = task("deploy_multi_server")
     :description("Deploy application to multiple servers in parallel")
     :command(function(this, params)
-        local go = require("goroutine")
+        local goroutine = require("goroutine")
         
         -- List of target servers
         local servers = {
@@ -364,11 +364,11 @@ local deploy_to_servers = task("deploy_multi_server")
         
         log.info("🚀 Starting parallel deployment to " .. #servers .. " servers...")
         
-        -- Create goroutines for parallel deployment
-        local goroutines = {}
+        -- Create async handles for parallel deployment
+        local handles = {}
         for _, server in ipairs(servers) do
-            -- Each server deployment runs in its own goroutine
-            local g = go.create(function()
+            -- Each server deployment runs in its own goroutine via async
+            local handle = goroutine.async(function()
                 log.info("📦 Deploying to " .. server.name .. " (" .. server.host .. ")")
                 
                 -- Simulate deployment steps
@@ -381,25 +381,20 @@ local deploy_to_servers = task("deploy_multi_server")
                 
                 for _, step in ipairs(steps) do
                     log.info("  → " .. server.name .. ": " .. step)
-                    os.execute("sleep 0.5")  -- Simulate work
+                    goroutine.sleep(500)  -- Sleep 500ms
                 end
                 
                 -- Return deployment result
-                return {
-                    server = server.name,
-                    host = server.host,
-                    status = "success",
-                    deployed_at = os.date("%Y-%m-%d %H:%M:%S")
-                }
+                return server.name, server.host, "success", os.date("%Y-%m-%d %H:%M:%S")
             end)
             
-            table.insert(goroutines, g)
+            table.insert(handles, handle)
         end
         
         log.info("⏳ Waiting for all deployments to complete...")
         
-        -- Wait for all goroutines to complete (with 60 second timeout)
-        local results = go.wait_all(goroutines, 60)
+        -- Wait for all async operations to complete
+        local results = goroutine.await_all(handles)
         
         -- Process results
         local success_count = 0
@@ -408,10 +403,13 @@ local deploy_to_servers = task("deploy_multi_server")
         log.info("\n📊 Deployment Results:")
         log.info("═══════════════════════════════════════")
         
-        for _, result in ipairs(results) do
+        for i, result in ipairs(results) do
             if result.success then
                 success_count = success_count + 1
-                log.info("✅ " .. result.value.server .. " → Deployed successfully at " .. result.value.deployed_at)
+                -- results.values contains the return values from the function
+                local server_name = result.values[1]
+                local deployed_at = result.values[4]
+                log.info("✅ " .. server_name .. " → Deployed successfully at " .. deployed_at)
             else
                 failed_count = failed_count + 1
                 log.error("❌ " .. (result.error or "Unknown deployment failure"))
@@ -439,15 +437,13 @@ local deploy_to_servers = task("deploy_multi_server")
     :build()
 
 -- Create workflow
-workflow.define("parallel_deployment", {
-    description = "Deploy to multiple servers in parallel using goroutines",
-    version = "1.0.0",
-    tasks = { deploy_to_servers },
-    
-    config = {
+workflow.define("parallel_deployment")
+    :description("Deploy to multiple servers in parallel using goroutines")
+    :version("1.0.0")
+    :tasks({ deploy_to_servers })
+    :config({
         timeout = "5m"
-    }
-})
+    })
 ```
 
 **Run the example:**
@@ -485,8 +481,8 @@ sloth-runner run -f parallel_deployment.sloth
 -- Check health of multiple services simultaneously
 local health_check = task("parallel_health_check")
     :command(function(this, params)
-        local go = require("goroutine")
-        local net = require("net")
+        local goroutine = require("goroutine")
+        local http = require("http")
         
         local endpoints = {
             {name = "API", url = "https://api.example.com/health"},
@@ -495,26 +491,26 @@ local health_check = task("parallel_health_check")
             {name = "Queue", url = "https://queue.example.com/health"}
         }
         
-        local goroutines = {}
+        local handles = {}
         for _, endpoint in ipairs(endpoints) do
-            local g = go.create(function()
-                local response = net.get(endpoint.url, {timeout = 5})
-                return {
-                    name = endpoint.name,
-                    status = response.status_code == 200 and "healthy" or "unhealthy",
-                    response_time = response.time_ms
-                }
+            local handle = goroutine.async(function()
+                local response = http.get(endpoint.url, {timeout = 5})
+                return endpoint.name, 
+                       response.status_code == 200 and "healthy" or "unhealthy",
+                       response.time_ms or 0
             end)
-            table.insert(goroutines, g)
+            table.insert(handles, handle)
         end
         
-        local results = go.wait_all(goroutines, 10)
+        local results = goroutine.await_all(handles)
         
         -- All checks completed in parallel!
         for _, result in ipairs(results) do
             if result.success then
-                log.info("🏥 " .. result.value.name .. ": " .. result.value.status .. 
-                        " (" .. result.value.response_time .. "ms)")
+                local name = result.values[1]
+                local status = result.values[2]
+                local time_ms = result.values[3]
+                log.info("🏥 " .. name .. ": " .. status .. " (" .. time_ms .. "ms)")
             end
         end
         
@@ -528,22 +524,22 @@ local health_check = task("parallel_health_check")
 -- Process large datasets in parallel chunks
 local process_data = task("parallel_data_processing")
     :command(function(this, params)
-        local go = require("goroutine")
+        local goroutine = require("goroutine")
         
         -- Split data into chunks for parallel processing
         local data_chunks = split_into_chunks(large_dataset, 10)
         
-        local goroutines = {}
+        local handles = {}
         for i, chunk in ipairs(data_chunks) do
-            local g = go.create(function()
+            local handle = goroutine.async(function()
                 log.info("Processing chunk " .. i)
                 return process_chunk(chunk)
             end)
-            table.insert(goroutines, g)
+            table.insert(handles, handle)
         end
         
         -- Wait for all chunks to be processed
-        local results = go.wait_all(goroutines, 120)
+        local results = goroutine.await_all(handles)
         
         -- Merge results
         local merged_result = merge_results(results)
@@ -557,17 +553,20 @@ local process_data = task("parallel_data_processing")
 
 | Function | Description | Example |
 |----------|-------------|---------|
-| `go.create(fn)` | Create a new goroutine | `local g = go.create(function() return "done" end)` |
-| `go.wait_all(goroutines, timeout)` | Wait for all goroutines with timeout | `local results = go.wait_all({g1, g2}, 30)` |
-| `go.wait_any(goroutines, timeout)` | Wait for first to complete | `local result = go.wait_any({g1, g2}, 30)` |
+| `goroutine.async(fn)` | Execute function asynchronously | `local handle = goroutine.async(function() return "done" end)` |
+| `goroutine.await(handle)` | Wait for single async operation | `local success, ... = goroutine.await(handle)` |
+| `goroutine.await_all(handles)` | Wait for all async operations | `local results = goroutine.await_all({h1, h2})` |
+| `goroutine.pool_create(name, opts)` | Create worker pool | `goroutine.pool_create("workers", {workers=10})` |
+| `goroutine.pool_submit(name, fn)` | Submit task to pool | `goroutine.pool_submit("workers", function() ... end)` |
+| `goroutine.spawn(fn)` | Spawn fire-and-forget goroutine | `goroutine.spawn(function() log.info("async") end)` |
+| `goroutine.sleep(ms)` | Sleep milliseconds | `goroutine.sleep(1000)` |
 
-**Result Structure:**
+**Result Structure from `await_all()`:**
 ```lua
 {
-    success = true,      -- boolean: did the goroutine succeed?
-    value = {...},       -- any: the returned value
-    error = "msg",       -- string: error message (if failed)
-    duration = 1.5       -- number: execution time in seconds
+    success = true,      -- boolean: did the operation succeed?
+    values = {...},      -- table: array of return values
+    error = "msg"        -- string: error message (if failed)
 }
 ```
 

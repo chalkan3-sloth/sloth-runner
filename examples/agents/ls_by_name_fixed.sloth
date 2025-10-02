@@ -1,0 +1,58 @@
+-- Teste com nomes de agents (versão corrigida)
+local ls_task = task("ls_remote_by_name")
+    :description("List files using exec.run on remote agent BY NAME")
+    :command(function(this, params)
+        log.info("🔍 Using exec.run on remote agent by NAME...")
+        log.info("Agent name: " .. (params.agent_name or "unknown"))
+        
+        -- Get hostname with exec.run
+        local hostname_out, _, hostname_failed = exec.run("hostname")
+        local hostname = hostname_out and hostname_out:gsub("\n", "") or "unknown"
+        
+        log.info("📍 Executing on host: " .. hostname)
+        
+        -- Execute ls with exec.run
+        local ls_out, ls_err, ls_failed = exec.run("ls -la $HOME | head -10")
+        
+        if not ls_failed then
+            log.info("✅ Success on " .. hostname)
+            log.info("📂 Directory listing:\n" .. ls_out)
+            return true, "Completed on " .. hostname, {
+                hostname = hostname,
+                agent_target = "ladyguica",
+                method = "exec.run",
+                resolution = "by_name"
+            }
+        else
+            log.error("❌ Failed: " .. (ls_err or "unknown"))
+            return false, "Failed on " .. hostname
+        end
+    end)
+    :delegate_to("ladyguica")  -- NOME do agent (não endereço!)
+    :timeout("30s")
+    :build()
+
+-- Workflow com resolução por nome
+workflow.define("ls_by_agent_name")
+    :description("Execute ls on agent using NAME resolution")
+    :version("1.0.0")
+    :tasks({ ls_task })
+    :config({
+        timeout = "1m"
+    })
+    :on_complete(function(success, results)
+        log.info("🎯 Agent name resolution test completed: " .. tostring(success))
+        
+        if success and results and results[1] then
+            local result = results[1]
+            log.info("✅ SUCESSO: Execução por nome do agent!")
+            log.info("  • Host executado: " .. (result.hostname or "unknown"))
+            log.info("  • Agent alvo: " .. (result.agent_target or "unknown"))
+            log.info("  • Método: " .. (result.method or "unknown"))
+            log.info("  • Resolução: " .. (result.resolution or "unknown"))
+        else
+            log.error("❌ FALHA: Não conseguiu executar por nome")
+        end
+        
+        return true
+    end)
