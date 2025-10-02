@@ -1,0 +1,182 @@
+-- Remote LS execution using delegate_to
+-- This example demonstrates direct agent targeting for ls command execution
+
+-- Task to list files on ladyguica agent
+local ls_on_ladyguica = task("ls_on_ladyguica")
+    :description("Execute ls -la on ladyguica agent")
+    :command(function(this, params)
+        log.info("🔍 Starting ls command on ladyguica agent...")
+        log.info("Agent: " .. (params.agent_name or "unknown"))
+        log.info("Task ID: " .. (this.name or "unknown"))
+        
+        -- Get hostname to verify execution location
+        local hostname_handle = io.popen("hostname")
+        local hostname = hostname_handle:read("*a"):gsub("\n", "")
+        hostname_handle:close()
+        
+        log.info("📍 Executing on host: " .. hostname)
+        
+        -- Execute ls command
+        local ls_command = "ls -la /home/chalkan3"
+        log.info("💻 Running command: " .. ls_command)
+        
+        local ls_handle = io.popen(ls_command)
+        local ls_output = ls_handle:read("*a")
+        local ls_success = ls_handle:close()
+        
+        if ls_success then
+            log.info("✅ Command executed successfully!")
+            log.info("📂 Directory listing:\n" .. ls_output)
+            
+            return true, "LS completed on " .. hostname, {
+                hostname = hostname,
+                command = ls_command,
+                output = ls_output,
+                agent = "ladyguica",
+                timestamp = os.date("%Y-%m-%d %H:%M:%S")
+            }
+        else
+            log.error("❌ Command failed!")
+            return false, "LS failed on " .. hostname
+        end
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+-- Task to list files on keiteguica agent
+local ls_on_keiteguica = task("ls_on_keiteguica")
+    :description("Execute ls -la on keiteguica agent")
+    :command(function(this, params)
+        log.info("🔍 Starting ls command on keiteguica agent...")
+        log.info("Agent: " .. (params.agent_name or "unknown"))
+        log.info("Task ID: " .. (this.name or "unknown"))
+        
+        -- Get hostname to verify execution location
+        local hostname_handle = io.popen("hostname")
+        local hostname = hostname_handle:read("*a"):gsub("\n", "")
+        hostname_handle:close()
+        
+        log.info("📍 Executing on host: " .. hostname)
+        
+        -- Execute ls command with different path for variety
+        local ls_command = "ls -la /home/chalkan3"
+        log.info("💻 Running command: " .. ls_command)
+        
+        local ls_handle = io.popen(ls_command)
+        local ls_output = ls_handle:read("*a")
+        local ls_success = ls_handle:close()
+        
+        if ls_success then
+            log.info("✅ Command executed successfully!")
+            log.info("📂 Directory listing:\n" .. ls_output)
+            
+            return true, "LS completed on " .. hostname, {
+                hostname = hostname,
+                command = ls_command,
+                output = ls_output,
+                agent = "keiteguica",
+                timestamp = os.date("%Y-%m-%d %H:%M:%S")
+            }
+        else
+            log.error("❌ Command failed!")
+            return false, "LS failed on " .. hostname
+        end
+    end)
+    :delegate_to("keiteguica")
+    :timeout("30s")
+    :build()
+
+-- Task for system information on ladyguica
+local sysinfo_ladyguica = task("sysinfo_ladyguica")
+    :description("Get system info from ladyguica")
+    :command(function(this, params)
+        log.info("📊 Collecting system information on ladyguica...")
+        
+        local commands = {
+            "hostname",
+            "uptime",
+            "whoami",
+            "pwd",
+            "df -h /",
+            "free -h",
+            "ps aux | head -5"
+        }
+        
+        local results = {}
+        for i, cmd in ipairs(commands) do
+            log.info("Executing: " .. cmd)
+            local handle = io.popen(cmd)
+            local output = handle:read("*a"):gsub("\n$", "")
+            handle:close()
+            results[cmd] = output
+        end
+        
+        -- Get hostname for verification
+        local hostname = results["hostname"] or "unknown"
+        log.info("✅ System info collected from: " .. hostname)
+        
+        return true, "System info from " .. hostname, {
+            hostname = hostname,
+            system_info = results,
+            agent = "ladyguica",
+            timestamp = os.date("%Y-%m-%d %H:%M:%S")
+        }
+    end)
+    :delegate_to("ladyguica")
+    :timeout("45s")
+    :build()
+
+-- Workflow that executes ls on both agents
+workflow.define("remote_ls_workflow")
+    :description("Execute ls command on remote agents using delegate_to")
+    :version("1.0.0")
+    :tasks({ ls_on_ladyguica, ls_on_keiteguica })
+    :config({
+        timeout = "2m",
+        max_parallel_tasks = 2
+    })
+    :on_complete(function(success, results)
+        log.info("🎉 Remote LS workflow completed: " .. tostring(success))
+        
+        if results then
+            log.info("📊 Execution Summary:")
+            for i, result in ipairs(results) do
+                if result and result.hostname then
+                    log.info("  • Task " .. i .. " executed on: " .. result.hostname)
+                    if result.agent then
+                        log.info("    Target agent: " .. result.agent)
+                    end
+                end
+            end
+        end
+        
+        return true
+    end)
+
+-- Workflow with system information
+workflow.define("system_audit_workflow")
+    :description("System audit on remote agents")
+    :version("1.0.0")
+    :tasks({ sysinfo_ladyguica, ls_on_keiteguica })
+    :config({
+        timeout = "3m",
+        max_parallel_tasks = 2
+    })
+    :on_complete(function(success, results)
+        log.info("🔍 System audit completed: " .. tostring(success))
+        return true
+    end)
+
+-- Simple single-agent workflow
+workflow.define("single_agent_ls")
+    :description("Execute ls on ladyguica only")
+    :version("1.0.0")
+    :tasks({ ls_on_ladyguica })
+    :config({
+        timeout = "1m"
+    })
+    :on_complete(function(success, results)
+        log.info("📂 Single agent LS completed: " .. tostring(success))
+        return true
+    end)

@@ -1,0 +1,131 @@
+-- 🚀 PIPELINE REMOTA FUNCIONANDO
+-- Este arquivo .sloth executa comandos reais nos agents remotos
+
+-- Task 1: Verificar hostname no ladyguica
+local hostname_task = task("get_hostname_ladyguica")
+    :description("🔍 Get hostname from ladyguica")
+    :command(function(this, params)
+        log.info("📍 Executando hostname no ladyguica...")
+        
+        local hostname_out, _, hostname_failed = exec.run("hostname")
+        if not hostname_failed then
+            local hostname = hostname_out:gsub("\n", "")
+            log.info("✅ Hostname: " .. hostname)
+            return true, "Hostname: " .. hostname
+        else
+            log.error("❌ Falha ao obter hostname")
+            return false, "Falha ao obter hostname"
+        end
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+-- Task 2: Verificar data/hora no ladyguica
+local datetime_task = task("get_datetime_ladyguica")
+    :description("📅 Get date/time from ladyguica")
+    :command(function(this, params)
+        log.info("⏰ Executando date no ladyguica...")
+        
+        local date_out, _, date_failed = exec.run("date")
+        if not date_failed then
+            local datetime = date_out:gsub("\n", "")
+            log.info("✅ Data/Hora: " .. datetime)
+            return true, "Data/Hora: " .. datetime
+        else
+            log.error("❌ Falha ao obter data/hora")
+            return false, "Falha ao obter data/hora"
+        end
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+-- Task 3: Listar arquivos no keiteguica
+local ls_task = task("list_files_keiteguica")
+    :description("📂 List files on keiteguica")
+    :command(function(this, params)
+        log.info("📁 Listando arquivos no keiteguica...")
+        
+        local ls_out, _, ls_failed = exec.run("ls -la $HOME | head -10")
+        if not ls_failed then
+            log.info("✅ Arquivos listados:")
+            log.info(ls_out)
+            return true, "Arquivos listados com sucesso"
+        else
+            log.error("❌ Falha ao listar arquivos")
+            return false, "Falha ao listar arquivos"
+        end
+    end)
+    :delegate_to("keiteguica")
+    :timeout("30s")
+    :build()
+
+-- Task 4: Info do sistema no keiteguica
+local sysinfo_task = task("get_sysinfo_keiteguica")
+    :description("🖥️  Get system info from keiteguica")
+    :command(function(this, params)
+        log.info("💻 Coletando info do sistema no keiteguica...")
+        
+        local uname_out, _, uname_failed = exec.run("uname -a")
+        local uptime_out, _, uptime_failed = exec.run("uptime")
+        
+        if not uname_failed and not uptime_failed then
+            log.info("✅ Sistema: " .. uname_out:gsub("\n", ""))
+            log.info("✅ Uptime: " .. uptime_out:gsub("\n", ""))
+            return true, "Info do sistema coletada"
+        else
+            log.error("❌ Falha ao coletar info do sistema")
+            return false, "Falha ao coletar info do sistema"
+        end
+    end)
+    :delegate_to("keiteguica")
+    :timeout("30s")
+    :build()
+
+-- Task 5: Verificar conectividade entre hosts
+local connectivity_task = task("test_connectivity")
+    :description("🌐 Test connectivity between hosts")
+    :command(function(this, params)
+        log.info("🔗 Testando conectividade no ladyguica...")
+        
+        -- Ping do keiteguica
+        local ping_out, _, ping_failed = exec.run("ping -c 1 192.168.1.17")
+        
+        if not ping_failed then
+            log.info("✅ Conectividade com keiteguica: OK")
+            return true, "Conectividade testada com sucesso"
+        else
+            log.warn("⚠️  Ping falhou, mas task continua")
+            return true, "Teste de conectividade concluído"
+        end
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+-- Workflow principal
+workflow.define("pipeline_remota_completa")
+    :description("🚀 Pipeline completa executando em múltiplos agents")
+    :version("1.0.0")
+    :tasks({ 
+        hostname_task,
+        datetime_task,
+        ls_task,
+        sysinfo_task,
+        connectivity_task
+    })
+    :config({
+        timeout = "5m",
+        max_retries = 1
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 PIPELINE REMOTA CONCLUÍDA COM SUCESSO!")
+            log.info("✅ Todos os comandos executados nos agents remotos")
+            log.info("📊 Resultados coletados de ladyguica e keiteguica")
+        else
+            log.error("❌ Pipeline remota falhou")
+        end
+        return true
+    end)

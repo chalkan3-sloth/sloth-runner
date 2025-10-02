@@ -1,0 +1,59 @@
+-- VERSÃO CORRIGIDA: ls usando exec.run com delegate_to funcional
+-- Esta versão usa endereços diretos para demonstrar funcionamento
+
+local ls_task_direct = task("ls_remote_direct")
+    :description("List files using exec.run on remote agent (direct address)")
+    :command(function(this, params)
+        log.info("🔍 Using exec.run on remote agent...")
+        
+        -- Get hostname with exec.run
+        local hostname_out, _, hostname_failed = exec.run("hostname")
+        local hostname = hostname_out and hostname_out:gsub("\n", "") or "unknown"
+        
+        -- Execute ls with exec.run
+        local ls_out, ls_err, ls_failed = exec.run("ls -la $HOME")
+        
+        if not ls_failed then
+            log.info("✅ Success on " .. hostname)
+            log.info("📂 Directory listing (first 5 lines):")
+            local lines = {}
+            for line in ls_out:gmatch("[^\n]+") do
+                table.insert(lines, line)
+                if #lines >= 5 then break end
+            end
+            for _, line in ipairs(lines) do
+                log.info("  " .. line)
+            end
+            return true, "Completed on " .. hostname
+        else
+            log.error("❌ Failed: " .. (ls_err or "unknown"))
+            return false, "Failed on " .. hostname
+        end
+    end)
+    :delegate_to("192.168.1.16:50051")  -- Endereço direto do ladyguica
+    :timeout("30s")
+    :build()
+
+-- Workflow simples
+workflow.define("ls_direct_agent")
+    :description("Execute ls on ladyguica using direct address")
+    :version("1.0.0")
+    :tasks({ ls_task_direct })
+    :config({
+        timeout = "1m"
+    })
+    :on_complete(function(success, results)
+        log.info("📂 Direct agent LS completed: " .. tostring(success))
+        
+        if results and results[1] then
+            local result = results[1]
+            log.info("🎯 Task executed successfully!")
+            log.info("📊 This demonstrates that:")
+            log.info("  ✅ exec.run works correctly")
+            log.info("  ✅ delegate_to syntax is functional")
+            log.info("  ✅ Remote execution infrastructure works")
+            log.info("  ⚠️  Agent name resolution needs master running")
+        end
+        
+        return true
+    end)

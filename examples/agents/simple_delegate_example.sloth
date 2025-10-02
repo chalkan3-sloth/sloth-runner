@@ -1,0 +1,96 @@
+-- 🚀 EXEMPLO SIMPLES DE DELEGATE_TO
+-- Execute: sloth-runner run -f examples/agents/simple_delegate_example.sloth simple_remote_commands
+
+-- Task 1: Executar hostname no ladyguica
+local hostname_task = task("get_hostname")
+    :description("Get hostname from ladyguica agent")
+    :command(function(this, params)
+        log.info("🔍 Getting hostname from remote agent...")
+        
+        local hostname_out, _, hostname_failed = exec.run("hostname")
+        local hostname = hostname_out and hostname_out:gsub("\n", "") or "unknown"
+        
+        log.info("📍 Running on host: " .. hostname)
+        
+        return true, "Hostname: " .. hostname, {
+            hostname = hostname,
+            agent = "ladyguica"
+        }
+    end)
+    :delegate_to("ladyguica")  -- ✨ DELEGAÇÃO POR NOME
+    :timeout("30s")
+    :build()
+
+-- Task 2: Executar date no keiteguica  
+local date_task = task("get_date")
+    :description("Get current date from keiteguica agent")
+    :command(function(this, params)
+        log.info("📅 Getting date from remote agent...")
+        
+        local date_out, _, date_failed = exec.run("date")
+        local current_date = date_out and date_out:gsub("\n", "") or "unknown"
+        
+        log.info("🕐 Current date: " .. current_date)
+        
+        return true, "Date: " .. current_date, {
+            date = current_date,
+            agent = "keiteguica"
+        }
+    end)
+    :delegate_to("keiteguica")  -- ✨ DELEGAÇÃO POR NOME
+    :timeout("30s")
+    :build()
+
+-- Task 3: Listar arquivos no ladyguica
+local ls_task = task("list_files")
+    :description("List home directory on ladyguica")
+    :command(function(this, params)
+        log.info("📂 Listing files on remote agent...")
+        
+        local hostname_out, _, _ = exec.run("hostname")
+        local hostname = hostname_out and hostname_out:gsub("\n", "") or "unknown"
+        
+        local ls_out, ls_err, ls_failed = exec.run("ls -la $HOME | head -10")
+        
+        if not ls_failed then
+            log.info("✅ Directory listing from " .. hostname .. ":")
+            log.info(ls_out)
+            return true, "Files listed successfully"
+        else
+            log.error("❌ Failed to list files: " .. (ls_err or "unknown"))
+            return false, "Failed to list files"
+        end
+    end)
+    :delegate_to("ladyguica")  -- ✨ DELEGAÇÃO POR NOME
+    :timeout("30s")
+    :build()
+
+-- Workflow principal
+workflow.define("simple_remote_commands")
+    :description("🚀 Execute simple commands on remote agents")
+    :version("1.0.0")
+    :tasks({ hostname_task, date_task, ls_task })
+    :config({
+        timeout = "2m",
+        max_parallel_tasks = 3  -- Executa as 3 tasks em paralelo
+    })
+    :on_complete(function(success, results)
+        log.info("🎉 Remote commands workflow completed!")
+        
+        if success then
+            log.info("✅ All remote commands executed successfully")
+            if results then
+                for i, result in ipairs(results) do
+                    if result and result.hostname then
+                        log.info("  • Host " .. i .. ": " .. result.hostname)
+                    elseif result and result.agent then
+                        log.info("  • Agent " .. i .. ": " .. result.agent)
+                    end
+                end
+            end
+        else
+            log.error("❌ Some remote commands failed")
+        end
+        
+        return true
+    end)

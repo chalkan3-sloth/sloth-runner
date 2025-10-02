@@ -1,0 +1,82 @@
+-- EXEMPLO FUNCIONAL: Execução remota via agent run (cmd)
+-- Este exemplo usa "agent run" que já funciona perfeitamente
+
+TaskDefinitions = {
+    via_cmd_remote = {
+        description = "Execução remota usando agent run (CMD)",
+        tasks = {
+            {
+                name = "show_hostname",
+                description = "Mostra hostname do agente via cmd",
+                command = function()
+                    log.info("🚀 Executando hostname no agente ladyguica via CMD...")
+                    
+                    -- Usando o binário sloth-runner diretamente
+                    local cmd = "sloth-runner agent run ladyguica 'hostname && whoami && date' --master 192.168.1.29:50053"
+                    local output, err, failed = exec.run(cmd)
+                    
+                    if not failed then
+                        log.info("✅ Comando executado com sucesso!")
+                        log.info("📋 Saída:\n" .. output)
+                        return true, "Sucesso via CMD"
+                    else
+                        log.error("❌ Falha: " .. (err or "erro desconhecido"))
+                        return false, "Erro via CMD"
+                    end
+                end,
+                timeout = "60s"
+            },
+            {
+                name = "list_files",
+                description = "Lista arquivos no agente via cmd",
+                command = function()
+                    log.info("📂 Listando arquivos no agente keiteguica via CMD...")
+                    
+                    local cmd = "sloth-runner agent run keiteguica 'ls -la $HOME | head -15' --master 192.168.1.29:50053"
+                    local output, err, failed = exec.run(cmd)
+                    
+                    if not failed then
+                        log.info("✅ Listagem realizada com sucesso!")
+                        log.info("📋 Arquivos:\n" .. output)
+                        return true, "Listagem via CMD"
+                    else
+                        log.error("❌ Falha: " .. (err or "erro desconhecido"))
+                        return false, "Erro na listagem"
+                    end
+                end,
+                timeout = "60s"
+            },
+            {
+                name = "system_info",
+                description = "Coleta info do sistema via cmd",
+                command = function()
+                    log.info("ℹ️  Coletando informações via CMD...")
+                    
+                    local script = [[
+echo '=== SISTEMA ==='
+uname -a
+echo ''
+echo '=== USUÁRIO ==='
+whoami
+echo ''
+echo '=== DATA ==='
+date
+]]
+                    
+                    local cmd = "sloth-runner agent run ladyguica '" .. script .. "' --master 192.168.1.29:50053"
+                    local output, err, failed = exec.run(cmd)
+                    
+                    if not failed then
+                        log.info("✅ Informações coletadas!")
+                        log.info("📋 Sistema:\n" .. output)
+                        return true, "Info via CMD"
+                    else
+                        log.error("❌ Falha: " .. (err or "erro desconhecido"))
+                        return false, "Erro ao coletar"
+                    end
+                end,
+                timeout = "60s"
+            }
+        }
+    }
+}

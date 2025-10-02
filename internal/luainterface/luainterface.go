@@ -17,6 +17,7 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/internal/ai"
 	"github.com/chalkan3-sloth/sloth-runner/internal/core"
 	"github.com/chalkan3-sloth/sloth-runner/internal/gitops"
+	coremodules "github.com/chalkan3-sloth/sloth-runner/internal/modules/core"
 	"github.com/chalkan3-sloth/sloth-runner/internal/state"
 	"github.com/chalkan3-sloth/sloth-runner/internal/types"
 	lua "github.com/yuin/gopher-lua"
@@ -438,6 +439,9 @@ func RegisterAllModules(L *lua.LState) {
 	RegisterSecurityModule(L)
 	// RegisterQueueModule(L) // TODO: Fix this
 	RegisterObservabilityModule(L)
+	
+	// Register goroutine module for parallel execution
+	RegisterGoroutineModule(L)
 	
 	// Register AI module
 	luaInterface := &LuaInterface{L: L}
@@ -1574,4 +1578,10 @@ func createRuntimeWorkdirObject(L *lua.LState, workdirPath string) *lua.LUserDat
 	
 	L.SetMetatable(workdirUD, workdirMt)
 	return workdirUD
+}
+// RegisterGoroutineModule registers the goroutine module for parallel execution
+func RegisterGoroutineModule(L *lua.LState) {
+goroutineModule := coremodules.NewGoroutineModule()
+L.PreloadModule("goroutine", goroutineModule.Loader)
+slog.Info("Registered goroutine module for parallel execution")
 }

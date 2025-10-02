@@ -1,0 +1,126 @@
+-- Pipeline distribuída usando delegate_to com nomes de agents
+
+-- Task 1: Verificar informações do sistema no ladyguica
+local system_info_ladyguica = task("system_info_ladyguica")
+    :description("Obter informações do sistema no ladyguica")
+    :command(function(this, params)
+        log.info("🖥️ Coletando informações do sistema...")
+        
+        local hostname, _, h_failed = exec.run("hostname")
+        local uptime, _, u_failed = exec.run("uptime")
+        local df, _, d_failed = exec.run("df -h /")
+        
+        if not h_failed and not u_failed and not d_failed then
+            log.info("✅ Informações coletadas com sucesso")
+            log.info("Hostname: " .. (hostname or "N/A"))
+            log.info("Uptime: " .. (uptime or "N/A"))
+            log.info("Disk: " .. (df or "N/A"))
+            return true, "Informações coletadas em " .. (hostname or "unknown")
+        else
+            log.error("❌ Falha ao coletar informações")
+            return false, "Falha na coleta"
+        end
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+-- Task 2: Verificar serviços no keiteguica
+local service_check_keiteguica = task("service_check_keiteguica")
+    :description("Verificar serviços no keiteguica")
+    :command(function(this, params)
+        log.info("🔧 Verificando serviços...")
+        
+        local hostname, _, h_failed = exec.run("hostname")
+        local ps, _, p_failed = exec.run("ps aux | head -10")
+        local netstat, _, n_failed = exec.run("ss -tuln | head -5")
+        
+        if not h_failed and not p_failed and not n_failed then
+            log.info("✅ Serviços verificados com sucesso")
+            log.info("Host: " .. (hostname or "N/A"))
+            log.info("Processos (top 10):\n" .. (ps or "N/A"))
+            log.info("Portas abertas:\n" .. (netstat or "N/A"))
+            return true, "Serviços verificados em " .. (hostname or "unknown")
+        else
+            log.error("❌ Falha ao verificar serviços")
+            return false, "Falha na verificação"
+        end
+    end)
+    :delegate_to("keiteguica")
+    :timeout("30s")
+    :build()
+
+-- Task 3: Listar arquivos em ambos os hosts
+local list_files_ladyguica = task("list_files_ladyguica")
+    :description("Listar arquivos importantes no ladyguica")
+    :depends_on({"system_info_ladyguica"})
+    :command(function(this, params)
+        log.info("📁 Listando arquivos importantes...")
+        
+        local hostname, _, h_failed = exec.run("hostname")
+        local ls_home, _, home_failed = exec.run("ls -la ~/ | head -10")
+        local ls_var, _, var_failed = exec.run("ls -la /var/log | head -5")
+        
+        if not h_failed and not home_failed and not var_failed then
+            log.info("✅ Arquivos listados com sucesso")
+            log.info("Host: " .. (hostname or "N/A"))
+            log.info("Home directory:\n" .. (ls_home or "N/A"))
+            log.info("Log directory:\n" .. (ls_var or "N/A"))
+            return true, "Arquivos listados em " .. (hostname or "unknown")
+        else
+            log.error("❌ Falha ao listar arquivos")
+            return false, "Falha na listagem"
+        end
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+-- Task 4: Finalização consolidada
+local consolidate_results = task("consolidate_results")
+    :description("Consolidar resultados de ambos os hosts")
+    :depends_on({"system_info_ladyguica", "service_check_keiteguica", "list_files_ladyguica"})
+    :command(function(this, params)
+        log.info("📊 Consolidando resultados da pipeline distribuída...")
+        
+        local hostname, _, h_failed = exec.run("hostname")
+        local date, _, d_failed = exec.run("date")
+        
+        if not h_failed and not d_failed then
+            log.info("✅ Pipeline distribuída concluída com sucesso!")
+            log.info("Executado em: " .. (hostname or "N/A"))
+            log.info("Timestamp: " .. (date or "N/A"))
+            log.info("Todas as tasks remotas foram executadas com sucesso")
+            return true, "Pipeline consolidada com sucesso"
+        else
+            log.error("❌ Falha na consolidação")
+            return false, "Falha na consolidação"
+        end
+    end)
+    -- Esta task roda no master (sem delegate_to)
+    :timeout("30s")
+    :build()
+
+-- Workflow principal
+workflow.define("distributed_pipeline")
+    :description("Pipeline distribuída usando múltiplos agents")
+    :version("1.0.0")
+    :tasks({ 
+        system_info_ladyguica, 
+        service_check_keiteguica, 
+        list_files_ladyguica, 
+        consolidate_results 
+    })
+    :config({
+        timeout = "5m",
+        parallel = true
+    })
+    :on_complete(function(success, results)
+        log.info("🎯 Pipeline distribuída finalizada: " .. tostring(success))
+        if success then
+            log.info("📈 Todas as tasks foram executadas com sucesso nos agents remotos!")
+        else
+            log.error("📉 Algumas tasks falharam na execução distribuída")
+        end
+        return true
+    end)

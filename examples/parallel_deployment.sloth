@@ -1,0 +1,101 @@
+-- parallel_deployment.sloth
+-- Deploy to multiple servers in parallel using goroutines
+-- This example demonstrates the power of concurrent execution
+
+local deploy_to_servers = task("deploy_multi_server")
+    :description("Deploy application to multiple servers in parallel")
+    :command(function(this, params)
+        local goroutine = require("goroutine")
+        
+        -- List of target servers
+        local servers = {
+            {name = "web-01", host = "192.168.1.10"},
+            {name = "web-02", host = "192.168.1.11"},
+            {name = "web-03", host = "192.168.1.12"},
+            {name = "api-01", host = "192.168.1.20"},
+            {name = "api-02", host = "192.168.1.21"},
+            {name = "db-01", host = "192.168.1.30"},
+        }
+        
+        log.info("🚀 Starting parallel deployment to " .. #servers .. " servers...")
+        
+        -- Create async handles for parallel deployment
+        local handles = {}
+        for _, server in ipairs(servers) do
+            -- Each server deployment runs in its own goroutine via async
+            local handle = goroutine.async(function()
+                log.info("📦 Deploying to " .. server.name .. " (" .. server.host .. ")")
+                
+                -- Simulate deployment steps
+                local steps = {
+                    "Uploading application files...",
+                    "Installing dependencies...",
+                    "Restarting services...",
+                    "Running health checks..."
+                }
+                
+                for _, step in ipairs(steps) do
+                    log.info("  → " .. server.name .. ": " .. step)
+                    goroutine.sleep(500)  -- Sleep 500ms to simulate work
+                end
+                
+                -- Return deployment result
+                return server.name, server.host, "success", os.date("%Y-%m-%d %H:%M:%S")
+            end)
+            
+            table.insert(handles, handle)
+        end
+        
+        log.info("⏳ Waiting for all deployments to complete...")
+        
+        -- Wait for all async operations to complete
+        local results = goroutine.await_all(handles)
+        
+        -- Process results
+        local success_count = 0
+        local failed_count = 0
+        
+        log.info("\n📊 Deployment Results:")
+        log.info("═══════════════════════════════════════")
+        
+        for i, result in ipairs(results) do
+            if result.success then
+                success_count = success_count + 1
+                -- results.values contains the return values from the function
+                local server_name = result.values[1]
+                local deployed_at = result.values[4]
+                log.info("✅ " .. server_name .. " → Deployed successfully at " .. deployed_at)
+            else
+                failed_count = failed_count + 1
+                log.error("❌ " .. (result.error or "Unknown deployment failure"))
+            end
+        end
+        
+        log.info("═══════════════════════════════════════")
+        log.info("📈 Summary: " .. success_count .. " successful, " .. failed_count .. " failed")
+        
+        if failed_count > 0 then
+            return false, "Some deployments failed", {
+                total = #servers,
+                success = success_count,
+                failed = failed_count
+            }
+        end
+        
+        return true, "All deployments completed successfully!", {
+            total = #servers,
+            success = success_count,
+            duration = "~3 seconds (parallel)"
+        }
+    end)
+    :timeout("2m")
+    :build()
+
+-- Create workflow
+workflow.define("parallel_deployment")
+    :description("Deploy to multiple servers in parallel using goroutines")
+    :version("1.0.0")
+    :tasks({ deploy_to_servers })
+    :config({
+        timeout = "5m"
+    })

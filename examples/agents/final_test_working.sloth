@@ -1,0 +1,70 @@
+-- TESTE FINAL COMPLETO - delegate_to funcionando!
+local test_task = task("test_remote_execution")
+    :description("Test remote execution with name resolution")
+    :command(function(this, params)
+        log.info("🚀 Executing on remote agent by NAME...")
+        
+        -- Get hostname to verify remote execution
+        local hostname_out, _, hostname_failed = exec.run("hostname")
+        local hostname = hostname_out and hostname_out:gsub("\n", "") or "unknown"
+        
+        log.info("📍 Current host: " .. hostname)
+        
+        -- Check if we're on the target agent
+        if hostname == "ladyguica" then
+            log.info("🎉 SUCCESS: Running on REMOTE agent ladyguica!")
+            
+            -- Execute some commands to prove it's working
+            local pwd_out, _, _ = exec.run("pwd")
+            local whoami_out, _, _ = exec.run("whoami")
+            
+            log.info("💻 Working directory: " .. (pwd_out and pwd_out:gsub("\n", "") or "unknown"))
+            log.info("👤 User: " .. (whoami_out and whoami_out:gsub("\n", "") or "unknown"))
+            
+            return true, "Remote execution successful on " .. hostname, {
+                hostname = hostname,
+                method = "exec.run + delegate_to",
+                agent_resolution = "by_name",
+                status = "SUCCESS"
+            }
+        else
+            log.error("❌ FAILURE: Still running locally on " .. hostname)
+            return false, "Failed to execute remotely", {
+                hostname = hostname,
+                expected = "ladyguica",
+                status = "FAILURE"
+            }
+        end
+    end)
+    :delegate_to("ladyguica")  -- NOME do agent (resolved automatically!)
+    :timeout("30s")
+    :build()
+
+-- Workflow final
+workflow.define("final_remote_test")
+    :description("Final test of remote execution by agent name")
+    :version("1.0.0")
+    :tasks({ test_task })
+    :config({
+        timeout = "2m",
+        max_parallel_tasks = 1
+    })
+    :on_complete(function(success, results)
+        if success and results and results[1] then
+            local result = results[1]
+            if result.status == "SUCCESS" then
+                log.info("🎉 FINAL TEST: REMOTE EXECUTION SUCCESSFUL!")
+                log.info("  ✅ Agent name resolution: WORKING")
+                log.info("  ✅ Remote execution: WORKING") 
+                log.info("  ✅ exec.run integration: WORKING")
+                log.info("  ✅ Host executed: " .. result.hostname)
+            else
+                log.error("❌ FINAL TEST: REMOTE EXECUTION FAILED")
+                log.error("  Expected: ladyguica")
+                log.error("  Got: " .. result.hostname)
+            end
+        else
+            log.error("❌ FINAL TEST: WORKFLOW FAILED")
+        end
+        return true
+    end)

@@ -1,0 +1,122 @@
+-- 🎯 EXEMPLO FINAL: LS em múltiplos agents usando workaround
+-- Este é o exemplo que você pode usar AGORA para executar LS remotamente
+
+local ls_ladyguica = task("ls_on_ladyguica")
+    :description("Executa LS no ladyguica via agent run")
+    :command(function(this, params)
+        log.info("🔍 Executando LS no ladyguica via agent run...")
+        
+        -- Comando que funciona
+        local cmd = "sloth-runner agent run ladyguica 'hostname && echo \"📂 Arquivos:\" && ls -la $HOME | head -15' --master 192.168.1.29:50053"
+        local handle = io.popen(cmd)
+        local result = handle:read("*a")
+        local success = handle:close()
+        
+        if success then
+            log.info("✅ LS executado com sucesso no ladyguica!")
+            log.info("📂 Resultado do ladyguica:\n" .. (result or "sem saída"))
+            return true, "LS OK no ladyguica"
+        else
+            log.error("❌ Falha ao executar LS no ladyguica")
+            return false, "LS falhou no ladyguica"
+        end
+    end)
+    :timeout("45s")
+    :build()
+
+local ls_keiteguica = task("ls_on_keiteguica")
+    :description("Executa LS no keiteguica via agent run")
+    :command(function(this, params)
+        log.info("🔍 Executando LS no keiteguica via agent run...")
+        
+        -- Comando que funciona
+        local cmd = "sloth-runner agent run keiteguica 'hostname && echo \"📂 Arquivos:\" && ls -la $HOME | head -15' --master 192.168.1.29:50053"
+        local handle = io.popen(cmd)
+        local result = handle:read("*a")
+        local success = handle:close()
+        
+        if success then
+            log.info("✅ LS executado com sucesso no keiteguica!")
+            log.info("📂 Resultado do keiteguica:\n" .. (result or "sem saída"))
+            return true, "LS OK no keiteguica"
+        else
+            log.error("❌ Falha ao executar LS no keiteguica")
+            return false, "LS falhou no keiteguica"
+        end
+    end)
+    :timeout("45s")
+    :build()
+
+local system_info_task = task("get_system_info")
+    :description("Coleta informações dos sistemas")
+    :command(function(this, params)
+        log.info("📊 Coletando informações dos sistemas...")
+        
+        -- Info do ladyguica
+        local cmd1 = "sloth-runner agent run ladyguica 'echo \"=== LADYGUICA ===\" && hostname && uptime && df -h / | head -2' --master 192.168.1.29:50053"
+        local handle1 = io.popen(cmd1)
+        local result1 = handle1:read("*a")
+        handle1:close()
+        
+        -- Info do keiteguica
+        local cmd2 = "sloth-runner agent run keiteguica 'echo \"=== KEITEGUICA ===\" && hostname && uptime && df -h / | head -2' --master 192.168.1.29:50053"
+        local handle2 = io.popen(cmd2)
+        local result2 = handle2:read("*a")
+        handle2:close()
+        
+        log.info("✅ Informações coletadas!")
+        log.info("📊 Resultados:\n" .. (result1 or "") .. "\n" .. (result2 or ""))
+        
+        return true, "Informações coletadas com sucesso"
+    end)
+    :timeout("60s")
+    :build()
+
+-- Workflow principal: LS em ambos os agents
+workflow.define("ls_remote_agents")
+    :description("Executa LS nos agents ladyguica e keiteguica")
+    :version("1.0.0")
+    :tasks({ ls_ladyguica, ls_keiteguica })
+    :config({
+        timeout = "2m",
+        max_parallel_tasks = 2
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 LS REMOTO CONCLUÍDO COM SUCESSO!")
+            log.info("✅ Ambos os agents executaram LS corretamente")
+        else
+            log.error("❌ Falha na execução do LS remoto")
+        end
+        return true
+    end)
+
+-- Workflow alternativo: Informações do sistema
+workflow.define("system_info_agents")
+    :description("Coleta informações dos sistemas")
+    :version("1.0.0")
+    :tasks({ system_info_task })
+    :config({
+        timeout = "2m"
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("📊 INFORMAÇÕES COLETADAS COM SUCESSO!")
+        else
+            log.error("❌ Falha na coleta de informações")
+        end
+        return true
+    end)
+
+-- Workflow sequencial: LS apenas no ladyguica
+workflow.define("ls_ladyguica_only")
+    :description("Executa LS apenas no ladyguica")
+    :version("1.0.0")
+    :tasks({ ls_ladyguica })
+    :config({
+        timeout = "1m"
+    })
+    :on_complete(function(success, results)
+        log.info("📂 LS no ladyguica concluído: " .. tostring(success))
+        return true
+    end)

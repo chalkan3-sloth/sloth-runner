@@ -1,0 +1,46 @@
+-- Exemplo funcional usando exec.run no agent remoto 
+
+local simple_remote_command = task("simple_remote_command")
+    :description("Executa comando simples no agent")
+    :command(function(this, params)
+        log.info("🚀 Executando comando no agent remoto...")
+        
+        -- Usar exec.run que deveria funcionar no agent
+        local hostname_result, hostname_err, hostname_failed = exec.run("hostname")
+        if hostname_failed then
+            log.error("❌ Falha ao obter hostname: " .. (hostname_err or "erro desconhecido"))
+            return false, "Falha ao obter hostname"
+        end
+        
+        local ls_result, ls_err, ls_failed = exec.run("ls -la $HOME | head -5")
+        if ls_failed then
+            log.error("❌ Falha ao executar ls: " .. (ls_err or "erro desconhecido"))
+            return false, "Falha ao executar ls"
+        end
+        
+        log.info("✅ Comando executado com sucesso!")
+        log.info("🖥️ Host: " .. (hostname_result or "unknown"))
+        log.info("📁 Files:\n" .. (ls_result or "no output"))
+        
+        return true, "Comando executado com sucesso no agent"
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+-- Workflow
+workflow.define("working_remote_exec")
+    :description("Execução remota funcionando")
+    :version("1.0.0")
+    :tasks({ simple_remote_command })
+    :config({
+        timeout = "1m"
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 Execução remota concluída com sucesso!")
+        else
+            log.error("💥 Execução remota falhou!")
+        end
+        return true
+    end)

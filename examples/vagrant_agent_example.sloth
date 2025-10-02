@@ -1,0 +1,151 @@
+-- 🚀 Exemplo de uso do agente Vagrant com delegate_to
+-- Este script demonstra como executar tarefas no agente mariguica (Vagrant)
+
+print("🎯 Exemplo: Executando tarefas no agente Vagrant")
+print("")
+
+-- Tarefa 1: Informações do sistema
+local task_info_sistema = task("info_sistema_vagrant")
+    :delegate_to("mariguica")
+    :command(function(this, params)
+        local exec = require("exec")
+        
+        print("📊 Coletando informações do sistema...")
+        
+        -- Kernel
+        local kernel = exec.run("uname -r")
+        print("Kernel:", kernel.stdout:gsub("\n", ""))
+        
+        -- Arquitetura
+        local arch = exec.run("uname -m")
+        print("Arquitetura:", arch.stdout:gsub("\n", ""))
+        
+        -- Hostname
+        local hostname = exec.run("uname -n")
+        print("Hostname:", hostname.stdout:gsub("\n", ""))
+        
+        -- Uptime
+        local uptime = exec.run("cat /proc/uptime")
+        local uptime_seconds = uptime.stdout:match("^(%d+)")
+        print("Uptime:", math.floor(uptime_seconds / 60), "minutos")
+        
+        return { success = true }
+    end)
+    :build()
+
+-- Tarefa 2: Listar processos
+local task_processos = task("listar_processos")
+    :delegate_to("mariguica")
+    :depends_on({ task_info_sistema })
+    :command(function(this, params)
+        local exec = require("exec")
+        
+        print("")
+        print("🔍 Processos rodando no container:")
+        
+        local result = exec.run("ps aux | head -10")
+        print(result.stdout)
+        
+        return { success = true }
+    end)
+    :build()
+
+-- Tarefa 3: Informações de memória
+local task_memoria = task("info_memoria")
+    :delegate_to("mariguica")
+    :depends_on({ task_info_sistema })
+    :command(function(this, params)
+        local exec = require("exec")
+        
+        print("")
+        print("💾 Informações de Memória:")
+        
+        local result = exec.run("free -h")
+        print(result.stdout)
+        
+        return { success = true }
+    end)
+    :build()
+
+-- Tarefa 4: Informações de disco
+local task_disco = task("info_disco")
+    :delegate_to("mariguica")
+    :depends_on({ task_info_sistema })
+    :command(function(this, params)
+        local exec = require("exec")
+        
+        print("")
+        print("💿 Informações de Disco:")
+        
+        local result = exec.run("df -h /")
+        print(result.stdout)
+        
+        return { success = true }
+    end)
+    :build()
+
+-- Tarefa 5: Variáveis de ambiente
+local task_env = task("variaveis_ambiente")
+    :delegate_to("mariguica")
+    :command(function(this, params)
+        local exec = require("exec")
+        
+        print("")
+        print("🌍 Variáveis de Ambiente Importantes:")
+        
+        local result = exec.run("env | grep -E '(PATH|HOME|USER|SHELL|LANG)' | sort")
+        print(result.stdout)
+        
+        return { success = true }
+    end)
+    :build()
+
+-- Tarefa 6: Teste de conectividade
+local task_conectividade = task("teste_conectividade")
+    :delegate_to("mariguica")
+    :command(function(this, params)
+        local exec = require("exec")
+        
+        print("")
+        print("🌐 Teste de Conectividade:")
+        
+        -- Testar conexão com o host (Mac)
+        print("  Testando conexão com o host...")
+        local ping = exec.run("ping -c 2 -W 1 host.docker.internal 2>&1 || echo 'Host não acessível'")
+        
+        if ping.stdout:find("2 packets") then
+            print("  ✅ Host acessível!")
+        else
+            print("  ⚠️ Host não acessível")
+        end
+        
+        return { success = true }
+    end)
+    :build()
+
+-- Executar todas as tarefas
+print("")
+print("=" .. string.rep("=", 60))
+print("Iniciando execução das tarefas...")
+print("=" .. string.rep("=", 60))
+print("")
+
+-- Executar tarefas em paralelo (onde possível)
+task_info_sistema:run()
+task_processos:run()
+task_memoria:run()
+task_disco:run()
+task_env:run()
+task_conectividade:run()
+
+print("")
+print("=" .. string.rep("=", 60))
+print("✅ Todas as tarefas concluídas!")
+print("=" .. string.rep("=", 60))
+print("")
+print("💡 Dica: Este exemplo demonstra como:")
+print("  • Usar :delegate_to() para executar tarefas remotamente")
+print("  • Usar :depends_on() para criar dependências entre tarefas")
+print("  • Executar comandos shell no agente remoto")
+print("  • Processar a saída dos comandos em Lua")
+print("")

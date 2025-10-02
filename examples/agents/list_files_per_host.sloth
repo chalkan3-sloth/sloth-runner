@@ -1,0 +1,206 @@
+-- Example: Execute 'ls' command on different agents
+-- This workflow demonstrates running the same command on multiple hosts
+-- using different tasks for each agent
+
+-- Task for ladyguica agent (192.168.1.16)
+local ls_ladyguica = task("ls_ladyguica")
+    :description("List files on ladyguica host (192.168.1.16)")
+    :command(function(this, params)
+        log.info("🔍 Starting file listing on ladyguica...")
+        log.info("Agent: " .. (params.agent_name or "unknown"))
+        log.info("Timestamp: " .. os.date())
+        
+        -- Execute ls command
+        local command = "ls -la /home/chalkan3"
+        log.info("Executing: " .. command)
+        
+        local handle = io.popen(command)
+        local result = handle:read("*a")
+        local success = handle:close()
+        
+        if success then
+            log.info("✅ Command executed successfully on ladyguica")
+            log.info("Output:\n" .. result)
+            return true, "File listing completed on ladyguica", {
+                agent = "ladyguica",
+                host = "192.168.1.16",
+                command = command,
+                output = result,
+                timestamp = os.date()
+            }
+        else
+            log.error("❌ Command failed on ladyguica")
+            return false, "Failed to list files on ladyguica"
+        end
+    end)
+    -- TODO: Implement :delegate_to("ladyguica") when feature is available
+    :timeout("30s")
+    :build()
+
+-- Task for keiteguica agent (192.168.1.17)
+local ls_keiteguica = task("ls_keiteguica")
+    :description("List files on keiteguica host (192.168.1.17)")
+    :command(function(this, params)
+        log.info("🔍 Starting file listing on keiteguica...")
+        log.info("Agent: " .. (params.agent_name or "unknown"))
+        log.info("Timestamp: " .. os.date())
+        
+        -- Execute ls command
+        local command = "ls -la /home/chalkan3"
+        log.info("Executing: " .. command)
+        
+        local handle = io.popen(command)
+        local result = handle:read("*a")
+        local success = handle:close()
+        
+        if success then
+            log.info("✅ Command executed successfully on keiteguica")
+            log.info("Output:\n" .. result)
+            return true, "File listing completed on keiteguica", {
+                agent = "keiteguica",
+                host = "192.168.1.17",
+                command = command,
+                output = result,
+                timestamp = os.date()
+            }
+        else
+            log.error("❌ Command failed on keiteguica")
+            return false, "Failed to list files on keiteguica"
+        end
+    end)
+    -- TODO: Implement :delegate_to("keiteguica") when feature is available
+    :timeout("30s")
+    :build()
+
+-- Task for getting system info on ladyguica
+local sysinfo_ladyguica = task("sysinfo_ladyguica")
+    :description("Get system information on ladyguica")
+    :command(function(this, params)
+        log.info("📊 Getting system info on ladyguica...")
+        
+        local commands = {
+            hostname = "hostname",
+            uptime = "uptime",
+            disk_usage = "df -h /",
+            memory = "free -h"
+        }
+        
+        local results = {}
+        for name, cmd in pairs(commands) do
+            log.info("Executing: " .. cmd)
+            local handle = io.popen(cmd)
+            local output = handle:read("*a")
+            handle:close()
+            results[name] = output:gsub("\n$", "") -- Remove trailing newline
+        end
+        
+        log.info("✅ System info collected on ladyguica")
+        return true, "System info collected", {
+            agent = "ladyguica",
+            host = "192.168.1.16",
+            system_info = results,
+            timestamp = os.date()
+        }
+    end)
+    -- TODO: Implement :delegate_to("ladyguica") when feature is available
+    :timeout("45s")
+    :build()
+
+-- Task for getting system info on keiteguica
+local sysinfo_keiteguica = task("sysinfo_keiteguica")
+    :description("Get system information on keiteguica")
+    :command(function(this, params)
+        log.info("📊 Getting system info on keiteguica...")
+        
+        local commands = {
+            hostname = "hostname",
+            uptime = "uptime", 
+            disk_usage = "df -h /",
+            memory = "free -h"
+        }
+        
+        local results = {}
+        for name, cmd in pairs(commands) do
+            log.info("Executing: " .. cmd)
+            local handle = io.popen(cmd)
+            local output = handle:read("*a")
+            handle:close()
+            results[name] = output:gsub("\n$", "") -- Remove trailing newline
+        end
+        
+        log.info("✅ System info collected on keiteguica")
+        return true, "System info collected", {
+            agent = "keiteguica",
+            host = "192.168.1.17",
+            system_info = results,
+            timestamp = os.date()
+        }
+    end)
+    -- TODO: Implement :delegate_to("keiteguica") when feature is available
+    :timeout("45s")
+    :build()
+
+-- Workflow that runs file listing on both hosts
+workflow.define("list_files_workflow")
+    :description("List files on both ladyguica and keiteguica hosts")
+    :version("1.0.0")
+    :tasks({ ls_ladyguica, ls_keiteguica })
+    :config({
+        timeout = "2m",
+        max_parallel_tasks = 2  -- Run both tasks in parallel
+    })
+    :on_complete(function(success, results)
+        log.info("🎉 File listing workflow completed")
+        log.info("Success: " .. tostring(success))
+        
+        if results then
+            log.info("Results collected from " .. #results .. " agents")
+            for i, result in ipairs(results) do
+                if result and result.agent then
+                    log.info("✅ " .. result.agent .. " completed successfully")
+                end
+            end
+        end
+        
+        return true
+    end)
+
+-- Workflow that gets comprehensive system info from both hosts
+workflow.define("system_info_workflow")
+    :description("Get system information from both hosts")
+    :version("1.0.0")
+    :tasks({ sysinfo_ladyguica, sysinfo_keiteguica })
+    :config({
+        timeout = "3m",
+        max_parallel_tasks = 2
+    })
+    :on_complete(function(success, results)
+        log.info("🎉 System info workflow completed")
+        log.info("Success: " .. tostring(success))
+        return true
+    end)
+
+-- Workflow that runs all tasks sequentially
+workflow.define("complete_host_audit")
+    :description("Complete audit of both hosts - files and system info")
+    :version("1.0.0")
+    :tasks({ ls_ladyguica, ls_keiteguica, sysinfo_ladyguica, sysinfo_keiteguica })
+    :config({
+        timeout = "5m",
+        max_parallel_tasks = 4  -- Run all tasks in parallel
+    })
+    :on_complete(function(success, results)
+        log.info("🎉 Complete host audit finished")
+        log.info("Success: " .. tostring(success))
+        
+        if results then
+            log.info("📊 Audit Results Summary:")
+            for i, result in ipairs(results) do
+                if result and result.agent then
+                    log.info("  ✅ " .. result.agent .. " (" .. (result.host or "unknown") .. ")")
+                end
+            end
+        end
+        
+        return true
+    end)

@@ -1,0 +1,170 @@
+-- Comparison: exec.run vs io.popen
+-- Shows the difference between using native exec module vs io.popen
+
+-- Task using exec.run (RECOMMENDED)
+local ls_with_exec = task("ls_with_exec")
+    :description("List files using exec.run (recommended)")
+    :command(function(this, params)
+        log.info("🔧 Using exec.run method...")
+        
+        -- Get hostname using exec.run
+        local hostname_out, hostname_err, hostname_failed = exec.run("hostname")
+        local hostname = hostname_out and hostname_out:gsub("\n", "") or "unknown"
+        
+        log.info("📍 Host: " .. hostname)
+        
+        -- Execute ls using exec.run  
+        local ls_out, ls_err, ls_failed = exec.run("ls -la $HOME")
+        
+        if not ls_failed then
+            log.info("✅ exec.run: Command succeeded")
+            log.info("📂 Directory listing (first 10 lines):")
+            local lines = {}
+            for line in ls_out:gmatch("[^\n]+") do
+                table.insert(lines, line)
+                if #lines >= 10 then break end
+            end
+            for _, line in ipairs(lines) do
+                log.info("  " .. line)
+            end
+        else
+            log.error("❌ exec.run: Command failed")
+            log.error("Error: " .. (ls_err or "unknown"))
+        end
+        
+        return not ls_failed, "exec.run method completed", {
+            method = "exec.run",
+            hostname = hostname,
+            success = not ls_failed,
+            output_lines = ls_out and #ls_out or 0
+        }
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+-- Task using io.popen (OLD METHOD)
+local ls_with_popen = task("ls_with_popen")
+    :description("List files using io.popen (old method)")
+    :command(function(this, params)
+        log.info("🔧 Using io.popen method...")
+        
+        -- Get hostname using io.popen
+        local hostname_handle = io.popen("hostname")
+        local hostname = hostname_handle:read("*a"):gsub("\n", "")
+        hostname_handle:close()
+        
+        log.info("📍 Host: " .. hostname)
+        
+        -- Execute ls using io.popen
+        local ls_handle = io.popen("ls -la $HOME")
+        local ls_output = ls_handle:read("*a")
+        local ls_success = ls_handle:close()
+        
+        if ls_success then
+            log.info("✅ io.popen: Command succeeded")
+            log.info("📂 Directory listing (first 10 lines):")
+            local lines = {}
+            for line in ls_output:gmatch("[^\n]+") do
+                table.insert(lines, line)
+                if #lines >= 10 then break end
+            end
+            for _, line in ipairs(lines) do
+                log.info("  " .. line)
+            end
+        else
+            log.error("❌ io.popen: Command failed")
+        end
+        
+        return ls_success, "io.popen method completed", {
+            method = "io.popen",
+            hostname = hostname,
+            success = ls_success,
+            output_lines = ls_output and #ls_output or 0
+        }
+    end)
+    :delegate_to("keiteguica")
+    :timeout("30s")
+    :build()
+
+-- Task comparing both methods on same agent
+local comparison_task = task("comparison_task")
+    :description("Compare exec.run vs io.popen")
+    :command(function(this, params)
+        log.info("🔍 Comparing exec.run vs io.popen...")
+        
+        -- Test 1: hostname with exec.run
+        local exec_start = os.clock()
+        local exec_out, exec_err, exec_failed = exec.run("hostname && uptime")
+        local exec_time = os.clock() - exec_start
+        
+        -- Test 2: hostname with io.popen
+        local popen_start = os.clock()
+        local popen_handle = io.popen("hostname && uptime")
+        local popen_out = popen_handle:read("*a")
+        local popen_success = popen_handle:close()
+        local popen_time = os.clock() - popen_start
+        
+        log.info("⏱️  Performance comparison:")
+        log.info("  exec.run time: " .. string.format("%.4f", exec_time) .. "s")
+        log.info("  io.popen time: " .. string.format("%.4f", popen_time) .. "s")
+        
+        log.info("📊 Results comparison:")
+        log.info("  exec.run success: " .. tostring(not exec_failed))
+        log.info("  io.popen success: " .. tostring(popen_success))
+        
+        return true, "Comparison completed", {
+            exec_time = exec_time,
+            popen_time = popen_time,
+            exec_success = not exec_failed,
+            popen_success = popen_success,
+            recommendation = "Use exec.run for better integration"
+        }
+    end)
+    :delegate_to("ladyguica")
+    :timeout("30s")
+    :build()
+
+-- Workflow comparing methods
+workflow.define("method_comparison")
+    :description("Compare exec.run vs io.popen methods")
+    :version("1.0.0")
+    :tasks({ ls_with_exec, ls_with_popen, comparison_task })
+    :config({
+        timeout = "3m",
+        max_parallel_tasks = 3
+    })
+    :on_complete(function(success, results)
+        log.info("🎯 Method comparison completed: " .. tostring(success))
+        
+        if results then
+            log.info("📋 Summary:")
+            for i, result in ipairs(results) do
+                if result and result.method then
+                    log.info("  • " .. result.method .. ": " .. (result.success and "✅ SUCCESS" or "❌ FAILED"))
+                end
+            end
+            
+            log.info("")
+            log.info("💡 RECOMMENDATION:")
+            log.info("   Use exec.run instead of io.popen because:")
+            log.info("   ✅ Better integration with sloth-runner")
+            log.info("   ✅ Proper error handling")
+            log.info("   ✅ Structured stdout/stderr")
+            log.info("   ✅ Environment control")
+            log.info("   ✅ Working directory support")
+        end
+        
+        return true
+    end)
+
+-- Simple test workflow
+workflow.define("simple_exec_test")
+    :description("Simple test using exec.run")
+    :version("1.0.0")
+    :tasks({ ls_with_exec })
+    :config({ timeout = "1m" })
+    :on_complete(function(success, results)
+        log.info("📁 Simple exec.run test: " .. tostring(success))
+        return true
+    end)
