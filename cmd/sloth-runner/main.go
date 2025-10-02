@@ -1926,6 +1926,16 @@ func (s *agentServer) ExecuteTask(ctx context.Context, in *pb.ExecuteTaskRequest
 		return names
 	}())
 
+	// Change to the workspace directory so file operations work correctly
+	originalDir, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current directory: %w", err)
+	}
+	if err := os.Chdir(workDir); err != nil {
+		return nil, fmt.Errorf("failed to change to workspace directory: %w", err)
+	}
+	defer os.Chdir(originalDir) // Restore original directory after execution
+
 	// Create task runner with all groups and let it find the specific task
 	runner := taskrunner.NewTaskRunner(L, taskGroups, in.GetTaskGroup(), nil, false, false, &taskrunner.DefaultSurveyAsker{}, in.GetLuaScript())
 	
