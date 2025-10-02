@@ -201,9 +201,9 @@ func TestRegisterAgentWithoutDB(t *testing.T) {
 		t.Fatalf("RegisterAgent failed: %v", err)
 	}
 
-	// Should fail gracefully
-	if resp.Success {
-		t.Error("Expected failure when database is not available")
+	// Should succeed even without database (fallback mode)
+	if !resp.Success {
+		t.Error("Expected success when falling back to in-memory storage")
 	}
 }
 

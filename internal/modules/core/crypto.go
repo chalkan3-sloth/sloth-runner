@@ -283,8 +283,8 @@ func (c *CryptoModule) luaRandomBytes(L *lua.LState) int {
 		return 2
 	}
 	
-	// Return raw bytes as string, not hex-encoded
-	L.Push(lua.LString(string(bytes)))
+	// Return hex-encoded bytes for readability and consistency
+	L.Push(lua.LString(hex.EncodeToString(bytes)))
 	return 1
 }
 

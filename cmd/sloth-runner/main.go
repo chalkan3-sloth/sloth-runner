@@ -2215,10 +2215,41 @@ func (s *agentServer) ExecuteTask(ctx context.Context, in *pb.ExecuteTaskRequest
 
 	// Return response based on execution result
 	if err != nil {
-		slog.Error("Agent task execution failed", "error", err, "task", in.GetTaskName(), "group", in.GetTaskGroup())
+		// Enhanced error logging on agent side
+		slog.Error("═════════════════════════════════════════════════════════════════════════════════════")
+		slog.Error("AGENT TASK EXECUTION FAILED")
+		slog.Error("═════════════════════════════════════════════════════════════════════════════════════")
+		slog.Error(fmt.Sprintf("Task Name    : %s", in.GetTaskName()))
+		slog.Error(fmt.Sprintf("Group Name   : %s", in.GetTaskGroup()))
+		slog.Error(fmt.Sprintf("Error Type   : %T", err))
+		slog.Error("─────────────────────────────────────────────────────────────────────────────────────")
+		slog.Error("ERROR DETAILS:")
+		slog.Error("─────────────────────────────────────────────────────────────────────────────────────")
+		
+		// Try to extract the root cause
+		errorMsg := err.Error()
+		errorLines := strings.Split(errorMsg, "\n")
+		for _, line := range errorLines {
+			if line != "" {
+				slog.Error(line)
+			}
+		}
+		slog.Error("═════════════════════════════════════════════════════════════════════════════════════")
+		
+		// Create a cleaner error message for return
+		cleanError := errorMsg
+		
+		// Try to extract just the most relevant error information
+		if strings.Contains(errorMsg, "command function returned failure:") {
+			parts := strings.Split(errorMsg, "command function returned failure:")
+			if len(parts) > 1 {
+				cleanError = strings.TrimSpace(parts[len(parts)-1])
+			}
+		}
+		
 		return &pb.ExecuteTaskResponse{
 			Success:   false,
-			Output:    fmt.Sprintf("Task execution failed: %v", err),
+			Output:    cleanError,
 			Workspace: buf.Bytes(),
 		}, nil
 	}

@@ -3,6 +3,7 @@ package core
 import (
 	"testing"
 	"log/slog"
+	"sync"
 	"time"
 	"os"
 )
@@ -449,6 +450,8 @@ func TestWorkerPoolSubmitWithTimeout(t *testing.T) {
 	
 	// Fill the queue with blocking tasks to make submission timeout
 	blockChan := make(chan bool)
+	executed := false
+	var mu sync.Mutex
 	
 	// Submit a task that blocks the worker
 	wp.Submit(func() {
@@ -462,20 +465,32 @@ func TestWorkerPoolSubmitWithTimeout(t *testing.T) {
 	
 	// Now try to submit with a very short timeout - should timeout
 	success := wp.SubmitWithTimeout(func() {
-		// This should not execute
-		t.Error("This task should not have executed")
+		mu.Lock()
+		executed = true
+		mu.Unlock()
 	}, 10*time.Millisecond)
+	
+	// Wait a bit to ensure task doesn't execute
+	time.Sleep(50 * time.Millisecond)
 	
 	// Unblock tasks
 	go func() {
 		blockChan <- true
 		blockChan <- true
+		close(blockChan)
 	}()
 	
-	// For smaller buffer pools, this test is less reliable
-	// Just verify the mechanism works by checking it returns a boolean
+	// Verify execution flag - only check if timeout worked
+	mu.Lock()
+	defer mu.Unlock()
+	if executed && !success {
+		t.Error("Task executed despite timeout")
+	}
+	
+	// Verify the mechanism works by checking it returns a boolean
 	_ = success
 }
+
 
 func TestSemaphoreWithTimeout(t *testing.T) {
 	sem := NewSemaphore(1)
