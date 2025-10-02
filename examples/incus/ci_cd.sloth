@@ -1,0 +1,336 @@
+-- Incus CI/CD Pipeline Example
+-- Demonstrates: Test environments, parallel testing, cleanup
+
+task({
+    name = "create-test-environment",
+    description = "Create isolated test environment for CI/CD",
+    delegate_to = "ci-runner",
+    run = function()
+        local branch = values.branch or "main"
+        local test_name = "test-" .. branch:gsub("[^%w]", "-")
+        
+        log.info("🧪 Creating test environment for branch: " .. branch)
+        
+        -- Create test instance
+        log.info("  📦 Creating test container: " .. test_name .. "...")
+        local test_env = incus.instance({
+            name = test_name,
+            image = "ubuntu:22.04"
+        })
+        
+        test_env:set_config({
+            ["limits.cpu"] = "2",
+            ["limits.memory"] = "2GB"
+        })
+        
+        test_env:create()
+        test_env:start()
+        test_env:wait_running()
+        
+        log.info("  ✅ Test environment created")
+        
+        -- Install dependencies
+        log.info("  📥 Installing dependencies...")
+        test_env:exec("apt update -qq")
+        test_env:exec("apt install -y git build-essential golang-go nodejs npm")
+        
+        -- Clone repository
+        log.info("  📡 Cloning repository...")
+        local repo_url = values.repo or "https://github.com/user/repo.git"
+        test_env:exec("git clone " .. repo_url .. " /app")
+        test_env:exec("cd /app && git checkout " .. branch)
+        
+        log.info("  ✅ Repository cloned and checked out to " .. branch)
+        
+        -- Build project
+        log.info("  🔨 Building project...")
+        local build_result = test_env:exec("cd /app && make build")
+        
+        if build_result:find("error") or build_result:find("failed") then
+            log.error("  ❌ Build failed!")
+            log.error(build_result)
+            
+            -- Create snapshot of failed build for debugging
+            incus.snapshot({
+                instance = test_name,
+                name = "build-failed"
+            }):create()
+            
+            error("Build failed - check snapshot: " .. test_name .. "/build-failed")
+        end
+        
+        log.info("  ✅ Build succeeded")
+        
+        -- Run tests
+        log.info("  🧪 Running tests...")
+        local test_result = test_env:exec("cd /app && make test")
+        
+        if test_result:find("FAIL") or test_result:find("error") then
+            log.error("  ❌ Tests failed!")
+            log.error(test_result)
+            
+            -- Create snapshot of failed tests
+            incus.snapshot({
+                instance = test_name,
+                name = "tests-failed"
+            }):create()
+            
+            error("Tests failed - check snapshot: " .. test_name .. "/tests-failed")
+        end
+        
+        log.info("  ✅ All tests passed!")
+        
+        -- Create success snapshot
+        incus.snapshot({
+            instance = test_name,
+            name = "tests-passed"
+        }):create()
+        
+        log.info("✅ Test environment ready: " .. test_name)
+        log.info("💡 Keep for debugging: sloth-runner run -f examples/incus/ci_cd.sloth keep-test-env --values branch=" .. branch)
+        log.info("🧹 Cleanup: sloth-runner run -f examples/incus/ci_cd.sloth cleanup-test-env --values branch=" .. branch)
+    end
+})
+
+task({
+    name = "parallel-test-matrix",
+    description = "Run tests across multiple environments in parallel",
+    delegate_to = "ci-runner",
+    run = function()
+        log.info("🚀 Running test matrix in parallel...")
+        
+        local test_matrix = {
+            {name = "ubuntu-22", image = "ubuntu:22.04"},
+            {name = "ubuntu-20", image = "ubuntu:20.04"},
+            {name = "debian-12", image = "debian:12"},
+            {name = "alpine-3", image = "alpine:3.18"}
+        }
+        
+        local results = goroutine.map(test_matrix, function(env)
+            local instance_name = "test-" .. env.name
+            
+            log.info("  🧪 Testing on " .. env.name .. "...")
+            
+            -- Create test instance
+            local test = incus.instance({
+                name = instance_name,
+                image = env.image
+            })
+            
+            test:create()
+            test:start()
+            test:wait_running()
+            
+            -- Install dependencies (Alpine uses apk, others use apt)
+            if env.image:find("alpine") then
+                test:exec("apk add --no-cache git build-base go nodejs npm")
+            else
+                test:exec("apt update -qq && apt install -y git build-essential golang-go nodejs npm")
+            end
+            
+            -- Clone and test
+            test:exec("git clone https://github.com/user/repo.git /app")
+            test:exec("cd /app && git checkout main")
+            
+            local build = test:exec("cd /app && make build")
+            local tests = test:exec("cd /app && make test")
+            
+            -- Cleanup
+            test:stop(true)
+            test:delete()
+            
+            local success = not (build:find("error") or tests:find("FAIL"))
+            
+            if success then
+                log.info("  ✅ Tests passed on " .. env.name)
+            else
+                log.error("  ❌ Tests failed on " .. env.name)
+            end
+            
+            return {
+                environment = env.name,
+                success = success,
+                build_output = build,
+                test_output = tests
+            }
+        end)
+        
+        -- Summary
+        log.info("")
+        log.info("📊 Test Matrix Results:")
+        local all_passed = true
+        for _, result in ipairs(results) do
+            local status = result.success and "✅ PASS" or "❌ FAIL"
+            log.info("  " .. status .. " - " .. result.environment)
+            if not result.success then
+                all_passed = false
+            end
+        end
+        
+        if all_passed then
+            log.info("🎉 All tests passed across all environments!")
+        else
+            error("❌ Some tests failed - check logs above")
+        end
+    end
+})
+
+task({
+    name = "deploy-staging",
+    description = "Deploy to staging environment if tests pass",
+    delegate_to = "staging-host",
+    run = function()
+        log.info("🚀 Deploying to staging...")
+        
+        -- Create or update staging instance
+        local staging = incus.instance({
+            name = "staging-app"
+        })
+        
+        -- Check if exists
+        local exists = pcall(function()
+            incus.info("instance", "staging-app")
+        end)
+        
+        if exists then
+            log.info("  📦 Staging instance exists, updating...")
+            
+            -- Create pre-deploy snapshot
+            incus.snapshot({
+                instance = "staging-app",
+                name = "pre-deploy-" .. os.date("%Y%m%d-%H%M%S"),
+                stateful = true
+            }):create()
+            
+        else
+            log.info("  📦 Creating new staging instance...")
+            staging = incus.instance({
+                name = "staging-app",
+                image = "ubuntu:22.04",
+                profiles = {"default"}
+            })
+            
+            staging:set_config({
+                ["limits.cpu"] = "4",
+                ["limits.memory"] = "8GB"
+            })
+            
+            staging:create()
+            staging:start()
+            staging:wait_running()
+            
+            -- Initial setup
+            staging:exec("apt update && apt install -y docker.io docker-compose")
+        end
+        
+        -- Deploy application
+        log.info("  📦 Deploying application...")
+        staging:file_push("./docker-compose.yml", "/opt/app/docker-compose.yml")
+        staging:file_push("./.env.staging", "/opt/app/.env")
+        
+        staging:exec("cd /opt/app && docker-compose pull")
+        staging:exec("cd /opt/app && docker-compose up -d")
+        
+        -- Wait for health check
+        log.info("  🏥 Waiting for health check...")
+        local max_retries = 30
+        local healthy = false
+        
+        for i = 1, max_retries do
+            local health = staging:exec("curl -sf http://localhost:8080/health || echo 'unhealthy'")
+            
+            if not health:find("unhealthy") then
+                healthy = true
+                break
+            end
+            
+            if i < max_retries then
+                log.info("  ⏳ Waiting for application to be healthy... (" .. i .. "/" .. max_retries .. ")")
+                os.execute("sleep 2")
+            end
+        end
+        
+        if healthy then
+            log.info("  ✅ Application is healthy!")
+            
+            -- Create post-deploy snapshot
+            incus.snapshot({
+                instance = "staging-app",
+                name = "deploy-" .. os.date("%Y%m%d-%H%M%S"),
+                stateful = false
+            }):create()
+            
+            log.info("🎉 Deployment to staging successful!")
+        else
+            log.error("  ❌ Application failed health check!")
+            error("Deployment failed - application is not healthy")
+        end
+    end
+})
+
+task({
+    name = "rollback-staging",
+    description = "Rollback staging to previous snapshot",
+    delegate_to = "staging-host",
+    run = function()
+        local snapshot = values.snapshot or error("Please provide snapshot name via --values snapshot=NAME")
+        
+        log.info("🔄 Rolling back staging to snapshot: " .. snapshot)
+        
+        -- Stop instance
+        log.info("  🛑 Stopping staging-app...")
+        incus.instance({name = "staging-app"}):stop(true)
+        
+        -- Restore snapshot
+        log.info("  💾 Restoring snapshot...")
+        incus.snapshot({
+            instance = "staging-app",
+            name = snapshot
+        }):restore()
+        
+        -- Start instance
+        log.info("  ▶️ Starting staging-app...")
+        incus.instance({name = "staging-app"}):start():wait_running()
+        
+        log.info("✅ Rollback completed successfully!")
+    end
+})
+
+task({
+    name = "cleanup-test-env",
+    description = "Remove test environment",
+    delegate_to = "ci-runner",
+    run = function()
+        local branch = values.branch or "main"
+        local test_name = "test-" .. branch:gsub("[^%w]", "-")
+        
+        log.info("🧹 Cleaning up test environment: " .. test_name)
+        
+        -- Stop and delete
+        incus.instance({name = test_name}):stop(true)
+        incus.instance({name = test_name}):delete()
+        
+        log.info("✅ Cleanup complete!")
+    end
+})
+
+task({
+    name = "keep-test-env",
+    description = "Keep test environment for debugging",
+    delegate_to = "ci-runner",
+    run = function()
+        local branch = values.branch or "main"
+        local test_name = "test-" .. branch:gsub("[^%w]", "-")
+        
+        log.info("💡 Test environment kept for debugging: " .. test_name)
+        log.info("")
+        log.info("Access it with:")
+        log.info("  sloth-runner agent run ci-runner 'incus exec " .. test_name .. " -- bash'")
+        log.info("")
+        log.info("View snapshots:")
+        log.info("  sloth-runner agent run ci-runner 'incus info " .. test_name .. "'")
+        log.info("")
+        log.info("Cleanup when done:")
+        log.info("  sloth-runner run -f examples/incus/ci_cd.sloth cleanup-test-env --values branch=" .. branch)
+    end
+})

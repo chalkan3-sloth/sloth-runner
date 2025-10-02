@@ -1,0 +1,9 @@
+@@ -229,7 +229,7 @@
+ opts := L.CheckTable(1)
+ 
+ instance := ""
+ command := ""
+ target := ""
+-interactive := false
++_ = false // interactive unused
+ user := ""
