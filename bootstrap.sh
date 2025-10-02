@@ -11,6 +11,7 @@
 #   --master HOST:PORT       Master server address (default: localhost:50053)
 #   --port PORT              Agent port (default: 50051)
 #   --bind-address IP        IP address for the agent to bind to
+#   --report-address IP      IP address to report to master (useful for NAT/port forwarding)
 #   --user USER              User to run the agent as (default: current user)
 #   --install-dir DIR        Installation directory (default: /usr/local/bin)
 #   --no-systemd            Skip systemd service creation
@@ -38,6 +39,7 @@ AGENT_NAME=""
 MASTER_ADDRESS="localhost:50053"
 AGENT_PORT="50051"
 BIND_ADDRESS=""
+REPORT_ADDRESS=""
 SERVICE_USER="${USER}"
 INSTALL_DIR=""
 SKIP_SYSTEMD=false
@@ -89,6 +91,7 @@ ${GREEN}Bootstrap Options:${NC}
   --master HOST:PORT       Master server address (default: localhost:50053)
   --port PORT              Agent port (default: 50051)
   --bind-address IP        IP address for agent to bind to (auto-detected if not set)
+  --report-address IP      IP address to report to master (useful for NAT/port forwarding)
   --user USER              User to run the agent as (default: $USER)
   --install-dir DIR        Installation directory (default: /usr/local/bin)
   --version VERSION        Install specific version (default: latest)
@@ -101,12 +104,13 @@ ${GREEN}Examples:${NC}
   # Basic installation with agent name
   bash <(curl -fsSL $INSTALL_SCRIPT_URL) --name myagent
 
-  # Full configuration
+  # Full configuration with port forwarding/NAT
   bash <(curl -fsSL $INSTALL_SCRIPT_URL) \\
     --name production-agent-1 \\
     --master 192.168.1.10:50053 \\
     --port 50051 \\
-    --bind-address 192.168.1.20
+    --bind-address 0.0.0.0 \\
+    --report-address 192.168.1.20
 
   # User installation (no systemd, no sudo)
   bash <(curl -fsSL $INSTALL_SCRIPT_URL) \\
@@ -147,6 +151,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --bind-address)
             BIND_ADDRESS="$2"
+            shift 2
+            ;;
+        --report-address)
+            REPORT_ADDRESS="$2"
             shift 2
             ;;
         --user)
@@ -304,6 +312,11 @@ create_systemd_service() {
     agent_cmd="$agent_cmd --port $AGENT_PORT"
     agent_cmd="$agent_cmd --bind-address $BIND_ADDRESS"
     
+    # Add report-address if specified
+    if [ -n "$REPORT_ADDRESS" ]; then
+        agent_cmd="$agent_cmd --report-address $REPORT_ADDRESS"
+    fi
+    
     # Create systemd service file
     local service_file="/etc/systemd/system/sloth-runner-agent.service"
     local temp_service="/tmp/sloth-runner-agent.service.$$"
@@ -395,6 +408,9 @@ verify_agent() {
         echo -e "    --master $MASTER_ADDRESS \\"
         echo -e "    --port $AGENT_PORT \\"
         echo -e "    --bind-address $BIND_ADDRESS \\"
+        if [ -n "$REPORT_ADDRESS" ]; then
+            echo -e "    --report-address $REPORT_ADDRESS \\"
+        fi
         echo -e "    --daemon${NC}"
         echo ""
         return
@@ -430,6 +446,9 @@ show_post_install() {
     echo -e "  Master:        ${YELLOW}$MASTER_ADDRESS${NC}"
     echo -e "  Port:          ${YELLOW}$AGENT_PORT${NC}"
     echo -e "  Bind Address:  ${YELLOW}$BIND_ADDRESS${NC}"
+    if [ -n "$REPORT_ADDRESS" ]; then
+        echo -e "  Report Address:${YELLOW}$REPORT_ADDRESS${NC}"
+    fi
     echo -e "  User:          ${YELLOW}$SERVICE_USER${NC}"
     echo ""
     
@@ -472,6 +491,9 @@ start_agent_directly() {
     cmd="$cmd --master $MASTER_ADDRESS"
     cmd="$cmd --port $AGENT_PORT"
     cmd="$cmd --bind-address $BIND_ADDRESS"
+    if [ -n "$REPORT_ADDRESS" ]; then
+        cmd="$cmd --report-address $REPORT_ADDRESS"
+    fi
     cmd="$cmd --daemon"
     
     # Start agent
