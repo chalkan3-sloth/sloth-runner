@@ -12,55 +12,55 @@ Use Sloth Runner to orchestrate infrastructure deployments:
 ## Terraform Example
 
 ```lua
-local terraform = require("terraform")
-local log = require("log")
-
-local plan_task = task("tf_plan")
-    :description("Plan infrastructure changes")
-    :command(function()
+task("tf_plan", {
+    description = "Plan infrastructure changes",
+    command = function()
         log.info("📋 Planning...")
         local result = terraform.plan({
-            dir = "./terraform",
-            var_file = "prod.tfvars"
+            workdir = "./terraform"
         })
-        return result.success, result.plan
-    end)
-    :build()
+        if not result.success then
+            return false, "Plan failed: " .. result.stderr
+        end
+        return true, "Plan completed"
+    end
+})
 
-local apply_task = task("tf_apply")
-    :description("Apply infrastructure changes")
-    :depends_on({"tf_plan"})
-    :command(function()
+task("tf_apply", {
+    description = "Apply infrastructure changes",
+    depends_on = {"tf_plan"},
+    command = function()
         log.info("🚀 Applying...")
         local result = terraform.apply({
-            dir = "./terraform",
+            workdir = "./terraform",
             auto_approve = true
         })
-        return result.success, result.output
-    end)
-    :build()
-
-workflow.define("infrastructure", {
-    description = "Manage infrastructure",
-    tasks = { plan_task, apply_task }
+        if not result.success then
+            return false, "Apply failed: " .. result.stderr
+        end
+        return true, "Apply completed"
+    end
 })
 ```
 
 ## Pulumi Example
 
 ```lua
-local pulumi = require("pulumi")
-
-local deploy_task = task("pulumi_deploy")
-    :description("Deploy with Pulumi")
-    :command(function()
-        local result = pulumi.up({
-            stack = "production",
-            project = "./infra"
+task("pulumi_deploy", {
+    description = "Deploy with Pulumi",
+    command = function()
+        local stack = pulumi.stack({
+            name = "my-org/project/production",
+            workdir = "./infra"
         })
-        return result.success
-    end)
-    :build()
+        
+        local result = stack:up({ yes = true })
+        if not result.success then
+            return false, "Deploy failed: " .. result.stderr
+        end
+        return true, "Deploy completed"
+    end
+})
 ```
 
 ## Learn More

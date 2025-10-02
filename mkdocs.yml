@@ -159,6 +159,7 @@ nav:
     - '🎯 Advanced Features': 'en/advanced-features'
   - '🎨 Modern DSL':
     - '📖 DSL Introduction': 'modern-dsl/introduction'
+    - '🎯 Module API Examples 🔥': 'modern-dsl/module-api-examples'
     - '📚 Best Practices': 'modern-dsl/best-practices'
     - '📖 Reference Guide': 'modern-dsl/reference-guide'
   - '🔧 Modules':

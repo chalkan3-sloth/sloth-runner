@@ -121,10 +121,20 @@ local repo = git.clone("https://github.com/company/infra", "/tmp/infra")
 git.checkout(repo, "production")
 
 -- Terraform operations  
-local terraform = require("terraform")
-local client = terraform.init("/tmp/infra/terraform/")  -- Runs terraform init
-local plan = client:plan({ var_file = "prod.tfvars" })
-local apply = client:apply({ auto_approve = true })
+local result = terraform.init({ workdir = "/tmp/infra/terraform/" })
+if not result.success then return false, "Init failed" end
+
+local result_plan = terraform.plan({ 
+  workdir = "/tmp/infra/terraform/",
+  out = "prod.tfplan" 
+})
+if not result_plan.success then return false, "Plan failed" end
+
+local result_apply = terraform.apply({ 
+  workdir = "/tmp/infra/terraform/",
+  auto_approve = true 
+})
+if not result_apply.success then return false, "Apply failed" end
 
 -- State management
 local state = require("state")

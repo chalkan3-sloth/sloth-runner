@@ -13,53 +13,44 @@ This example demonstrates a full CI/CD pipeline with:
 ## Complete Example
 
 ```lua
-local exec = require("exec")
-local git = require("git")
-local log = require("log")
-
 -- Build stage
-local build_task = task("build")
-    :description("Build application")
-    :command(function()
+task("build", {
+    description = "Build application",
+    command = function()
         log.info("🔨 Building...")
-        local result = exec.run("go build -o app ./cmd")
-        return result.success, result.stdout
-    end)
-    :build()
+        local result = exec.run({ cmd = "go build -o app ./cmd" })
+        if not result.success then
+            return false, "Build failed: " .. result.stderr
+        end
+        return true, result.stdout
+    end
+})
 
 -- Test stage
-local test_task = task("test")
-    :description("Run tests")
-    :depends_on({"build"})
-    :command(function()
+task("test", {
+    description = "Run tests",
+    depends_on = {"build"},
+    command = function()
         log.info("🧪 Testing...")
-        local result = exec.run("go test -v ./...")
-        return result.success, result.stdout
-    end)
-    :build()
+        local result = exec.run({ cmd = "go test -v ./..." })
+        if not result.success then
+            return false, "Tests failed: " .. result.stderr
+        end
+        return true, result.stdout
+    end
+})
 
 -- Deploy stage
-local deploy_task = task("deploy")
-    :description("Deploy to production")
-    :depends_on({"build", "test"})
-    :command(function()
+task("deploy", {
+    description = "Deploy to production",
+    depends_on = {"build", "test"},
+    command = function()
         log.info("🚀 Deploying...")
-        local result = exec.run("kubectl apply -f k8s/")
-        return result.success, result.stdout
-    end)
-    :build()
-
--- Complete CI/CD workflow
-workflow.define("cicd_pipeline", {
-    description = "Complete CI/CD pipeline",
-    tasks = { build_task, test_task, deploy_task },
-    
-    on_success = function()
-        log.info("✅ Pipeline completed successfully!")
-    end,
-    
-    on_failure = function(error)
-        log.error("❌ Pipeline failed: " .. error.message)
+        local result = exec.run({ cmd = "kubectl apply -f k8s/" })
+        if not result.success then
+            return false, "Deploy failed: " .. result.stderr
+        end
+        return true, "Deployment completed successfully"
     end
 })
 ```
