@@ -2365,6 +2365,9 @@ var modulesListCmd = &cobra.Command{
 					if fn.Parameters != "" {
 						pterm.Printf("  Parameters: %s\n", pterm.Gray(fn.Parameters))
 					}
+					if fn.Returns != "" {
+						pterm.Printf("  Returns: %s\n", pterm.LightYellow(fn.Returns))
+					}
 					pterm.Println(pterm.LightGreen("  " + strings.ReplaceAll(fn.Example, "\n", "\n  ")))
 					fmt.Println()
 				}
