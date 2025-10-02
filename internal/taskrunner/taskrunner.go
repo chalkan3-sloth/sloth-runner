@@ -186,7 +186,9 @@ func (tr *TaskRunner) executeTaskWithRetries(t *types.Task, inputFromDependencie
 				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to execute run_if function: %w", err)}
 			}
 			if !shouldRun {
-				pterm.Info.Printf("Skipping task '%s' due to run_if function condition.\n", t.Name)
+				pterm.Printf("    %s %s\n", 
+					pterm.Yellow("⊘"),
+					pterm.Gray("skipped (run_if condition)"))
 				mu.Lock()
 				tr.Results = append(tr.Results, types.TaskResult{
 					Name:   t.Name,
@@ -205,7 +207,9 @@ func (tr *TaskRunner) executeTaskWithRetries(t *types.Task, inputFromDependencie
 				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to execute run_if condition: %w", err)}
 			}
 			if !shouldRun {
-				pterm.Info.Printf("Skipping task '%s' due to run_if condition.\n", t.Name)
+				pterm.Printf("    %s %s\n", 
+					pterm.Yellow("⊘"),
+					pterm.Gray("skipped (run_if condition)"))
 				mu.Lock()
 				tr.Results = append(tr.Results, types.TaskResult{
 					Name:   t.Name,
@@ -226,15 +230,28 @@ func (tr *TaskRunner) executeTaskWithRetries(t *types.Task, inputFromDependencie
 
 		for i := 0; i <= maxRetries; i++ {
 			if i > 0 {
+				// Retry attempt - show retry header
 				backoffDelay := time.Duration(i) * time.Second
 				if i > 3 {
 					backoffDelay = time.Duration(i*i) * time.Second // Exponential backoff
 				}
-				pterm.Warning.Printf("Task '%s' failed. Retrying in %v (%d/%d)...\n", t.Name, backoffDelay, i, maxRetries)
+				pterm.Println()
+				pterm.DefaultHeader.
+					WithFullWidth(false).
+					WithBackgroundStyle(pterm.NewStyle(pterm.BgYellow)).
+					WithTextStyle(pterm.NewStyle(pterm.FgBlack, pterm.Bold)).
+					Printfln("🔄 Retry %d/%d - %s", i, maxRetries, t.Name)
+				pterm.Printf("%s Waiting %s before retry...\n", pterm.Gray("│"), pterm.Gray(backoffDelay.String()))
+				pterm.Println()
 				time.Sleep(backoffDelay)
+			} else if i == 0 {
+				// First attempt - show clean compact start
+				pterm.Printf("  %s %s\n", 
+					pterm.Cyan("▶"),
+					pterm.DefaultBasicText.WithStyle(pterm.NewStyle(pterm.Bold)).Sprint(t.Name))
 			}
 
-			slog.Info("starting task", "task", t.Name, "attempt", i+1, "retries", maxRetries)
+			slog.Debug("starting task", "task", t.Name, "attempt", i+1, "retries", maxRetries)
 
 			var ctx context.Context
 			var cancel context.CancelFunc
@@ -255,7 +272,10 @@ func (tr *TaskRunner) executeTaskWithRetries(t *types.Task, inputFromDependencie
 			taskErr = tr.runTask(ctx, t, inputFromDependencies, mu, completedTasks, taskOutputs, runningTasks, session, groupName)
 
 			if taskErr == nil {
-				slog.Info("task finished", "task", t.Name, "status", "success")
+				pterm.Printf("    %s %s\n", 
+					pterm.Green("✓"),
+					pterm.Green("completed"))
+				slog.Debug("task finished", "task", t.Name, "status", "success")
 				return nil // Success
 			}
 
@@ -611,10 +631,12 @@ func (tr *TaskRunner) Run() error {
 
 	// Show workflow start banner
 	pterm.Println()
-	pterm.DefaultCenter.WithCenterEachLineSeparately().Println(
-		pterm.DefaultHeader.WithFullWidth().WithBackgroundStyle(pterm.NewStyle(pterm.BgCyan)).WithTextStyle(pterm.NewStyle(pterm.FgBlack)).Sprint("🦥 Sloth Runner Workflow Execution"),
-	)
-	pterm.Println()
+	pterm.DefaultHeader.
+		WithFullWidth(false).
+		WithBackgroundStyle(pterm.NewStyle(pterm.BgCyan)).
+		WithTextStyle(pterm.NewStyle(pterm.FgBlack, pterm.Bold)).
+		Printfln("🦥 Sloth Runner - Workflow Execution Started")
+	pterm.Printf("%s %s\n\n", pterm.Gray("Started at:"), pterm.Gray(time.Now().Format("2006-01-02 15:04:05")))
 
 	var allGroupErrors []error
 
@@ -632,13 +654,17 @@ func (tr *TaskRunner) Run() error {
 	for groupName, group := range filteredGroups {
 		// Enhanced group start display
 		pterm.Println()
-		pterm.DefaultBox.WithTitle(pterm.Sprintf("📦 Task Group: %s", pterm.Cyan(groupName))).
-			WithTitleTopCenter().
-			WithBoxStyle(pterm.NewStyle(pterm.FgCyan)).
-			Println(pterm.Gray(group.Description))
+		pterm.DefaultHeader.
+			WithFullWidth(false).
+			WithBackgroundStyle(pterm.NewStyle(pterm.BgLightBlue)).
+			WithTextStyle(pterm.NewStyle(pterm.FgBlack, pterm.Bold)).
+			Printfln("📦 Task Group: %s", groupName)
+		if group.Description != "" {
+			pterm.Printf("%s %s\n", pterm.Gray("│"), pterm.Gray(group.Description))
+		}
 		pterm.Println()
 		
-		slog.Info("starting group", "group", groupName, "description", group.Description)
+		slog.Debug("starting group", "group", groupName, "description", group.Description)
 
 		var workdir string
 		var err error
@@ -692,13 +718,17 @@ func (tr *TaskRunner) Run() error {
 			return err
 		}
 
-		// Enhanced progress bar
-		p, _ := pterm.DefaultProgressbar.
-			WithTotal(len(executionOrder)).
-			WithTitle(pterm.Sprintf("⚙️  Executing %d tasks", len(executionOrder))).
-			WithShowCount().
+		// Initialize progress bar
+		totalTasks := len(executionOrder)
+		progressBar, err := pterm.DefaultProgressbar.
+			WithTotal(totalTasks).
+			WithTitle(pterm.Sprintf("Executing %d tasks", totalTasks)).
+			WithShowCount(true).
+			WithShowPercentage(true).
 			Start()
-		defer p.Stop()
+		if err != nil {
+			return fmt.Errorf("failed to start progress bar: %w", err)
+		}
 
 		var mu sync.Mutex
 		completedTasks := make(map[string]bool)
@@ -708,7 +738,6 @@ func (tr *TaskRunner) Run() error {
 		var groupErrors []error
 
 		for _, taskName := range executionOrder {
-			p.UpdateTitle(pterm.Sprintf("⚙️  %s", pterm.Cyan(taskName)))
 			task := taskMap[taskName]
 			runningTasks[task.Name] = true
 
@@ -723,7 +752,6 @@ func (tr *TaskRunner) Run() error {
 			}
 			if skip {
 				taskStatus[task.Name] = "Skipped"
-				p.Increment()
 				continue
 			}
 
@@ -740,10 +768,9 @@ func (tr *TaskRunner) Run() error {
 					break
 				}
 				
-				slog.Info("Consumed artifact", "task", task.Name, "artifact", artifactName)
+				slog.Debug("Consumed artifact", "task", task.Name, "artifact", artifactName)
 			}
 			if skip {
-				p.Increment()
 				continue
 			}
 
@@ -767,7 +794,6 @@ func (tr *TaskRunner) Run() error {
 				case "skip":
 					pterm.Info.Printf("Skipping task '%s' by user choice.\n", task.Name)
 					taskStatus[task.Name] = "Skipped"
-					p.Increment()
 					continue
 				case "abort":
 					pterm.Warning.Println("Aborting execution by user choice.")
@@ -778,6 +804,10 @@ func (tr *TaskRunner) Run() error {
 			}
 
 			err := tr.executeTaskWithRetries(task, inputFromDependencies, &mu, completedTasks, taskOutputs, runningTasks, session, groupName)
+			
+			// Update progress bar
+			progressBar.Increment()
+			
 			if err != nil {
 				groupErrors = append(groupErrors, err)
 				taskStatus[task.Name] = "Failed"
@@ -796,13 +826,15 @@ func (tr *TaskRunner) Run() error {
 						if err := copyFile(match, destPath); err != nil {
 							slog.Error("Failed to produce artifact", "task", task.Name, "artifact", match, "error", err)
 						} else {
-							slog.Info("Produced artifact", "task", task.Name, "artifact", destPath)
+							slog.Debug("Produced artifact", "task", task.Name, "artifact", destPath)
 						}
 					}
 				}
 			}
-			p.Increment()
 		}
+		
+		// Stop progress bar
+		progressBar.Stop()
 
 		groupHadSuccess := len(groupErrors) == 0
 		if !groupHadSuccess {
@@ -1098,15 +1130,19 @@ func (tr *TaskRunner) Run() error {
 		}
 	}
 	
-	pterm.DefaultCenter.WithCenterEachLineSeparately().Println(
-		pterm.DefaultHeader.WithFullWidth().WithBackgroundStyle(pterm.NewStyle(pterm.BgGreen)).WithTextStyle(pterm.NewStyle(pterm.FgBlack)).Sprint("✅ Workflow Completed Successfully"),
-	)
+	// Success summary with box
 	pterm.Println()
-	pterm.DefaultCenter.Printf("%s tasks completed", pterm.Green(fmt.Sprintf("%d", successCount)))
+	pterm.DefaultBox.
+		WithTitle("✅ Workflow Completed").
+		WithTitleTopCenter().
+		WithBoxStyle(pterm.NewStyle(pterm.FgGreen, pterm.Bold)).
+		WithRightPadding(2).
+		WithLeftPadding(2).
+		Printfln("%s tasks completed successfully", 
+			pterm.Green(fmt.Sprintf("%d", successCount)))
 	if skippedCount > 0 {
-		pterm.DefaultCenter.Printf(" • %s tasks skipped", pterm.Yellow(fmt.Sprintf("%d", skippedCount)))
+		pterm.Printf("  %s %d tasks skipped\n", pterm.Yellow("⊘"), skippedCount)
 	}
-	pterm.Println()
 	pterm.Println()
 	
 	return nil

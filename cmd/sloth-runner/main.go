@@ -1716,11 +1716,15 @@ var agentGetCmd = &cobra.Command{
 }
 
 var agentModulesCheckCmd = &cobra.Command{
-	Use:   "modules",
-	Short: "Check availability of external modules/tools",
-	Long:  `Checks which external tools and modules are available on the system for Lua tasks to use.`,
+	Use:   "modules <agent_name>",
+	Short: "Check availability of external modules/tools on an agent",
+	Long:  `Checks which external tools and modules are available on a specific agent for Lua tasks to use.`,
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		pterm.DefaultHeader.WithFullWidth().Println("Sloth Runner - Module Availability Check")
+		agentName := args[0]
+		masterAddr, _ := cmd.Flags().GetString("master")
+		
+		pterm.DefaultHeader.WithFullWidth().Printf("Module Availability Check - Agent: %s", agentName)
 		fmt.Println()
 		
 		type moduleCheck struct {
@@ -1746,17 +1750,64 @@ var agentModulesCheckCmd = &cobra.Command{
 			{"jq", "jq", "JSON processor"},
 		}
 		
+		// Connect to master
+		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		defer cancel()
+
+		conn, err := grpc.Dial(masterAddr, 
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			return formatConnectionError(err, masterAddr)
+		}
+		defer conn.Close()
+
+		registryClient := pb.NewAgentRegistryClient(conn)
+		
 		available := []moduleCheck{}
 		missing := []moduleCheck{}
 		
+		// Check each module
+		spinner, _ := pterm.DefaultSpinner.Start("Checking modules on agent...")
+		
 		for _, mod := range modules {
-			_, err := exec.LookPath(mod.Command)
-			if err == nil {
+			checkCmd := fmt.Sprintf("command -v %s >/dev/null 2>&1 && echo 'found' || echo 'not found'", mod.Command)
+			
+			stream, err := registryClient.ExecuteCommand(ctx, &pb.ExecuteCommandRequest{
+				AgentName: agentName,
+				Command:   checkCmd,
+			})
+			
+			if err != nil {
+				spinner.Fail(fmt.Sprintf("Failed to execute command on agent: %v", err))
+				return formatConnectionError(err, masterAddr)
+			}
+			
+			var output strings.Builder
+			for {
+				resp, err := stream.Recv()
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					spinner.Fail(fmt.Sprintf("Error receiving stream: %v", err))
+					return err
+				}
+				output.WriteString(resp.GetStdoutChunk())
+				output.WriteString(resp.GetStderrChunk())
+			}
+			
+			result := strings.TrimSpace(output.String())
+			
+			if result == "found" {
 				available = append(available, mod)
 			} else {
 				missing = append(missing, mod)
 			}
 		}
+		
+		spinner.Success("Module check completed")
+		fmt.Println()
 		
 		// Display available modules
 		if len(available) > 0 {
