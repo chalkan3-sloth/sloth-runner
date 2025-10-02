@@ -450,15 +450,12 @@ func RegisterAllModules(L *lua.LState) {
 	// Register systemd module
 	L.PreloadModule("systemd", SystemdLoader)
 	
-	// Register pulumi module
+	// Register pulumi module (duplicate registration - keeping for compatibility)
 	L.PreloadModule("pulumi", PulumiLoader)
 	OpenMetrics(L)
 	
 	// ✅ Register workdir functions
 	OpenWorkdir(L)
-	
-	// Register Modern DSL
-	OpenModernDSL(L)
 	
 	// Register new enhanced modules
 	RegisterHTTPModule(L)
@@ -487,14 +484,67 @@ func RegisterAllModules(L *lua.LState) {
 	luaInterface.registerGitOpsModule()
 	
 	// Register modern DSL for fluent task definition
+	// ✅ Always register Modern DSL - with or without global core
 	globalCore := core.GetGlobalCore()
 	if globalCore != nil {
 		modernDSL := NewModernDSL(globalCore)
 		modernDSL.RegisterModernDSL(L)
+	} else {
+		// Fallback to OpenModernDSL if no global core available
+		// This ensures task() and other DSL functions are always registered
+		OpenModernDSL(L)
 	}
 	
-	// Register modules that may not exist yet
-	// OpenPkg is handled by the pkg.go file
+	// ✅ AUTO-LOAD ALL MODULES GLOBALLY (No require() needed)
+	RegisterModulesGlobally(L)
+}
+
+// RegisterModulesGlobally loads all modules automatically as global variables
+// Users can use pkg.install(), user.create(), etc. without require()
+func RegisterModulesGlobally(L *lua.LState) {
+	modulesToLoad := []string{
+		"pkg",
+		"user",
+		"file_ops",
+		"salt",
+		"pulumi",
+		"terraform",
+		"kubernetes",
+		"helm",
+		"state",
+		"systemd",
+		"infra_test",
+	}
+	
+	for _, modName := range modulesToLoad {
+		// Skip if module is already registered as global
+		if L.GetGlobal(modName) != lua.LNil {
+			slog.Debug("Module already registered globally", "module", modName)
+			continue
+		}
+		
+		// Call require() internally to load the module
+		if err := L.CallByParam(lua.P{
+			Fn:      L.GetGlobal("require"),
+			NRet:    1,
+			Protect: true,
+		}, lua.LString(modName)); err != nil {
+			slog.Warn("Failed to auto-load module globally", "module", modName, "error", err)
+			continue
+		}
+		
+		// Pop the result and set it as a global variable
+		modTable := L.Get(-1)
+		L.Pop(1)
+		L.SetGlobal(modName, modTable)
+		
+		slog.Debug("Module registered globally", "module", modName)
+	}
+	
+	// SSH is already registered globally by RegisterSSHModule
+	// http, strings, math, crypto, time, data, security, observability are already global
+	// goroutine is already registered globally
+	// No need to load them again
 }
 
 // --- Data Module ---

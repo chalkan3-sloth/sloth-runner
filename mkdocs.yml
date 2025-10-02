@@ -164,9 +164,13 @@ nav:
     - '📖 Reference Guide': 'modern-dsl/reference-guide'
   - '🔧 Modules':
     - '🔧 Module Index': 'modules/'
+    - '🌍 Global Modules (No require!) 🔥': 'features/global-modules'
     - '⚡ Goroutine (Parallel) 🔥': 'modules/goroutine'
     - '🧪 Infrastructure Testing 🔥': 'modules/infra_test'
     - '📦 Package Management': 'modules/pkg'
+    - '👤 User Management': 'modules/user'
+    - '📁 File Operations': 'modules/file_ops'
+    - '🔐 SSH Module': 'modules/ssh'
     - '🔀 Git Module': 'modules/git'
     - '🏗️ Terraform Module': 'modules/terraform'
     - '⚙️ Systemd Module': 'modules/systemd'
