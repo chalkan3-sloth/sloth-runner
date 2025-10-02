@@ -248,6 +248,26 @@ func parseLuaTask(L *lua.LState, taskTable *lua.LTable) types.Task {
 		onFailure = luaOnFail.(*lua.LFunction)
 	}
 
+	// Parse run_if (conditional execution)
+	var runIf string
+	var runIfFunc *lua.LFunction
+	luaRunIf := taskTable.RawGetString("run_if")
+	if luaRunIf.Type() == lua.LTString {
+		runIf = luaRunIf.String()
+	} else if luaRunIf.Type() == lua.LTFunction {
+		runIfFunc = luaRunIf.(*lua.LFunction)
+	}
+
+	// Parse abort_if (abort condition)
+	var abortIf string
+	var abortIfFunc *lua.LFunction
+	luaAbortIf := taskTable.RawGetString("abort_if")
+	if luaAbortIf.Type() == lua.LTString {
+		abortIf = luaAbortIf.String()
+	} else if luaAbortIf.Type() == lua.LTFunction {
+		abortIfFunc = luaAbortIf.(*lua.LFunction)
+	}
+
 	// Parse delegate_to
 	var delegateTo interface{}
 	luaDelegateTo := taskTable.RawGetString("delegate_to")
@@ -287,6 +307,10 @@ func parseLuaTask(L *lua.LState, taskTable *lua.LTable) types.Task {
 		PostExec:    postExec,
 		OnSuccess:   onSuccess,   // ✅ Include success handler
 		OnFailure:   onFailure,   // ✅ Include failure handler
+		RunIf:       runIf,       // ✅ Include run_if string condition
+		RunIfFunc:   runIfFunc,   // ✅ Include run_if function condition
+		AbortIf:     abortIf,     // ✅ Include abort_if string condition
+		AbortIfFunc: abortIfFunc, // ✅ Include abort_if function condition
 		DelegateTo:  delegateTo,
 	}
 }
@@ -401,6 +425,15 @@ func RegisterAllModules(L *lua.LState) {
 	
 	// Register package management module
 	L.PreloadModule("pkg", NewPkgModule().Loader)
+	
+	// Register user management module
+	L.PreloadModule("user", NewUserModule().Loader)
+	
+	// Register SSH module
+	RegisterSSHModule(L)
+	
+	// Register file operations module (Ansible-like)
+	L.PreloadModule("file_ops", NewFileOpsModule().Loader)
 	
 	// Register advanced infrastructure modules - Salt as Object Only
 	L.PreloadModule("salt", ObjectOrientedSaltLoader)
