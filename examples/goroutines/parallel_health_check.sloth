@@ -1,0 +1,118 @@
+-- parallel_health_check.sloth
+-- Check health of multiple services simultaneously
+--
+-- This example demonstrates parallel health checking of multiple services.
+-- All health checks run concurrently, providing fast feedback about system status.
+
+local health_check = task("parallel_health_check")
+    :description("Check health of multiple services in parallel")
+    :command(function(this, params)
+        local go = require("goroutine")
+        
+        -- Services to check
+        local services = {
+            {name = "Web Server", command = "systemctl is-active nginx"},
+            {name = "Database", command = "systemctl is-active postgresql"},
+            {name = "Cache", command = "systemctl is-active redis"},
+            {name = "Queue", command = "systemctl is-active rabbitmq-server"},
+            {name = "API Server", command = "curl -f http://localhost:8080/health"},
+        }
+        
+        log.info("🏥 Starting parallel health check of " .. #services .. " services...")
+        log.info("")
+        
+        -- Create goroutines for parallel checks
+        local goroutines = {}
+        for _, service in ipairs(services) do
+            local g = go.create(function()
+                log.info("🔍 Checking " .. service.name .. "...")
+                
+                -- Execute health check command
+                local handle = io.popen(service.command .. " 2>&1")
+                local result = handle:read("*a")
+                local success = handle:close()
+                
+                local status = success and "healthy" or "unhealthy"
+                local emoji = success and "✅" or "❌"
+                
+                log.info(emoji .. " " .. service.name .. ": " .. status)
+                
+                return {
+                    name = service.name,
+                    status = status,
+                    healthy = success,
+                    output = result:match("^%s*(.-)%s*$")  -- trim whitespace
+                }
+            end)
+            
+            table.insert(goroutines, g)
+        end
+        
+        log.info("")
+        log.info("⏳ Waiting for all health checks to complete...")
+        log.info("")
+        
+        -- Wait for all checks (with 30 second timeout)
+        local results = go.wait_all(goroutines, 30)
+        
+        -- Analyze results
+        local healthy_count = 0
+        local unhealthy_count = 0
+        local unhealthy_services = {}
+        
+        log.info("📊 Health Check Results:")
+        log.info("═══════════════════════════════════════")
+        
+        for _, result in ipairs(results) do
+            if result.success and result.value.healthy then
+                healthy_count = healthy_count + 1
+                log.info("✅ " .. result.value.name .. " → " .. result.value.status)
+            else
+                unhealthy_count = unhealthy_count + 1
+                local service_name = result.value and result.value.name or "Unknown"
+                table.insert(unhealthy_services, service_name)
+                log.error("❌ " .. service_name .. " → unhealthy")
+            end
+        end
+        
+        log.info("═══════════════════════════════════════")
+        log.info("📈 Summary: " .. healthy_count .. " healthy, " .. unhealthy_count .. " unhealthy")
+        log.info("")
+        
+        if unhealthy_count > 0 then
+            log.warn("⚠️  Unhealthy services detected: " .. table.concat(unhealthy_services, ", "))
+            return false, "Some services are unhealthy", {
+                total = #services,
+                healthy = healthy_count,
+                unhealthy = unhealthy_count,
+                unhealthy_services = unhealthy_services
+            }
+        end
+        
+        return true, "All services are healthy!", {
+            total = #services,
+            healthy = healthy_count,
+            check_duration = "~5 seconds (parallel)"
+        }
+    end)
+    :timeout("1m")
+    :build()
+
+-- Create workflow
+workflow.define("health_monitoring", {
+    description = "Parallel health check monitoring",
+    version = "1.0.0",
+    tasks = { health_check },
+    
+    config = {
+        timeout = "2m"
+    },
+    
+    on_complete = function(success, results)
+        if success then
+            log.info("🎉 All services are running healthy!")
+        else
+            log.error("⚠️  Some services require attention!")
+        end
+    end
+})
