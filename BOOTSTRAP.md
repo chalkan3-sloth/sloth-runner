@@ -5,11 +5,13 @@ Quick and easy agent installation and configuration script for Sloth Runner.
 ## Features
 
 - ✅ **One-line installation** - Install agent with a single command
-- ✅ **Automatic systemd setup** - Creates and enables systemd service
+- ✅ **Automatic systemd setup** - Creates and enables systemd service (when available)
+- ✅ **Direct start fallback** - Works in containers and environments without systemd
 - ✅ **Auto-reconnection** - Agent reconnects automatically on failures
-- ✅ **Production-ready** - Includes security hardening and resource limits
+- ✅ **Production-ready** - Includes proper configuration and resource limits
 - ✅ **Cross-platform** - Works on Linux and macOS
 - ✅ **Flexible configuration** - Many options for customization
+- ✅ **Smart detection** - Auto-detects platform, IP, and systemd availability
 
 ## Quick Start
 
@@ -77,17 +79,24 @@ bash <(curl -fsSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/
 
 1. **Downloads and installs** sloth-runner binary
 2. **Auto-detects** platform (Linux/macOS, amd64/arm64)
-3. **Creates systemd service** with:
+3. **Checks systemd availability** and functionality
+4. **Creates systemd service** (if available) with:
+   - Type=forking with --daemon mode
    - Automatic restart on failure
-   - Security hardening (NoNewPrivileges, ProtectSystem, etc.)
    - Proper logging to journald
    - Resource limits
-4. **Enables and starts** the service
-5. **Verifies** agent is running
+   - PID file management
+5. **OR starts agent directly** (if systemd not available):
+   - Runs agent with --daemon flag
+   - Suitable for containers and limited environments
+6. **Enables and starts** the service or agent
+7. **Verifies** agent is running
 
 ## Post-Installation
 
-### Check Agent Status
+### With Systemd
+
+#### Check Agent Status
 
 ```bash
 # View service status
@@ -101,6 +110,29 @@ sudo systemctl restart sloth-runner-agent
 
 # Stop agent
 sudo systemctl stop sloth-runner-agent
+```
+
+### Without Systemd (Direct Mode)
+
+#### Manage Agent
+
+```bash
+# Check if agent is running
+ps aux | grep sloth-runner | grep -v grep
+
+# Stop agent
+sudo pkill -f 'sloth-runner agent'
+
+# View logs
+cat agent.log
+
+# Restart agent manually
+/usr/local/bin/sloth-runner agent start \
+  --name myagent \
+  --master localhost:50053 \
+  --port 50051 \
+  --bind-address 192.168.1.20 \
+  --daemon
 ```
 
 ### Verify Agent on Master
@@ -123,16 +155,20 @@ The bootstrap script creates a systemd service at `/etc/systemd/system/sloth-run
 ```ini
 [Unit]
 Description=Sloth Runner Agent - myagent
-After=network-online.target
-Wants=network-online.target
+Documentation=https://chalkan3.github.io/sloth-runner/
 
 [Service]
-Type=simple
-User=yourusername
+Type=forking
+User=root
+WorkingDirectory=/root
+PIDFile=/var/run/sloth-runner-agent-myagent.pid
 Restart=on-failure
 RestartSec=5s
 StartLimitInterval=60s
 StartLimitBurst=3
+Environment="HOME=/root"
+ExecStartPre=/usr/bin/mkdir -p /var/run
+ExecStartPost=/bin/bash -c 'if [ -f /tmp/sloth-runner-agent-myagent.pid ]; then mv /tmp/sloth-runner-agent-myagent.pid /var/run/sloth-runner-agent-myagent.pid; fi'
 
 ExecStart=/usr/local/bin/sloth-runner agent start \
   --name myagent \
@@ -141,19 +177,19 @@ ExecStart=/usr/local/bin/sloth-runner agent start \
   --bind-address 192.168.1.20 \
   --daemon
 
-# Security
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=read-only
-
 # Logging
 StandardOutput=journal
 StandardError=journal
+SyslogIdentifier=sloth-runner-agent
+
+# Performance
+LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target
 ```
+
+**Note**: The service uses `Type=forking` with `--daemon` flag, which makes the agent run in background mode and allows systemd to properly track the process.
 
 ## Examples
 
@@ -188,10 +224,28 @@ ssh user@remote-host "bash <(curl -fsSL https://raw.githubusercontent.com/.../bo
 
 ### Vagrant Installation
 
+Install agent in Vagrant VM:
+
 ```bash
-vagrant ssh -c "bash <(curl -fsSL https://raw.githubusercontent.com/.../bootstrap.sh) \
-  --name vagrant-agent \
-  --master 192.168.1.10:50053"
+# From host machine
+cd /path/to/vagrant
+vagrant ssh -c "curl -fsSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/bootstrap.sh | sudo bash -s -- \
+  --name mariaguica \
+  --master 192.168.1.29:50053 \
+  --port 50051 \
+  --bind-address 172.17.0.2 \
+  --no-systemd"
+```
+
+**Note**: Use `--no-systemd` for Docker-based Vagrant providers where systemd may not work properly.
+
+### Docker Container Installation
+
+```bash
+docker exec -it mycontainer bash -c "curl -fsSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/bootstrap.sh | bash -s -- \
+  --name container-agent \
+  --master 192.168.1.10:50053 \
+  --no-systemd"
 ```
 
 ## Troubleshooting
