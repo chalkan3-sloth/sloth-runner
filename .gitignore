@@ -59,3 +59,39 @@ releases/
 # Local testing
 test_output/
 temp/
+# Temporary and test files
+*.log
+*.pid
+sloth-runner-*
+!sloth-runner
+test_*.sloth
+exemplo_*.sloth
+guia_*.sloth
+teste_*.sloth
+*_backup
+*.backup
+
+# Test scripts
+cluster_status.sh
+connect_agents.sh
+manage_remote_agent.sh
+setup_path.sh
+start_agents.sh
+start_local_agent.sh
+start_master.sh
+test_install.sh
+
+# Summary and temporary documentation
+*_SUMMARY.md
+*_COMPLETE.md
+*_IMPLEMENTATION*.md
+*_IMPROVEMENTS*.md
+PROMPT_*.md
+HOW_TO_*.md
+QUICK_START.md
+INDEX.md
+STATUS_*.md
+TASK_*.md
+RESUMO_*.md
+CHEATSHEET.md
+*.txt
