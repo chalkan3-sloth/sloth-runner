@@ -154,17 +154,30 @@ func GetAllModuleDocs() []ModuleDoc {
 				{
 					Name:        "user.create",
 					Description: "Create a new user",
-					Parameters:  "username (string), options (table): password, uid, gid, home, shell, groups, comment, system, create_home, no_create_home, expiry",
+					Parameters:  "options (table): username (required), password, uid, gid, home, shell, groups, comment, system, create_home, no_create_home, expiry",
 					Returns:     "boolean (success), string (message)",
-					Example: `local success, msg = user.create("deploy", {
+					Example: `-- New syntax (recommended)
+local success, msg = user.create({
+    username = "deploy",
     password = "securepassword",
     home = "/home/deploy",
     shell = "/bin/bash",
-    groups = "docker,sudo",
+    groups = {"docker", "sudo"},
     comment = "Deployment User",
     create_home = true
 })
-print(msg)`,
+if success then
+    print("User created: " .. msg)
+else
+    print("Failed to create user: " .. msg)
+end
+
+-- Old syntax (still supported)
+local success, msg = user.create("deploy", {
+    password = "securepassword",
+    home = "/home/deploy",
+    shell = "/bin/bash"
+})`,
 				},
 				{
 					Name:        "user.delete",

@@ -101,8 +101,26 @@ func (u *UserModule) parseUserOptions(L *lua.LState, idx int) map[string]string 
 	
 	tbl := val.(*lua.LTable)
 	tbl.ForEach(func(k, v lua.LValue) {
-		if k.Type() == lua.LTString && v.Type() == lua.LTString {
-			options[k.String()] = v.String()
+		if k.Type() == lua.LTString {
+			switch v.Type() {
+			case lua.LTString:
+				options[k.String()] = v.String()
+			case lua.LTBool:
+				if lua.LVAsBool(v) {
+					options[k.String()] = "true"
+				}
+			case lua.LTTable:
+				// Handle array values (like groups)
+				var values []string
+				v.(*lua.LTable).ForEach(func(_, item lua.LValue) {
+					if item.Type() == lua.LTString {
+						values = append(values, item.String())
+					}
+				})
+				if len(values) > 0 {
+					options[k.String()] = strings.Join(values, ",")
+				}
+			}
 		}
 	})
 	
@@ -111,14 +129,26 @@ func (u *UserModule) parseUserOptions(L *lua.LState, idx int) map[string]string 
 
 // createUser creates a new user
 func (u *UserModule) createUser(L *lua.LState) int {
-	username := L.ToString(1)
+	var username string
+	var options map[string]string
+	
+	// Check if first argument is a table or string
+	val := L.Get(1)
+	if val.Type() == lua.LTTable {
+		// New syntax: user.create({ username = "...", password = "...", ... })
+		options = u.parseUserOptions(L, 1)
+		username = options["username"]
+	} else {
+		// Old syntax: user.create("username", { options })
+		username = L.ToString(1)
+		options = u.parseUserOptions(L, 2)
+	}
+	
 	if username == "" {
 		L.Push(lua.LFalse)
 		L.Push(lua.LString("Username is required"))
 		return 2
 	}
-	
-	options := u.parseUserOptions(L, 2)
 	
 	var args []string
 	if u.needsSudo() {

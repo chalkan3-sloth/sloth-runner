@@ -728,7 +728,11 @@ func (tr *TaskRunner) Run() error {
 	pterm.DefaultTable.WithHasHeader().WithData(tableData).Render()
 
 	if len(allGroupErrors) > 0 {
-		return fmt.Errorf("one or more task groups failed")
+		var errorMessages []string
+		for _, err := range allGroupErrors {
+			errorMessages = append(errorMessages, err.Error())
+		}
+		return fmt.Errorf("task execution failed:\n  - %s", strings.Join(errorMessages, "\n  - "))
 	}
 	return nil
 }

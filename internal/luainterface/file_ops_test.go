@@ -106,7 +106,7 @@ func TestFileOpsCopy(t *testing.T) {
 			} else {
 				code = `
 					local file_ops = require('file_ops')
-					return file_ops.copy("` + src + `", "` + dst + `")
+					return file_ops.copy({src = "` + src + `", dest = "` + dst + `"})
 				`
 			}
 
@@ -148,7 +148,7 @@ func TestFileOpsFetch(t *testing.T) {
 
 	code := `
 		local file_ops = require('file_ops')
-		return file_ops.fetch("` + src + `", "` + dst + `")
+		return file_ops.fetch({src = "` + src + `", dest = "` + dst + `"})
 	`
 
 	if err := L.DoString(code); err != nil {
@@ -272,7 +272,7 @@ func TestFileOpsLineinfile(t *testing.T) {
 			} else {
 				code = `
 					local file_ops = require('file_ops')
-					return file_ops.lineinfile("` + path + `", "` + tt.line + `")
+					return file_ops.lineinfile({path = "` + path + `", line = "` + tt.line + `"})
 				`
 			}
 
@@ -376,7 +376,7 @@ func TestFileOpsBlockinfile(t *testing.T) {
 			} else {
 				code = `
 					local file_ops = require('file_ops')
-					return file_ops.blockinfile("` + path + `", "` + tt.block + `")
+					return file_ops.blockinfile({path = "` + path + `", block = "` + tt.block + `"})
 				`
 			}
 
@@ -448,7 +448,7 @@ func TestFileOpsReplace(t *testing.T) {
 
 			code := `
 				local file_ops = require('file_ops')
-				return file_ops.replace("` + path + `", "` + tt.pattern + `", "` + tt.replacement + `")
+				return file_ops.replace({path = "` + path + `", pattern = "` + tt.pattern + `", replace = "` + tt.replacement + `"})
 			`
 
 			if err := L.DoString(code); err != nil {
@@ -549,7 +549,7 @@ func TestFileOpsUnarchive(t *testing.T) {
 
 			code := `
 				local file_ops = require('file_ops')
-				return file_ops.unarchive("` + archPath + `", "` + dstDir + `")
+				return file_ops.unarchive({src = "` + archPath + `", dest = "` + dstDir + `"})
 			`
 
 			if err := L.DoString(code); err != nil {
@@ -634,7 +634,7 @@ func TestFileOpsStat(t *testing.T) {
 
 			code := `
 				local file_ops = require('file_ops')
-				result = file_ops.stat("` + path + `")
+				result = file_ops.stat({path = "` + path + `"})
 			`
 
 			if err := L.DoString(code); err != nil {
@@ -663,7 +663,7 @@ func TestFileOpsEdgeCases(t *testing.T) {
 
 		code := `
 			local file_ops = require('file_ops')
-			return file_ops.copy("` + src + `", "` + dst + `")
+			return file_ops.copy({src = "` + src + `", dest = "` + dst + `"})
 		`
 
 		if err := L.DoString(code); err != nil {
@@ -686,7 +686,7 @@ func TestFileOpsEdgeCases(t *testing.T) {
 
 		code := `
 			local file_ops = require('file_ops')
-			return file_ops.lineinfile("` + path + `", "first line")
+			return file_ops.lineinfile({path = "` + path + `", line = "first line"})
 		`
 
 		if err := L.DoString(code); err != nil {
@@ -715,7 +715,7 @@ func TestFileOpsEdgeCases(t *testing.T) {
 
 		code := `
 			local file_ops = require('file_ops')
-			local result, err = file_ops.replace("` + path + `", "[invalid", "replacement")
+			local result, err = file_ops.replace({path = "` + path + `", pattern = "[invalid", replace = "replacement"})
 			if result == nil then
 				return true  -- Error expected
 			end
