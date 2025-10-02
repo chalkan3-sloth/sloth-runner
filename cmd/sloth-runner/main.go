@@ -157,6 +157,23 @@ func formatConnectionError(err error, masterAddr string) error {
 		)
 	}
 	
+	// Agent connection timeout (master can't reach agent)
+	if strings.Contains(errStr, "failed to call runcommand on agent") && 
+	   (strings.Contains(errStr, "timeout") || strings.Contains(errStr, "unavailable")) {
+		return fmt.Errorf(
+			"%s\n\n"+
+			"The master server cannot reach the agent\n"+
+			"Possible causes:\n"+
+			"  • Agent is not responding or offline\n"+
+			"  • Network connectivity issues between master and agent\n"+
+			"  • Agent firewall blocking the connection\n\n"+
+			"Check agent status:\n"+
+			"  %s",
+			pterm.Red("✗ Agent Unreachable"),
+			pterm.Cyan("sloth-runner agent list"),
+		)
+	}
+	
 	// Timeout errors
 	if strings.Contains(errStr, "timeout") || strings.Contains(errStr, "deadline exceeded") {
 		return fmt.Errorf(
@@ -1182,17 +1199,17 @@ var agentRunCmd = &cobra.Command{
 		agentName := args[0]
 		command := args[1]
 		masterAddr, _ := cmd.Flags().GetString("master")
+		outputFormat, _ := cmd.Flags().GetString("output")
 
-		// Show elegant execution header
-		pterm.Info.Printf("🚀 Executing on agent: %s\n", agentName)
-		pterm.Info.Printf("📝 Command: %s\n", command)
-		pterm.Println()
+		// Show elegant execution header (skip if JSON output)
+		if outputFormat != "json" {
+			pterm.Info.Printf("🚀 Executing on agent: %s\n", agentName)
+			pterm.Info.Printf("📝 Command: %s\n", command)
+			pterm.Println()
+		}
 
-		// Create a connection with a reasonable timeout
-		dialCtx, dialCancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer dialCancel()
-
-		conn, err := grpc.DialContext(dialCtx, masterAddr, 
+		// Create a connection
+		conn, err := grpc.Dial(masterAddr, 
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		)
 		if err != nil {
@@ -1213,6 +1230,8 @@ var agentRunCmd = &cobra.Command{
 			return formatConnectionError(err, masterAddr)
 		}
 
+		var stdoutBuffer bytes.Buffer
+		var stderrBuffer bytes.Buffer
 		var finalError string
 		var exitCode int32 = -1  // Initialize to invalid exit code
 		hasFinished := false
@@ -1227,10 +1246,18 @@ var agentRunCmd = &cobra.Command{
 			}
 
 			if resp.GetStdoutChunk() != "" {
-				fmt.Print(resp.GetStdoutChunk())
+				if outputFormat == "json" {
+					stdoutBuffer.WriteString(resp.GetStdoutChunk())
+				} else {
+					fmt.Print(resp.GetStdoutChunk())
+				}
 			}
 			if resp.GetStderrChunk() != "" {
-				fmt.Print(resp.GetStderrChunk())
+				if outputFormat == "json" {
+					stderrBuffer.WriteString(resp.GetStderrChunk())
+				} else {
+					fmt.Print(resp.GetStderrChunk())
+				}
 			}
 			if resp.GetError() != "" {
 				finalError = resp.GetError()
@@ -1244,6 +1271,29 @@ var agentRunCmd = &cobra.Command{
 
 		// Success is determined by exit code 0 when finished, or no explicit error when not finished  
 		success := (hasFinished && exitCode == 0) || (!hasFinished && finalError == "")
+		
+		// JSON output
+		if outputFormat == "json" {
+			result := map[string]interface{}{
+				"agent":      agentName,
+				"command":    command,
+				"success":    success,
+				"exit_code":  exitCode,
+				"stdout":     stdoutBuffer.String(),
+				"stderr":     stderrBuffer.String(),
+				"error":      finalError,
+				"finished":   hasFinished,
+			}
+			jsonOutput, err := json.MarshalIndent(result, "", "  ")
+			if err != nil {
+				return fmt.Errorf("failed to marshal JSON output: %w", err)
+			}
+			fmt.Println(string(jsonOutput))
+			if !success {
+				return fmt.Errorf("command execution failed")
+			}
+			return nil
+		}
 		
 		// Always show completion status elegantly
 		pterm.Println()
@@ -1998,6 +2048,7 @@ func init() {
 
 	// Agent client commands
 	agentCmd.AddCommand(agentRunCmd)
+	agentRunCmd.Flags().StringP("output", "o", "text", "Output format: text or json")
 	agentCmd.AddCommand(agentListCmd)
 	agentListCmd.Flags().Bool("debug", false, "Enable debug logging for this command")
 	agentCmd.AddCommand(agentStopCmd)
