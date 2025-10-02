@@ -41,6 +41,105 @@ sloth-runner run -f examples/deploy_git_terraform.sloth -v examples/values.yaml 
 
 ---
 
+## 🌟 **Featured Examples: Real-World Power**
+
+### 🚀 Example 1: Deploy Web Cluster with Incus + Goroutines
+
+Deploy a complete web cluster in parallel using containers:
+
+```lua
+task({
+    name = "deploy-web-cluster",
+    delegate_to = "incus-host-01",
+    run = function()
+        -- Create isolated network
+        incus.network({
+            name = "web-dmz",
+            type = "bridge"
+        }):set_config({
+            ["ipv4.address"] = "10.10.0.1/24"
+        }):create()
+
+        -- Deploy 3 web servers in parallel
+        goroutine.map({"web-01", "web-02", "web-03"}, function(name)
+            incus.instance({
+                name = name,
+                image = "ubuntu:22.04"
+            }):create()
+              :start()
+              :wait_running()
+              :exec("apt install -y nginx")
+        end)
+        
+        log.info("✅ Web cluster deployed!")
+    end
+})
+```
+
+**What's happening here:**
+- ⚡ **Parallel execution** with `goroutine.map()`
+- 🌐 **Network isolation** with Incus bridge
+- 🔗 **Fluent API** for chaining operations
+- 🎯 **Remote execution** via `:delegate_to()`
+
+👉 **[Full Incus Documentation →](modules/incus.md)**
+
+---
+
+### 📊 Example 2: Intelligent Deploy with Facts
+
+Make smart deployment decisions based on real-time system state:
+
+```lua
+task({
+    name = "intelligent-deploy",
+    run = function()
+        -- Collect system information
+        local info = facts.get_all({ agent = "prod-server-01" })
+        
+        log.info("🔍 Analyzing: " .. info.hostname)
+        log.info("   Platform: " .. info.platform.os)
+        log.info("   Memory: " .. string.format("%.2f GB", 
+            info.memory.total / 1024 / 1024 / 1024))
+        
+        -- Validate requirements
+        if (info.memory.total / 1024 / 1024 / 1024) < 4 then
+            error("❌ Need at least 4GB RAM")
+        end
+        
+        -- Check Docker installation
+        local docker = facts.get_package({ 
+            agent = "prod-server-01", 
+            name = "docker" 
+        })
+        
+        if not docker.installed then
+            log.info("📦 Installing Docker...")
+            pkg.install({ packages = {"docker.io"} })
+               :delegate_to("prod-server-01")
+        end
+        
+        -- Conditional deploy based on architecture
+        local image_tag = info.platform.architecture == "arm64" 
+            and "latest-arm64" 
+            or "latest-amd64"
+        
+        log.info("🚀 Deploying: myapp:" .. image_tag)
+    end
+})
+```
+
+**What's happening here:**
+- 📊 **System discovery** with facts module
+- ✅ **Requirement validation** before deploy
+- 🧠 **Conditional logic** based on architecture
+- 🔄 **Auto-installation** of dependencies
+- 🌍 **Global modules** - no `require()` needed!
+
+👉 **[Full Facts Documentation →](modules/facts.md)**
+
+---
+
 ## 🔥 **New: Unified Module API**
 
 All modules now use a **modern, consistent, table-based API** for maximum clarity and flexibility:

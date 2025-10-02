@@ -2,14 +2,99 @@
 
 Sloth Runner provides a comprehensive set of built-in modules for common operations.
 
-## Overview
+## 🌟 Featured Examples
 
-Modules are Lua libraries that provide additional functionality to your workflows. They are loaded using the `require()` function.
+### 🚀 Incus: Deploy Web Cluster with Parallel Execution
+
+Deploy a complete web cluster in seconds using Incus containers and parallel goroutines:
 
 ```lua
-local exec = require("exec")
-local fs = require("fs")
-local log = require("log")
+task({
+    name = "deploy-web-cluster",
+    delegate_to = "incus-host-01",
+    run = function()
+        -- Create isolated network
+        incus.network({
+            name = "web-dmz",
+            type = "bridge"
+        }):set_config({
+            ["ipv4.address"] = "10.10.0.1/24"
+        }):create()
+
+        -- Parallel deploy
+        goroutine.map({"web-01", "web-02", "web-03"}, function(name)
+            incus.instance({
+                name = name,
+                image = "ubuntu:22.04"
+            }):create()
+              :start()
+              :wait_running()
+              :exec("apt install -y nginx")
+        end)
+    end
+})
+```
+
+**[📖 Full Incus Documentation →](./incus.md)**
+
+---
+
+### 📊 Facts: Intelligent Deployment Based on System State
+
+Use system facts to make smart deployment decisions:
+
+```lua
+task({
+    name = "intelligent-deploy",
+    run = function()
+        -- Collect system info
+        local info, err = facts.get_all({ agent = "prod-server-01" })
+        
+        log.info("Platform: " .. info.platform.os)
+        log.info("Memory: " .. string.format("%.2f GB", 
+            info.memory.total / 1024 / 1024 / 1024))
+        
+        -- Validate requirements
+        local mem_gb = info.memory.total / 1024 / 1024 / 1024
+        if mem_gb < 4 then
+            error("Insufficient memory!")
+        end
+        
+        -- Check if Docker is installed
+        local docker, _ = facts.get_package({ 
+            agent = "prod-server-01", 
+            name = "docker" 
+        })
+        
+        if not docker.installed then
+            pkg.install({ packages = {"docker.io"} })
+               :delegate_to("prod-server-01")
+        end
+        
+        -- Deploy based on architecture
+        if info.platform.architecture == "arm64" then
+            -- Use ARM image
+        else
+            -- Use x86 image
+        end
+    end
+})
+```
+
+**[📖 Full Facts Documentation →](./facts.md)**
+
+---
+
+## Overview
+
+All modules are **globally available** - no `require()` needed! Just use them directly in your tasks.
+
+```lua
+-- Old way (still works)
+local pkg = require("pkg")
+
+-- New way (recommended) - modules are global!
+pkg.install({ packages = {"nginx"} })
 ```
 
 ## Core Modules
