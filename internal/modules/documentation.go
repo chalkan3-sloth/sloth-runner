@@ -1075,5 +1075,201 @@ end)`,
 				},
 			},
 		},
+		{
+			Name:        "incus",
+			Description: "Container and VM management with Incus (LXC/LXD fork)",
+			Functions: []FunctionDoc{
+				{
+					Name:        "incus.instance",
+					Description: "Create an instance builder for containers or VMs",
+					Parameters:  "{name = 'string', image = 'string', type = 'container|virtual-machine', profiles = {...}}",
+					Example: `local web = incus.instance({
+    name = "web-01",
+    image = "ubuntu:22.04",
+    profiles = {"default", "web-server"}
+})
+web:create():start():wait_running()`,
+				},
+				{
+					Name:        "instance:create",
+					Description: "Create the instance",
+					Parameters:  "none",
+					Example:     `instance:create()`,
+				},
+				{
+					Name:        "instance:start",
+					Description: "Start the instance",
+					Parameters:  "none",
+					Example:     `instance:start()`,
+				},
+				{
+					Name:        "instance:stop",
+					Description: "Stop the instance (optionally force)",
+					Parameters:  "force (boolean, optional)",
+					Example: `instance:stop()       -- graceful
+instance:stop(true)  -- force`,
+				},
+				{
+					Name:        "instance:restart",
+					Description: "Restart the instance",
+					Parameters:  "none",
+					Example:     `instance:restart()`,
+				},
+				{
+					Name:        "instance:delete",
+					Description: "Delete the instance",
+					Parameters:  "none",
+					Example:     `instance:delete()`,
+				},
+				{
+					Name:        "instance:wait_running",
+					Description: "Wait for instance to be running",
+					Parameters:  "timeout (number, optional)",
+					Example:     `instance:wait_running(120)  -- wait up to 120 seconds`,
+				},
+				{
+					Name:        "instance:exec",
+					Description: "Execute command in the instance",
+					Parameters:  "command (string), options (table, optional)",
+					Example: `instance:exec("apt update && apt upgrade -y")
+instance:exec("whoami", {user = "ubuntu"})`,
+				},
+				{
+					Name:        "instance:file_push",
+					Description: "Upload file to the instance",
+					Parameters:  "local_path (string), remote_path (string)",
+					Example:     `instance:file_push("./config.yaml", "/etc/app/config.yaml")`,
+				},
+				{
+					Name:        "instance:file_pull",
+					Description: "Download file from the instance",
+					Parameters:  "remote_path (string), local_path (string)",
+					Example:     `instance:file_pull("/var/log/app.log", "./logs/app.log")`,
+				},
+				{
+					Name:        "instance:set_config",
+					Description: "Set instance configuration",
+					Parameters:  "{[key] = value, ...}",
+					Example: `instance:set_config({
+    ["limits.cpu"] = "4",
+    ["limits.memory"] = "8GB"
+})`,
+				},
+				{
+					Name:        "instance:add_device",
+					Description: "Add a device to the instance",
+					Parameters:  "name (string), config (table)",
+					Example: `instance:add_device("eth0", {
+    type = "nic",
+    nictype = "bridged",
+    parent = "br0"
+})`,
+				},
+				{
+					Name:        "instance:delegate_to",
+					Description: "Execute instance operations on a specific agent",
+					Parameters:  "agent_name (string)",
+					Example:     `instance:delegate_to("incus-host-01")`,
+				},
+				{
+					Name:        "incus.network",
+					Description: "Create a network builder",
+					Parameters:  "{name = 'string', type = 'bridge|macvlan|...'}",
+					Example: `incus.network({
+    name = "web-dmz",
+    type = "bridge"
+}):set_config({
+    ["ipv4.address"] = "10.0.0.1/24",
+    ["ipv4.nat"] = "true"
+}):create()`,
+				},
+				{
+					Name:        "network:create",
+					Description: "Create the network",
+					Parameters:  "none",
+					Example:     `network:create()`,
+				},
+				{
+					Name:        "network:attach",
+					Description: "Attach network to an instance",
+					Parameters:  "instance_name (string)",
+					Example:     `network:attach("web-01")`,
+				},
+				{
+					Name:        "network:detach",
+					Description: "Detach network from an instance",
+					Parameters:  "instance_name (string)",
+					Example:     `network:detach("web-01")`,
+				},
+				{
+					Name:        "incus.profile",
+					Description: "Create a profile builder",
+					Parameters:  "{name = 'string', description = 'string'}",
+					Example: `incus.profile({
+    name = "web-server",
+    description = "Web server profile"
+}):set_config({
+    ["limits.cpu"] = "4"
+}):create()`,
+				},
+				{
+					Name:        "profile:apply",
+					Description: "Apply profile to an instance",
+					Parameters:  "instance_name (string)",
+					Example:     `profile:apply("web-01")`,
+				},
+				{
+					Name:        "incus.storage",
+					Description: "Create a storage pool builder",
+					Parameters:  "{name = 'string', driver = 'zfs|btrfs|dir|lvm'}",
+					Example: `incus.storage({
+    name = "ssd-pool",
+    driver = "zfs"
+}):set_config({
+    ["size"] = "100GB"
+}):create()`,
+				},
+				{
+					Name:        "incus.snapshot",
+					Description: "Create a snapshot builder",
+					Parameters:  "{instance = 'string', name = 'string', stateful = boolean}",
+					Example: `incus.snapshot({
+    instance = "web-01",
+    name = "backup-20241002",
+    stateful = true
+}):create()`,
+				},
+				{
+					Name:        "snapshot:restore",
+					Description: "Restore a snapshot",
+					Parameters:  "none",
+					Example:     `snapshot:restore()`,
+				},
+				{
+					Name:        "incus.list",
+					Description: "List Incus resources",
+					Parameters:  "type (string): 'instances', 'networks', 'profiles', 'storage-pools'",
+					Example:     `local instances = incus.list("instances")`,
+				},
+				{
+					Name:        "incus.info",
+					Description: "Get information about a resource",
+					Parameters:  "type (string), name (string)",
+					Example:     `local info = incus.info("instance", "web-01")`,
+				},
+				{
+					Name:        "incus.exec",
+					Description: "Execute command in an instance (standalone)",
+					Parameters:  "instance (string), command (string), options (table, optional)",
+					Example:     `incus.exec("web-01", "systemctl status nginx")`,
+				},
+				{
+					Name:        "incus.delete",
+					Description: "Delete a resource (standalone)",
+					Parameters:  "type (string), name (string)",
+					Example:     `incus.delete("instance", "old-container")`,
+				},
+			},
+		},
 	}
 }
