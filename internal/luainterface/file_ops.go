@@ -392,9 +392,17 @@ func (f *FileOpsModule) blockinfile(L *lua.LState) int {
 		L.Push(lua.LString("path parameter is required"))
 		return 2
 	}
-	if block == "" {
+	
+	// Check state first - block can be empty if state is absent
+	state := "present"
+	if stateVal := opts.RawGetString("state"); stateVal != lua.LNil && stateVal.String() != "" {
+		state = stateVal.String()
+	}
+	
+	// Block is required only if state is present
+	if block == "" && state != "absent" {
 		L.Push(lua.LNil)
-		L.Push(lua.LString("block parameter is required"))
+		L.Push(lua.LString("block parameter is required when state is present"))
 		return 2
 	}
 
@@ -407,12 +415,6 @@ func (f *FileOpsModule) blockinfile(L *lua.LState) int {
 	}
 	if me := opts.RawGetString("marker_end"); me != lua.LNil && me.String() != "" {
 		markerEnd = me.String()
-	}
-
-	// Check state
-	state := "present"
-	if stateVal := opts.RawGetString("state"); stateVal != lua.LNil && stateVal.String() != "" {
-		state = stateVal.String()
 	}
 
 	// Read file

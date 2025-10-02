@@ -102,12 +102,17 @@ func (u *UserModule) parseUserOptions(L *lua.LState, idx int) map[string]string 
 	tbl := val.(*lua.LTable)
 	tbl.ForEach(func(k, v lua.LValue) {
 		if k.Type() == lua.LTString {
+			keyStr := k.String()
 			switch v.Type() {
 			case lua.LTString:
-				options[k.String()] = v.String()
+				options[keyStr] = v.String()
+				fmt.Printf("DEBUG parseUserOptions: key=%s, value=%s (string)\n", keyStr, v.String())
 			case lua.LTBool:
 				if lua.LVAsBool(v) {
-					options[k.String()] = "true"
+					options[keyStr] = "true"
+					fmt.Printf("DEBUG parseUserOptions: key=%s, value=true (bool)\n", keyStr)
+				} else {
+					fmt.Printf("DEBUG parseUserOptions: key=%s, value=false (bool - not saved)\n", keyStr)
 				}
 			case lua.LTTable:
 				// Handle array values (like groups)
@@ -118,11 +123,18 @@ func (u *UserModule) parseUserOptions(L *lua.LState, idx int) map[string]string 
 					}
 				})
 				if len(values) > 0 {
-					options[k.String()] = strings.Join(values, ",")
+					options[keyStr] = strings.Join(values, ",")
+					fmt.Printf("DEBUG parseUserOptions: key=%s, value=%s (table)\n", keyStr, strings.Join(values, ","))
 				}
+			default:
+				fmt.Printf("DEBUG parseUserOptions: key=%s, value type=%s (IGNORED)\n", keyStr, v.Type())
 			}
+		} else {
+			fmt.Printf("DEBUG parseUserOptions: non-string key type=%s (IGNORED)\n", k.Type())
 		}
 	})
+	
+	fmt.Printf("DEBUG parseUserOptions: final options map: %+v\n", options)
 	
 	return options
 }
@@ -134,21 +146,28 @@ func (u *UserModule) createUser(L *lua.LState) int {
 	
 	// Check if first argument is a table or string
 	val := L.Get(1)
+	fmt.Printf("DEBUG createUser: val.Type()=%s\n", val.Type())
 	if val.Type() == lua.LTTable {
 		// New syntax: user.create({ username = "...", password = "...", ... })
+		fmt.Println("DEBUG createUser: Using new syntax (table)")
 		options = u.parseUserOptions(L, 1)
 		username = options["username"]
+		fmt.Printf("DEBUG createUser: username from options=%q\n", username)
 	} else {
 		// Old syntax: user.create("username", { options })
+		fmt.Println("DEBUG createUser: Using old syntax (string)")
 		username = L.ToString(1)
 		options = u.parseUserOptions(L, 2)
+		fmt.Printf("DEBUG createUser: username from arg=%q\n", username)
 	}
 	
 	if username == "" {
+		fmt.Println("DEBUG createUser: Username is empty, returning error")
 		L.Push(lua.LFalse)
 		L.Push(lua.LString("Username is required"))
 		return 2
 	}
+	fmt.Printf("DEBUG createUser: Creating user %q with options: %+v\n", username, options)
 	
 	var args []string
 	if u.needsSudo() {

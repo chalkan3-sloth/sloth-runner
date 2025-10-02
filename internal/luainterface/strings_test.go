@@ -169,7 +169,8 @@ func TestStringsModule(t *testing.T) {
 			name: "strings.match()",
 			script: `
 				local result = strings.match("test123", "[0-9]+")
-				assert(result == true, "match() should return true for matching pattern")
+				assert(type(result) == "table", "match() should return a table for matching pattern")
+				assert(result[1] == "123", "match() should return the matched string")
 			`,
 		},
 		{
