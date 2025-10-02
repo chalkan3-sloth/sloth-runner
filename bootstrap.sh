@@ -282,13 +282,27 @@ create_systemd_service() {
     
     info "Creating systemd service..."
     
-    # Build agent start command
+    # Determine working directory based on user
+    local work_dir="/var/lib/sloth-runner"
+    if [ "$SERVICE_USER" != "root" ]; then
+        work_dir="/home/$SERVICE_USER/.sloth-runner"
+    fi
+    
+    # Create working directory
+    if command -v sudo &> /dev/null && [ "$(id -u)" -ne 0 ]; then
+        sudo mkdir -p "$work_dir"
+        sudo chown "$SERVICE_USER:$SERVICE_USER" "$work_dir" 2>/dev/null || true
+    else
+        mkdir -p "$work_dir"
+        chown "$SERVICE_USER:$SERVICE_USER" "$work_dir" 2>/dev/null || true
+    fi
+    
+    # Build agent start command (without --daemon for simple service)
     local agent_cmd="$INSTALL_DIR/sloth-runner agent start"
     agent_cmd="$agent_cmd --name $AGENT_NAME"
     agent_cmd="$agent_cmd --master $MASTER_ADDRESS"
     agent_cmd="$agent_cmd --port $AGENT_PORT"
     agent_cmd="$agent_cmd --bind-address $BIND_ADDRESS"
-    agent_cmd="$agent_cmd --daemon"
     
     # Create systemd service file
     local service_file="/etc/systemd/system/sloth-runner-agent.service"
@@ -298,19 +312,17 @@ create_systemd_service() {
 [Unit]
 Description=Sloth Runner Agent - $AGENT_NAME
 Documentation=https://chalkan3.github.io/sloth-runner/
+After=network-online.target
+Wants=network-online.target
 
 [Service]
-Type=forking
+Type=simple
 User=$SERVICE_USER
-WorkingDirectory=/root
-PIDFile=/var/run/sloth-runner-agent-$AGENT_NAME.pid
-Restart=on-failure
+WorkingDirectory=$work_dir
+Restart=always
 RestartSec=5s
 StartLimitInterval=60s
-StartLimitBurst=3
-Environment="HOME=/root"
-ExecStartPre=/usr/bin/mkdir -p /var/run
-ExecStartPost=/bin/bash -c 'if [ -f /tmp/sloth-runner-agent-$AGENT_NAME.pid ]; then mv /tmp/sloth-runner-agent-$AGENT_NAME.pid /var/run/sloth-runner-agent-$AGENT_NAME.pid; fi'
+StartLimitBurst=5
 
 # Agent Configuration
 ExecStart=$agent_cmd
@@ -322,6 +334,10 @@ SyslogIdentifier=sloth-runner-agent
 
 # Performance
 LimitNOFILE=65536
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
