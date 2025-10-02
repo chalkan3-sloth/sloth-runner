@@ -1,0 +1,359 @@
+-- User Management Example
+-- Demonstrates comprehensive user and group management capabilities
+
+workflow("user-management", {
+    description = "Complete user management workflow"
+})
+
+-- Task 1: Create application user
+task("create-app-user", {
+    workflow = "user-management",
+    description = "Create application user with proper configuration",
+    action = function()
+        local user = require("user")
+        
+        print("📦 Creating application user...")
+        
+        -- Check and create group first
+        if not user.group_exists("webapp") then
+            local ok, msg = user.group_create("webapp", {
+                system = true
+            })
+            if ok then
+                print("✅ Group 'webapp' created")
+            else
+                error("Failed to create group: " .. msg)
+            end
+        else
+            print("ℹ️  Group 'webapp' already exists")
+        end
+        
+        -- Create user if doesn't exist
+        if not user.exists("webapp") then
+            local ok, msg = user.create("webapp", {
+                system = true,
+                home = "/opt/webapp",
+                shell = "/bin/bash",
+                gid = "webapp",
+                groups = "docker,www-data",
+                comment = "Web Application Service User",
+                create_home = true
+            })
+            
+            if ok then
+                print("✅ User 'webapp' created successfully")
+            else
+                error("Failed to create user: " .. msg)
+            end
+        else
+            print("ℹ️  User 'webapp' already exists")
+        end
+    end
+})
+
+-- Task 2: Setup development users
+task("setup-dev-users", {
+    workflow = "user-management",
+    description = "Setup development team users",
+    action = function()
+        local user = require("user")
+        
+        print("\n👥 Setting up development users...")
+        
+        -- Create developers group
+        if not user.group_exists("developers") then
+            user.group_create("developers", {
+                gid = "5000"
+            })
+            print("✅ Created 'developers' group")
+        end
+        
+        -- Create dev users
+        local devs = {"alice", "bob", "charlie"}
+        
+        for _, dev in ipairs(devs) do
+            if not user.exists(dev) then
+                local ok, msg = user.create(dev, {
+                    home = "/home/" .. dev,
+                    shell = "/bin/bash",
+                    groups = "developers,docker,sudo",
+                    comment = "Developer - " .. dev:upper(),
+                    create_home = true
+                })
+                
+                if ok then
+                    print("✅ Created user: " .. dev)
+                    
+                    -- Set initial password and force change
+                    user.set_password(dev, "changeme123")
+                    user.expire_password(dev)
+                    print("   🔒 Password set (must change on first login)")
+                end
+            else
+                print("ℹ️  User " .. dev .. " already exists")
+            end
+        end
+    end
+})
+
+-- Task 3: Audit users across multiple servers
+task("audit-users-multi-server", {
+    workflow = "user-management",
+    description = "Audit users on multiple servers using delegate_to",
+    action = function()
+        local user = require("user")
+        
+        print("\n🔍 Performing user audit...")
+        
+        -- List of servers to audit (in production, these would be real hostnames)
+        local servers = {"localhost"}  -- Add more servers as needed
+        
+        for _, server in ipairs(servers) do
+            print("\n📊 Auditing server: " .. server)
+            print(string.rep("-", 50))
+            
+            delegate_to(server, function()
+                -- Get current user info
+                local current, err = user.get_current()
+                if current then
+                    print("Current user: " .. current.username .. " (UID: " .. current.uid .. ")")
+                end
+                
+                -- Check if running as root
+                local is_root, _ = user.is_root()
+                if is_root then
+                    print("⚠️  Running as ROOT")
+                else
+                    print("ℹ️  Running as normal user")
+                end
+                
+                -- List all non-system users
+                local users, err = user.list(false)
+                if users then
+                    print("\n👤 Regular users (UID >= 1000):")
+                    for _, u in ipairs(users) do
+                        print(string.format("  • %s (UID: %s, Home: %s)", 
+                            u.username, u.uid, u.home))
+                        
+                        -- Get groups for this user
+                        local groups, _ = user.get_groups(u.username)
+                        if groups and #groups > 0 then
+                            print("    Groups: " .. table.concat(groups, ", "))
+                        end
+                        
+                        -- Check if user is locked
+                        local locked, _ = user.is_locked(u.username)
+                        if locked then
+                            print("    ⚠️  LOCKED")
+                        end
+                    end
+                else
+                    print("No regular users found or error: " .. tostring(err))
+                end
+            end)
+        end
+    end
+})
+
+-- Task 4: Manage user groups
+task("manage-groups", {
+    workflow = "user-management",
+    description = "Demonstrate group management",
+    action = function()
+        local user = require("user")
+        
+        print("\n🔐 Managing user groups...")
+        
+        -- Create project groups
+        local projects = {"project-alpha", "project-beta", "project-gamma"}
+        
+        for _, project in ipairs(projects) do
+            if not user.group_exists(project) then
+                user.group_create(project)
+                print("✅ Created group: " .. project)
+            end
+        end
+        
+        -- Assign developers to projects
+        if user.exists("alice") then
+            user.add_to_group("alice", "project-alpha")
+            user.add_to_group("alice", "project-beta")
+            print("✅ Alice added to alpha and beta projects")
+        end
+        
+        if user.exists("bob") then
+            user.add_to_group("bob", "project-beta")
+            user.add_to_group("bob", "project-gamma")
+            print("✅ Bob added to beta and gamma projects")
+        end
+        
+        -- Show group members
+        for _, project in ipairs(projects) do
+            if user.group_exists(project) then
+                local members, err = user.group_members(project)
+                if members and #members > 0 then
+                    print("\n📋 " .. project .. " members:")
+                    for _, member in ipairs(members) do
+                        print("   - " .. member)
+                    end
+                else
+                    print("\n📋 " .. project .. " has no members yet")
+                end
+            end
+        end
+    end
+})
+
+-- Task 5: User validation and security
+task("validate-security", {
+    workflow = "user-management",
+    description = "Validate usernames and security settings",
+    action = function()
+        local user = require("user")
+        
+        print("\n🔒 Security validation...")
+        
+        -- Test username validation
+        local test_usernames = {
+            "validuser",
+            "valid-user",
+            "valid_user",
+            "123invalid",  -- Starts with number
+            "user@domain",  -- Invalid character
+            "this_is_a_very_long_username_that_exceeds_the_maximum_limit",  -- Too long
+        }
+        
+        print("\n✅ Username validation tests:")
+        for _, username in ipairs(test_usernames) do
+            local valid, msg = user.validate_username(username)
+            if valid then
+                print("  ✓ " .. username .. " - VALID")
+            else
+                print("  ✗ " .. username .. " - INVALID: " .. msg)
+            end
+        end
+        
+        -- Check for users with UID 0 (should only be root)
+        print("\n⚠️  Checking for users with UID 0...")
+        local users, _ = user.list(true)  -- System users
+        if users then
+            for _, u in ipairs(users) do
+                local uid = user.get_uid(u.username)
+                if uid == 0 and u.username ~= "root" then
+                    print("  ⚠️  WARNING: " .. u.username .. " has UID 0!")
+                end
+            end
+        end
+        
+        print("✅ Security validation complete")
+    end
+})
+
+-- Task 6: Cleanup temporary users
+task("cleanup-temp-users", {
+    workflow = "user-management",
+    description = "Clean up temporary users (dry-run)",
+    action = function()
+        local user = require("user")
+        
+        print("\n🧹 Checking for temporary users...")
+        
+        local users, _ = user.list(false)
+        if users then
+            for _, u in ipairs(users) do
+                -- Check for temp users (pattern: temp_*)
+                if string.match(u.username, "^temp_") then
+                    print("  Found temp user: " .. u.username)
+                    
+                    -- In production, you would:
+                    -- 1. Check last login date
+                    -- 2. Lock the user
+                    -- 3. Schedule for deletion
+                    
+                    print("    Action: Would lock and schedule for review")
+                    -- user.lock(u.username)
+                end
+            end
+        end
+        
+        print("✅ Cleanup check complete")
+    end
+})
+
+-- Task 7: User information query
+task("query-user-info", {
+    workflow = "user-management",
+    description = "Query detailed user information",
+    action = function()
+        local user = require("user")
+        
+        print("\n📊 Detailed user information query...")
+        
+        -- Get current user
+        local current, _ = user.get_current()
+        if not current then
+            print("⚠️  Could not get current user")
+            return
+        end
+        
+        local username = current.username
+        print("\n👤 User: " .. username)
+        print(string.rep("=", 50))
+        
+        -- Get all information
+        local info, _ = user.get_info(username)
+        if info then
+            print("UID: " .. info.uid)
+            print("GID: " .. info.gid)
+            print("Home: " .. info.home)
+            
+            if info.shell then
+                print("Shell: " .. info.shell)
+            end
+            
+            if info.comment then
+                print("Comment: " .. info.comment)
+            end
+        end
+        
+        -- Get groups
+        local groups, _ = user.get_groups(username)
+        if groups and #groups > 0 then
+            print("Groups: " .. table.concat(groups, ", "))
+        end
+        
+        -- Check if system user
+        local is_system, _ = user.is_system_user(username)
+        if is_system then
+            print("Type: System user (UID < 1000)")
+        else
+            print("Type: Regular user (UID >= 1000)")
+        end
+        
+        -- Check if locked
+        local locked, _ = user.is_locked(username)
+        if locked then
+            print("Status: 🔒 LOCKED")
+        else
+            print("Status: ✅ Active")
+        end
+        
+        print(string.rep("=", 50))
+    end
+})
+
+print("\n")
+print("=" .. string.rep("=", 70))
+print("  User Management Workflow Examples")
+print("=" .. string.rep("=", 70))
+print("\nAvailable tasks:")
+print("  1. create-app-user         - Create system user for applications")
+print("  2. setup-dev-users         - Setup development team users")
+print("  3. audit-users-multi-server - Audit users across servers")
+print("  4. manage-groups           - Group management operations")
+print("  5. validate-security       - Security validation checks")
+print("  6. cleanup-temp-users      - Cleanup temporary users")
+print("  7. query-user-info         - Query detailed user information")
+print("\nRun with: sloth-runner run <task-name>")
+print("=" .. string.rep("=", 70))
+print("\n")
