@@ -190,10 +190,15 @@ detect_os() {
     
     case "$OS" in
         linux)
-            # Check if systemd is available
+            # Check if systemd is available and working
             if ! command -v systemctl &> /dev/null; then
                 if [ "$SKIP_SYSTEMD" = false ]; then
                     warn "systemd not found. Skipping service creation."
+                    SKIP_SYSTEMD=true
+                fi
+            elif ! systemctl --version &> /dev/null 2>&1; then
+                if [ "$SKIP_SYSTEMD" = false ]; then
+                    warn "systemd not functioning properly. Skipping service creation."
                     SKIP_SYSTEMD=true
                 fi
             fi
@@ -293,16 +298,19 @@ create_systemd_service() {
 [Unit]
 Description=Sloth Runner Agent - $AGENT_NAME
 Documentation=https://chalkan3.github.io/sloth-runner/
-After=network-online.target
-Wants=network-online.target
 
 [Service]
-Type=simple
+Type=forking
 User=$SERVICE_USER
+WorkingDirectory=/root
+PIDFile=/var/run/sloth-runner-agent-$AGENT_NAME.pid
 Restart=on-failure
 RestartSec=5s
 StartLimitInterval=60s
 StartLimitBurst=3
+Environment="HOME=/root"
+ExecStartPre=/usr/bin/mkdir -p /var/run
+ExecStartPost=/bin/bash -c 'if [ -f /tmp/sloth-runner-agent-$AGENT_NAME.pid ]; then mv /tmp/sloth-runner-agent-$AGENT_NAME.pid /var/run/sloth-runner-agent-$AGENT_NAME.pid; fi'
 
 # Agent Configuration
 ExecStart=$agent_cmd
@@ -311,13 +319,6 @@ ExecStart=$agent_cmd
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=sloth-runner-agent
-
-# Security
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=/var/log
 
 # Performance
 LimitNOFILE=65536
@@ -423,6 +424,12 @@ show_post_install() {
         echo -e "  sudo systemctl stop sloth-runner-agent      # Stop agent"
         echo -e "  sudo journalctl -u sloth-runner-agent -f    # View logs"
         echo ""
+    else
+        echo -e "${CYAN}🔧 Agent Management (no systemd):${NC}"
+        echo -e "  $INSTALL_DIR/sloth-runner agent start --name $AGENT_NAME --master $MASTER_ADDRESS --port $AGENT_PORT --bind-address $BIND_ADDRESS --daemon"
+        echo -e "  pkill -f 'sloth-runner agent'    # Stop agent"
+        echo -e "  ps aux | grep sloth-runner       # Check if running"
+        echo ""
     fi
     
     echo -e "${CYAN}📊 Check Agent on Master:${NC}"
@@ -433,6 +440,39 @@ show_post_install() {
     echo -e "  https://chalkan3.github.io/sloth-runner/"
     echo ""
     echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
+}
+
+# Start agent directly if systemd not available
+start_agent_directly() {
+    if [ "$SKIP_SYSTEMD" = false ]; then
+        return
+    fi
+    
+    info "Starting agent directly (systemd not available)..."
+    
+    # Build command
+    local cmd="$INSTALL_DIR/sloth-runner agent start"
+    cmd="$cmd --name $AGENT_NAME"
+    cmd="$cmd --master $MASTER_ADDRESS"
+    cmd="$cmd --port $AGENT_PORT"
+    cmd="$cmd --bind-address $BIND_ADDRESS"
+    cmd="$cmd --daemon"
+    
+    # Start agent
+    if $cmd; then
+        success "Agent started successfully"
+        sleep 2
+        
+        # Verify it's running
+        if ps aux | grep -v grep | grep "sloth-runner agent" | grep "$AGENT_NAME" > /dev/null; then
+            success "Agent is running!"
+            ps aux | grep -v grep | grep "sloth-runner agent" | grep "$AGENT_NAME"
+        else
+            warn "Agent may not be running. Check logs with: cat agent.log"
+        fi
+    else
+        error "Failed to start agent"
+    fi
 }
 
 # Main bootstrap flow
@@ -452,16 +492,17 @@ main() {
     install_sloth_runner
     echo ""
     
-    # Create systemd service
-    create_systemd_service
-    echo ""
-    
-    # Start service
-    start_service
-    echo ""
-    
-    # Verify
-    verify_agent
+    # Create systemd service or start directly
+    if [ "$SKIP_SYSTEMD" = false ]; then
+        create_systemd_service
+        echo ""
+        start_service
+        echo ""
+        verify_agent
+    else
+        start_agent_directly
+        echo ""
+    fi
     
     # Show post-install info
     show_post_install
