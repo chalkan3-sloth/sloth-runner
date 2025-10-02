@@ -143,6 +143,23 @@ local version = state.get("deployment_version")
 curl -fsSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/install.sh | bash
 ```
 
+**Install Agent with Bootstrap (One Command!):**
+
+```bash
+# Install and configure agent with systemd in one command
+bash <(curl -fsSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/bootstrap.sh) \
+  --name myagent \
+  --master 192.168.1.10:50053
+```
+
+This will:
+- ✅ Install sloth-runner
+- ✅ Create and enable systemd service
+- ✅ Configure auto-reconnection
+- ✅ Start the agent immediately
+
+📖 **[Agent Bootstrap Guide](./BOOTSTRAP.md)** - Complete guide for agent deployment
+
 **Alternative Methods:**
 
 ```bash
