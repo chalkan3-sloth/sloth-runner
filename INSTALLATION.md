@@ -25,6 +25,34 @@ ladyguica      192.168.1.16:50051   Active   2025-10-01T12:41:13-03:00
 
 O diretório `$HOME/.local/bin` já está no seu PATH, então você pode usar `sloth-runner` de qualquer lugar.
 
+## 🔄 Atualização
+
+Para atualizar o Sloth Runner para a versão mais recente:
+
+```bash
+# Atualizar para a versão mais recente
+curl -fsSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/update.sh | bash
+
+# Ou baixar e executar localmente
+bash update.sh
+
+# Verificar atualizações disponíveis sem instalar
+bash update.sh --check-only
+
+# Atualizar para versão específica
+bash update.sh --version v3.23.1
+
+# Forçar atualização (reinstalar mesmo se já estiver atualizado)
+bash update.sh --force
+```
+
+O script de atualização irá:
+- ✅ Detectar a versão atual instalada
+- ✅ Verificar se há atualizações disponíveis
+- ✅ Fazer backup da versão atual antes de atualizar
+- ✅ Baixar e instalar a nova versão
+- ✅ Verificar a instalação
+
 ## 🚀 Como Usar
 
 ### Comandos Básicos
