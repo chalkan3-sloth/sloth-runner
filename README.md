@@ -965,6 +965,154 @@ sloth-runner run -f test-deployment.sloth
 
 ---
 
+## 📦 **Incus Container & VM Management** 🔥
+
+### **Native Container/VM Orchestration with Fluent API**
+
+The `incus` module provides complete integration with [Incus](https://github.com/lxc/incus), enabling you to manage containers and virtual machines programmatically with a powerful fluent API.
+
+#### 🌟 **Why Incus Module?**
+
+- ✅ **Fluent API**: Chain operations naturally like Terraform/Pulumi
+- ✅ **Remote Execution**: Deploy containers on remote hosts via `delegate_to()`
+- ✅ **Complete Coverage**: Instances, networks, profiles, storage, snapshots
+- ✅ **Parallel Operations**: Deploy multiple containers simultaneously with goroutines
+- ✅ **Type-Safe**: Strong type checking with comprehensive error handling
+
+#### 💡 **Real-World Example: Deploy Web Cluster**
+
+```lua
+task({
+    name = "deploy-web-cluster",
+    delegate_to = "incus-host-01",
+    run = function()
+        -- Create network infrastructure
+        incus.network({
+            name = "web-dmz",
+            type = "bridge"
+        }):set_config({
+            ["ipv4.address"] = "10.10.0.1/24",
+            ["ipv4.nat"] = "true",
+            ["ipv6.address"] = "none"
+        }):create()
+        
+        -- Create high-performance profile
+        incus.profile({
+            name = "web-server",
+            description = "Optimized for web servers"
+        }):set_config({
+            ["limits.cpu"] = "4",
+            ["limits.memory"] = "4GB",
+            ["boot.autostart"] = "true"
+        }):create()
+        
+        -- Deploy 3 web servers in parallel
+        local servers = {"web-01", "web-02", "web-03"}
+        goroutine.map(servers, function(name)
+            local web = incus.instance({
+                name = name,
+                image = "ubuntu:22.04",
+                profiles = {"default", "web-server"}
+            })
+            
+            -- Fluent API: create → start → wait → configure
+            web:create()
+               :start()
+               :wait_running()
+            
+            -- Attach to network
+            incus.network({name = "web-dmz"}):attach(name)
+            
+            -- Install and configure nginx
+            web:exec("apt update && apt install -y nginx")
+            web:file_push("./nginx.conf", "/etc/nginx/nginx.conf")
+            web:exec("systemctl restart nginx")
+            
+            -- Create backup snapshot
+            incus.snapshot({
+                instance = name,
+                name = "initial-setup",
+                stateful = true
+            }):create()
+            
+            log.info("✅ Server " .. name .. " deployed!")
+        end)
+        
+        log.info("🎉 Web cluster deployed successfully!")
+    end
+})
+```
+
+#### 🚀 **Quick Examples**
+
+```lua
+-- Create and start a container
+incus.instance({
+    name = "myapp",
+    image = "ubuntu:22.04"
+}):create():start():wait_running()
+
+-- Execute commands
+incus.instance({name = "myapp"}):exec("apt update")
+
+-- Push files
+incus.instance({name = "myapp"}):file_push("./config.yaml", "/etc/app/config.yaml")
+
+-- Create snapshot
+incus.snapshot({
+    instance = "myapp",
+    name = "before-upgrade",
+    stateful = true
+}):create()
+
+-- Remote execution
+incus.instance({
+    name = "prod-app",
+    image = "ubuntu:22.04"
+}):delegate_to("production-host"):create():start()
+```
+
+#### 🎯 **Available Operations**
+
+| Category | Operations | Description |
+|----------|-----------|-------------|
+| **Instances** | create, start, stop, restart, delete, exec, file_push/pull | Full lifecycle management |
+| **Networks** | create, delete, attach, detach, set_config | Virtual network management |
+| **Profiles** | create, delete, apply, remove_from, set_config | Configuration profiles |
+| **Storage** | create, delete, set_config | Storage pool management |
+| **Snapshots** | create, restore, delete | State snapshots (with memory!) |
+
+#### 🔗 **Multi-Host Deployment**
+
+```lua
+-- Deploy across multiple hosts
+local hosts = {
+    {name = "host-01", role = "database"},
+    {name = "host-02", role = "application"},
+    {name = "host-03", role = "cache"}
+}
+
+goroutine.map(hosts, function(host)
+    incus.instance({
+        name = host.role .. "-server",
+        image = "ubuntu:22.04"
+    }):delegate_to(host.name)
+      :create()
+      :start()
+      :wait_running()
+    
+    log.info("✅ Deployed on " .. host.name)
+end)
+```
+
+#### 📖 **Learn More**
+
+- 📖 [Complete Incus Documentation](./docs/modules/incus.md)
+- 🧪 [More Incus Examples](./examples/incus/)
+- 🎯 [Incus Official Docs](https://github.com/lxc/incus)
+
+---
+
 ## 🔄 **Agent Auto-Reconnection** 🛡️
 
 ### **High Availability for Distributed Agents**

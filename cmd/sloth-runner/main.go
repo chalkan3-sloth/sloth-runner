@@ -949,6 +949,10 @@ var runCmd = &cobra.Command{
 				}
 				fmt.Fprintln(writer, string(jsonBytes))
 			}
+			// If error is already formatted, return as is
+			if strings.Contains(err.Error(), "✗") {
+				return err
+			}
 			return fmt.Errorf("task execution failed: %w", err)
 		}
 
@@ -1711,6 +1715,97 @@ var agentGetCmd = &cobra.Command{
 	},
 }
 
+var agentModulesCheckCmd = &cobra.Command{
+	Use:   "modules",
+	Short: "Check availability of external modules/tools",
+	Long:  `Checks which external tools and modules are available on the system for Lua tasks to use.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		pterm.DefaultHeader.WithFullWidth().Println("Sloth Runner - Module Availability Check")
+		fmt.Println()
+		
+		type moduleCheck struct {
+			Name        string
+			Command     string
+			Description string
+		}
+		
+		modules := []moduleCheck{
+			{"Incus", "incus", "Container and VM management (LXC/LXD successor)"},
+			{"Terraform", "terraform", "Infrastructure as Code provisioning"},
+			{"Pulumi", "pulumi", "Modern Infrastructure as Code with programming languages"},
+			{"AWS CLI", "aws", "Amazon Web Services command-line interface"},
+			{"Azure CLI", "az", "Microsoft Azure command-line interface"},
+			{"Google Cloud SDK", "gcloud", "Google Cloud Platform command-line interface"},
+			{"kubectl", "kubectl", "Kubernetes command-line tool"},
+			{"Docker", "docker", "Container platform"},
+			{"Ansible", "ansible", "IT automation and configuration management"},
+			{"Git", "git", "Version control system"},
+			{"Helm", "helm", "Kubernetes package manager"},
+			{"systemctl", "systemctl", "systemd service manager"},
+			{"curl", "curl", "HTTP client for data transfer"},
+			{"jq", "jq", "JSON processor"},
+		}
+		
+		available := []moduleCheck{}
+		missing := []moduleCheck{}
+		
+		for _, mod := range modules {
+			_, err := exec.LookPath(mod.Command)
+			if err == nil {
+				available = append(available, mod)
+			} else {
+				missing = append(missing, mod)
+			}
+		}
+		
+		// Display available modules
+		if len(available) > 0 {
+			pterm.Success.Println("✅ Available Modules:")
+			fmt.Println()
+			for _, mod := range available {
+				fmt.Printf("  %s %s\n", pterm.Green("✓"), pterm.Cyan(mod.Name))
+				fmt.Printf("    %s\n", pterm.Gray(mod.Description))
+			}
+			fmt.Println()
+		}
+		
+		// Display missing modules
+		if len(missing) > 0 {
+			pterm.Warning.Println("❌ Missing Modules:")
+			fmt.Println()
+			for _, mod := range missing {
+				fmt.Printf("  %s %s\n", pterm.Red("✗"), pterm.Cyan(mod.Name))
+				fmt.Printf("    %s\n", pterm.Gray(mod.Description))
+			}
+			fmt.Println()
+			
+			pterm.Info.Println("ℹ️  Information:")
+			fmt.Println()
+			fmt.Println("  Missing modules are optional but required if you want to use their")
+			fmt.Println("  corresponding Lua functions in your tasks.")
+			fmt.Println()
+			fmt.Println("  For example:")
+			fmt.Println("    - To use incus.instance() functions, install Incus")
+			fmt.Println("    - To use terraform.init() functions, install Terraform")
+			fmt.Println("    - To use aws.s3() functions, install AWS CLI")
+			fmt.Println()
+			fmt.Println("  Install the tools you need based on your infrastructure requirements.")
+		}
+		
+		// Summary
+		fmt.Println()
+		pterm.DefaultBox.WithTitle("Summary").WithTitleTopCenter().Println(
+			fmt.Sprintf("Available: %s  |  Missing: %s  |  Total: %s",
+				pterm.Green(fmt.Sprintf("%d", len(available))),
+				pterm.Red(fmt.Sprintf("%d", len(missing))),
+				pterm.Cyan(fmt.Sprintf("%d", len(modules))),
+			),
+		)
+		
+		return nil
+	},
+}
+
 // formatBytes formats bytes into human-readable format
 func formatBytes(bytes uint64) string {
 	const unit = 1024
@@ -2236,20 +2331,45 @@ func (s *agentServer) ExecuteTask(ctx context.Context, in *pb.ExecuteTaskRequest
 		}
 		slog.Error("═════════════════════════════════════════════════════════════════════════════════════")
 		
-		// Create a cleaner error message for return
-		cleanError := errorMsg
+		// Build detailed error message for client
+		var errorDetails strings.Builder
 		
-		// Try to extract just the most relevant error information
-		if strings.Contains(errorMsg, "command function returned failure:") {
-			parts := strings.Split(errorMsg, "command function returned failure:")
-			if len(parts) > 1 {
-				cleanError = strings.TrimSpace(parts[len(parts)-1])
+		// Extract the root cause error message
+		rootCause := errorMsg
+		
+		// Try to find the most specific error message
+		// Look for common error patterns
+		for _, line := range errorLines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			
+			// Check for specific error patterns (like from useradd, apt, etc)
+			if strings.Contains(line, ": ") && !strings.HasPrefix(line, "task ") && 
+			   !strings.HasPrefix(line, "- task") && !strings.Contains(line, "failed with errors") {
+				// This looks like an actual error message
+				rootCause = line
+				break
 			}
 		}
 		
+		errorDetails.WriteString(fmt.Sprintf("╔═══════════════════════════════════════════════════════════════════════════════════\n"))
+		errorDetails.WriteString(fmt.Sprintf("║ ❌ AGENT EXECUTION FAILURE\n"))
+		errorDetails.WriteString(fmt.Sprintf("╠═══════════════════════════════════════════════════════════════════════════════════\n"))
+		errorDetails.WriteString(fmt.Sprintf("║ Task  : %s\n", in.GetTaskName()))
+		errorDetails.WriteString(fmt.Sprintf("║ Group : %s\n", in.GetTaskGroup()))
+		errorDetails.WriteString(fmt.Sprintf("╠═══════════════════════════════════════════════════════════════════════════════════\n"))
+		errorDetails.WriteString(fmt.Sprintf("║ 🔴 ROOT CAUSE:\n"))
+		errorDetails.WriteString(fmt.Sprintf("╠═══════════════════════════════════════════════════════════════════════════════════\n"))
+		errorDetails.WriteString(fmt.Sprintf("║ \n"))
+		errorDetails.WriteString(fmt.Sprintf("║   %s\n", rootCause))
+		errorDetails.WriteString(fmt.Sprintf("║ \n"))
+		errorDetails.WriteString(fmt.Sprintf("╚═══════════════════════════════════════════════════════════════════════════════════\n"))
+		
 		return &pb.ExecuteTaskResponse{
 			Success:   false,
-			Output:    cleanError,
+			Output:    errorDetails.String(),
 			Workspace: buf.Bytes(),
 		}, nil
 	}
@@ -2508,7 +2628,7 @@ var fmtCmd = &cobra.Command{
 func init() {
 	rootCmd.SetOut(os.Stdout)
 	rootCmd.SetErr(os.Stderr)
-	rootCmd.SilenceErrors = false
+	rootCmd.SilenceErrors = true
 	rootCmd.SilenceUsage = false
 
 	// Master command flags
@@ -2543,6 +2663,7 @@ func init() {
 	agentDeleteCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompt")
 	agentCmd.AddCommand(agentGetCmd)
 	agentGetCmd.Flags().StringP("output", "o", "text", "Output format: text or json")
+	agentCmd.AddCommand(agentModulesCheckCmd)
 
 	// Scheduler command and subcommands
 	rootCmd.AddCommand(schedulerCmd)
@@ -2632,8 +2753,12 @@ func main() {
 	slog.SetDefault(slog.New(pterm.NewSlogHandler(&pterm.DefaultLogger)))
 
 	if err := Execute(); err != nil {
-		// Only log if not already formatted as a user-friendly error
-		if !strings.Contains(err.Error(), "✗") {
+		// Print formatted errors
+		if strings.Contains(err.Error(), "✗") {
+			// Already formatted, just print it
+			fmt.Fprintln(os.Stderr, err.Error())
+		} else {
+			// Log using slog for unformatted errors
 			slog.Error("execution failed", "err", err)
 		}
 		os.Exit(1)

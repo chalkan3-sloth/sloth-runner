@@ -330,9 +330,32 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 
 	if agentAddress != "" {
 		// Connect to the agent
-		slog.Info("Connecting to agent", "agent_address", agentAddress, "task", t.Name)
+		pterm.DefaultBox.
+			WithTitle("🔗 Agent Connection").
+			WithTitleTopLeft().
+			WithBoxStyle(pterm.NewStyle(pterm.FgCyan)).
+			Printfln("Task:  %s\nAgent: %s", pterm.Cyan(t.Name), pterm.Yellow(agentAddress))
+		
 		conn, err := grpc.Dial(agentAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
+			pterm.Println()
+			pterm.DefaultBox.
+				WithTitle("❌ CONNECTION FAILED").
+				WithTitleTopCenter().
+				WithBoxStyle(pterm.NewStyle(pterm.FgRed)).
+				Printfln(
+					"Agent: %s\nTask:  %s\n\nError: %v\n\n"+
+					"💡 Troubleshooting:\n"+
+					"  • Check agent status: systemctl status sloth-runner-agent\n"+
+					"  • Verify agent address is correct\n"+
+					"  • Check network: ping <agent-host>\n"+
+					"  • Verify firewall rules",
+					pterm.Yellow(agentAddress),
+					pterm.Cyan(t.Name),
+					err,
+				)
+			pterm.Println()
+			
 			slog.Error("Failed to connect to agent", 
 				"agent_address", agentAddress, 
 				"task", t.Name,
@@ -345,6 +368,19 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 		// Create a tarball of the workspace
 		var buf bytes.Buffer
 		if err := createTar(session.Workdir, &buf); err != nil {
+			pterm.Println()
+			pterm.DefaultBox.
+				WithTitle("❌ WORKSPACE ERROR").
+				WithTitleTopCenter().
+				WithBoxStyle(pterm.NewStyle(pterm.FgRed)).
+				Printfln(
+					"Task:      %s\nWorkspace: %s\n\nError: %v",
+					pterm.Cyan(t.Name),
+					pterm.Gray(session.Workdir),
+					err,
+				)
+			pterm.Println()
+			
 			slog.Error("Failed to create workspace tarball", 
 				"task", t.Name,
 				"error", err)
@@ -354,10 +390,7 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 		// Generate a script compatible with agent execution (without delegate_to)
 		agentScript := tr.generateAgentScript(t, groupName)
 		
-		slog.Info("Sending task to agent", 
-			"agent_address", agentAddress, 
-			"task", t.Name,
-			"group", groupName)
+		pterm.Info.Printfln("📤 Sending task to agent...")
 		
 		// Send the task and workspace to the agent
 		r, err := c.ExecuteTask(ctx, &pb.ExecuteTaskRequest{
@@ -367,6 +400,15 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 			Workspace:   buf.Bytes(),
 		})
 		if err != nil {
+			pterm.Error.Println("═════════════════════════════════════════════════════════════════════════════════════")
+			pterm.Error.Printfln("❌ FAILED TO SEND/EXECUTE TASK ON AGENT")
+			pterm.Error.Println("═════════════════════════════════════════════════════════════════════════════════════")
+			pterm.Error.Printfln("Agent Address: %s", agentAddress)
+			pterm.Error.Printfln("Task Name    : %s", t.Name)
+			pterm.Error.Printfln("Group Name   : %s", groupName)
+			pterm.Error.Printfln("Error        : %v", err)
+			pterm.Error.Println("═════════════════════════════════════════════════════════════════════════════════════")
+			
 			slog.Error("Failed to send task to agent", 
 				"agent_address", agentAddress, 
 				"task", t.Name,
@@ -378,32 +420,64 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 			// Parse and display agent error clearly
 			agentError := r.GetOutput()
 			
-			// Log the full error from agent
-			slog.Error("╔═══════════════════════════════════════════════════════════════════════════════════")
-			slog.Error("║ AGENT EXECUTION FAILED")
-			slog.Error("╠═══════════════════════════════════════════════════════════════════════════════════")
-			slog.Error("║ Task Name    : " + t.Name)
-			slog.Error("║ Group Name   : " + groupName)
-			slog.Error("║ Agent Address: " + agentAddress)
-			slog.Error("╠═══════════════════════════════════════════════════════════════════════════════════")
-			slog.Error("║ AGENT ERROR OUTPUT:")
-			slog.Error("╠═══════════════════════════════════════════════════════════════════════════════════")
-			for _, line := range strings.Split(agentError, "\n") {
-				if line != "" {
-					slog.Error("║ " + line)
+			// Display error in a very visible way using pterm
+			pterm.Error.Println("═════════════════════════════════════════════════════════════════════════════════════")
+			pterm.Error.Printfln("REMOTE AGENT EXECUTION FAILED")
+			pterm.Error.Println("═════════════════════════════════════════════════════════════════════════════════════")
+			pterm.Error.Printfln("Agent Address: %s", agentAddress)
+			pterm.Error.Println("─────────────────────────────────────────────────────────────────────────────────────")
+			
+			// If the error already has formatting from agent, print it directly
+			if strings.Contains(agentError, "╔═══") || strings.Contains(agentError, "║") {
+				// Agent already formatted the error nicely, print as-is
+				fmt.Println(agentError)
+			} else {
+				// Format it ourselves
+				pterm.Error.Println("ERROR OUTPUT FROM AGENT:")
+				pterm.Error.Println("─────────────────────────────────────────────────────────────────────────────────────")
+				for _, line := range strings.Split(agentError, "\n") {
+					if line != "" {
+						pterm.Error.Println(line)
+					}
 				}
 			}
-			slog.Error("╚═══════════════════════════════════════════════════════════════════════════════════")
+			pterm.Error.Println("═════════════════════════════════════════════════════════════════════════════════════")
 			
-			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("AGENT ERROR (%s): %s", agentAddress, agentError)}
+			// Also log for debugging
+			slog.Error("Agent execution failed",
+				"task", t.Name,
+				"group", groupName,
+				"agent", agentAddress,
+				"error", agentError)
+			
+			// Include the actual error from the agent in the returned error
+			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("agent execution failed on %s:\n%s", agentAddress, agentError)}
 		}
 
-		slog.Info("Task executed successfully on agent", 
-			"agent_address", agentAddress,
-			"task", t.Name)
+		
+		pterm.DefaultBox.
+			WithTitle("✅ SUCCESS").
+			WithTitleTopLeft().
+			WithBoxStyle(pterm.NewStyle(pterm.FgGreen)).
+			Printfln("Task:  %s\nAgent: %s", pterm.Cyan(t.Name), pterm.Yellow(agentAddress))
+		pterm.Println()
 
 		// Extract the updated workspace
 		if err := extractTar(bytes.NewReader(r.GetWorkspace()), session.Workdir); err != nil {
+			pterm.Println()
+			pterm.DefaultBox.
+				WithTitle("❌ WORKSPACE EXTRACTION FAILED").
+				WithTitleTopCenter().
+				WithBoxStyle(pterm.NewStyle(pterm.FgRed)).
+				Printfln(
+					"Agent:     %s\nTask:      %s\nWorkspace: %s\n\nError: %v",
+					pterm.Yellow(agentAddress),
+					pterm.Cyan(t.Name),
+					pterm.Gray(session.Workdir),
+					err,
+				)
+			pterm.Println()
+			
 			slog.Error("Failed to extract updated workspace from agent", 
 				"agent_address", agentAddress,
 				"task", t.Name,
@@ -411,6 +485,7 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to extract updated workspace from agent %s: %w", agentAddress, err)}
 		}
 
+		pterm.Info.Printfln("📥 Workspace synchronized")
 		return nil
 	}
 
@@ -534,6 +609,13 @@ func (tr *TaskRunner) Run() error {
 		return nil
 	}
 
+	// Show workflow start banner
+	pterm.Println()
+	pterm.DefaultCenter.WithCenterEachLineSeparately().Println(
+		pterm.DefaultHeader.WithFullWidth().WithBackgroundStyle(pterm.NewStyle(pterm.BgCyan)).WithTextStyle(pterm.NewStyle(pterm.FgBlack)).Sprint("🦥 Sloth Runner Workflow Execution"),
+	)
+	pterm.Println()
+
 	var allGroupErrors []error
 
 	filteredGroups := make(map[string]types.TaskGroup)
@@ -548,6 +630,14 @@ func (tr *TaskRunner) Run() error {
 	}
 
 	for groupName, group := range filteredGroups {
+		// Enhanced group start display
+		pterm.Println()
+		pterm.DefaultBox.WithTitle(pterm.Sprintf("📦 Task Group: %s", pterm.Cyan(groupName))).
+			WithTitleTopCenter().
+			WithBoxStyle(pterm.NewStyle(pterm.FgCyan)).
+			Println(pterm.Gray(group.Description))
+		pterm.Println()
+		
 		slog.Info("starting group", "group", groupName, "description", group.Description)
 
 		var workdir string
@@ -602,7 +692,12 @@ func (tr *TaskRunner) Run() error {
 			return err
 		}
 
-		p, _ := pterm.DefaultProgressbar.WithTotal(len(executionOrder)).WithTitle("Executing tasks").Start()
+		// Enhanced progress bar
+		p, _ := pterm.DefaultProgressbar.
+			WithTotal(len(executionOrder)).
+			WithTitle(pterm.Sprintf("⚙️  Executing %d tasks", len(executionOrder))).
+			WithShowCount().
+			Start()
 		defer p.Stop()
 
 		var mu sync.Mutex
@@ -613,7 +708,7 @@ func (tr *TaskRunner) Run() error {
 		var groupErrors []error
 
 		for _, taskName := range executionOrder {
-			p.UpdateTitle("Executing task: " + taskName)
+			p.UpdateTitle(pterm.Sprintf("⚙️  %s", pterm.Cyan(taskName)))
 			task := taskMap[taskName]
 			runningTasks[task.Name] = true
 
@@ -761,13 +856,18 @@ func (tr *TaskRunner) Run() error {
 		}
 	}
 
-	pterm.DefaultSection.Println("Execution Summary")
+	// Enhanced execution summary
+	pterm.Println()
+	pterm.Println()
+	pterm.DefaultHeader.WithFullWidth().WithBackgroundStyle(pterm.NewStyle(pterm.BgBlue)).WithTextStyle(pterm.NewStyle(pterm.FgWhite)).Println("📊 Execution Summary")
+	pterm.Println()
+	
 	tableData := pterm.TableData{{"Task", "Status", "Duration", "Error"}}
 	for _, result := range tr.Results {
-		status := pterm.Green(result.Status)
+		status := pterm.Green("✓ " + result.Status)
 		errStr := ""
 		if result.Error != nil {
-			status = pterm.Red(result.Status)
+			status = pterm.Red("✗ " + result.Status)
 			errMsg := result.Error.Error()
 			
 			// Extract clean error message for agent errors
@@ -789,65 +889,226 @@ func (tr *TaskRunner) Run() error {
 			}
 			
 			// Truncate very long errors for the table
-			if len(errStr) > 80 {
-				errStr = errStr[:77] + "..."
+			if len(errStr) > 60 {
+				errStr = errStr[:57] + "..."
 			}
 		} else if result.Status == "Skipped" {
-			status = pterm.Yellow(result.Status)
+			status = pterm.Yellow("⊘ " + result.Status)
 		} else if result.Status == "DryRun" {
-			status = pterm.Cyan(result.Status)
+			status = pterm.Cyan("◈ " + result.Status)
 		}
-		tableData = append(tableData, []string{result.Name, status, result.Duration.String(), errStr})
+		
+		// Format duration
+		durationStr := result.Duration.String()
+		if result.Duration < time.Second {
+			durationStr = pterm.Gray(durationStr)
+		} else if result.Duration < 10*time.Second {
+			durationStr = pterm.Yellow(durationStr)
+		} else {
+			durationStr = pterm.LightRed(durationStr)
+		}
+		
+		tableData = append(tableData, []string{pterm.Cyan(result.Name), status, durationStr, errStr})
 	}
-	pterm.DefaultTable.WithHasHeader().WithData(tableData).Render()
+	pterm.DefaultTable.
+		WithHasHeader().
+		WithHeaderRowSeparator("-").
+		WithBoxed().
+		WithData(tableData).
+		Render()
 
 	if len(allGroupErrors) > 0 {
 		// Enhanced error display
 		pterm.Error.Println("\n╔════════════════════════════════════════════════════════════════════════════")
-		pterm.Error.Println("║ TASK EXECUTION ERRORS")
+		pterm.Error.Println("║ 🔴 TASK EXECUTION ERRORS")
 		pterm.Error.Println("╚════════════════════════════════════════════════════════════════════════════")
 		
-		for i, err := range allGroupErrors {
+		// Track unique errors to avoid duplicates
+		seenErrors := make(map[string]bool)
+		errorIndex := 1
+		
+		for _, err := range allGroupErrors {
 			errMsg := err.Error()
 			
-			// Display agent errors more clearly
-			if strings.Contains(errMsg, "AGENT ERROR") {
-				pterm.Error.Printf("\n[Error %d] Agent Execution Failure:\n", i+1)
+			// Extract task information and root cause
+			var taskName, groupName, rootCause string
+			lines := strings.Split(errMsg, "\n")
+			
+			// Parse error to extract structured information
+			for _, line := range lines {
+				line = strings.TrimSpace(line)
+				if line == "" {
+					continue
+				}
 				
-				// Extract agent address
-				if strings.Contains(errMsg, "AGENT ERROR (") {
-					start := strings.Index(errMsg, "AGENT ERROR (") + 13
-					end := strings.Index(errMsg[start:], "):")
-					if end != -1 {
-						agentAddr := errMsg[start : start+end]
-						pterm.Info.Printf("  Agent: %s\n", agentAddr)
-						
-						// Extract error message
-						errorContent := strings.TrimSpace(errMsg[start+end+2:])
-						pterm.Error.Printf("  Error: %s\n", errorContent)
+				// Extract task name
+				if strings.Contains(line, "task '") && strings.Contains(line, "failed:") {
+					start := strings.Index(line, "task '") + 6
+					end := strings.Index(line[start:], "'")
+					if end > 0 {
+						taskName = line[start : start+end]
 					}
 				}
-			} else {
-				pterm.Error.Printf("\n[Error %d]:\n", i+1)
 				
-				// Display multi-line errors nicely
-				lines := strings.Split(errMsg, "\n")
-				for _, line := range lines {
-					if strings.TrimSpace(line) != "" {
-						pterm.Error.Printf("  %s\n", line)
+				// Extract group name
+				if strings.Contains(line, "task group '") {
+					start := strings.Index(line, "task group '") + 12
+					end := strings.Index(line[start:], "'")
+					if end > 0 {
+						groupName = line[start : start+end]
+					}
+				}
+				
+				// Look for root cause - command errors
+				if strings.Contains(line, "useradd:") || 
+				   strings.Contains(line, "apt:") ||
+				   strings.Contains(line, "apt-get:") ||
+				   strings.Contains(line, "yum:") ||
+				   strings.Contains(line, "dnf:") ||
+				   strings.Contains(line, "pacman:") ||
+				   strings.Contains(line, "systemctl:") ||
+				   strings.Contains(line, "usermod:") ||
+				   strings.Contains(line, "groupadd:") {
+					if rootCause == "" {
+						rootCause = line
+					}
+				}
+				
+				// Look for RPC/connection errors
+				if strings.Contains(line, "rpc error:") || 
+				   strings.Contains(line, "connection") ||
+				   strings.Contains(line, "connect:") {
+					if rootCause == "" {
+						rootCause = line
 					}
 				}
 			}
+			
+			// If no command error found, look for general errors
+			if rootCause == "" {
+				for _, line := range lines {
+					line = strings.TrimSpace(line)
+					if line == "" {
+						continue
+					}
+					
+					// Skip wrapper messages
+					if strings.Contains(line, "task group") || 
+					   strings.Contains(line, "task '") && strings.Contains(line, "failed:") ||
+					   strings.Contains(line, "agent execution failed on") ||
+					   strings.Contains(line, "Task execution failed: task execution failed") {
+						continue
+					}
+					
+					// Look for meaningful error messages
+					if (strings.Contains(line, "Failed to") || 
+					    strings.Contains(line, "failed to") ||
+					    strings.Contains(line, "error") ||
+					    strings.Contains(line, "Error")) &&
+					   !strings.Contains(line, "failed with errors") {
+						rootCause = line
+						break
+					}
+				}
+			}
+			
+			// Last resort: use the last non-wrapper line
+			if rootCause == "" {
+				for j := len(lines) - 1; j >= 0; j-- {
+					line := strings.TrimSpace(lines[j])
+					if line != "" && 
+					   !strings.Contains(line, "task '") && 
+					   !strings.Contains(line, "task group") &&
+					   !strings.Contains(line, "agent execution") &&
+					   !strings.Contains(line, "Task execution failed") {
+						rootCause = line
+						break
+					}
+				}
+			}
+			
+			// If still nothing, use simplified error
+			if rootCause == "" {
+				rootCause = "Unknown error occurred"
+			}
+			
+			// Create unique key for deduplication
+			errorKey := fmt.Sprintf("%s:%s:%s", groupName, taskName, rootCause)
+			if seenErrors[errorKey] {
+				continue
+			}
+			seenErrors[errorKey] = true
+			
+			// Display error in a box
+			pterm.Error.Printf("\n┌─────────────────────────────────────────────────────────────────────────────\n")
+			pterm.Error.Printf("│ ❌ Error #%d\n", errorIndex)
+			errorIndex++
+			
+			if taskName != "" {
+				pterm.Error.Printf("│ 📋 Task: %s\n", taskName)
+			}
+			if groupName != "" {
+				pterm.Error.Printf("│ 📦 Group: %s\n", groupName)
+			}
+			
+			pterm.Error.Printf("├─────────────────────────────────────────────────────────────────────────────\n")
+			
+			// Split long lines to fit in the box
+			maxWidth := 75
+			if len(rootCause) > maxWidth {
+				words := strings.Fields(rootCause)
+				currentLine := "│  "
+				for _, word := range words {
+					if len(currentLine) + len(word) + 1 > maxWidth {
+						pterm.Error.Printf("%s\n", currentLine)
+						currentLine = "│  " + word
+					} else {
+						if currentLine == "│  " {
+							currentLine += word
+						} else {
+							currentLine += " " + word
+						}
+					}
+				}
+				if currentLine != "│  " {
+					pterm.Error.Printf("%s\n", currentLine)
+				}
+			} else {
+				pterm.Error.Printf("│  %s\n", rootCause)
+			}
+			
+			pterm.Error.Printf("└─────────────────────────────────────────────────────────────────────────────\n")
 		}
 		
 		pterm.Error.Println("\n════════════════════════════════════════════════════════════════════════════")
 		
-		var errorMessages []string
-		for _, err := range allGroupErrors {
-			errorMessages = append(errorMessages, err.Error())
-		}
-		return fmt.Errorf("task execution failed:\n  - %s", strings.Join(errorMessages, "\n  - "))
+		return fmt.Errorf("✗ task execution failed")
 	}
+	
+	// Success banner
+	pterm.Println()
+	pterm.Println()
+	successCount := 0
+	skippedCount := 0
+	for _, result := range tr.Results {
+		if result.Status == "Success" {
+			successCount++
+		} else if result.Status == "Skipped" {
+			skippedCount++
+		}
+	}
+	
+	pterm.DefaultCenter.WithCenterEachLineSeparately().Println(
+		pterm.DefaultHeader.WithFullWidth().WithBackgroundStyle(pterm.NewStyle(pterm.BgGreen)).WithTextStyle(pterm.NewStyle(pterm.FgBlack)).Sprint("✅ Workflow Completed Successfully"),
+	)
+	pterm.Println()
+	pterm.DefaultCenter.Printf("%s tasks completed", pterm.Green(fmt.Sprintf("%d", successCount)))
+	if skippedCount > 0 {
+		pterm.DefaultCenter.Printf(" • %s tasks skipped", pterm.Yellow(fmt.Sprintf("%d", skippedCount)))
+	}
+	pterm.Println()
+	pterm.Println()
+	
 	return nil
 }
 

@@ -476,6 +476,15 @@ func RegisterAllModules(L *lua.LState) {
 	// Register infra_test module for infrastructure testing
 	L.PreloadModule("infra_test", NewInfraTestModule().Loader)
 	
+	// Register Incus module for container/VM management
+	RegisterIncusModule(L)
+	
+	// Register Facts module for accessing agent system information
+	// Note: masterAddr should be set globally or passed through context
+	// For now, using default localhost:50053
+	factsModule := coremodules.NewFactsModule("localhost:50053")
+	factsModule.Register(L)
+	
 	// Register AI module
 	luaInterface := &LuaInterface{L: L}
 	luaInterface.registerAIModule()
