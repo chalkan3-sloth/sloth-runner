@@ -2,674 +2,610 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/CLI/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/DOCUMENTATION_UPDATE_SUMMARY/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/ENHANCED_IMPROVEMENTS/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/EXAMPLES/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/LUA_API/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/MISSING_FEATURES_DOCUMENTATION/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/STACK_MANAGEMENT_GUIDE/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/TUTORIAL/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/TUTORIAL_OLD/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/advanced-examples/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/advanced-features/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/advanced-scheduler/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/agent-improvements/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/agent-setup/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/ai-integration/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/core-concepts/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/distributed-agents/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/getting-started/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/gitops-example/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/implementation-summary/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/latest-features/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/multi-cloud-excellence/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/nvim-plugin/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/pulumi-environment-variables/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/repl/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/scheduler/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/stack-management/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/state-module/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/testing/</loc>
-         <lastmod>2025-10-01</lastmod>
-    </url>
-    <url>
-         <loc>https://chalkan3-sloth.github.io/sloth-runner/web-dashboard/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/assets/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/CLI/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/advanced-examples/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/advanced-features/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/agent-improvements/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/ai-features/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/contributing/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/core-concepts/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/distributed/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/enhanced-agent-output/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/enterprise-features/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/getting-started/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/gitops-features/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/master-agent-architecture/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/monitoring/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/nvim-plugin/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/plugin-development/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/quick-start/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/repl/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/security/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/stack-management/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/testing/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/ai/optimization/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/ai/prediction/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/examples/cicd/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/examples/iac/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/examples/multi-cloud/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/gitops/kubernetes/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/gitops/multi-env/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/ai/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/aws/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/azure/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/data/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/digitalocean/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/docker/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/exec/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/fs/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/gcp/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/git/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/gitops/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/log/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/metrics/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/net/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/notifications/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/pkg/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/pulumi/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/python/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/reliability/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/salt/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/state/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/systemd/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/en/modules/terraform/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/modern-dsl/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/modern-dsl/best-practices/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/modern-dsl/introduction/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/modern-dsl/reference-guide/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
+    </url>
+    <url>
+         <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/ai/</loc>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/aws/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/azure/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
+    </url>
+    <url>
+         <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/data/</loc>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/digitalocean/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/docker/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
+    </url>
+    <url>
+         <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/exec/</loc>
+         <lastmod>2025-10-02</lastmod>
+    </url>
+    <url>
+         <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/fs/</loc>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/gcp/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/git/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
+    </url>
+    <url>
+         <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/gitops/</loc>
+         <lastmod>2025-10-02</lastmod>
+    </url>
+    <url>
+         <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/goroutine/</loc>
+         <lastmod>2025-10-02</lastmod>
+    </url>
+    <url>
+         <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/infra_test/</loc>
+         <lastmod>2025-10-02</lastmod>
+    </url>
+    <url>
+         <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/log/</loc>
+         <lastmod>2025-10-02</lastmod>
+    </url>
+    <url>
+         <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/metrics/</loc>
+         <lastmod>2025-10-02</lastmod>
+    </url>
+    <url>
+         <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/net/</loc>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/notifications/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
+    </url>
+    <url>
+         <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/pkg/</loc>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/pulumi/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
+    </url>
+    <url>
+         <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/python/</loc>
+         <lastmod>2025-10-02</lastmod>
+    </url>
+    <url>
+         <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/reliability/</loc>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/salt/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
+    </url>
+    <url>
+         <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/state/</loc>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/systemd/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/modules/terraform/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/CLI/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/advanced-examples/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/advanced-features/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/agent-improvements/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/contributing/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/core-concepts/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/distributed/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/getting-started/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/nvim-plugin/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/plugin-development/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/quick-start/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/repl/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/scheduler/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/testing/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/aws/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/azure/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/data/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/digitalocean/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/docker/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/exec/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/fs/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/gcp/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/git/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/log/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/metrics/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/net/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/notifications/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/pkg/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/pulumi/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/python/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/salt/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/state/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/systemd/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/pt/modules/terraform/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/CLI/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/advanced-examples/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/advanced-features/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/agent-improvements/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/contributing/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/core-concepts/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/distributed/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/getting-started/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/nvim-plugin/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/plugin-development/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/quick-start/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/repl/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/scheduler/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/testing/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/aws/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/azure/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/data/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/digitalocean/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/docker/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/exec/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/fs/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/gcp/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/git/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/log/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/metrics/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/net/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/notifications/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/pulumi/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/python/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/salt/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/state/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
     <url>
          <loc>https://chalkan3-sloth.github.io/sloth-runner/zh/modules/terraform/</loc>
-         <lastmod>2025-10-01</lastmod>
+         <lastmod>2025-10-02</lastmod>
     </url>
 </urlset>
