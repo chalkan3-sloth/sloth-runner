@@ -1033,171 +1033,390 @@ workflow.define("greeting")
 
 ---
 
-## 💾 **State Management & Persistence** <span class="status-indicator implemented">Implemented</span>
-- **SQLite-based persistent state** with WAL mode for performance
-- **Atomic operations**: increment, compare-and-swap, append
-- **Distributed locks** with automatic timeout handling
-- **TTL support** for automatic data expiration
-- **Pattern matching** for bulk operations
+## 💾 State Management & Persistence
 
-```lua
--- Persistent state example
-state.set("deployment_version", "v1.2.3")
-local counter = state.increment("api_calls", 1)
+!!! success "Production Ready"
+    SQLite-based persistent state with enterprise features
 
--- Critical section with automatic locking
-state.with_lock("deployment", function()
-    -- Safe deployment logic
-    local success = deploy_application()
-    state.set("last_deploy", os.time())
-    return success
-end)
-```
+**Features:**
 
-## 📊 **Metrics & Monitoring** <span class="status-indicator implemented">Implemented</span>
-- **System metrics**: CPU, memory, disk, network monitoring
-- **Custom metrics**: gauges, counters, histograms, timers
-- **Health checks** with configurable thresholds
-- **Prometheus endpoints** for external monitoring
-- **Real-time alerting** based on conditions
+- ✅ **Atomic operations**: increment, compare-and-swap, append
+- ✅ **Distributed locks** with automatic timeout handling  
+- ✅ **TTL support** for automatic data expiration
+- ✅ **Pattern matching** for bulk operations
+- ✅ **WAL mode** for high performance
 
-```lua
--- Monitoring example
-local cpu = metrics.system_cpu()
-metrics.gauge("app_performance", response_time)
-metrics.counter("requests_total", 1)
+!!! example "Persistent State Example"
 
-if cpu > 80 then
-    metrics.alert("high_cpu", {
-        level = "warning",
-        message = "CPU usage critical: " .. cpu .. "%"
-    })
-end
-```
+    ```lua
+    -- Set and increment state
+    state.set("deployment_version", "v1.2.3")
+    local counter = state.increment("api_calls", 1)
 
-## 🌐 **Distributed Agent System** <span class="status-indicator implemented">Implemented</span>
-- **Master-agent architecture** with gRPC communication
-- **Real-time streaming** of command output
-- **Automatic agent registration** and health monitoring
-- **Load balancing** across available agents
-- **TLS encryption** for secure communication
+    -- Critical section with automatic locking
+    state.with_lock("deployment", function()
+        local success = deploy_application()
+        state.set("last_deploy", os.time())
+        return success
+    end)
+    ```
 
-```bash
-# Start master server
-sloth-runner master --port 50053
+---
 
-# Deploy agents on remote machines
-sloth-runner agent start --name agent-1 --master master:50053
+## 📊 Metrics & Monitoring
 
-# Execute distributed commands
-sloth-runner agent run agent-1 "deploy-script.sh"
-```
+!!! success "Production Ready"
+    Comprehensive monitoring with Prometheus integration
 
-## 📚 **Documentation by Language**
+**Capabilities:**
 
-### 🇺🇸 **English Documentation**
-- 📖 [Getting Started](en/getting-started/)
-- 🧠 [Core Concepts](en/core-concepts/)
-- ⚡ [Quick Start](en/quick-start/)
-- 💻 [CLI Reference](en/CLI/)
-- 🔄 [Interactive REPL](en/repl/)
-- 🎯 [Advanced Features](en/advanced-features/)
-- 🚀 [Agent Improvements](en/agent-improvements/)
+- 📈 **System metrics**: CPU, memory, disk, network monitoring
+- 📊 **Custom metrics**: gauges, counters, histograms, timers
+- 🏥 **Health checks** with configurable thresholds
+- 🔌 **Prometheus endpoints** for external monitoring
+- 🚨 **Real-time alerting** based on conditions
 
-### 🇧🇷 **Documentação em Português**
-- 📖 [Primeiros Passos](pt/getting-started/)
-- 🧠 [Conceitos Fundamentais](pt/core-concepts/)
-- ⚡ [Início Rápido](pt/quick-start/)
-- 💻 [Referência CLI](pt/CLI/)
-- 🔄 [REPL Interativo](pt/repl/)
-- 🎯 [Recursos Avançados](pt/advanced-features/)
-- 🚀 [Melhorias dos Agentes](pt/agent-improvements/)
+!!! example "Monitoring Example"
 
-### 🇨🇳 **中文文档**
-- 📖 [入门指南](zh/getting-started/)
-- 🧠 [核心概念](zh/core-concepts/)
-- ⚡ [快速开始](zh/quick-start/)
-- 💻 [CLI参考](zh/CLI/)
-- 🔄 [交互式REPL](zh/repl/)
-- 🎯 [高级功能](zh/advanced-features/)
-- 🚀 [代理改进](zh/agent-improvements/)
+    ```lua
+    -- System and custom metrics
+    local cpu = metrics.system_cpu()
+    metrics.gauge("app_performance", response_time)
+    metrics.counter("requests_total", 1)
 
-## 🔧 **Module Reference**
+    -- Alerting
+    if cpu > 80 then
+        metrics.alert("high_cpu", {
+            level = "warning",
+            message = "CPU usage critical: " .. cpu .. "%"
+        })
+    end
+    ```
 
-### **📦 Built-in Modules**
-| Module | Description | Language Support |
-|--------|-------------|------------------|
-| [💾 **State**](en/modules/state/) | Persistent state management | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
-| [📊 **Metrics**](en/modules/metrics/) | Monitoring and observability | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
-| [⚡ **Exec**](en/modules/exec/) | Command execution | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
-| [📁 **FS**](en/modules/fs/) | File system operations | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
-| [📡 **Net**](en/modules/net/) | Network operations | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
-| [📋 **Data**](en/modules/data/) | Data processing utilities | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
-| [📝 **Log**](en/modules/log/) | Structured logging | <span class="lang-badge en">EN</span> <span class="lang-badge pt">PT</span> <span class="lang-badge zh">ZH</span> |
+---
 
-### **☁️ Cloud Provider Modules**
-| Module | Description | Status |
-|--------|-------------|---------|
-| [☁️ **AWS**](en/modules/aws/) | Amazon Web Services | <span class="status-indicator implemented">Ready</span> |
-| [🌩️ **GCP**](en/modules/gcp/) | Google Cloud Platform | <span class="status-indicator implemented">Ready</span> |
-| [🔷 **Azure**](en/modules/azure/) | Microsoft Azure | <span class="status-indicator implemented">Ready</span> |
-| [🌊 **DigitalOcean**](en/modules/digitalocean/) | DigitalOcean | <span class="status-indicator beta">Beta</span> |
+## 🌐 Distributed Agent System
 
-### **🛠️ Infrastructure Modules**
-| Module | Description | Status |
-|--------|-------------|---------|
-| [🐳 **Docker**](en/modules/docker/) | Container management | <span class="status-indicator implemented">Ready</span> |
-| [🏗️ **Pulumi**](en/modules/pulumi/) | Modern IaC | <span class="status-indicator implemented">Ready</span> |
-| [🌍 **Terraform**](en/modules/terraform/) | Infrastructure provisioning | <span class="status-indicator implemented">Ready</span> |
-| [🧂 **Salt**](en/modules/salt/) | Configuration management | <span class="status-indicator beta">Beta</span> |
-| [🐍 **Python**](en/modules/python/) | Python integration | <span class="status-indicator beta">Beta</span> |
+!!! success "Production Ready"
+    Master-agent architecture for distributed execution
 
-## 🚀 **Get Started Today**
+**Features:**
 
-```bash
-# Install Sloth Runner
-curl -L https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner_linux_amd64.tar.gz | tar xz
-chmod +x sloth-runner && sudo mv sloth-runner /usr/local/bin/
+- 🔄 **Master-agent architecture** with gRPC communication
+- 📡 **Real-time streaming** of command output
+- 🔍 **Automatic agent registration** and health monitoring
+- ⚖️ **Load balancing** across available agents
+- 🔒 **TLS encryption** for secure communication
 
-# Create your first workflow
-echo 'local hello_task = task("greet"):command(function() log.info("Hello World! 🚀") return true end):build(); workflow.define("hello", { tasks = { hello_task } })' > hello.sloth
+!!! example "Distributed Execution"
 
-# Run it!
-sloth-runner run -f hello.sloth
-```
+    === "Start Master"
 
-## 🤝 **Community & Support**
+        ```bash
+        sloth-runner master --port 50053
+        ```
 
-<div class="community-grid">
-  <a href="https://github.com/chalkan3-sloth/sloth-runner" class="community-card">
-    <div class="icon">🐙</div>
-    <h4>GitHub</h4>
-    <p>Source code, issues, and contributions</p>
-  </a>
-  
-  <a href="https://github.com/chalkan3-sloth/sloth-runner/discussions" class="community-card">
-    <div class="icon">💬</div>
-    <h4>Discussions</h4>
-    <p>Community Q&A and feature discussions</p>
-  </a>
-  
-  <a href="https://github.com/chalkan3-sloth/sloth-runner/issues" class="community-card">
-    <div class="icon">🐛</div>
-    <h4>Issues</h4>
-    <p>Bug reports and feature requests</p>
-  </a>
-  
-  <a href="mailto:enterprise@sloth-runner.dev" class="community-card">
-    <div class="icon">🏢</div>
-    <h4>Enterprise</h4>
-    <p>Commercial support and services</p>
-  </a>
+    === "Deploy Agent"
+
+        ```bash
+        sloth-runner agent start \
+          --name agent-1 \
+          --master master:50053
+        ```
+
+    === "Execute Task"
+
+        ```bash
+        sloth-runner agent run agent-1 "deploy-script.sh"
+        ```
+
+---
+
+## 📚 Documentation by Language
+
+<div class="grid cards" markdown>
+
+-   :flag_us:{ .lg .middle } **English**
+
+    ---
+
+    Complete documentation in English
+
+    - [Getting Started](en/getting-started/)
+    - [Core Concepts](en/core-concepts/)
+    - [Advanced Features](en/advanced-features/)
+    - [Agent Improvements](en/agent-improvements/)
+
+-   :flag_br:{ .lg .middle } **Português**
+
+    ---
+
+    Documentação completa em Português
+
+    - [Primeiros Passos](pt/getting-started/)
+    - [Conceitos Fundamentais](pt/core-concepts/)
+    - [Recursos Avançados](pt/advanced-features/)
+    - [Melhorias dos Agentes](pt/agent-improvements/)
+
+-   :flag_cn:{ .lg .middle } **中文**
+
+    ---
+
+    完整的中文文档
+
+    - [入门指南](zh/getting-started/)
+    - [核心概念](zh/core-concepts/)
+    - [高级功能](zh/advanced-features/)
+    - [代理改进](zh/agent-improvements/)
+
 </div>
 
 ---
 
-<div class="footer-cta">
-  <h3>🦥 Ready to streamline your automation?</h3>
-  <p>Join developers using Sloth Runner for reliable, scalable task orchestration.</p>
-  <a href="TUTORIAL/" class="btn primary large">🚀 Start Building Today</a>
+## 🔧 Module Reference
+
+### Built-in Modules
+
+<div class="grid cards" markdown>
+
+-   :material-database:{ .lg .middle } **State**
+
+    ---
+
+    Persistent state management
+
+    [:octicons-arrow-right-24: Documentation](modules/state/)
+
+-   :material-chart-line:{ .lg .middle } **Metrics**
+
+    ---
+
+    Monitoring and observability
+
+    [:octicons-arrow-right-24: Documentation](modules/metrics/)
+
+-   :material-console:{ .lg .middle } **Exec**
+
+    ---
+
+    Command execution
+
+    [:octicons-arrow-right-24: Documentation](modules/exec/)
+
+-   :material-folder:{ .lg .middle } **FS**
+
+    ---
+
+    File system operations
+
+    [:octicons-arrow-right-24: Documentation](modules/fs/)
+
+-   :material-network:{ .lg .middle } **Net**
+
+    ---
+
+    Network operations
+
+    [:octicons-arrow-right-24: Documentation](modules/net/)
+
+-   :material-code-json:{ .lg .middle } **Data**
+
+    ---
+
+    Data processing utilities
+
+    [:octicons-arrow-right-24: Documentation](modules/data/)
+
+-   :material-text-box:{ .lg .middle } **Log**
+
+    ---
+
+    Structured logging
+
+    [:octicons-arrow-right-24: Documentation](modules/log/)
+
+-   :material-package:{ .lg .middle } **Pkg**
+
+    ---
+
+    Package management
+
+    [:octicons-arrow-right-24: Documentation](modules/pkg/)
+
 </div>
+
+### Cloud Provider Modules
+
+<div class="grid cards" markdown>
+
+-   :material-aws:{ .lg .middle } **AWS**
+
+    ---
+
+    Amazon Web Services integration
+
+    [:octicons-arrow-right-24: Documentation](modules/aws/)
+
+-   :material-google-cloud:{ .lg .middle } **GCP**
+
+    ---
+
+    Google Cloud Platform
+
+    [:octicons-arrow-right-24: Documentation](modules/gcp/)
+
+-   :material-microsoft-azure:{ .lg .middle } **Azure**
+
+    ---
+
+    Microsoft Azure
+
+    [:octicons-arrow-right-24: Documentation](modules/azure/)
+
+-   :material-water:{ .lg .middle } **DigitalOcean**
+
+    ---
+
+    DigitalOcean cloud
+
+    [:octicons-arrow-right-24: Documentation](modules/digitalocean/)
+
+</div>
+
+### Infrastructure Modules
+
+<div class="grid cards" markdown>
+
+-   :material-docker:{ .lg .middle } **Docker**
+
+    ---
+
+    Container management
+
+    [:octicons-arrow-right-24: Documentation](modules/docker/)
+
+-   :material-cloud-upload:{ .lg .middle } **Pulumi**
+
+    ---
+
+    Modern Infrastructure as Code
+
+    [:octicons-arrow-right-24: Documentation](modules/pulumi/)
+
+-   :material-terraform:{ .lg .middle } **Terraform**
+
+    ---
+
+    Infrastructure provisioning
+
+    [:octicons-arrow-right-24: Documentation](modules/terraform/)
+
+-   :material-cog:{ .lg .middle } **Systemd**
+
+    ---
+
+    Service management
+
+    [:octicons-arrow-right-24: Documentation](modules/systemd/)
+
+</div>
+
+---
+
+## 🚀 Get Started Today
+
+Ready to streamline your automation? Install Sloth Runner now!
+
+=== "Quick Start"
+
+    ```bash
+    # One-line install
+    curl -sSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/main/install.sh | bash
+    
+    # Create your first workflow
+    cat > hello.sloth << 'EOF'
+    task("greet")
+      :command(function() 
+        log.info("Hello World! 🚀") 
+        return true 
+      end)
+      :build()
+    
+    workflow.define("hello")
+      :tasks({"greet"})
+    EOF
+    
+    # Run it!
+    sloth-runner run -f hello.sloth
+    ```
+
+=== "With Docker"
+
+    ```bash
+    # Pull the image
+    docker pull ghcr.io/chalkan3-sloth/sloth-runner:latest
+    
+    # Run your workflow
+    docker run -v $(pwd):/workspace \
+      ghcr.io/chalkan3-sloth/sloth-runner:latest \
+      run -f /workspace/hello.sloth
+    ```
+
+=== "Manual Install"
+
+    ```bash
+    # Download for your platform
+    wget https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner-linux-amd64.tar.gz
+    tar xzf sloth-runner-linux-amd64.tar.gz
+    sudo mv sloth-runner /usr/local/bin/
+    chmod +x /usr/local/bin/sloth-runner
+    ```
+
+---
+
+## 🤝 Community & Support
+
+<div class="grid cards" markdown>
+
+-   :fontawesome-brands-github:{ .lg .middle } **GitHub**
+
+    ---
+
+    Source code, issues, and contributions
+
+    [:octicons-arrow-right-24: Visit Repository](https://github.com/chalkan3-sloth/sloth-runner)
+
+-   :material-forum:{ .lg .middle } **Discussions**
+
+    ---
+
+    Community Q&A and feature discussions
+
+    [:octicons-arrow-right-24: Join Discussion](https://github.com/chalkan3-sloth/sloth-runner/discussions)
+
+-   :material-bug:{ .lg .middle } **Issues**
+
+    ---
+
+    Bug reports and feature requests
+
+    [:octicons-arrow-right-24: Report Issue](https://github.com/chalkan3-sloth/sloth-runner/issues)
+
+-   :material-email:{ .lg .middle } **Enterprise**
+
+    ---
+
+    Commercial support and services
+
+    [:octicons-arrow-right-24: Contact Us](mailto:enterprise@sloth-runner.dev)
+
+</div>
+
+---
+
+!!! tip "🦥 Ready to streamline your automation?"
+
+    Join developers using Sloth Runner for reliable, scalable task orchestration.
+    
+    [🚀 Start Building Today](TUTORIAL/){ .md-button .md-button--primary }
+    [📚 Read Documentation](en/getting-started/){ .md-button }
