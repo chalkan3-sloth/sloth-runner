@@ -5,9 +5,9 @@ local update_packages = task("update_packages")
     :description("Atualiza lista de pacotes do sistema")
     :command(function(this, params)
         log.info("🔄 Atualizando cache de pacotes...")
-        
+
         local success, output = pkg.update()
-        
+
         if success then
             log.info("✅ Cache atualizado com sucesso!")
             return true, "Cache atualizado"
@@ -23,10 +23,10 @@ local install_dev_tools = task("install_dev_tools")
     :description("Instala ferramentas de desenvolvimento")
     :command(function(this, params)
         log.info("🛠️  Instalando ferramentas de desenvolvimento...")
-        
-        local tools = {"git", "curl", "wget", "vim", "htop"}
+
+        local tools = { "git", "curl", "wget", "vim", "htop" }
         local success, output = pkg.install(tools)
-        
+
         if success then
             log.info("✅ Ferramentas instaladas!")
             for _, tool in ipairs(tools) do
@@ -38,7 +38,7 @@ local install_dev_tools = task("install_dev_tools")
             return true, "OK (podem já existir)"
         end
     end)
-    :depends_on({"update_packages"})
+    :depends_on({ "update_packages" })
     :timeout("300s")
     :build()
 
@@ -46,12 +46,12 @@ local search_python = task("search_python")
     :description("Busca pacotes Python disponíveis")
     :command(function(this, params)
         log.info("🔍 Buscando pacotes Python...")
-        
+
         local success, output = pkg.search("python3")
-        
+
         if success then
             log.info("✅ Busca concluída!")
-            
+
             local count = 0
             for line in output:gmatch("[^\r\n]+") do
                 count = count + 1
@@ -59,11 +59,11 @@ local search_python = task("search_python")
                     log.info("  " .. line)
                 end
             end
-            
+
             if count > 10 then
                 log.info("  ... e mais " .. (count - 10) .. " resultados")
             end
-            
+
             return true, count .. " resultados"
         else
             log.error("❌ " .. output)
@@ -77,13 +77,13 @@ local check_package_info = task("check_package_info")
     :description("Verifica informações de pacotes instalados")
     :command(function(this, params)
         log.info("ℹ️  Verificando informações de pacotes...")
-        
-        local packages_to_check = {"git", "curl"}
-        
+
+        local packages_to_check = { "git", "curl" }
+
         for _, pkg_name in ipairs(packages_to_check) do
             log.info("\n📦 Informações de " .. pkg_name .. ":")
             local success, output = pkg.info(pkg_name)
-            
+
             if success then
                 -- Mostra primeiras 8 linhas
                 local count = 0
@@ -97,10 +97,10 @@ local check_package_info = task("check_package_info")
                 log.warn("  ⚠️  Pacote não encontrado ou não instalado")
             end
         end
-        
+
         return true, "Verificação concluída"
     end)
-    :depends_on({"install_dev_tools"})
+    :depends_on({ "install_dev_tools" })
     :timeout("60s")
     :build()
 
@@ -108,15 +108,15 @@ local cleanup_packages = task("cleanup_packages")
     :description("Remove pacotes desnecessários (exemplo)")
     :command(function(this, params)
         log.info("🧹 Limpando pacotes desnecessários...")
-        
+
         -- Exemplo: remove um pacote de teste (descomente se quiser testar)
         -- local success, output = pkg.remove("htop")
-        
+
         -- Por enquanto, apenas simula
         log.info("ℹ️  Limpeza desativada neste exemplo")
         log.info("💡 Para remover pacotes, use: pkg.remove('nome_pacote')")
         log.info("💡 Ou múltiplos: pkg.remove({'pkg1', 'pkg2'})")
-        
+
         return true, "OK"
     end)
     :timeout("60s")
@@ -126,14 +126,14 @@ local list_installed = task("list_installed")
     :description("Lista pacotes instalados no sistema")
     :command(function(this, params)
         log.info("📋 Listando pacotes instalados...")
-        
+
         local success, packages = pkg.list()
-        
+
         if success then
             if type(packages) == "table" then
                 local count = 0
                 local sample = {}
-                
+
                 -- Conta e pega amostra
                 for k, v in pairs(packages) do
                     count = count + 1
@@ -141,17 +141,17 @@ local list_installed = task("list_installed")
                         table.insert(sample, v)
                     end
                 end
-                
+
                 log.info("✅ Total instalado: " .. count .. " pacotes")
                 log.info("\n📋 Primeiros 10 pacotes:")
                 for _, pkg in ipairs(sample) do
                     log.info("  • " .. pkg)
                 end
-                
+
                 if count > 10 then
                     log.info("  ... e mais " .. (count - 10) .. " pacotes")
                 end
-                
+
                 return true, count .. " pacotes"
             else
                 log.info("✅ Listagem realizada")
@@ -165,7 +165,8 @@ local list_installed = task("list_installed")
     :timeout("60s")
     :build()
 
-workflow.define("setup_development_environment")
+workflow
+    .define("setup_development_environment")
     :description("Configura ambiente de desenvolvimento com gerenciamento de pacotes")
     :version("1.0.0")
     :tasks({
@@ -174,11 +175,11 @@ workflow.define("setup_development_environment")
         search_python,
         check_package_info,
         list_installed,
-        cleanup_packages
+        cleanup_packages,
     })
     :config({
         timeout = "15m",
-        max_parallel_tasks = 1
+        max_parallel_tasks = 1,
     })
     :on_complete(function(success, results)
         if success then

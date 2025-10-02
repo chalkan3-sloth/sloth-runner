@@ -4,159 +4,160 @@
 local systemd = require("systemd")
 
 local create_service = task("create_service")
-    :description("Create a new systemd service")
-    :command(function(this, params)
-        log.info("🔧 Creating systemd service...")
-        
-        local config = {
-            description = "Example Web Server",
-            after = "network.target",
-            exec_start = "/usr/bin/python3 -m http.server 8080",
-            type = "simple",
-            user = "www-data",
-            working_directory = "/var/www",
-            restart = "always",
-            restart_sec = "10s",
-            environment = {
-                PYTHONUNBUFFERED = "1"
-            },
-            wanted_by = "multi-user.target"
-        }
-        
-        local success, msg = systemd.create_service("example-web", config)
-        
-        if success then
-            log.info("✅ Service created: " .. msg)
-            return true, "Created"
-        else
-            log.error("❌ Failed: " .. msg)
-            return false, msg
-        end
-    end)
-    :timeout("30s")
-    :build()
+	:description("Create a new systemd service")
+	:command(function(this, params)
+		log.info("🔧 Creating systemd service...")
+
+		local config = {
+			description = "Example Web Server",
+			after = "network.target",
+			exec_start = "/usr/bin/python3 -m http.server 8080",
+			type = "simple",
+			user = "www-data",
+			working_directory = "/var/www",
+			restart = "always",
+			restart_sec = "10s",
+			environment = {
+				PYTHONUNBUFFERED = "1",
+			},
+			wanted_by = "multi-user.target",
+		}
+
+		local success, msg = systemd.create_service("example-web", config)
+
+		if success then
+			log.info("✅ Service created: " .. msg)
+			return true, "Created"
+		else
+			log.error("❌ Failed: " .. msg)
+			return false, msg
+		end
+	end)
+	:timeout("30s")
+	:build()
 
 local reload_daemon = task("reload_daemon")
-    :description("Reload systemd daemon")
-    :command(function(this, params)
-        log.info("🔄 Reloading systemd daemon...")
-        
-        local success, output = systemd.daemon_reload()
-        
-        if success then
-            log.info("✅ Daemon reloaded")
-            return true, "Reloaded"
-        else
-            return false, "Failed"
-        end
-    end)
-    :depends_on({"create_service"})
-    :timeout("30s")
-    :build()
+	:description("Reload systemd daemon")
+	:command(function(this, params)
+		log.info("🔄 Reloading systemd daemon...")
+
+		local success, output = systemd.daemon_reload()
+
+		if success then
+			log.info("✅ Daemon reloaded")
+			return true, "Reloaded"
+		else
+			return false, "Failed"
+		end
+	end)
+	:depends_on({ "create_service" })
+	:timeout("30s")
+	:build()
 
 local enable_service = task("enable_service")
-    :description("Enable service at boot")
-    :command(function(this, params)
-        log.info("⚡ Enabling service...")
-        
-        local success, output = systemd.enable("example-web")
-        
-        if success then
-            log.info("✅ Service enabled")
-            return true, "Enabled"
-        else
-            return false, "Failed"
-        end
-    end)
-    :depends_on({"reload_daemon"})
-    :timeout("30s")
-    :build()
+	:description("Enable service at boot")
+	:command(function(this, params)
+		log.info("⚡ Enabling service...")
+
+		local success, output = systemd.enable("example-web")
+
+		if success then
+			log.info("✅ Service enabled")
+			return true, "Enabled"
+		else
+			return false, "Failed"
+		end
+	end)
+	:depends_on({ "reload_daemon" })
+	:timeout("30s")
+	:build()
 
 local start_service = task("start_service")
-    :description("Start the service")
-    :command(function(this, params)
-        log.info("▶️  Starting service...")
-        
-        local success, output = systemd.start("example-web")
-        
-        if success then
-            log.info("✅ Service started")
-            
-            -- Wait a bit
-            os.execute("sleep 2")
-            
-            -- Verify it's running
-            local active, state = systemd.is_active("example-web")
-            if active then
-                log.info("✅ Service is active!")
-                return true, "Running"
-            else
-                log.warn("⚠️  Service state: " .. state)
-                return false, "Not active"
-            end
-        else
-            return false, "Failed to start"
-        end
-    end)
-    :depends_on({"enable_service"})
-    :timeout("30s")
-    :build()
+	:description("Start the service")
+	:command(function(this, params)
+		log.info("▶️  Starting service...")
+
+		local success, output = systemd.start("example-web")
+
+		if success then
+			log.info("✅ Service started")
+
+			-- Wait a bit
+			os.execute("sleep 2")
+
+			-- Verify it's running
+			local active, state = systemd.is_active("example-web")
+			if active then
+				log.info("✅ Service is active!")
+				return true, "Running"
+			else
+				log.warn("⚠️  Service state: " .. state)
+				return false, "Not active"
+			end
+		else
+			return false, "Failed to start"
+		end
+	end)
+	:depends_on({ "enable_service" })
+	:timeout("30s")
+	:build()
 
 local check_status = task("check_status")
-    :description("Check service status")
-    :command(function(this, params)
-        log.info("📊 Checking service status...")
-        
-        local status, err = systemd.status("example-web")
-        
-        if status then
-            log.info("\nStatus Output:")
-            log.info(string.rep("-", 60))
-            -- Show first 10 lines
-            local count = 0
-            for line in status:gmatch("[^\r\n]+") do
-                if count < 10 then
-                    log.info(line)
-                end
-                count = count + 1
-            end
-            log.info(string.rep("-", 60))
-        end
-        
-        -- Check if active
-        local active, state = systemd.is_active("example-web")
-        log.info("\n✓ Active: " .. (active and "YES" or "NO (" .. state .. ")"))
-        
-        -- Check if enabled
-        local enabled, enable_state = systemd.is_enabled("example-web")
-        log.info("✓ Enabled: " .. (enabled and "YES" or "NO (" .. enable_state .. ")"))
-        
-        return true, "Status checked"
-    end)
-    :depends_on({"start_service"})
-    :timeout("30s")
-    :build()
+	:description("Check service status")
+	:command(function(this, params)
+		log.info("📊 Checking service status...")
 
-workflow.define("systemd_example")
-    :description("Complete systemd service management example")
-    :version("1.0.0")
-    :tasks({
-        create_service,
-        reload_daemon,
-        enable_service,
-        start_service,
-        check_status
-    })
-    :config({
-        timeout = "5m",
-        max_parallel_tasks = 1
-    })
-    :on_complete(function(success, results)
-        if success then
-            log.info("\n🎉 Service deployed successfully!")
-            log.info("Access at: http://localhost:8080")
-        else
-            log.error("\n❌ Service deployment failed")
-        end
-        return true
-    end)
+		local status, err = systemd.status("example-web")
+
+		if status then
+			log.info("\nStatus Output:")
+			log.info(string.rep("-", 60))
+			-- Show first 10 lines
+			local count = 0
+			for line in status:gmatch("[^\r\n]+") do
+				if count < 10 then
+					log.info(line)
+				end
+				count = count + 1
+			end
+			log.info(string.rep("-", 60))
+		end
+
+		-- Check if active
+		local active, state = systemd.is_active("example-web")
+		log.info("\n✓ Active: " .. (active and "YES" or "NO (" .. state .. ")"))
+
+		-- Check if enabled
+		local enabled, enable_state = systemd.is_enabled("example-web")
+		log.info("✓ Enabled: " .. (enabled and "YES" or "NO (" .. enable_state .. ")"))
+
+		return true, "Status checked"
+	end)
+	:depends_on({ "start_service" })
+	:timeout("30s")
+	:build()
+
+workflow
+	.define("systemd_example")
+	:description("Complete systemd service management example")
+	:version("1.0.0")
+	:tasks({
+		create_service,
+		reload_daemon,
+		enable_service,
+		start_service,
+		check_status,
+	})
+	:config({
+		timeout = "5m",
+		max_parallel_tasks = 1,
+	})
+	:on_complete(function(success, results)
+		if success then
+			log.info("\n🎉 Service deployed successfully!")
+			log.info("Access at: http://localhost:8080")
+		else
+			log.error("\n❌ Service deployment failed")
+		end
+		return true
+	end)
