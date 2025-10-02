@@ -1,0 +1,11 @@
+# Production Environment Values
+environment: production
+debug: false
+
+agents:
+  web: mariaguica
+  db: lady-guica
+
+config:
+  replicas: 3
+  log_level: info

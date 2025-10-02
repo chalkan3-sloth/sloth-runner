@@ -180,6 +180,8 @@ nav:
     - '🔔 Notifications': 'modules/notifications'
     - '💾 State Module': 'modules/state'
     - '🔧 Lua API': 'en/plugin-development'
+  - '📖 Guides':
+    - '✨ Using Values with delegate_to 🔥': 'guides/values-delegate-to'
   - '🎭 Examples': 'en/advanced-examples'
   - '⚡ Enterprise Features':
     - '🤖 AI Integration': 'en/ai-features'

@@ -1,0 +1,11 @@
+# Development Environment Values
+environment: development
+debug: true
+
+agents:
+  web: mariaguica
+  db: mariaguica
+
+config:
+  replicas: 1
+  log_level: debug
