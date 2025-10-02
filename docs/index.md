@@ -867,78 +867,144 @@ workflow.define("gitops_pipeline", {
       <li>🔄 GitOps workflow integration</li>
     </ul>
   </div>
+
+---
+
+## 🚀 Get Started in Minutes
+
+### Installation
+
+=== "Quick Install (Recommended)"
+
+    ```bash
+    # One-line installer for Linux/macOS
+    curl -sSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/main/install.sh | bash
+    ```
+
+=== "Manual Download"
+
+    ```bash
+    # Linux AMD64
+    wget https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner-linux-amd64.tar.gz
+    tar xzf sloth-runner-linux-amd64.tar.gz
+    sudo mv sloth-runner /usr/local/bin/
+    
+    # macOS ARM64 (Apple Silicon)
+    wget https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner-darwin-arm64.tar.gz
+    tar xzf sloth-runner-darwin-arm64.tar.gz
+    sudo mv sloth-runner /usr/local/bin/
+    ```
+
+=== "From Source"
+
+    ```bash
+    git clone https://github.com/chalkan3-sloth/sloth-runner.git
+    cd sloth-runner
+    go build -o sloth-runner ./cmd/sloth-runner
+    sudo mv sloth-runner /usr/local/bin/
+    ```
+
+### Create Your First Workflow
+
+!!! example "Simple Hello World"
+
+    Create `hello.sloth`:
+
+    ```lua
+    task("hello")
+      :description("My first Sloth Runner task")
+      :command(function() 
+        log.info("🦥 Hello from Sloth Runner!")
+        return true 
+      end)
+      :build()
+
+    workflow.define("greeting")
+      :tasks({"hello"})
+      :on_complete(function(success)
+        if success then
+          log.success("✅ Workflow completed!")
+        end
+      end)
+    ```
+
+### Run Your Workflow
+
+=== "Basic Output"
+
+    ```bash
+    sloth-runner run -f hello.sloth
+    ```
+
+=== "Modern UI"
+
+    ```bash
+    sloth-runner run -f hello.sloth -o modern
+    ```
+
+=== "Rich Progress"
+
+    ```bash
+    sloth-runner run -f hello.sloth -o rich
+    ```
+
+---
+
+## 📚 Learn More
+
+<div class="grid cards" markdown>
+
+-   :rocket:{ .lg .middle } **Quick Tutorial**
+
+    ---
+
+    Get up and running with practical examples in 5 minutes
+
+    [:octicons-arrow-right-24: Start Tutorial](TUTORIAL/)
+
+-   :material-file-document:{ .lg .middle } **Advanced Examples**
+
+    ---
+
+    Production-ready workflows and real-world use cases
+
+    [:octicons-arrow-right-24: View Examples](en/advanced-examples/)
+
+-   :brain:{ .lg .middle } **Core Concepts**
+
+    ---
+
+    Deep dive into Sloth Runner's architecture and features
+
+    [:octicons-arrow-right-24: Learn Concepts](en/core-concepts/)
+
+-   :books:{ .lg .middle } **API Reference**
+
+    ---
+
+    Complete documentation of all modules and functions
+
+    [:octicons-arrow-right-24: Browse API](modules/)
+
+-   :material-file-code:{ .lg .middle } **Modern DSL**
+
+    ---
+
+    Learn the modern task definition syntax
+
+    [:octicons-arrow-right-24: DSL Guide](modern-dsl/introduction/)
+
+-   :material-github:{ .lg .middle } **GitHub Repository**
+
+    ---
+
+    Source code, issues, and contributions
+
+    [:octicons-arrow-right-24: View on GitHub](https://github.com/chalkan3-sloth/sloth-runner)
+
 </div>
 
-## 🚀 **Get Started in Minutes**
-
-<div class="getting-started">
-  <div class="step">
-    <div class="step-number">1</div>
-    <h4>Install</h4>
-    <pre><code># Linux/macOS
-curl -L https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/').tar.gz | tar xz
-chmod +x sloth-runner && sudo mv sloth-runner /usr/local/bin/</code></pre>
-  </div>
-  
-  <div class="step">
-    <div class="step-number">2</div>
-    <h4>Create Your First Workflow</h4>
-    <pre><code>echo 'local hello = task("hello")
-  :command(function() 
-    log.info("Hello from Sloth Runner! 🦥")
-    return true 
-  end)
-  :build()
-
-workflow.define("greeting", { tasks = { hello } })' > hello.sloth</code></pre>
-  </div>
-  
-  <div class="step">
-    <div class="step-number">3</div>
-    <h4>Run Your Workflow</h4>
-    <pre><code>sloth-runner run -f hello.sloth</code></pre>
-  </div>
-</div>
-
-## 📚 **Learn More**
-
-<div class="learn-more-grid">
-  <a href="TUTORIAL/" class="learn-card">
-    <div class="icon">🚀</div>
-    <h4>Quick Tutorial</h4>
-    <p>Get up and running with practical examples in 5 minutes</p>
-  </a>
-  
-  <a href="en/advanced-examples/" class="learn-card">
-    <div class="icon">📝</div>
-    <h4>Advanced Examples</h4>
-    <p>Production-ready workflows and real-world use cases</p>
-  </a>
-  
-  <a href="en/core-concepts/" class="learn-card">
-    <div class="icon">🧠</div>
-    <h4>Core Concepts</h4>
-    <p>Understanding tasks, workflows, and distributed execution</p>
-  </a>
-  
-  <a href="en/enterprise-features/" class="learn-card">
-    <div class="icon">🏢</div>
-    <h4>Enterprise Features</h4>
-    <p>Production-grade security, monitoring, and reliability</p>
-  </a>
-  
-  <a href="en/distributed/" class="learn-card">
-    <div class="icon">🌐</div>
-    <h4>Distributed Execution</h4>
-    <p>Master-agent architecture and multi-node coordination</p>
-  </a>
-  
-  <a href="en/modules/" class="learn-card">
-    <div class="icon">🔧</div>
-    <h4>Module Reference</h4>
-    <p>Complete API documentation for all built-in modules</p>
-  </a>
-</div>
+---
 
 ## 💾 **State Management & Persistence** <span class="status-indicator implemented">Implemented</span>
 - **SQLite-based persistent state** with WAL mode for performance
