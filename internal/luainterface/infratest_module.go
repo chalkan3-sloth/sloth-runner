@@ -56,6 +56,10 @@ func (m *InfraTestModule) exports() map[string]lua.LGFunction {
 		"command_stdout_contains": m.commandStdoutContains,
 		"command_stderr_is_empty": m.commandStderrIsEmpty,
 		"command_output_equals":   m.commandOutputEquals,
+
+		// Package Tests
+		"package_is_installed": m.packageIsInstalled,
+		"package_version":      m.packageVersion,
 	}
 }
 
@@ -594,6 +598,121 @@ func (m *InfraTestModule) commandOutputEquals(L *lua.LState) int {
 	if actualOutput != expectedOutput {
 		L.RaiseError("command_output_equals: output of '%s' is '%s' but expected '%s' on target '%s'",
 			command, actualOutput, expectedOutput, target)
+	}
+
+	L.Push(lua.LBool(true))
+	return 1
+}
+
+// ============================================================================
+// Package Tests
+// ============================================================================
+
+// detectPackageManager detects the package manager available on the target
+func (m *InfraTestModule) detectPackageManager(L *lua.LState, target string) (string, error) {
+	managers := []struct {
+		name    string
+		command string
+	}{
+		{"dpkg", "which dpkg"},
+		{"rpm", "which rpm"},
+		{"pacman", "which pacman"},
+		{"apk", "which apk"},
+		{"brew", "which brew"},
+	}
+
+	for _, mgr := range managers {
+		output, err := m.executeOnTarget(L, target, mgr.command)
+		if err == nil && strings.TrimSpace(output) != "" {
+			return mgr.name, nil
+		}
+	}
+
+	return "", fmt.Errorf("no supported package manager found")
+}
+
+// packageIsInstalled verifies if a package is installed
+func (m *InfraTestModule) packageIsInstalled(L *lua.LState) int {
+	packageName := L.CheckString(1)
+	target := m.getOptionalTarget(L, 2)
+
+	pkgManager, err := m.detectPackageManager(L, target)
+	if err != nil {
+		L.RaiseError("package_is_installed: %v on target '%s'", err, target)
+		return 0
+	}
+
+	var command string
+	switch pkgManager {
+	case "dpkg":
+		command = fmt.Sprintf("dpkg -l '%s' 2>/dev/null | grep -q '^ii' && echo 'installed' || echo 'not installed'", packageName)
+	case "rpm":
+		command = fmt.Sprintf("rpm -q '%s' > /dev/null 2>&1 && echo 'installed' || echo 'not installed'", packageName)
+	case "pacman":
+		command = fmt.Sprintf("pacman -Q '%s' > /dev/null 2>&1 && echo 'installed' || echo 'not installed'", packageName)
+	case "apk":
+		command = fmt.Sprintf("apk info -e '%s' > /dev/null 2>&1 && echo 'installed' || echo 'not installed'", packageName)
+	case "brew":
+		command = fmt.Sprintf("brew list '%s' > /dev/null 2>&1 && echo 'installed' || echo 'not installed'", packageName)
+	default:
+		L.RaiseError("package_is_installed: unsupported package manager '%s'", pkgManager)
+		return 0
+	}
+
+	output, err := m.executeOnTarget(L, target, command)
+	if err != nil || !strings.Contains(output, "installed") {
+		L.RaiseError("package_is_installed: package '%s' is not installed on target '%s'", packageName, target)
+	}
+
+	L.Push(lua.LBool(true))
+	return 1
+}
+
+// packageVersion verifies the version of an installed package
+func (m *InfraTestModule) packageVersion(L *lua.LState) int {
+	packageName := L.CheckString(1)
+	expectedVersion := L.CheckString(2)
+	target := m.getOptionalTarget(L, 3)
+
+	pkgManager, err := m.detectPackageManager(L, target)
+	if err != nil {
+		L.RaiseError("package_version: %v on target '%s'", err, target)
+		return 0
+	}
+
+	var command string
+	switch pkgManager {
+	case "dpkg":
+		command = fmt.Sprintf("dpkg-query -W -f='${Version}' '%s' 2>/dev/null", packageName)
+	case "rpm":
+		command = fmt.Sprintf("rpm -q --queryformat '%%{VERSION}-%%{RELEASE}' '%s' 2>/dev/null", packageName)
+	case "pacman":
+		command = fmt.Sprintf("pacman -Q '%s' 2>/dev/null | awk '{print $2}'", packageName)
+	case "apk":
+		command = fmt.Sprintf("apk info '%s' 2>/dev/null | grep '%s-' | sed 's/%s-//'", packageName, packageName, packageName)
+	case "brew":
+		command = fmt.Sprintf("brew list --versions '%s' 2>/dev/null | awk '{print $2}'", packageName)
+	default:
+		L.RaiseError("package_version: unsupported package manager '%s'", pkgManager)
+		return 0
+	}
+
+	output, err := m.executeOnTarget(L, target, command)
+	if err != nil {
+		L.RaiseError("package_version: failed to get version for package '%s': %v", packageName, err)
+		return 0
+	}
+
+	actualVersion := strings.TrimSpace(output)
+	if actualVersion == "" {
+		L.RaiseError("package_version: package '%s' is not installed on target '%s'", packageName, target)
+		return 0
+	}
+
+	// Check if versions match (can be exact or prefix match)
+	if !strings.HasPrefix(actualVersion, expectedVersion) && actualVersion != expectedVersion {
+		L.RaiseError("package_version: package '%s' has version '%s' but expected '%s' on target '%s'",
+			packageName, actualVersion, expectedVersion, target)
 	}
 
 	L.Push(lua.LBool(true))
