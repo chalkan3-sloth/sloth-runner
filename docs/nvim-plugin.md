@@ -3,13 +3,13 @@
 !!! info "📚 Documentation"
     For Neovim Plugin documentation, please visit:
     
-    - 🇺🇸 [English Version](en/nvim-plugin.md)
-    - 🇧🇷 [Versão em Português](pt/nvim-plugin.md)
-    - 🇨🇳 [中文版本](zh/nvim-plugin.md)
+    - 🇺🇸 [English Version](../en/nvim-plugin/)
+    - 🇧🇷 [Versão em Português](../pt/nvim-plugin/)
+    - 🇨🇳 [中文版本](../zh/nvim-plugin/)
 
 ---
 
-<meta http-equiv="refresh" content="0; url=en/nvim-plugin" />
+<script>window.location.href="../en/nvim-plugin/";</script>
 
 **Redirecting to English version...**
 

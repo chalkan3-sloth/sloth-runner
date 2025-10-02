@@ -3,13 +3,13 @@
 !!! info "📚 Documentation"
     For Testing documentation, please visit:
     
-    - 🇺🇸 [English Version](en/testing.md)
-    - 🇧🇷 [Versão em Português](pt/testing.md)
-    - 🇨🇳 [中文版本](zh/testing.md)
+    - 🇺🇸 [English Version](../en/testing/)
+    - 🇧🇷 [Versão em Português](../pt/testing/)
+    - 🇨🇳 [中文版本](../zh/testing/)
 
 ---
 
-<meta http-equiv="refresh" content="0; url=en/testing" />
+<script>window.location.href="../en/testing/";</script>
 
 **Redirecting to English version...**
 

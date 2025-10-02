@@ -3,13 +3,13 @@
 !!! info "📚 Documentation"
     For Quick Start and Tutorial, please visit:
     
-    - 🇺🇸 [Quick Start (English)](en/quick-start.md)
-    - 🇺🇸 [Getting Started (English)](en/getting-started.md)
-    - 🇺🇸 [Examples (English)](en/advanced-examples.md)
+    - 🇺🇸 [Quick Start (English)](../en/quick-start/)
+    - 🇺🇸 [Getting Started (English)](../en/getting-started/)
+    - 🇺🇸 [Examples (English)](../en/advanced-examples/)
 
 ---
 
-<meta http-equiv="refresh" content="0; url=en/quick-start" />
+<script>window.location.href="../en/quick-start/";</script>
 
 **Redirecting to Quick Start tutorial...**
 

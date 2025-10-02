@@ -3,13 +3,13 @@
 !!! info "📚 Documentation"
     For Agent Setup and Configuration, please visit:
     
-    - 🇺🇸 [Master-Agent Architecture](en/master-agent-architecture.md)
-    - 🇺🇸 [Agent Improvements](en/agent-improvements.md)
-    - 🇺🇸 [Enhanced Agent Output](en/enhanced-agent-output.md)
+    - 🇺🇸 [Master-Agent Architecture](../en/master-agent-architecture/)
+    - 🇺🇸 [Agent Improvements](../en/agent-improvements/)
+    - 🇺🇸 [Enhanced Agent Output](../en/enhanced-agent-output/)
 
 ---
 
-<meta http-equiv="refresh" content="0; url=en/master-agent-architecture" />
+<script>window.location.href="../en/master-agent-architecture/";</script>
 
 **Redirecting to Agent documentation...**
 
