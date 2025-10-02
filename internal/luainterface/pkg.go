@@ -58,9 +58,7 @@ func (p *PkgModule) detectPackageManager() (string, error) {
 }
 
 // parsePackages converts Lua value to string slice of packages
-func (p *PkgModule) parsePackages(L *lua.LState, arg int) []string {
-	val := L.Get(arg)
-	
+func (p *PkgModule) parsePackages(val lua.LValue) []string {
 	if val.Type() == lua.LTString {
 		// Single package as string
 		return []string{val.String()}
@@ -210,9 +208,19 @@ func (p *PkgModule) buildUpgradeCommand(manager string) []string {
 	return args
 }
 
+// install installs packages
+// pkg.install({packages = "vim"}) or pkg.install({packages = {"vim", "git"}})
 func (p *PkgModule) install(L *lua.LState) int {
-	packages := p.parsePackages(L, 1)
+	opts := L.CheckTable(1)
 	
+	packagesVal := opts.RawGetString("packages")
+	if packagesVal.Type() == lua.LTNil {
+		L.Push(lua.LFalse)
+		L.Push(lua.LString("packages parameter is required"))
+		return 2
+	}
+	
+	packages := p.parsePackages(packagesVal)
 	if len(packages) == 0 {
 		L.Push(lua.LFalse)
 		L.Push(lua.LString("No packages specified"))
@@ -241,9 +249,19 @@ func (p *PkgModule) install(L *lua.LState) int {
 	return 2
 }
 
+// remove removes packages
+// pkg.remove({packages = "vim"}) or pkg.remove({packages = {"vim", "git"}})
 func (p *PkgModule) remove(L *lua.LState) int {
-	packages := p.parsePackages(L, 1)
+	opts := L.CheckTable(1)
 	
+	packagesVal := opts.RawGetString("packages")
+	if packagesVal.Type() == lua.LTNil {
+		L.Push(lua.LFalse)
+		L.Push(lua.LString("packages parameter is required"))
+		return 2
+	}
+	
+	packages := p.parsePackages(packagesVal)
 	if len(packages) == 0 {
 		L.Push(lua.LFalse)
 		L.Push(lua.LString("No packages specified"))
@@ -272,7 +290,11 @@ func (p *PkgModule) remove(L *lua.LState) int {
 	return 2
 }
 
+// update updates package list
+// pkg.update({})
 func (p *PkgModule) update(L *lua.LState) int {
+	L.CheckTable(1) // Require table even if empty for consistency
+	
 	manager, err := p.detectPackageManager()
 	if err != nil {
 		L.Push(lua.LFalse)
@@ -296,7 +318,11 @@ func (p *PkgModule) update(L *lua.LState) int {
 	return 2
 }
 
+// upgrade upgrades all packages
+// pkg.upgrade({})
 func (p *PkgModule) upgrade(L *lua.LState) int {
+	L.CheckTable(1) // Require table even if empty for consistency
+	
 	manager, err := p.detectPackageManager()
 	if err != nil {
 		L.Push(lua.LFalse)
@@ -319,12 +345,15 @@ func (p *PkgModule) upgrade(L *lua.LState) int {
 	return 2
 }
 
+// search searches for packages
+// pkg.search({query = "nginx"})
 func (p *PkgModule) search(L *lua.LState) int {
-	query := L.ToString(1)
+	opts := L.CheckTable(1)
 	
+	query := getTableString(opts, "query", "")
 	if query == "" {
 		L.Push(lua.LFalse)
-		L.Push(lua.LString("No search query specified"))
+		L.Push(lua.LString("query parameter is required"))
 		return 2
 	}
 	
@@ -364,12 +393,15 @@ func (p *PkgModule) search(L *lua.LState) int {
 	return 2
 }
 
+// info gets package information
+// pkg.info({package = "nginx"})
 func (p *PkgModule) info(L *lua.LState) int {
-	pkgName := L.ToString(1)
+	opts := L.CheckTable(1)
 	
+	pkgName := getTableString(opts, "package", "")
 	if pkgName == "" {
 		L.Push(lua.LFalse)
-		L.Push(lua.LString("No package name specified"))
+		L.Push(lua.LString("package parameter is required"))
 		return 2
 	}
 	
@@ -409,7 +441,11 @@ func (p *PkgModule) info(L *lua.LState) int {
 	return 2
 }
 
+// list lists installed packages
+// pkg.list({})
 func (p *PkgModule) list(L *lua.LState) int {
+	L.CheckTable(1) // Require table even if empty for consistency
+	
 	manager, err := p.detectPackageManager()
 	if err != nil {
 		L.Push(lua.LFalse)
@@ -458,12 +494,14 @@ func (p *PkgModule) list(L *lua.LState) int {
 }
 
 // isInstalled checks if a package is installed
+// pkg.is_installed({package = "nginx"})
 func (p *PkgModule) isInstalled(L *lua.LState) int {
-	pkgName := L.ToString(1)
+	opts := L.CheckTable(1)
 	
+	pkgName := getTableString(opts, "package", "")
 	if pkgName == "" {
 		L.Push(lua.LFalse)
-		L.Push(lua.LString("No package name specified"))
+		L.Push(lua.LString("package parameter is required"))
 		return 2
 	}
 	
@@ -510,7 +548,10 @@ func (p *PkgModule) isInstalled(L *lua.LState) int {
 }
 
 // getManager returns the detected package manager
+// pkg.get_manager({})
 func (p *PkgModule) getManager(L *lua.LState) int {
+	L.CheckTable(1) // Require table even if empty for consistency
+	
 	manager, err := p.detectPackageManager()
 	if err != nil {
 		L.Push(lua.LNil)
@@ -524,7 +565,10 @@ func (p *PkgModule) getManager(L *lua.LState) int {
 }
 
 // clean removes cached package files
+// pkg.clean({})
 func (p *PkgModule) clean(L *lua.LState) int {
+	L.CheckTable(1) // Require table even if empty for consistency
+	
 	manager, err := p.detectPackageManager()
 	if err != nil {
 		L.Push(lua.LFalse)
@@ -568,7 +612,10 @@ func (p *PkgModule) clean(L *lua.LState) int {
 }
 
 // autoremove removes unused dependencies
+// pkg.autoremove({})
 func (p *PkgModule) autoremove(L *lua.LState) int {
+	L.CheckTable(1) // Require table even if empty for consistency
+	
 	manager, err := p.detectPackageManager()
 	if err != nil {
 		L.Push(lua.LFalse)
@@ -611,12 +658,14 @@ func (p *PkgModule) autoremove(L *lua.LState) int {
 }
 
 // which finds the path of an executable
+// pkg.which({executable = "ls"})
 func (p *PkgModule) which(L *lua.LState) int {
-	execName := L.ToString(1)
+	opts := L.CheckTable(1)
 	
+	execName := getTableString(opts, "executable", "")
 	if execName == "" {
 		L.Push(lua.LNil)
-		L.Push(lua.LString("No executable name specified"))
+		L.Push(lua.LString("executable parameter is required"))
 		return 2
 	}
 	
@@ -633,12 +682,14 @@ func (p *PkgModule) which(L *lua.LState) int {
 }
 
 // version gets the version of an installed package
+// pkg.version({package = "bash"})
 func (p *PkgModule) version(L *lua.LState) int {
-	pkgName := L.ToString(1)
+	opts := L.CheckTable(1)
 	
+	pkgName := getTableString(opts, "package", "")
 	if pkgName == "" {
 		L.Push(lua.LNil)
-		L.Push(lua.LString("No package name specified"))
+		L.Push(lua.LString("package parameter is required"))
 		return 2
 	}
 	
@@ -690,12 +741,14 @@ func (p *PkgModule) version(L *lua.LState) int {
 }
 
 // deps shows dependencies of a package
+// pkg.deps({package = "nginx"})
 func (p *PkgModule) deps(L *lua.LState) int {
-	pkgName := L.ToString(1)
+	opts := L.CheckTable(1)
 	
+	pkgName := getTableString(opts, "package", "")
 	if pkgName == "" {
 		L.Push(lua.LFalse)
-		L.Push(lua.LString("No package name specified"))
+		L.Push(lua.LString("package parameter is required"))
 		return 2
 	}
 	
@@ -737,12 +790,14 @@ func (p *PkgModule) deps(L *lua.LState) int {
 }
 
 // installLocal installs a package from a local file
+// pkg.install_local({file = "/path/to/package.deb"})
 func (p *PkgModule) installLocal(L *lua.LState) int {
-	filePath := L.ToString(1)
+	opts := L.CheckTable(1)
 	
+	filePath := getTableString(opts, "file", "")
 	if filePath == "" {
 		L.Push(lua.LFalse)
-		L.Push(lua.LString("No file path specified"))
+		L.Push(lua.LString("file parameter is required"))
 		return 2
 	}
 	

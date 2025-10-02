@@ -100,13 +100,10 @@ func TestPkgNeedsSudo(t *testing.T) {
 }
 
 func TestPkgParsePackagesSingleString(t *testing.T) {
-	L := lua.NewState()
-	defer L.Close()
-
 	module := NewPkgModule()
 
-	L.Push(lua.LString("curl"))
-	packages := module.parsePackages(L, 1)
+	val := lua.LString("curl")
+	packages := module.parsePackages(val)
 
 	if len(packages) != 1 {
 		t.Errorf("Expected 1 package, got %d", len(packages))
@@ -129,8 +126,7 @@ func TestPkgParsePackagesTable(t *testing.T) {
 	tbl.Append(lua.LString("wget"))
 	tbl.Append(lua.LString("git"))
 
-	L.Push(tbl)
-	packages := module.parsePackages(L, 1)
+	packages := module.parsePackages(tbl)
 
 	if len(packages) != 3 {
 		t.Errorf("Expected 3 packages, got %d", len(packages))
@@ -188,7 +184,7 @@ func TestPkgModuleGetManager(t *testing.T) {
 
 	err := L.DoString(`
 		local pkg = require("pkg")
-		local manager = pkg.get_manager()
+		local manager = pkg.get_manager({})
 		-- Just check it doesn't crash
 		-- The result depends on the system
 	`)
@@ -207,7 +203,7 @@ func TestPkgModuleIsInstalled(t *testing.T) {
 	// Test with a package that is likely not installed
 	err := L.DoString(`
 		local pkg = require("pkg")
-		local installed = pkg.is_installed("nonexistent-package-xyz-12345")
+		local installed = pkg.is_installed({package = "nonexistent-package-xyz-12345"})
 		-- Just check it doesn't crash
 	`)
 	if err != nil {
@@ -225,7 +221,7 @@ func TestPkgModuleWhich(t *testing.T) {
 	// Test with common commands that should exist
 	err := L.DoString(`
 		local pkg = require("pkg")
-		local path = pkg.which("ls")
+		local path = pkg.which({executable = "ls"})
 		-- ls should exist on Unix systems
 		-- Just check it doesn't crash
 	`)
@@ -245,7 +241,7 @@ func TestPkgModuleVersion(t *testing.T) {
 		local pkg = require("pkg")
 		-- Try to get version of a common package
 		-- This may fail if package is not installed
-		local version, err = pkg.version("bash")
+		local version, err = pkg.version({package = "bash"})
 	`)
 	if err != nil {
 		t.Logf("Note: version test had an error (may be expected): %v", err)
