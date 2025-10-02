@@ -247,8 +247,30 @@ bash install.sh --no-sudo
 wget https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner_v3.23.1_linux_amd64.tar.gz
 tar -xzf sloth-runner_*.tar.gz
 sudo mv sloth-runner /usr/local/bin/
+```
 
-# Build from source
+**Updating:**
+
+```bash
+# Update to latest version
+curl -fsSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/update.sh | bash
+
+# Or download and run locally
+bash update.sh
+
+# Check for updates without installing
+bash update.sh --check-only
+
+# Update to specific version
+bash update.sh --version v3.23.1
+
+# Force update (reinstall even if up to date)
+bash update.sh --force
+```
+
+**Building from Source:**
+
+```bash
 git clone https://github.com/chalkan3-sloth/sloth-runner.git
 cd sloth-runner
 go build -o sloth-runner ./cmd/sloth-runner
