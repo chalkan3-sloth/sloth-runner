@@ -263,6 +263,46 @@ sloth-runner --version
 # Output: sloth-runner version 3.23.1
 ```
 
+### 📚 Explore Available Modules
+
+**Discover all built-in modules and their functions:**
+
+```bash
+# List all available modules
+sloth-runner modules list
+
+# View detailed documentation for a specific module
+sloth-runner modules list --module pkg
+
+# Get machine-readable JSON output
+sloth-runner modules list --module systemd --format json
+```
+
+**Example output:**
+```
+# pkg - Package management for multiple Linux distributions
+
+┌──────────────────┬─────────────────────────────┐
+│ Function         │ Description                 │
+├──────────────────┼─────────────────────────────┤
+│ pkg.install      │ Install packages            │
+│ pkg.remove       │ Remove packages             │
+│ pkg.update       │ Update package cache        │
+│ pkg.is_installed │ Check if package installed  │
+└──────────────────┴─────────────────────────────┘
+
+# Examples
+
+INFO pkg.install
+  Parameters: {packages = {...}, target = 'agent_name'}
+  pkg.install({
+      packages = {"nginx", "curl"},
+      target = "web-server"
+  })
+```
+
+**Available modules:** `pkg`, `systemd`, `user`, `ssh`, `file`, `http`, `cmd`, `json`, `yaml`, `log`, `crypto`, `database`, `terraform`, `pulumi`, `aws`, `azure`, `gcp`, `docker`, `kubernetes`, `slack`, `goroutine`
+
 ### Your First GitOps Workflow
 
 Create a complete GitOps workflow that clones a repository and deploys infrastructure with Terraform:

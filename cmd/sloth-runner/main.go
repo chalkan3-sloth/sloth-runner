@@ -26,8 +26,10 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"gopkg.in/yaml.v2"
 
+	agentInternal "github.com/chalkan3-sloth/sloth-runner/internal/agent"
 	"github.com/chalkan3-sloth/sloth-runner/internal/core"
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
+	"github.com/chalkan3-sloth/sloth-runner/internal/modules"
 	"github.com/chalkan3-sloth/sloth-runner/internal/output"
 	"github.com/chalkan3-sloth/sloth-runner/internal/scaffolding"
 	"github.com/chalkan3-sloth/sloth-runner/internal/stack"
@@ -1159,12 +1161,29 @@ var agentStartCmd = &cobra.Command{
 					connected := true
 					consecutiveFailures := 0
 					maxConsecutiveFailures := 3
+					heartbeatCounter := 0
+					sysInfoCollectInterval := 12 // Collect system info every 12 heartbeats (60 seconds)
 					
 					for connected {
 						time.Sleep(heartbeatInterval)
+						heartbeatCounter++
+						
+						// Collect system info periodically (every minute)
+						var sysInfoJSON string
+						if heartbeatCounter%sysInfoCollectInterval == 0 {
+							if sysInfo, err := agentInternal.CollectSystemInfo(); err == nil {
+								if jsonStr, err := sysInfo.ToJSON(); err == nil {
+									sysInfoJSON = jsonStr
+									slog.Debug("System info collected and will be sent with heartbeat")
+								}
+							}
+						}
 						
 						hbCtx, hbCancel := context.WithTimeout(context.Background(), 5*time.Second)
-						_, err := registryClient.Heartbeat(hbCtx, &pb.HeartbeatRequest{AgentName: agentName})
+						_, err := registryClient.Heartbeat(hbCtx, &pb.HeartbeatRequest{
+							AgentName:      agentName,
+							SystemInfoJson: sysInfoJSON,
+						})
 						hbCancel()
 						
 						if err != nil {
@@ -1373,8 +1392,8 @@ var agentListCmd = &cobra.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
-		fmt.Fprintln(w, "AGENT NAME\tADDRESS\tSTATUS\tLAST HEARTBEAT")
-		fmt.Fprintln(w, "------------\t----------\t------\t--------------")
+		fmt.Fprintln(w, "AGENT NAME\tADDRESS\tSTATUS\tLAST HEARTBEAT\tLAST INFO COLLECTED")
+		fmt.Fprintln(w, "------------\t----------\t------\t--------------\t-------------------")
 		for _, agent := range resp.GetAgents() {
 			status := agent.GetStatus()
 			coloredStatus := status
@@ -1387,7 +1406,11 @@ var agentListCmd = &cobra.Command{
 			if agent.GetLastHeartbeat() > 0 {
 				lastHeartbeat = time.Unix(agent.GetLastHeartbeat(), 0).Format(time.RFC3339)
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", agent.GetAgentName(), agent.GetAgentAddress(), coloredStatus, lastHeartbeat)
+			lastInfoCollected := "Never"
+			if agent.GetLastInfoCollected() > 0 {
+				lastInfoCollected = time.Unix(agent.GetLastInfoCollected(), 0).Format(time.RFC3339)
+			}
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", agent.GetAgentName(), agent.GetAgentAddress(), coloredStatus, lastHeartbeat, lastInfoCollected)
 		}
 		return w.Flush()
 	},
@@ -1477,6 +1500,229 @@ var agentDeleteCmd = &cobra.Command{
 		pterm.Success.Printf("✅ Agent '%s' deleted successfully.\n", agentName)
 		return nil
 	},
+}
+
+var agentGetCmd = &cobra.Command{
+	Use:   "get <agent_name>",
+	Short: "Get detailed information about an agent",
+	Long:  `Retrieves detailed system information collected from a specific agent.`,
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		agentName := args[0]
+		masterAddr, _ := cmd.Flags().GetString("master")
+		outputFormat, _ := cmd.Flags().GetString("output")
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		conn, err := grpc.Dial(masterAddr, 
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			return formatConnectionError(err, masterAddr)
+		}
+		defer conn.Close()
+
+		registryClient := pb.NewAgentRegistryClient(conn)
+		resp, err := registryClient.GetAgentInfo(ctx, &pb.GetAgentInfoRequest{
+			AgentName: agentName,
+		})
+		if err != nil {
+			return formatConnectionError(err, masterAddr)
+		}
+
+		if !resp.Success {
+			return fmt.Errorf("%s\n\n%s", pterm.Red("✗ Failed to Get Agent Info"), resp.Message)
+		}
+
+		agent := resp.GetAgentInfo()
+		
+		// JSON output
+		if outputFormat == "json" {
+			// Create a complete JSON structure
+			output := map[string]interface{}{
+				"agent_name":          agent.GetAgentName(),
+				"agent_address":       agent.GetAgentAddress(),
+				"status":              agent.GetStatus(),
+				"last_heartbeat":      agent.GetLastHeartbeat(),
+				"last_info_collected": agent.GetLastInfoCollected(),
+			}
+			
+			// Parse and include system info if available
+			if agent.GetSystemInfoJson() != "" {
+				var sysInfo map[string]interface{}
+				if err := json.Unmarshal([]byte(agent.GetSystemInfoJson()), &sysInfo); err == nil {
+					output["system_info"] = sysInfo
+				} else {
+					output["system_info"] = agent.GetSystemInfoJson()
+				}
+			} else {
+				output["system_info"] = nil
+			}
+			
+			jsonOutput, err := json.MarshalIndent(output, "", "  ")
+			if err != nil {
+				return fmt.Errorf("failed to marshal JSON: %v", err)
+			}
+			
+			fmt.Println(string(jsonOutput))
+			return nil
+		}
+		
+		// Human-readable output
+		pterm.DefaultHeader.WithFullWidth().Println(fmt.Sprintf("Agent Information: %s", agent.GetAgentName()))
+		fmt.Println()
+		
+		// Basic info
+		pterm.Info.Println("Basic Information:")
+		fmt.Printf("  Name:         %s\n", pterm.Cyan(agent.GetAgentName()))
+		fmt.Printf("  Address:      %s\n", pterm.Cyan(agent.GetAgentAddress()))
+		
+		status := agent.GetStatus()
+		if status == "Active" {
+			fmt.Printf("  Status:       %s\n", pterm.Green(status))
+		} else {
+			fmt.Printf("  Status:       %s\n", pterm.Red(status))
+		}
+		
+		if agent.GetLastHeartbeat() > 0 {
+			fmt.Printf("  Last Heartbeat: %s\n", pterm.Yellow(time.Unix(agent.GetLastHeartbeat(), 0).Format(time.RFC3339)))
+		} else {
+			fmt.Printf("  Last Heartbeat: %s\n", pterm.Gray("Never"))
+		}
+		
+		if agent.GetLastInfoCollected() > 0 {
+			fmt.Printf("  Last Info:     %s\n", pterm.Yellow(time.Unix(agent.GetLastInfoCollected(), 0).Format(time.RFC3339)))
+		} else {
+			fmt.Printf("  Last Info:     %s\n", pterm.Gray("Not collected"))
+		}
+		
+		fmt.Println()
+		
+		// System info
+		if agent.GetSystemInfoJson() != "" {
+			sysInfo, err := agentInternal.FromJSON(agent.GetSystemInfoJson())
+			if err != nil {
+				pterm.Warning.Printf("Failed to parse system info: %v\n", err)
+			} else {
+				pterm.Info.Println("System Information:")
+				fmt.Printf("  Hostname:      %s\n", pterm.Cyan(sysInfo.Hostname))
+				fmt.Printf("  Platform:      %s %s\n", pterm.Cyan(sysInfo.Platform), pterm.Gray(sysInfo.PlatformVersion))
+				fmt.Printf("  Architecture:  %s\n", pterm.Cyan(sysInfo.Architecture))
+				fmt.Printf("  CPUs:          %s\n", pterm.Cyan(fmt.Sprintf("%d", sysInfo.CPUs)))
+				fmt.Printf("  Kernel:        %s %s\n", pterm.Cyan(sysInfo.Kernel), pterm.Gray(sysInfo.KernelVersion))
+				
+				if sysInfo.Virtualization != "none" {
+					fmt.Printf("  Virtualization: %s\n", pterm.Magenta(sysInfo.Virtualization))
+				}
+				
+				fmt.Printf("  Uptime:        %s\n", pterm.Yellow(fmt.Sprintf("%d seconds", sysInfo.Uptime)))
+				
+				if len(sysInfo.LoadAverage) == 3 {
+					fmt.Printf("  Load Average:  %s\n", pterm.Cyan(fmt.Sprintf("%.2f, %.2f, %.2f", 
+						sysInfo.LoadAverage[0], sysInfo.LoadAverage[1], sysInfo.LoadAverage[2])))
+				}
+				
+				// Memory info
+				if sysInfo.Memory != nil {
+					fmt.Println()
+					pterm.Info.Println("Memory Information:")
+					fmt.Printf("  Total:        %s\n", pterm.Cyan(formatBytes(sysInfo.Memory.Total)))
+					fmt.Printf("  Used:         %s (%.1f%%)\n", 
+						pterm.Yellow(formatBytes(sysInfo.Memory.Used)), sysInfo.Memory.UsedPercent)
+					fmt.Printf("  Available:    %s\n", pterm.Green(formatBytes(sysInfo.Memory.Available)))
+					fmt.Printf("  Free:         %s\n", pterm.Cyan(formatBytes(sysInfo.Memory.Free)))
+					if sysInfo.Memory.Cached > 0 {
+						fmt.Printf("  Cached:       %s\n", pterm.Cyan(formatBytes(sysInfo.Memory.Cached)))
+					}
+				}
+				
+				// Disk info
+				if len(sysInfo.Disk) > 0 {
+					fmt.Println()
+					pterm.Info.Println("Disk Information:")
+					for _, disk := range sysInfo.Disk {
+						if disk.Total > 0 {
+							fmt.Printf("  %s (%s):\n", pterm.Cyan(disk.Mountpoint), pterm.Gray(disk.Device))
+							fmt.Printf("    Total:  %s\n", pterm.Cyan(formatBytes(disk.Total)))
+							fmt.Printf("    Used:   %s (%.1f%%)\n", pterm.Yellow(formatBytes(disk.Used)), disk.UsedPercent)
+							fmt.Printf("    Free:   %s\n", pterm.Green(formatBytes(disk.Free)))
+						}
+					}
+				}
+				
+				// Network info
+				if len(sysInfo.Network) > 0 {
+					fmt.Println()
+					pterm.Info.Println("Network Interfaces:")
+					for _, iface := range sysInfo.Network {
+						if iface.Name != "lo" && len(iface.Addresses) > 0 {
+							status := pterm.Red("DOWN")
+							if iface.IsUp {
+								status = pterm.Green("UP")
+							}
+							fmt.Printf("  %s [%s]:\n", pterm.Cyan(iface.Name), status)
+							if iface.MAC != "" {
+								fmt.Printf("    MAC:        %s\n", pterm.Gray(iface.MAC))
+							}
+							for _, addr := range iface.Addresses {
+								fmt.Printf("    Address:    %s\n", pterm.Yellow(addr))
+							}
+						}
+					}
+				}
+				
+				// Package info
+				if sysInfo.Packages != nil && sysInfo.Packages.Manager != "" {
+					fmt.Println()
+					pterm.Info.Println("Package Information:")
+					fmt.Printf("  Manager:      %s\n", pterm.Cyan(sysInfo.Packages.Manager))
+					fmt.Printf("  Installed:    %s\n", pterm.Cyan(fmt.Sprintf("%d packages", sysInfo.Packages.InstalledCount)))
+					if sysInfo.Packages.UpdatesAvailable > 0 {
+						fmt.Printf("  Updates:      %s\n", pterm.Yellow(fmt.Sprintf("%d available", sysInfo.Packages.UpdatesAvailable)))
+					} else {
+						fmt.Printf("  Updates:      %s\n", pterm.Green("System is up to date"))
+					}
+				}
+				
+				// Services (show first 10)
+				if len(sysInfo.Services) > 0 {
+					fmt.Println()
+					pterm.Info.Printf("Running Services: %d total\n", len(sysInfo.Services))
+					fmt.Println("  (showing first 10)")
+					count := len(sysInfo.Services)
+					if count > 10 {
+						count = 10
+					}
+					for i := 0; i < count; i++ {
+						fmt.Printf("  - %s\n", pterm.Cyan(sysInfo.Services[i]))
+					}
+					if len(sysInfo.Services) > 10 {
+						fmt.Printf("  ... and %d more\n", len(sysInfo.Services)-10)
+					}
+				}
+			}
+		} else {
+			pterm.Warning.Println("No system information available for this agent.")
+			pterm.Info.Println("System info is collected periodically. Please wait for the next collection cycle.")
+		}
+		
+		return nil
+	},
+}
+
+// formatBytes formats bytes into human-readable format
+func formatBytes(bytes uint64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := uint64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %ciB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
 
 // Workflow command and subcommands
@@ -2046,6 +2292,92 @@ func extractTar(reader io.Reader, dest string) error {
 	}
 }
 
+var modulesCmd = &cobra.Command{
+	Use:   "modules",
+	Short: "Module documentation and utilities",
+	Long:  `Commands for viewing and managing sloth-runner modules.`,
+}
+
+var modulesListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List all available modules and their functions",
+	Long:  `Display comprehensive documentation for all built-in modules including function signatures and examples.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		moduleName, _ := cmd.Flags().GetString("module")
+		format, _ := cmd.Flags().GetString("format")
+		
+		moduleDocs := modules.GetAllModuleDocs()
+		
+		// Filter by module if specified
+		if moduleName != "" {
+			var filtered []modules.ModuleDoc
+			for _, mod := range moduleDocs {
+				if mod.Name == moduleName {
+					filtered = append(filtered, mod)
+					break
+				}
+			}
+			if len(filtered) == 0 {
+				return fmt.Errorf("module '%s' not found", moduleName)
+			}
+			moduleDocs = filtered
+		}
+		
+		if format == "json" {
+			encoder := json.NewEncoder(os.Stdout)
+			encoder.SetIndent("", "  ")
+			return encoder.Encode(moduleDocs)
+		}
+		
+		// Pretty print format
+		pterm.DefaultHeader.WithFullWidth().Println("Sloth Runner - Available Modules")
+		fmt.Println()
+		
+		for _, mod := range moduleDocs {
+			// Module header
+			pterm.DefaultSection.Printf("%s - %s\n", mod.Name, mod.Description)
+			fmt.Println()
+			
+			// Functions table
+			tableData := pterm.TableData{
+				{"Function", "Description"},
+			}
+			
+			for _, fn := range mod.Functions {
+				tableData = append(tableData, []string{
+					pterm.LightCyan(fn.Name),
+					fn.Description,
+				})
+			}
+			
+			pterm.DefaultTable.WithHasHeader().WithBoxed().WithData(tableData).Render()
+			fmt.Println()
+			
+			// Show examples for first few functions if not filtered
+			if moduleName != "" || len(moduleDocs) == 1 {
+				pterm.DefaultSection.Println("Examples")
+				for i, fn := range mod.Functions {
+					if i >= 3 && moduleName == "" {
+						pterm.Info.Printf("... and %d more functions\n", len(mod.Functions)-3)
+						break
+					}
+					pterm.Info.Printf("%s\n", fn.Name)
+					if fn.Parameters != "" {
+						pterm.Printf("  Parameters: %s\n", pterm.Gray(fn.Parameters))
+					}
+					pterm.Println(pterm.LightGreen("  " + strings.ReplaceAll(fn.Example, "\n", "\n  ")))
+					fmt.Println()
+				}
+			}
+		}
+		
+		pterm.Info.Printf("Use --module <name> to see detailed documentation for a specific module\n")
+		pterm.Info.Printf("Use --format json to get machine-readable output\n")
+		
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.SetOut(os.Stdout)
 	rootCmd.SetErr(os.Stderr)
@@ -2082,6 +2414,8 @@ func init() {
 	agentCmd.AddCommand(agentStopCmd)
 	agentCmd.AddCommand(agentDeleteCmd)
 	agentDeleteCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompt")
+	agentCmd.AddCommand(agentGetCmd)
+	agentGetCmd.Flags().StringP("output", "o", "text", "Output format: text or json")
 
 	// Scheduler command and subcommands
 	rootCmd.AddCommand(schedulerCmd)
@@ -2134,6 +2468,12 @@ func init() {
 
 	// Version command
 	rootCmd.AddCommand(versionCmd)
+
+	// Modules command
+	rootCmd.AddCommand(modulesCmd)
+	modulesCmd.AddCommand(modulesListCmd)
+	modulesListCmd.Flags().StringP("module", "m", "", "Show details for a specific module")
+	modulesListCmd.Flags().StringP("format", "f", "pretty", "Output format: pretty or json")
 
 	// UI command
 	rootCmd.AddCommand(uiCmd)
