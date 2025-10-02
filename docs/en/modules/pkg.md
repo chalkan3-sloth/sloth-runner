@@ -14,27 +14,27 @@ The `pkg` module provides comprehensive cross-platform package management functi
 
 | Function | Description |
 |----------|-------------|
-| `pkg.install(packages)` | Install one or more packages |
-| `pkg.remove(packages)` | Remove one or more packages |
-| `pkg.update()` | Update package cache/list |
-| `pkg.upgrade()` | Upgrade all packages |
-| `pkg.search(query)` | Search for packages |
-| `pkg.info(package)` | Get package information |
-| `pkg.list()` | List installed packages |
-| `pkg.is_installed(package)` | Check if package is installed |
-| `pkg.get_manager()` | Get detected package manager |
-| `pkg.clean()` | Clean package cache |
-| `pkg.autoremove()` | Remove unused dependencies |
-| `pkg.which(executable)` | Find executable path |
-| `pkg.version(package)` | Get package version |
-| `pkg.deps(package)` | List package dependencies |
-| `pkg.install_local(file)` | Install from local file |
+| `pkg.install({packages = ...})` | Install one or more packages |
+| `pkg.remove({packages = ...})` | Remove one or more packages |
+| `pkg.update({})` | Update package cache/list |
+| `pkg.upgrade({})` | Upgrade all packages |
+| `pkg.search({query = ...})` | Search for packages |
+| `pkg.info({package = ...})` | Get package information |
+| `pkg.list({})` | List installed packages |
+| `pkg.is_installed({package = ...})` | Check if package is installed |
+| `pkg.get_manager({})` | Get detected package manager |
+| `pkg.clean({})` | Clean package cache |
+| `pkg.autoremove({})` | Remove unused dependencies |
+| `pkg.which({executable = ...})` | Find executable path |
+| `pkg.version({package = ...})` | Get package version |
+| `pkg.deps({package = ...})` | List package dependencies |
+| `pkg.install_local({file = ...})` | Install from local file |
 
 ## 📖 Detailed Documentation
 
 ### Installation & Removal
 
-#### `pkg.install(packages)`
+#### `pkg.install({packages = ...})`
 
 Installs one or more packages.
 
@@ -58,7 +58,7 @@ Installs one or more packages.
             
             -- Install multiple packages
             local tools = {"git", "curl", "wget", "vim"}
-            local success, output = pkg.install(tools)
+            local success, output = pkg.install({packages = tools})
             
             if success then
                 log.info("✅ Tools installed successfully!")
@@ -84,7 +84,7 @@ Installs one or more packages.
         :command(function(this, params)
             log.info("Installing on remote agent...")
             
-            local success, output = pkg.install({"htop", "ncdu"})
+            local success, output = pkg.install({packages = {"htop", "ncdu"}})
             
             if success then
                 log.info("✅ Installed on agent!")
@@ -101,7 +101,28 @@ Installs one or more packages.
         :tasks({ install_on_agent })
     ```
 
-#### `pkg.remove(packages)`
+=== "Single Package"
+    ```lua
+    local pkg = require("pkg")
+    
+    local install_nginx = task("install_nginx")
+        :description("Install nginx web server")
+        :command(function(this, params)
+            -- Install single package
+            local success, output = pkg.install({packages = "nginx"})
+            
+            if success then
+                log.info("✅ nginx installed!")
+                return true, "OK"
+            else
+                return false, "Failed: " .. output
+            end
+        end)
+        :timeout("300s")
+        :build()
+    ```
+
+#### `pkg.remove({packages = ...})`
 
 Removes one or more packages.
 
@@ -120,7 +141,7 @@ local cleanup = task("cleanup")
     :description("Remove unnecessary packages")
     :command(function(this, params)
         local packages = {"package1", "package2"}
-        local success, output = pkg.remove(packages)
+        local success, output = pkg.remove({packages = packages})
         
         if success then
             log.info("✅ Packages removed")
@@ -134,7 +155,7 @@ local cleanup = task("cleanup")
 
 ### Package Information
 
-#### `pkg.search(query)`
+#### `pkg.search({query = ...})`
 
 Searches for packages.
 
@@ -146,7 +167,7 @@ local pkg = require("pkg")
 local search_python = task("search_python")
     :description("Search for Python packages")
     :command(function(this, params)
-        local success, results = pkg.search("python3")
+        local success, results = pkg.search({query = "python3"})
         
         if success then
             log.info("Search results:")
@@ -165,20 +186,20 @@ local search_python = task("search_python")
     :build()
 ```
 
-#### `pkg.info(package)`
+#### `pkg.info({package = ...})`
 
 Gets package information.
 
 **Example:**
 
 ```lua
-local success, info = pkg.info("curl")
+local success, info = pkg.info({package = "curl"})
 if success then
     log.info("Package info:\n" .. info)
 end
 ```
 
-#### `pkg.list()`
+#### `pkg.list({})`
 
 Lists installed packages.
 
@@ -187,7 +208,7 @@ Lists installed packages.
 **Example:**
 
 ```lua
-local success, packages = pkg.list()
+local success, packages = pkg.list({})
 if success and type(packages) == "table" then
     local count = 0
     for _ in pairs(packages) do count = count + 1 end
@@ -197,7 +218,7 @@ end
 
 ### System Maintenance
 
-#### `pkg.update()`
+#### `pkg.update({})`
 
 Updates package cache.
 
@@ -208,21 +229,21 @@ local update_cache = task("update_cache")
     :description("Update package cache")
     :command(function(this, params)
         log.info("Updating...")
-        return pkg.update()
+        return pkg.update({})
     end)
     :timeout("120s")
     :build()
 ```
 
-#### `pkg.upgrade()`
+#### `pkg.upgrade({})`
 
 Upgrades all packages.
 
-#### `pkg.clean()`
+#### `pkg.clean({})`
 
 Cleans package cache.
 
-#### `pkg.autoremove()`
+#### `pkg.autoremove({})`
 
 Removes unused dependencies.
 
@@ -233,14 +254,14 @@ local maintenance = task("maintenance")
     :description("System maintenance")
     :command(function(this, params)
         -- Update
-        pkg.update()
+        pkg.update({})
         
         -- Upgrade
-        pkg.upgrade()
+        pkg.upgrade({})
         
         -- Clean
-        pkg.clean()
-        pkg.autoremove()
+        pkg.clean({})
+        pkg.autoremove({})
         
         return true, "Maintenance complete"
     end)
@@ -250,7 +271,7 @@ local maintenance = task("maintenance")
 
 ### Advanced Functions
 
-#### `pkg.is_installed(package)`
+#### `pkg.is_installed({package = ...})`
 
 Checks if installed.
 
@@ -266,7 +287,7 @@ local check_requirements = task("check_requirements")
         local missing = {}
         
         for _, pkg_name in ipairs(required) do
-            local installed, _ = pkg.is_installed(pkg_name)
+            local installed, _ = pkg.is_installed({package = pkg_name})
             if not installed then
                 table.insert(missing, pkg_name)
             end
@@ -281,41 +302,50 @@ local check_requirements = task("check_requirements")
     :build()
 ```
 
-#### `pkg.get_manager()`
+#### `pkg.get_manager({})`
 
 Returns package manager name.
 
 **Example:**
 
 ```lua
-local manager, err = pkg.get_manager()
+local manager, err = pkg.get_manager({})
 log.info("Manager: " .. (manager or "unknown"))
 ```
 
-#### `pkg.which(executable)`
+#### `pkg.which({executable = ...})`
 
 Finds executable path.
 
 **Example:**
 
 ```lua
-local path, err = pkg.which("git")
+local path, err = pkg.which({executable = "git"})
 if path then
     log.info("Git at: " .. path)
 end
 ```
 
-#### `pkg.version(package)`
+#### `pkg.version({package = ...})`
 
 Gets package version.
 
-#### `pkg.deps(package)`
+#### `pkg.deps({package = ...})`
 
 Lists dependencies.
 
-#### `pkg.install_local(filepath)`
+#### `pkg.install_local({file = ...})`
 
 Installs from local file (.deb, .rpm).
+
+**Example:**
+
+```lua
+local success, output = pkg.install_local({file = "/path/to/package.deb"})
+if success then
+    log.info("✅ Package installed from local file")
+end
+```
 
 ## 🎯 Complete Examples
 
@@ -325,13 +355,13 @@ Installs from local file (.deb, .rpm).
 local pkg = require("pkg")
 
 local update = task("update")
-    :command(function() return pkg.update() end)
+    :command(function() return pkg.update({}) end)
     :build()
 
 local install_tools = task("install_tools")
     :command(function()
         local tools = {"git", "curl", "wget", "vim", "htop"}
-        return pkg.install(tools)
+        return pkg.install({packages = tools})
     end)
     :depends_on({"update"})
     :build()
@@ -339,9 +369,10 @@ local install_tools = task("install_tools")
 local verify = task("verify")
     :command(function()
         for _, tool in ipairs({"git", "curl"}) do
-            if pkg.is_installed(tool) then
-                local path = pkg.which(tool)
-                log.info("✅ " .. tool .. " (" .. path .. ")")
+            local installed, _ = pkg.is_installed({package = tool})
+            if installed then
+                local path, _ = pkg.which({executable = tool})
+                log.info("✅ " .. tool .. " (" .. (path or "unknown") .. ")")
             end
         end
         return true, "OK"
@@ -359,13 +390,13 @@ workflow.define("setup_dev")
 local pkg = require("pkg")
 
 local update_servers = task("update_servers")
-    :command(function() return pkg.update() end)
+    :command(function() return pkg.update({}) end)
     :delegate_to("prod-server-1")
     :build()
 
 local install_monitoring = task("install_monitoring")
     :command(function()
-        return pkg.install({"htop", "iotop", "nethogs"})
+        return pkg.install({packages = {"htop", "iotop", "nethogs"}})
     end)
     :delegate_to("prod-server-1")
     :depends_on({"update_servers"})
@@ -383,19 +414,21 @@ local pkg = require("pkg")
 local audit = task("audit")
     :command(function()
         log.info("📊 System Audit")
-        log.info("=".rep(60))
+        log.info(string.rep("=", 60))
         
-        local manager = pkg.get_manager()
-        log.info("Manager: " .. manager)
+        local manager, _ = pkg.get_manager({})
+        log.info("Manager: " .. (manager or "unknown"))
         
-        local _, packages = pkg.list()
+        local _, packages = pkg.list({})
         local count = 0
-        for _ in pairs(packages) do count = count + 1 end
+        if type(packages) == "table" then
+            for _ in pairs(packages) do count = count + 1 end
+        end
         log.info("Packages: " .. count)
         
         local critical = {"openssl", "curl"}
         for _, p in ipairs(critical) do
-            local installed = pkg.is_installed(p)
+            local installed, _ = pkg.is_installed({package = p})
             log.info((installed and "✅" or "❌") .. " " .. p)
         end
         
@@ -411,21 +444,22 @@ workflow.define("audit")
 
 1. **Update before installing:**
    ```lua
-   pkg.update()
-   pkg.install("package")
+   pkg.update({})
+   pkg.install({packages = "package"})
    ```
 
 2. **Check before installing:**
    ```lua
-   if not pkg.is_installed("git") then
-       pkg.install("git")
+   local installed, _ = pkg.is_installed({package = "git"})
+   if not installed then
+       pkg.install({packages = "git"})
    end
    ```
 
 3. **Cleanup after operations:**
    ```lua
-   pkg.clean()
-   pkg.autoremove()
+   pkg.clean({})
+   pkg.autoremove({})
    ```
 
 4. **Use delegate_to for remote:**
