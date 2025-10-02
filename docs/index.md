@@ -872,137 +872,57 @@ workflow.define("gitops_pipeline", {
 
 ## 🚀 Get Started in Minutes
 
-### Installation
+### 📦 Step 1: Install Sloth Runner
 
-=== "Quick Install (Recommended)"
+```bash
+# Quick install (Linux/macOS)
+curl -sSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/main/install.sh | bash
+```
 
-    ```bash
-    # One-line installer for Linux/macOS
-    curl -sSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/main/install.sh | bash
-    ```
+**Alternative Installation Methods:**
 
-=== "Manual Download"
+- **Linux AMD64**: [Download](https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner-linux-amd64.tar.gz)
+- **macOS ARM64**: [Download](https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner-darwin-arm64.tar.gz)
+- **From Source**: `git clone https://github.com/chalkan3-sloth/sloth-runner.git && cd sloth-runner && go build`
 
-    ```bash
-    # Linux AMD64
-    wget https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner-linux-amd64.tar.gz
-    tar xzf sloth-runner-linux-amd64.tar.gz
-    sudo mv sloth-runner /usr/local/bin/
-    
-    # macOS ARM64 (Apple Silicon)
-    wget https://github.com/chalkan3-sloth/sloth-runner/releases/latest/download/sloth-runner-darwin-arm64.tar.gz
-    tar xzf sloth-runner-darwin-arm64.tar.gz
-    sudo mv sloth-runner /usr/local/bin/
-    ```
+### ✍️ Step 2: Create Your First Workflow
 
-=== "From Source"
+Create a file called `hello.sloth`:
 
-    ```bash
-    git clone https://github.com/chalkan3-sloth/sloth-runner.git
-    cd sloth-runner
-    go build -o sloth-runner ./cmd/sloth-runner
-    sudo mv sloth-runner /usr/local/bin/
-    ```
+```lua
+task("hello")
+  :description("My first Sloth Runner task")
+  :command(function() 
+    log.info("🦥 Hello from Sloth Runner!")
+    return true 
+  end)
+  :build()
+```
 
-### Create Your First Workflow
+### ▶️ Step 3: Run It!
 
-!!! example "Simple Hello World"
+```bash
+sloth-runner run -f hello.sloth
+```
 
-    Create `hello.sloth`:
+**Try different output styles:**
 
-    ```lua
-    task("hello")
-      :description("My first Sloth Runner task")
-      :command(function() 
-        log.info("🦥 Hello from Sloth Runner!")
-        return true 
-      end)
-      :build()
-
-    workflow.define("greeting")
-      :tasks({"hello"})
-      :on_complete(function(success)
-        if success then
-          log.success("✅ Workflow completed!")
-        end
-      end)
-    ```
-
-### Run Your Workflow
-
-=== "Basic Output"
-
-    ```bash
-    sloth-runner run -f hello.sloth
-    ```
-
-=== "Modern UI"
-
-    ```bash
-    sloth-runner run -f hello.sloth -o modern
-    ```
-
-=== "Rich Progress"
-
-    ```bash
-    sloth-runner run -f hello.sloth -o rich
-    ```
+- `sloth-runner run -f hello.sloth -o modern` - Modern UI with animations
+- `sloth-runner run -f hello.sloth -o rich` - Rich progress bars
+- `sloth-runner run -f hello.sloth -o json` - JSON output for CI/CD
 
 ---
 
 ## 📚 Learn More
 
-<div class="grid cards" markdown>
+**Quick Links:**
 
--   :rocket:{ .lg .middle } **Quick Tutorial**
-
-    ---
-
-    Get up and running with practical examples in 5 minutes
-
-    [:octicons-arrow-right-24: Start Tutorial](TUTORIAL/)
-
--   :material-file-document:{ .lg .middle } **Advanced Examples**
-
-    ---
-
-    Production-ready workflows and real-world use cases
-
-    [:octicons-arrow-right-24: View Examples](en/advanced-examples/)
-
--   :brain:{ .lg .middle } **Core Concepts**
-
-    ---
-
-    Deep dive into Sloth Runner's architecture and features
-
-    [:octicons-arrow-right-24: Learn Concepts](en/core-concepts/)
-
--   :books:{ .lg .middle } **API Reference**
-
-    ---
-
-    Complete documentation of all modules and functions
-
-    [:octicons-arrow-right-24: Browse API](modules/)
-
--   :material-file-code:{ .lg .middle } **Modern DSL**
-
-    ---
-
-    Learn the modern task definition syntax
-
-    [:octicons-arrow-right-24: DSL Guide](modern-dsl/introduction/)
-
--   :material-github:{ .lg .middle } **GitHub Repository**
-
-    ---
-
-    Source code, issues, and contributions
-
-    [:octicons-arrow-right-24: View on GitHub](https://github.com/chalkan3-sloth/sloth-runner)
-
-</div>
+- 🚀 [**Quick Tutorial**](TUTORIAL/) - Get started in 5 minutes
+- 📝 [**Advanced Examples**](en/advanced-examples/) - Production-ready workflows
+- 🧠 [**Core Concepts**](en/core-concepts/) - Architecture deep dive
+- 📚 [**API Reference**](modules/) - Complete module documentation
+- 💻 [**Modern DSL**](modern-dsl/introduction/) - Task definition syntax
+- 🐙 [**GitHub Repository**](https://github.com/chalkan3-sloth/sloth-runner) - Source code and issues
 
 ---
 
