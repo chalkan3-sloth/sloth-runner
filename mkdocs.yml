@@ -151,6 +151,7 @@ nav:
   - '🚀 Quick Start': 'TUTORIAL.md'
   - '📚 Core Documentation':
     - '🛠️ Getting Started': 'getting-started.md'
+    - '🚀 Agent Bootstrap': 'BOOTSTRAP.md'
     - '🎯 GitOps Example': 'gitops-example.md'
     - '🧠 Core Concepts': 'core-concepts.md'
     - '🆕 Latest Features': 'latest-features.md'
