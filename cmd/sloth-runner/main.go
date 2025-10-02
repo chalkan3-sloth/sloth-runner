@@ -963,29 +963,88 @@ var agentStartCmd = &cobra.Command{
 		pterm.Warning.Println("Starting agent in insecure mode.")
 
 		if masterAddr != "" {
-			conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-			if err != nil {
-				return fmt.Errorf("failed to connect to master: %v", err)
-			}
-			defer conn.Close()
-
-			registryClient := pb.NewAgentRegistryClient(conn)
-			_, err = registryClient.RegisterAgent(context.Background(), &pb.RegisterAgentRequest{
-				AgentName:    agentName,
-				AgentAddress: agentReportAddress,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to register with master: %v", err)
-			}
-			slog.Info(fmt.Sprintf("Agent registered with master at %s, reporting address %s", masterAddr, agentReportAddress))
-
+			// Start connection manager with reconnection logic
 			go func() {
+				reconnectDelay := 5 * time.Second
+				maxReconnectDelay := 60 * time.Second
+				heartbeatInterval := 5 * time.Second
+				
 				for {
-					_, err := registryClient.Heartbeat(context.Background(), &pb.HeartbeatRequest{AgentName: agentName})
+					conn, err := grpc.Dial(masterAddr, 
+						grpc.WithTransportCredentials(insecure.NewCredentials()),
+						grpc.WithBlock(),
+						grpc.WithTimeout(10*time.Second),
+					)
 					if err != nil {
-						slog.Error(fmt.Sprintf("Failed to send heartbeat to master: %v", err))
+						slog.Error(fmt.Sprintf("Failed to connect to master at %s: %v. Retrying in %v...", masterAddr, err, reconnectDelay))
+						time.Sleep(reconnectDelay)
+						// Exponential backoff
+						reconnectDelay *= 2
+						if reconnectDelay > maxReconnectDelay {
+							reconnectDelay = maxReconnectDelay
+						}
+						continue
 					}
-					time.Sleep(5 * time.Second)
+
+					// Reset delay on successful connection
+					reconnectDelay = 5 * time.Second
+					
+					registryClient := pb.NewAgentRegistryClient(conn)
+					
+					// Try to register with master
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					_, err = registryClient.RegisterAgent(ctx, &pb.RegisterAgentRequest{
+						AgentName:    agentName,
+						AgentAddress: agentReportAddress,
+					})
+					cancel()
+					
+					if err != nil {
+						slog.Error(fmt.Sprintf("Failed to register with master: %v. Reconnecting...", err))
+						conn.Close()
+						time.Sleep(reconnectDelay)
+						continue
+					}
+					
+					pterm.Success.Printf("✓ Agent registered with master at %s (reporting address: %s)\n", masterAddr, agentReportAddress)
+					slog.Info(fmt.Sprintf("Agent registered with master at %s, reporting address %s", masterAddr, agentReportAddress))
+
+					// Start heartbeat loop
+					connected := true
+					consecutiveFailures := 0
+					maxConsecutiveFailures := 3
+					
+					for connected {
+						time.Sleep(heartbeatInterval)
+						
+						ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+						_, err := registryClient.Heartbeat(ctx, &pb.HeartbeatRequest{AgentName: agentName})
+						cancel()
+						
+						if err != nil {
+							consecutiveFailures++
+							slog.Warn(fmt.Sprintf("Heartbeat failed (%d/%d): %v", consecutiveFailures, maxConsecutiveFailures, err))
+							
+							if consecutiveFailures >= maxConsecutiveFailures {
+								slog.Error(fmt.Sprintf("Lost connection to master after %d failed heartbeats. Reconnecting...", maxConsecutiveFailures))
+								pterm.Warning.Printf("⚠ Connection to master lost. Attempting to reconnect...\n")
+								connected = false
+							}
+						} else {
+							// Reset failure counter on successful heartbeat
+							if consecutiveFailures > 0 {
+								consecutiveFailures = 0
+								slog.Info("Heartbeat recovered, connection stable")
+							}
+						}
+					}
+					
+					// Close old connection before reconnecting
+					conn.Close()
+					
+					// Wait before attempting reconnection
+					pterm.Info.Printf("🔄 Reconnecting to master in %v...\n", reconnectDelay)
+					time.Sleep(reconnectDelay)
 				}
 			}()
 		}
