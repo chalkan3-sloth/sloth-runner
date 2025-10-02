@@ -3,13 +3,13 @@
 !!! info "📚 Documentation"
     For Agent Bootstrap and setup, please visit:
     
-    - 🇺🇸 [Master-Agent Architecture (English)](en/master-agent-architecture.md)
-    - 🇺🇸 [Agent Improvements (English)](en/agent-improvements.md)
-    - 🇺🇸 [Quick Start (English)](en/quick-start.md)
+    - 🇺🇸 [Master-Agent Architecture (English)](../en/master-agent-architecture/)
+    - 🇺🇸 [Agent Improvements (English)](../en/agent-improvements/)
+    - 🇺🇸 [Quick Start (English)](../en/quick-start/)
 
 ---
 
-<meta http-equiv="refresh" content="0; url=en/master-agent-architecture" />
+<script>window.location.href="../en/master-agent-architecture/";</script>
 
 **Redirecting to Agent documentation...**
 

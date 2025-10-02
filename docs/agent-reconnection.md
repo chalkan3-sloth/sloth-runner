@@ -3,12 +3,12 @@
 !!! info "📚 Documentation"
     For Agent reconnection features, please visit:
     
-    - 🇺🇸 [Agent Improvements (English)](en/agent-improvements.md)
-    - 🇺🇸 [Distributed System (English)](en/distributed.md)
+    - 🇺🇸 [Agent Improvements (English)](../en/agent-improvements/)
+    - 🇺🇸 [Distributed System (English)](../en/distributed/)
 
 ---
 
-<meta http-equiv="refresh" content="0; url=en/agent-improvements" />
+<script>window.location.href="../en/agent-improvements/";</script>
 
 **Redirecting to Agent Improvements documentation...**
 

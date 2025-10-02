@@ -3,13 +3,13 @@
 !!! info "📚 Documentation"
     For Multi-Cloud features and best practices, please visit:
     
-    - 🇺🇸 [Enterprise Features (English)](en/enterprise-features.md)
-    - 🇺🇸 [Advanced Features (English)](en/advanced-features.md)
-    - 📦 [Cloud Modules](modules/index.md)
+    - 🇺🇸 [Enterprise Features (English)](../en/enterprise-features/)
+    - 🇺🇸 [Advanced Features (English)](../en/advanced-features/)
+    - 📦 [Cloud Modules](../modules/index/)
 
 ---
 
-<meta http-equiv="refresh" content="0; url=en/enterprise-features" />
+<script>window.location.href="../en/enterprise-features/";</script>
 
 **Redirecting to Enterprise Features...**
 

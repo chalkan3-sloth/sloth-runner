@@ -3,13 +3,13 @@
 !!! info "📚 Documentation"
     For Distributed Agents documentation, please visit:
     
-    - 🇺🇸 [Distributed System (English)](en/distributed.md)
-    - 🇺🇸 [Master-Agent Architecture (English)](en/master-agent-architecture.md)
-    - 🇧🇷 [Sistema Distribuído (Português)](pt/distributed.md)
+    - 🇺🇸 [Distributed System (English)](../en/distributed/)
+    - 🇺🇸 [Master-Agent Architecture (English)](../en/master-agent-architecture/)
+    - 🇧🇷 [Sistema Distribuído (Português)](../pt/distributed/)
 
 ---
 
-<meta http-equiv="refresh" content="0; url=en/distributed" />
+<script>window.location.href="../en/distributed/";</script>
 
 **Redirecting to Distributed documentation...**
 

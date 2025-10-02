@@ -3,13 +3,13 @@
 !!! info "📚 Documentation"
     For State Module documentation, please visit:
     
-    - 🔧 [State Module Reference](modules/state.md)
-    - 🇺🇸 [Core Concepts (English)](en/core-concepts.md)
-    - 📦 [All Modules](modules/index.md)
+    - 🔧 [State Module Reference](../modules/state/)
+    - 🇺🇸 [Core Concepts (English)](../en/core-concepts/)
+    - 📦 [All Modules](../modules/index/)
 
 ---
 
-<meta http-equiv="refresh" content="0; url=modules/state" />
+<script>window.location.href="../modules/state/";</script>
 
 **Redirecting to State Module documentation...**
 

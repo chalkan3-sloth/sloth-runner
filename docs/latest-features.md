@@ -3,14 +3,14 @@
 !!! info "📚 Documentation"
     For the latest features and updates, please visit:
     
-    - 🇺🇸 [Enterprise Features (English)](en/enterprise-features.md)
-    - 🇺🇸 [AI Features (English)](en/ai-features.md)
-    - 🇺🇸 [GitOps Features (English)](en/gitops-features.md)
-    - 🇺🇸 [Advanced Features (English)](en/advanced-features.md)
+    - 🇺🇸 [Enterprise Features (English)](../en/enterprise-features/)
+    - 🇺🇸 [AI Features (English)](../en/ai-features/)
+    - 🇺🇸 [GitOps Features (English)](../en/gitops-features/)
+    - 🇺🇸 [Advanced Features (English)](../en/advanced-features/)
 
 ---
 
-<meta http-equiv="refresh" content="0; url=en/enterprise-features" />
+<script>window.location.href="../en/enterprise-features/";</script>
 
 **Redirecting to Enterprise Features...**
 

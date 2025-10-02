@@ -3,12 +3,12 @@
 !!! info "📚 Documentation"
     For GitOps features and examples, please visit:
     
-    - 🇺🇸 [GitOps Features (English)](en/gitops-features.md)
-    - 🇺🇸 [Advanced Examples (English)](en/advanced-examples.md)
+    - 🇺🇸 [GitOps Features (English)](../en/gitops-features/)
+    - 🇺🇸 [Advanced Examples (English)](../en/advanced-examples/)
 
 ---
 
-<meta http-equiv="refresh" content="0; url=en/gitops-features" />
+<script>window.location.href="../en/gitops-features/";</script>
 
 **Redirecting to GitOps documentation...**
 

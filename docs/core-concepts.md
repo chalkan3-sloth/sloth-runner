@@ -3,13 +3,13 @@
 !!! info "📚 Documentation"
     For Core Concepts documentation, please visit:
     
-    - 🇺🇸 [English Version](en/core-concepts.md)
-    - 🇧🇷 [Versão em Português](pt/core-concepts.md)
-    - 🇨🇳 [中文版本](zh/core-concepts.md)
+    - 🇺🇸 [English Version](../en/core-concepts/)
+    - 🇧🇷 [Versão em Português](../pt/core-concepts/)
+    - 🇨🇳 [中文版本](../zh/core-concepts/)
 
 ---
 
-<meta http-equiv="refresh" content="0; url=en/core-concepts" />
+<script>window.location.href="../en/core-concepts/";</script>
 
 **Redirecting to English version...**
 
