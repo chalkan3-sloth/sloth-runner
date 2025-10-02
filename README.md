@@ -15,6 +15,68 @@ A **modern task orchestration platform** built with Go and powered by **Lua scri
 
 ## ✨ **Key Features**
 
+### 📦 **Native Modules - No require() Needed!**
+*All native modules are available globally - just use them!*
+
+```lua
+-- ✅ All native modules work out of the box - NO require() needed!
+
+task("setup_server")
+    :description("Setup server with native modules")
+    :command(function()
+        -- Package Management (pkg)
+        pkg.install({ name = "nginx", version = "latest" })
+        
+        -- User Management (user)
+        user.create({
+            name = "webapp",
+            home = "/home/webapp",
+            shell = "/bin/bash"
+        })
+        
+        -- File Operations (file_ops)
+        file_ops.copy({
+            src = "config/nginx.conf",
+            dest = "/etc/nginx/nginx.conf",
+            mode = 0o644
+        })
+        
+        -- SSH Operations (ssh)
+        ssh.upload({
+            connection = connection,
+            local_path = "app.tar.gz",
+            remote_path = "/tmp/app.tar.gz"
+        })
+        
+        -- Systemd Management (systemd)
+        systemd.enable("nginx")
+        systemd.start("nginx")
+        
+        -- Infrastructure Testing (infra_test)
+        infra_test.service_is_running("nginx")
+        infra_test.port_is_listening(80)
+        infra_test.file_exists("/etc/nginx/nginx.conf")
+        
+        log.info("✅ Server setup complete!")
+        return true
+    end)
+    :build()
+```
+
+**Available Global Modules:**
+- `pkg` - Package management (apt, yum, dnf, pacman, apk)
+- `user` - User/group management
+- `ssh` - SSH operations and file transfers
+- `file_ops` - File operations (copy, template, lineinfile, etc.)
+- `systemd` - Systemd service management
+- `state` - State management with persistence
+- `terraform` - Terraform integration
+- `pulumi` - Pulumi integration
+- `kubernetes` - Kubernetes operations
+- `helm` - Helm chart management
+- `salt` - Salt Stack integration
+- `infra_test` - Infrastructure testing and validation
+
 ### 🎯 **Modern DSL (Domain Specific Language)**
 *Clean, powerful Lua-based syntax for complex workflows*
 
@@ -24,9 +86,11 @@ local clone_task = task("clone_infrastructure")
     :description("Clone Terraform infrastructure repository")
     :workdir("/tmp/infrastructure")
     :command(function(this, params)
-        local git = require("git")
         log.info("📡 Cloning infrastructure repository...")
         
+        -- Note: git, http, data, etc. still use require()
+        -- Only native infrastructure modules are global
+        local git = require("git")
         local repository = git.clone(
             "https://github.com/company/terraform-infrastructure",
             this.workdir.get()
