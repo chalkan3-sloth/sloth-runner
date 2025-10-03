@@ -1,0 +1,93 @@
+-- Idempotency Example
+-- This script demonstrates idempotent operations in Sloth Runner
+-- Run it multiple times to see that it only makes changes when needed
+
+task({
+    name = "demonstrate-idempotency",
+    description = "Show how idempotent operations work",
+    run = function()
+        print("\n=== Idempotency Demo ===\n")
+        
+        -- 1. Package Management
+        print("1. Installing package (idempotent)")
+        local pkg_result = pkg.install({packages = "vim"})
+        
+        if pkg_result.changed then
+            print("✅ Package vim was installed")
+        else
+            print("ℹ️  Package vim already installed (no changes made)")
+        end
+        
+        -- 2. User Creation
+        print("\n2. Creating user (idempotent)")
+        local user_result = user.create({
+            username = "testuser",
+            comment = "Test User",
+            shell = "/bin/bash"
+        })
+        
+        if user_result.changed then
+            print("✅ User testuser was created")
+        else
+            print("ℹ️  User testuser already exists (no changes made)")
+        end
+        
+        -- 3. Service Management
+        print("\n3. Managing systemd service (idempotent)")
+        local enable_result = systemd.enable({name = "sshd"})
+        
+        if enable_result.changed then
+            print("✅ Service sshd was enabled")
+        else
+            print("ℹ️  Service sshd already enabled (no changes made)")
+        end
+        
+        local start_result = systemd.start({name = "sshd"})
+        
+        if start_result.changed then
+            print("✅ Service sshd was started")
+        else
+            print("ℹ️  Service sshd already running (no changes made)")
+        end
+        
+        -- 4. File Operations
+        print("\n4. Copying file (idempotent)")
+        
+        -- Create a test source file
+        local test_content = "Hello from Sloth Runner!"
+        os.execute("echo '" .. test_content .. "' > /tmp/test_source.txt")
+        
+        local copy_result = file_ops.copy({
+            src = "/tmp/test_source.txt",
+            dest = "/tmp/test_dest.txt",
+            mode = "0644"
+        })
+        
+        if copy_result.changed then
+            print("✅ File was copied")
+        else
+            print("ℹ️  File already identical (no changes made)")
+        end
+        
+        -- 5. Summary
+        print("\n=== Summary ===")
+        local total_changes = 0
+        if pkg_result.changed then total_changes = total_changes + 1 end
+        if user_result.changed then total_changes = total_changes + 1 end
+        if enable_result.changed then total_changes = total_changes + 1 end
+        if start_result.changed then total_changes = total_changes + 1 end
+        if copy_result.changed then total_changes = total_changes + 1 end
+        
+        print(string.format("Total operations: 5"))
+        print(string.format("Operations that made changes: %d", total_changes))
+        print(string.format("Operations skipped (idempotent): %d", 5 - total_changes))
+        
+        if total_changes == 0 then
+            print("\n🎉 System is already in desired state!")
+            print("Run this script again and it will produce the same result.")
+        else
+            print("\n⚙️  System state was updated.")
+            print("Run this script again and it should skip these operations.")
+        end
+    end
+})

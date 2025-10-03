@@ -33,6 +33,7 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/internal/output"
 	"github.com/chalkan3-sloth/sloth-runner/internal/scaffolding"
 	"github.com/chalkan3-sloth/sloth-runner/internal/stack"
+	"github.com/chalkan3-sloth/sloth-runner/internal/state"
 	"github.com/chalkan3-sloth/sloth-runner/internal/taskrunner"
 	"github.com/chalkan3-sloth/sloth-runner/internal/ui"
 	pb "github.com/chalkan3-sloth/sloth-runner/proto"
@@ -1857,6 +1858,240 @@ var agentModulesCheckCmd = &cobra.Command{
 	},
 }
 
+// State command and subcommands
+var stateCmd = &cobra.Command{
+	Use:   "state",
+	Short: "Manage state and idempotency tracking",
+	Long:  `The state command provides subcommands to view, list, and manage resource state for idempotent operations.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
+}
+
+var stateListCmd = &cobra.Command{
+	Use:   "list [resource-type]",
+	Short: "List all tracked states or filter by resource type",
+	Long:  `Lists all resources being tracked for idempotency. Optionally filter by resource type.`,
+	Args:  cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		agent, _ := cmd.Flags().GetString("agent")
+		outputFormat, _ := cmd.Flags().GetString("output")
+		
+		var resourceType string
+		if len(args) > 0 {
+			resourceType = args[0]
+		}
+		
+		sm, err := state.NewStateManager(filepath.Join(os.TempDir(), "sloth-state", agent+".db"))
+		if err != nil {
+			return fmt.Errorf("failed to initialize state manager: %w", err)
+		}
+		defer sm.Close()
+		
+		states, err := sm.List(resourceType)
+		if err != nil {
+			return fmt.Errorf("failed to list states: %w", err)
+		}
+		
+		if outputFormat == "json" {
+			data, err := json.MarshalIndent(states, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(data))
+			return nil
+		}
+		
+		if len(states) == 0 {
+			if resourceType != "" {
+				pterm.Info.Printf("No states found for resource type: %s\n", resourceType)
+			} else {
+				pterm.Info.Println("No states tracked yet")
+			}
+			return nil
+		}
+		
+		pterm.DefaultHeader.WithFullWidth().Println("State Tracking")
+		fmt.Println()
+		
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', 0)
+		fmt.Fprintln(w, "KEY\tVALUE\tUPDATED")
+		fmt.Fprintln(w, "---\t-----\t-------")
+		
+		for key, value := range states {
+			truncValue := value
+			if len(truncValue) > 50 {
+				truncValue = truncValue[:47] + "..."
+			}
+			fmt.Fprintf(w, "%s\t%s\t%s\n", 
+				pterm.Cyan(key),
+				truncValue,
+				"")
+		}
+		
+		w.Flush()
+		fmt.Println()
+		pterm.Success.Printf("Total: %d state(s)\n", len(states))
+		
+		return nil
+	},
+}
+
+var stateShowCmd = &cobra.Command{
+	Use:   "show <key>",
+	Short: "Show detailed information about a specific state",
+	Long:  `Display detailed information about a specific resource state including metadata.`,
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		key := args[0]
+		agent, _ := cmd.Flags().GetString("agent")
+		outputFormat, _ := cmd.Flags().GetString("output")
+		
+		sm, err := state.NewStateManager(filepath.Join(os.TempDir(), "sloth-state", agent+".db"))
+		if err != nil {
+			return fmt.Errorf("failed to initialize state manager: %w", err)
+		}
+		defer sm.Close()
+		
+		metadata, err := sm.GetMetadata(key)
+		if err != nil {
+			return fmt.Errorf("failed to get state: %w", err)
+		}
+		
+		if outputFormat == "json" {
+			data, err := json.MarshalIndent(metadata, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(data))
+			return nil
+		}
+		
+		pterm.DefaultHeader.WithFullWidth().Printf("State: %s", key)
+		fmt.Println()
+		
+		fmt.Printf("%s %s\n", pterm.Cyan("Key:"), metadata.Key)
+		fmt.Printf("%s %s\n", pterm.Cyan("Value:"), metadata.Value)
+		fmt.Printf("%s %s\n", pterm.Cyan("Created:"), metadata.CreatedAt.Format(time.RFC3339))
+		fmt.Printf("%s %s\n", pterm.Cyan("Updated:"), metadata.UpdatedAt.Format(time.RFC3339))
+		
+		return nil
+	},
+}
+
+var stateDeleteCmd = &cobra.Command{
+	Use:   "delete <key>",
+	Short: "Delete a specific state entry",
+	Long:  `Remove a state entry from the tracking database. Use with caution.`,
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		key := args[0]
+		agent, _ := cmd.Flags().GetString("agent")
+		yes, _ := cmd.Flags().GetBool("yes")
+		
+		if !yes {
+			confirmed, err := pterm.DefaultInteractiveConfirm.
+				WithDefaultText(fmt.Sprintf("Are you sure you want to delete state '%s'?", key)).
+				Show()
+			if err != nil {
+				return err
+			}
+			if !confirmed {
+				pterm.Info.Println("Cancelled")
+				return nil
+			}
+		}
+		
+		sm, err := state.NewStateManager(filepath.Join(os.TempDir(), "sloth-state", agent+".db"))
+		if err != nil {
+			return fmt.Errorf("failed to initialize state manager: %w", err)
+		}
+		defer sm.Close()
+		
+		if err := sm.Delete(key); err != nil {
+			return fmt.Errorf("failed to delete state: %w", err)
+		}
+		
+		pterm.Success.Printf("State '%s' deleted successfully\n", key)
+		return nil
+	},
+}
+
+var stateClearCmd = &cobra.Command{
+	Use:   "clear",
+	Short: "Clear all state entries",
+	Long:  `Remove all state entries from the tracking database. Use with extreme caution.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		agent, _ := cmd.Flags().GetString("agent")
+		yes, _ := cmd.Flags().GetBool("yes")
+		
+		if !yes {
+			confirmed, err := pterm.DefaultInteractiveConfirm.
+				WithDefaultText("Are you sure you want to clear ALL states? This cannot be undone.").
+				Show()
+			if err != nil {
+				return err
+			}
+			if !confirmed {
+				pterm.Info.Println("Cancelled")
+				return nil
+			}
+		}
+		
+		sm, err := state.NewStateManager(filepath.Join(os.TempDir(), "sloth-state", agent+".db"))
+		if err != nil {
+			return fmt.Errorf("failed to initialize state manager: %w", err)
+		}
+		defer sm.Close()
+		
+		if err := sm.Clear(); err != nil {
+			return fmt.Errorf("failed to clear states: %w", err)
+		}
+		
+		pterm.Success.Println("All states cleared successfully")
+		return nil
+	},
+}
+
+var stateStatsCmd = &cobra.Command{
+	Use:   "stats",
+	Short: "Show state database statistics",
+	Long:  `Display statistics about the state database including size and entry count.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		agent, _ := cmd.Flags().GetString("agent")
+		outputFormat, _ := cmd.Flags().GetString("output")
+		
+		sm, err := state.NewStateManager(filepath.Join(os.TempDir(), "sloth-state", agent+".db"))
+		if err != nil {
+			return fmt.Errorf("failed to initialize state manager: %w", err)
+		}
+		defer sm.Close()
+		
+		stats, err := sm.Stats()
+		if err != nil {
+			return fmt.Errorf("failed to get stats: %w", err)
+		}
+		
+		if outputFormat == "json" {
+			data, err := json.MarshalIndent(stats, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(data))
+			return nil
+		}
+		
+		pterm.DefaultHeader.WithFullWidth().Println("State Database Statistics")
+		fmt.Println()
+		
+		fmt.Printf("%s %d\n", pterm.Cyan("Total Keys:"), stats.TotalKeys)
+		fmt.Printf("%s %s\n", pterm.Cyan("Database Size:"), formatBytes(uint64(stats.TotalSize)))
+		fmt.Printf("%s %s\n", pterm.Cyan("Backend:"), stats.Backend)
+		
+		return nil
+	},
+}
+
 // formatBytes formats bytes into human-readable format
 func formatBytes(bytes uint64) string {
 	const unit = 1024
@@ -2773,6 +3008,22 @@ func init() {
 	modulesCmd.AddCommand(modulesListCmd)
 	modulesListCmd.Flags().StringP("module", "m", "", "Show details for a specific module")
 	modulesListCmd.Flags().StringP("format", "f", "pretty", "Output format: pretty or json")
+
+	// State command
+	rootCmd.AddCommand(stateCmd)
+	stateCmd.AddCommand(stateListCmd)
+	stateCmd.AddCommand(stateShowCmd)
+	stateCmd.AddCommand(stateDeleteCmd)
+	stateCmd.AddCommand(stateClearCmd)
+	stateCmd.AddCommand(stateStatsCmd)
+	
+	// State command flags
+	stateCmd.PersistentFlags().String("agent", "local", "Agent name for state management")
+	stateListCmd.Flags().StringP("output", "o", "text", "Output format: text or json")
+	stateShowCmd.Flags().StringP("output", "o", "text", "Output format: text or json")
+	stateDeleteCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompt")
+	stateClearCmd.Flags().BoolP("yes", "y", false, "Skip confirmation prompt")
+	stateStatsCmd.Flags().StringP("output", "o", "text", "Output format: text or json")
 
 	// UI command
 	rootCmd.AddCommand(uiCmd)

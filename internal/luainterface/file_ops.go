@@ -47,7 +47,7 @@ func (f *FileOpsModule) exports() map[string]lua.LGFunction {
 	}
 }
 
-// copy copies a file from source to destination
+// copy copies a file from source to destination (with idempotency)
 // Usage: file_ops.copy({src="/path/to/source", dest="/path/to/dest", mode="0644"})
 func (f *FileOpsModule) copy(L *lua.LState) int {
 	opts := L.CheckTable(1)
@@ -72,6 +72,25 @@ func (f *FileOpsModule) copy(L *lua.LState) int {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("source file not found: %v", err)))
 		return 2
+	}
+
+	// IDEMPOTENCY: Check if destination exists and is identical
+	if dstInfo, err := os.Stat(dst); err == nil {
+		// Check if files are identical by comparing checksums
+		srcChecksum, err1 := computeChecksum(src)
+		dstChecksum, err2 := computeChecksum(dst)
+		
+		if err1 == nil && err2 == nil && srcChecksum == dstChecksum {
+			// Files are identical
+			result := L.NewTable()
+			L.SetField(result, "changed", lua.LBool(false))
+			L.SetField(result, "src", lua.LString(src))
+			L.SetField(result, "dest", lua.LString(dst))
+			L.SetField(result, "size", lua.LNumber(dstInfo.Size()))
+			L.SetField(result, "message", lua.LString("Files are identical, no copy needed"))
+			L.Push(result)
+			return 1
+		}
 	}
 
 	// Create destination directory if needed
