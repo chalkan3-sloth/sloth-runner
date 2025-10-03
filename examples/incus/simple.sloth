@@ -1,0 +1,52 @@
+#!/usr/bin/env sloth-runner
+-- Simple Incus Container Example
+-- Quick start: launch a single Ubuntu container
+
+stack("simple-incus-container")
+
+values({
+    container_name = "my-ubuntu",
+    image = "ubuntu:22.04",
+    incus_host = "localhost"  -- Change to your Incus host
+})
+
+task({
+    name = "launch-container",
+    delegate_to = values.incus_host,
+    run = function()
+        log.info("Launching container: " .. values.container_name)
+        
+        -- Create and start container
+        incus.instance({
+            name = values.container_name,
+            image = values.image
+        }):create()
+          :start()
+          :wait_running()
+        
+        log.success("Container is running!")
+    end
+})
+
+task({
+    name = "configure-container",
+    delegate_to = values.incus_host,
+    depends_on = {"launch-container"},
+    run = function()
+        local container = incus.instance({name = values.container_name})
+        
+        -- Update and install packages
+        log.info("Installing packages...")
+        container:exec({command = "apt update"})
+        container:exec({command = "apt install -y curl wget vim"})
+        
+        -- Get container IP
+        local state = container:state()
+        if state and state.network and state.network.eth0 then
+            local addrs = state.network.eth0.addresses
+            if addrs and #addrs > 0 then
+                log.success("Container IP: " .. addrs[1].address)
+            end
+        end
+    end
+})

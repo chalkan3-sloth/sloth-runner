@@ -19,6 +19,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/google/uuid"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
@@ -738,6 +739,31 @@ var runCmd = &cobra.Command{
 			workflowName = stackName
 		}
 
+
+		// Show preview if --yes flag is not set
+		yesFlag, _ := cmd.Flags().GetBool("yes")
+		if !yesFlag && stackName != "" {
+			if err := showExecutionPlanPreview(stackName, filePath, taskGroups, stackManager); err != nil {
+				return fmt.Errorf("failed to show preview: %w", err)
+			}
+
+			// Ask for confirmation
+			confirm := false
+			prompt := &survey.Confirm{
+				Message: "Do you want to proceed with this execution plan?",
+				Default: true,
+			}
+			if err := survey.AskOne(prompt, &confirm); err != nil {
+				return fmt.Errorf("confirmation cancelled: %w", err)
+			}
+
+			if !confirm {
+				pterm.Warning.Println("Execution cancelled by user")
+				return nil
+			}
+			pterm.Println()
+		}
+
 		// Create or get existing stack
 		stackID := uuid.New().String()
 		if stackName != "" {
@@ -784,6 +810,14 @@ var runCmd = &cobra.Command{
 		// Register modules
 		luainterface.RegisterAllModules(L)
 		luainterface.OpenImport(L, filePath)
+		
+		// Set current stack if we have one
+		if stackName != "" {
+			currentStack, err := stackManager.GetStack(stackID)
+			if err == nil {
+				luainterface.SetCurrentStack(currentStack, stackManager)
+			}
+		}
 		
 		// Initialize task runner with script content for remote delegation
 		runner := taskrunner.NewTaskRunner(L, taskGroups, "", nil, false, interactive, &taskrunner.DefaultSurveyAsker{}, string(luaScriptContent))

@@ -84,4 +84,129 @@ sloth-runner agent start --name agent1 --master 192.168.1.21:50053 --port 50051 
 7.  **Result Reporting:** The agent sends the execution results (stdout, stderr, success/failure) back to the master.
 8.  **Output Presentation:** The master receives the results and presents them to the user in a clear, formatted, and colored output (as described in the [Enhanced `sloth-runner agent run` Output](enhanced-agent-output.md) documentation).
 
-This architecture provides a flexible and scalable way to manage and execute tasks across your infrastructure. 
+This architecture provides a flexible and scalable way to manage and execute tasks across your infrastructure.
+
+## Special Configurations
+
+### Agents in Incus/LXC Containers
+
+When deploying agents inside Incus (or LXC) containers, you need to configure port forwarding and use the `--report-address` flag because the container's internal IP is not accessible from the master.
+
+#### Setup Steps
+
+1. **Configure Port Forwarding on the Host**
+
+   Add a proxy device to forward a host port to the container's agent port:
+
+   ```bash
+   # On the host machine running Incus
+   sudo incus config device add <container_name> sloth-proxy proxy \
+     listen=tcp:0.0.0.0:<host_port> \
+     connect=tcp:127.0.0.1:<agent_port>
+   ```
+
+   **Example:**
+   ```bash
+   sudo incus config device add main sloth-proxy proxy \
+     listen=tcp:0.0.0.0:50052 \
+     connect=tcp:127.0.0.1:50051
+   ```
+
+2. **Start Agent with Report Address**
+
+   Inside the container, start the agent with:
+   - `--bind-address 0.0.0.0` to listen on all interfaces
+   - `--report-address <host_ip>:<host_port>` to tell the master how to reach this agent
+
+   ```bash
+   # Inside the container
+   sloth-runner agent start \
+     --name <agent_name> \
+     --master <master_ip>:<master_port> \
+     --port <agent_port> \
+     --bind-address 0.0.0.0 \
+     --report-address <host_ip>:<host_port> \
+     --daemon
+   ```
+
+   **Example:**
+   ```bash
+   # Inside container "main" on host 192.168.1.17
+   sloth-runner agent start \
+     --name main \
+     --master 192.168.1.29:50053 \
+     --port 50051 \
+     --bind-address 0.0.0.0 \
+     --report-address 192.168.1.17:50052 \
+     --daemon
+   ```
+
+3. **Systemd Service Configuration (Recommended)**
+
+   Create a systemd service file at `/etc/systemd/system/sloth-runner-agent.service`:
+
+   ```ini
+   [Unit]
+   Description=Sloth Runner Agent - <agent_name>
+   Documentation=https://chalkan3.github.io/sloth-runner/
+   After=network-online.target
+   Wants=network-online.target
+
+   [Service]
+   Type=simple
+   User=root
+   WorkingDirectory=/var/lib/sloth-runner
+   Restart=always
+   RestartSec=5s
+   StartLimitInterval=60s
+   StartLimitBurst=5
+
+   # Agent Configuration
+   ExecStart=/usr/local/bin/sloth-runner agent start \
+     --name <agent_name> \
+     --master <master_ip>:<master_port> \
+     --port <agent_port> \
+     --bind-address 0.0.0.0 \
+     --report-address <host_ip>:<host_port>
+
+   # Logging
+   StandardOutput=journal
+   StandardError=journal
+   SyslogIdentifier=sloth-runner-agent
+
+   # Performance
+   LimitNOFILE=65536
+
+   # Security
+   NoNewPrivileges=true
+   PrivateTmp=true
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+   Then enable and start the service:
+
+   ```bash
+   systemctl daemon-reload
+   systemctl enable sloth-runner-agent
+   systemctl start sloth-runner-agent
+   ```
+
+#### Port Mapping Summary
+
+| Component | Internal IP:Port | Exposed Host IP:Port | Master Sees |
+|-----------|------------------|---------------------|-------------|
+| Container Agent | 10.x.x.x:50051 | host_ip:50052 | host_ip:50052 |
+| Host Agent | host_ip:50051 | host_ip:50051 | host_ip:50051 |
+
+#### Troubleshooting
+
+**Agent shows as "Active" but commands timeout:**
+- Verify port forwarding is configured: `incus config device list <container_name>`
+- Check the agent is using `--report-address` with the host's IP and forwarded port
+- Test connectivity: `nc -zv <host_ip> <host_port>` from the master machine
+
+**Multiple containers on the same host:**
+- Use different host ports for each container (e.g., 50052, 50053, 50054)
+- Update each agent's `--report-address` accordingly 

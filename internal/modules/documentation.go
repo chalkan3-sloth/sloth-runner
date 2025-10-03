@@ -28,16 +28,21 @@ func GetAllModuleDocs() []ModuleDoc {
 					Name:        "pkg.install",
 					Description: "Install one or more packages",
 					Parameters:  "{packages = {...}, target = 'agent_name'}",
-					Example: `pkg.install({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = pkg.install({
     packages = {"nginx", "curl"},
     target = "web-server"
-})`,
+})
+if success then
+    print("Installed: " .. msg)
+end`,
 				},
 				{
 					Name:        "pkg.remove",
 					Description: "Remove one or more packages",
 					Parameters:  "{packages = {...}, target = 'agent_name'}",
-					Example: `pkg.remove({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = pkg.remove({
     packages = {"apache2"},
     target = "web-server"
 })`,
@@ -46,7 +51,8 @@ func GetAllModuleDocs() []ModuleDoc {
 					Name:        "pkg.update",
 					Description: "Update package cache",
 					Parameters:  "{target = 'agent_name'}",
-					Example: `pkg.update({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = pkg.update({
     target = "web-server"
 })`,
 				},
@@ -54,7 +60,8 @@ func GetAllModuleDocs() []ModuleDoc {
 					Name:        "pkg.upgrade",
 					Description: "Upgrade all packages",
 					Parameters:  "{target = 'agent_name'}",
-					Example: `pkg.upgrade({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = pkg.upgrade({
     target = "web-server"
 })`,
 				},
@@ -62,10 +69,14 @@ func GetAllModuleDocs() []ModuleDoc {
 					Name:        "pkg.is_installed",
 					Description: "Check if a package is installed",
 					Parameters:  "{package = 'name', target = 'agent_name'}",
-					Example: `local installed = pkg.is_installed({
+					Returns:     "boolean (installed), string (message)",
+					Example: `local installed, msg = pkg.is_installed({
     package = "nginx",
     target = "web-server"
-})`,
+})
+if installed then
+    print("Package is installed")
+end`,
 				},
 			},
 		},
@@ -77,7 +88,8 @@ func GetAllModuleDocs() []ModuleDoc {
 					Name:        "systemd.enable",
 					Description: "Enable a service to start on boot",
 					Parameters:  "{service = 'name', target = 'agent_name'}",
-					Example: `systemd.enable({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = systemd.enable({
     service = "nginx",
     target = "web-server"
 })`,
@@ -86,7 +98,8 @@ func GetAllModuleDocs() []ModuleDoc {
 					Name:        "systemd.disable",
 					Description: "Disable a service from starting on boot",
 					Parameters:  "{service = 'name', target = 'agent_name'}",
-					Example: `systemd.disable({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = systemd.disable({
     service = "apache2",
     target = "web-server"
 })`,
@@ -95,7 +108,8 @@ func GetAllModuleDocs() []ModuleDoc {
 					Name:        "systemd.start",
 					Description: "Start a service",
 					Parameters:  "{service = 'name', target = 'agent_name'}",
-					Example: `systemd.start({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = systemd.start({
     service = "nginx",
     target = "web-server"
 })`,
@@ -104,7 +118,8 @@ func GetAllModuleDocs() []ModuleDoc {
 					Name:        "systemd.stop",
 					Description: "Stop a service",
 					Parameters:  "{service = 'name', target = 'agent_name'}",
-					Example: `systemd.stop({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = systemd.stop({
     service = "nginx",
     target = "web-server"
 })`,
@@ -113,7 +128,8 @@ func GetAllModuleDocs() []ModuleDoc {
 					Name:        "systemd.restart",
 					Description: "Restart a service",
 					Parameters:  "{service = 'name', target = 'agent_name'}",
-					Example: `systemd.restart({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = systemd.restart({
     service = "nginx",
     target = "web-server"
 })`,
@@ -122,7 +138,8 @@ func GetAllModuleDocs() []ModuleDoc {
 					Name:        "systemd.reload",
 					Description: "Reload a service configuration",
 					Parameters:  "{service = 'name', target = 'agent_name'}",
-					Example: `systemd.reload({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = systemd.reload({
     service = "nginx",
     target = "web-server"
 })`,
@@ -131,19 +148,27 @@ func GetAllModuleDocs() []ModuleDoc {
 					Name:        "systemd.is_active",
 					Description: "Check if a service is active",
 					Parameters:  "{service = 'name', target = 'agent_name'}",
-					Example: `local active = systemd.is_active({
+					Returns:     "boolean (active), string (message)",
+					Example: `local active, msg = systemd.is_active({
     service = "nginx",
     target = "web-server"
-})`,
+})
+if active then
+    print("Service is running")
+end`,
 				},
 				{
 					Name:        "systemd.is_enabled",
 					Description: "Check if a service is enabled",
 					Parameters:  "{service = 'name', target = 'agent_name'}",
-					Example: `local enabled = systemd.is_enabled({
+					Returns:     "boolean (enabled), string (message)",
+					Example: `local enabled, msg = systemd.is_enabled({
     service = "nginx",
     target = "web-server"
-})`,
+})
+if enabled then
+    print("Service will start on boot")
+end`,
 				},
 			},
 		},
@@ -504,7 +529,8 @@ if output then print("Result: " .. output) end`,
 					Name:        "ssh.generate_keypair",
 					Description: "Generate SSH key pair",
 					Parameters:  "{path = 'path', type = 'rsa|ed25519', bits = num, comment = 'text', passphrase = 'text', target = 'agent_name'}",
-					Example: `ssh.generate_keypair({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = ssh.generate_keypair({
     path = "/home/deploy/.ssh/id_ed25519",
     type = "ed25519",
     comment = "deploy@server",
@@ -515,7 +541,8 @@ if output then print("Result: " .. output) end`,
 					Name:        "ssh.add_authorized_key",
 					Description: "Add SSH authorized key",
 					Parameters:  "{user = 'name', key = 'pubkey', target = 'agent_name'}",
-					Example: `ssh.add_authorized_key({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = ssh.add_authorized_key({
     user = "deploy",
     key = "ssh-ed25519 AAAAC3... user@host",
     target = "web-server"
@@ -525,7 +552,8 @@ if output then print("Result: " .. output) end`,
 					Name:        "ssh.remove_authorized_key",
 					Description: "Remove SSH authorized key",
 					Parameters:  "{user = 'name', key = 'pubkey', target = 'agent_name'}",
-					Example: `ssh.remove_authorized_key({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = ssh.remove_authorized_key({
     user = "deploy",
     key = "ssh-ed25519 AAAAC3... user@host",
     target = "web-server"
@@ -535,7 +563,8 @@ if output then print("Result: " .. output) end`,
 					Name:        "ssh.set_config",
 					Description: "Configure SSH client settings",
 					Parameters:  "{user = 'name', host = 'hostname', config = {...}, target = 'agent_name'}",
-					Example: `ssh.set_config({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = ssh.set_config({
     user = "deploy",
     host = "github.com",
     config = {
@@ -556,7 +585,8 @@ if output then print("Result: " .. output) end`,
 					Name:        "file.copy",
 					Description: "Copy files from master to agent",
 					Parameters:  "{src = 'path', dest = 'path', mode = '0644', owner = 'user', group = 'group', target = 'agent_name'}",
-					Example: `file.copy({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = file.copy({
     src = "./config.conf",
     dest = "/etc/app/config.conf",
     mode = "0644",
@@ -569,7 +599,8 @@ if output then print("Result: " .. output) end`,
 					Name:        "file.fetch",
 					Description: "Download files from agent to master",
 					Parameters:  "{src = 'path', dest = 'path', target = 'agent_name'}",
-					Example: `file.fetch({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = file.fetch({
     src = "/var/log/app.log",
     dest = "./logs/app.log",
     target = "web-server"
@@ -579,7 +610,8 @@ if output then print("Result: " .. output) end`,
 					Name:        "file.template",
 					Description: "Render and copy Go template to agent",
 					Parameters:  "{src = 'path', dest = 'path', vars = {...}, mode = '0644', owner = 'user', group = 'group', target = 'agent_name'}",
-					Example: `file.template({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = file.template({
     src = "./nginx.conf.tmpl",
     dest = "/etc/nginx/nginx.conf",
     vars = {
@@ -594,7 +626,8 @@ if output then print("Result: " .. output) end`,
 					Name:        "file.set_attributes",
 					Description: "Set file attributes (permissions, owner, group)",
 					Parameters:  "{path = 'path', mode = '0644', owner = 'user', group = 'group', state = 'file|directory|link', target = 'agent_name'}",
-					Example: `file.set_attributes({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = file.set_attributes({
     path = "/etc/app/config.conf",
     mode = "0600",
     owner = "app",
@@ -606,7 +639,8 @@ if output then print("Result: " .. output) end`,
 					Name:        "file.line_in_file",
 					Description: "Ensure a line exists in a file",
 					Parameters:  "{path = 'path', line = 'text', regex = 'pattern', state = 'present|absent', target = 'agent_name'}",
-					Example: `file.line_in_file({
+					Returns:     "boolean (changed), string (message)",
+					Example: `local changed, msg = file.line_in_file({
     path = "/etc/hosts",
     line = "192.168.1.10 myserver",
     state = "present",
@@ -617,7 +651,8 @@ if output then print("Result: " .. output) end`,
 					Name:        "file.block_in_file",
 					Description: "Insert/update/remove a block of text in a file",
 					Parameters:  "{path = 'path', block = 'text', marker = 'text', state = 'present|absent', target = 'agent_name'}",
-					Example: `file.block_in_file({
+					Returns:     "boolean (changed), string (message)",
+					Example: `local changed, msg = file.block_in_file({
     path = "/etc/nginx/nginx.conf",
     block = [[
 server {
@@ -633,7 +668,8 @@ server {
 					Name:        "file.replace",
 					Description: "Replace text in file using regex",
 					Parameters:  "{path = 'path', pattern = 'regex', replacement = 'text', target = 'agent_name'}",
-					Example: `file.replace({
+					Returns:     "boolean (changed), string (message)",
+					Example: `local changed, msg = file.replace({
     path = "/etc/app/config.conf",
     pattern = "port = %d+",
     replacement = "port = 8080",
@@ -644,7 +680,8 @@ server {
 					Name:        "file.unarchive",
 					Description: "Extract archive files",
 					Parameters:  "{src = 'path', dest = 'path', creates = 'path', target = 'agent_name'}",
-					Example: `file.unarchive({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = file.unarchive({
     src = "./app.tar.gz",
     dest = "/opt/app",
     creates = "/opt/app/bin/app",
@@ -655,11 +692,15 @@ server {
 					Name:        "file.stat",
 					Description: "Get file information",
 					Parameters:  "{path = 'path', target = 'agent_name'}",
-					Example: `local info = file.stat({
+					Returns:     "table (info: size, mode, modtime, isdir, exists) or nil, string (error)",
+					Example: `local info, err = file.stat({
     path = "/etc/app/config.conf",
     target = "web-server"
 })
-print("Size: " .. info.size)`,
+if info then
+    print("Size: " .. info.size)
+    print("Exists: " .. tostring(info.exists))
+end`,
 				},
 			},
 		},
@@ -671,18 +712,24 @@ print("Size: " .. info.size)`,
 					Name:        "http.get",
 					Description: "Perform HTTP GET request",
 					Parameters:  "{url = 'url', headers = {...}}",
-					Example: `local response = http.get({
+					Returns:     "table (response: status, headers, body) or nil, string (error)",
+					Example: `local response, err = http.get({
     url = "https://api.example.com/data",
     headers = {
         ["Authorization"] = "Bearer token"
     }
-})`,
+})
+if response then
+    print("Status: " .. response.status)
+    print("Body: " .. response.body)
+end`,
 				},
 				{
 					Name:        "http.post",
 					Description: "Perform HTTP POST request",
 					Parameters:  "{url = 'url', body = 'data', headers = {...}}",
-					Example: `http.post({
+					Returns:     "table (response: status, headers, body) or nil, string (error)",
+					Example: `local response, err = http.post({
     url = "https://api.example.com/data",
     body = json.encode({name = "test"}),
     headers = {
@@ -700,10 +747,15 @@ print("Size: " .. info.size)`,
 					Name:        "cmd.run",
 					Description: "Execute a shell command",
 					Parameters:  "{command = 'cmd', cwd = 'path', env = {...}}",
-					Example: `local result = cmd.run({
+					Returns:     "table (result: stdout, stderr, exit_code) or nil, string (error)",
+					Example: `local result, err = cmd.run({
     command = "ls -la",
     cwd = "/tmp"
-})`,
+})
+if result then
+    print("Output: " .. result.stdout)
+    print("Exit code: " .. result.exit_code)
+end`,
 				},
 			},
 		},
@@ -715,17 +767,25 @@ print("Size: " .. info.size)`,
 					Name:        "json.encode",
 					Description: "Encode Lua table to JSON",
 					Parameters:  "table",
-					Example: `local jsonStr = json.encode({
+					Returns:     "string (JSON) or nil, string (error)",
+					Example: `local jsonStr, err = json.encode({
     name = "test",
     value = 123
-})`,
+})
+if jsonStr then
+    print(jsonStr)  -- {"name":"test","value":123}
+end`,
 				},
 				{
 					Name:        "json.decode",
 					Description: "Decode JSON to Lua table",
 					Parameters:  "string",
-					Example: `local data = json.decode('{"name":"test"}')
-print(data.name)`,
+					Returns:     "table or nil, string (error)",
+					Example: `local data, err = json.decode('{"name":"test","value":123}')
+if data then
+    print(data.name)   -- test
+    print(data.value)  -- 123
+end`,
 				},
 			},
 		},
@@ -737,21 +797,29 @@ print(data.name)`,
 					Name:        "yaml.encode",
 					Description: "Encode Lua table to YAML",
 					Parameters:  "table",
-					Example: `local yamlStr = yaml.encode({
+					Returns:     "string (YAML) or nil, string (error)",
+					Example: `local yamlStr, err = yaml.encode({
     name = "test",
     items = {1, 2, 3}
-})`,
+})
+if yamlStr then
+    print(yamlStr)
+end`,
 				},
 				{
 					Name:        "yaml.decode",
 					Description: "Decode YAML to Lua table",
 					Parameters:  "string",
-					Example: `local data = yaml.decode([[
+					Returns:     "table or nil, string (error)",
+					Example: `local data, err = yaml.decode([[
 name: test
 items:
   - 1
   - 2
-]])`,
+]])
+if data then
+    print(data.name)  -- test
+end`,
 				},
 			},
 		},
@@ -763,24 +831,28 @@ items:
 					Name:        "log.info",
 					Description: "Log info message",
 					Parameters:  "message",
+					Returns:     "nil",
 					Example:     `log.info("Starting deployment")`,
 				},
 				{
 					Name:        "log.warn",
 					Description: "Log warning message",
 					Parameters:  "message",
+					Returns:     "nil",
 					Example:     `log.warn("Service is slow")`,
 				},
 				{
 					Name:        "log.error",
 					Description: "Log error message",
 					Parameters:  "message",
+					Returns:     "nil",
 					Example:     `log.error("Deployment failed")`,
 				},
 				{
 					Name:        "log.debug",
 					Description: "Log debug message",
 					Parameters:  "message",
+					Returns:     "nil",
 					Example:     `log.debug("Variable value: " .. value)`,
 				},
 			},
@@ -793,16 +865,21 @@ items:
 					Name:        "crypto.hash",
 					Description: "Generate hash (md5, sha1, sha256, sha512)",
 					Parameters:  "{data = 'text', algorithm = 'sha256'}",
-					Example: `local hash = crypto.hash({
+					Returns:     "string (hash) or nil, string (error)",
+					Example: `local hash, err = crypto.hash({
     data = "password",
     algorithm = "sha256"
-})`,
+})
+if hash then
+    print("Hash: " .. hash)
+end`,
 				},
 				{
 					Name:        "crypto.encrypt",
 					Description: "Encrypt data with AES",
 					Parameters:  "{data = 'text', key = 'key'}",
-					Example: `local encrypted = crypto.encrypt({
+					Returns:     "string (encrypted) or nil, string (error)",
+					Example: `local encrypted, err = crypto.encrypt({
     data = "secret",
     key = "encryption-key"
 })`,
@@ -811,7 +888,8 @@ items:
 					Name:        "crypto.decrypt",
 					Description: "Decrypt AES encrypted data",
 					Parameters:  "{data = 'encrypted', key = 'key'}",
-					Example: `local decrypted = crypto.decrypt({
+					Returns:     "string (decrypted) or nil, string (error)",
+					Example: `local decrypted, err = crypto.decrypt({
     data = encrypted,
     key = "encryption-key"
 })`,
@@ -826,28 +904,42 @@ items:
 					Name:        "database.connect",
 					Description: "Connect to a database",
 					Parameters:  "{driver = 'postgres|mysql|sqlite', dsn = 'connection_string'}",
-					Example: `local db = database.connect({
+					Returns:     "userdata (connection) or nil, string (error)",
+					Example: `local db, err = database.connect({
     driver = "postgres",
     dsn = "host=localhost user=admin password=secret dbname=mydb"
-})`,
+})
+if not db then
+    log.error("Failed to connect: " .. err)
+end`,
 				},
 				{
 					Name:        "database.query",
 					Description: "Execute a query",
 					Parameters:  "{db = connection, query = 'sql'}",
-					Example: `local rows = database.query({
+					Returns:     "table (rows) or nil, string (error)",
+					Example: `local rows, err = database.query({
     db = db,
     query = "SELECT * FROM users"
-})`,
+})
+if rows then
+    for i, row in ipairs(rows) do
+        print(row.name)
+    end
+end`,
 				},
 				{
 					Name:        "database.exec",
 					Description: "Execute a statement",
 					Parameters:  "{db = connection, query = 'sql'}",
-					Example: `database.exec({
+					Returns:     "number (rows affected) or nil, string (error)",
+					Example: `local affected, err = database.exec({
     db = db,
     query = "INSERT INTO users (name) VALUES ('John')"
-})`,
+})
+if affected then
+    print("Inserted " .. affected .. " rows")
+end`,
 				},
 			},
 		},
@@ -859,7 +951,8 @@ items:
 					Name:        "terraform.init",
 					Description: "Initialize Terraform",
 					Parameters:  "{dir = 'path'}",
-					Example: `terraform.init({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = terraform.init({
     dir = "./infrastructure"
 })`,
 				},
@@ -867,7 +960,8 @@ items:
 					Name:        "terraform.plan",
 					Description: "Create Terraform plan",
 					Parameters:  "{dir = 'path', vars = {...}}",
-					Example: `terraform.plan({
+					Returns:     "table (plan details) or nil, string (error)",
+					Example: `local plan, err = terraform.plan({
     dir = "./infrastructure",
     vars = {
         region = "us-east-1",
@@ -879,7 +973,8 @@ items:
 					Name:        "terraform.apply",
 					Description: "Apply Terraform changes",
 					Parameters:  "{dir = 'path', vars = {...}, auto_approve = bool}",
-					Example: `terraform.apply({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = terraform.apply({
     dir = "./infrastructure",
     auto_approve = true
 })`,
@@ -888,7 +983,8 @@ items:
 					Name:        "terraform.destroy",
 					Description: "Destroy Terraform resources",
 					Parameters:  "{dir = 'path', auto_approve = bool}",
-					Example: `terraform.destroy({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = terraform.destroy({
     dir = "./infrastructure",
     auto_approve = true
 })`,
@@ -903,16 +999,21 @@ items:
 					Name:        "pulumi.up",
 					Description: "Deploy Pulumi stack",
 					Parameters:  "{dir = 'path', stack = 'name', config = {...}}",
-					Example: `pulumi.up({
+					Returns:     "table (result: outputs, summary) or nil, string (error)",
+					Example: `local result, err = pulumi.up({
     dir = "./infrastructure",
     stack = "production"
-})`,
+})
+if result then
+    print("Outputs: " .. json.encode(result.outputs))
+end`,
 				},
 				{
 					Name:        "pulumi.preview",
 					Description: "Preview Pulumi changes",
 					Parameters:  "{dir = 'path', stack = 'name'}",
-					Example: `pulumi.preview({
+					Returns:     "table (preview) or nil, string (error)",
+					Example: `local preview, err = pulumi.preview({
     dir = "./infrastructure",
     stack = "production"
 })`,
@@ -921,7 +1022,8 @@ items:
 					Name:        "pulumi.destroy",
 					Description: "Destroy Pulumi stack",
 					Parameters:  "{dir = 'path', stack = 'name'}",
-					Example: `pulumi.destroy({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = pulumi.destroy({
     dir = "./infrastructure",
     stack = "production"
 })`,
@@ -936,18 +1038,25 @@ items:
 					Name:        "aws.ec2_list",
 					Description: "List EC2 instances",
 					Parameters:  "{region = 'region', filters = {...}}",
-					Example: `local instances = aws.ec2_list({
+					Returns:     "table (instances: array of instance info) or nil, string (error)",
+					Example: `local instances, err = aws.ec2_list({
     region = "us-east-1",
     filters = {
         ["tag:Environment"] = "production"
     }
-})`,
+})
+if instances then
+    for i, inst in ipairs(instances) do
+        print("Instance: " .. inst.id .. " - " .. inst.state)
+    end
+end`,
 				},
 				{
 					Name:        "aws.s3_upload",
 					Description: "Upload file to S3",
 					Parameters:  "{bucket = 'name', key = 'path', file = 'localpath', region = 'region'}",
-					Example: `aws.s3_upload({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = aws.s3_upload({
     bucket = "my-bucket",
     key = "backup/data.tar.gz",
     file = "./data.tar.gz",
@@ -964,10 +1073,16 @@ items:
 					Name:        "azure.vm_list",
 					Description: "List Azure VMs",
 					Parameters:  "{subscription = 'id', resource_group = 'name'}",
-					Example: `local vms = azure.vm_list({
+					Returns:     "table (vms: array of VM info) or nil, string (error)",
+					Example: `local vms, err = azure.vm_list({
     subscription = "sub-id",
     resource_group = "my-rg"
-})`,
+})
+if vms then
+    for i, vm in ipairs(vms) do
+        print("VM: " .. vm.name .. " - " .. vm.status)
+    end
+end`,
 				},
 			},
 		},
@@ -979,10 +1094,16 @@ items:
 					Name:        "gcp.compute_list",
 					Description: "List GCP Compute instances",
 					Parameters:  "{project = 'id', zone = 'zone'}",
-					Example: `local instances = gcp.compute_list({
+					Returns:     "table (instances: array of instance info) or nil, string (error)",
+					Example: `local instances, err = gcp.compute_list({
     project = "my-project",
     zone = "us-central1-a"
-})`,
+})
+if instances then
+    for i, inst in ipairs(instances) do
+        print("Instance: " .. inst.name .. " - " .. inst.status)
+    end
+end`,
 				},
 			},
 		},
@@ -994,7 +1115,8 @@ items:
 					Name:        "docker.build",
 					Description: "Build Docker image",
 					Parameters:  "{path = 'path', tag = 'name:tag', target = 'agent_name'}",
-					Example: `docker.build({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = docker.build({
     path = "./app",
     tag = "myapp:latest",
     target = "build-server"
@@ -1004,12 +1126,16 @@ items:
 					Name:        "docker.run",
 					Description: "Run Docker container",
 					Parameters:  "{image = 'name', name = 'container', ports = {...}, volumes = {...}, env = {...}, target = 'agent_name'}",
-					Example: `docker.run({
+					Returns:     "string (container_id), string (message)",
+					Example: `local container_id, msg = docker.run({
     image = "nginx:latest",
     name = "web",
     ports = {"80:80"},
     target = "web-server"
-})`,
+})
+if container_id then
+    print("Container started: " .. container_id)
+end`,
 				},
 			},
 		},
@@ -1021,7 +1147,8 @@ items:
 					Name:        "kubernetes.apply",
 					Description: "Apply Kubernetes manifest",
 					Parameters:  "{file = 'path', namespace = 'name', target = 'agent_name'}",
-					Example: `kubernetes.apply({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = kubernetes.apply({
     file = "./deployment.yaml",
     namespace = "production",
     target = "k8s-master"
@@ -1031,7 +1158,8 @@ items:
 					Name:        "kubernetes.delete",
 					Description: "Delete Kubernetes resources",
 					Parameters:  "{file = 'path', namespace = 'name', target = 'agent_name'}",
-					Example: `kubernetes.delete({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = kubernetes.delete({
     file = "./deployment.yaml",
     namespace = "production",
     target = "k8s-master"
@@ -1047,7 +1175,8 @@ items:
 					Name:        "slack.send",
 					Description: "Send Slack message",
 					Parameters:  "{webhook = 'url', channel = 'name', message = 'text', username = 'name'}",
-					Example: `slack.send({
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = slack.send({
     webhook = "https://hooks.slack.com/...",
     channel = "#deployments",
     message = "Deployment completed successfully"
@@ -1063,6 +1192,7 @@ items:
 					Name:        "goroutine.spawn",
 					Description: "Spawn a new goroutine",
 					Parameters:  "function",
+					Returns:     "nil",
 					Example: `goroutine.spawn(function()
     log.info("Running in parallel")
 end)`,
@@ -1071,7 +1201,18 @@ end)`,
 					Name:        "goroutine.wait",
 					Description: "Wait for all goroutines to complete",
 					Parameters:  "none",
+					Returns:     "nil",
 					Example:     `goroutine.wait()`,
+				},
+				{
+					Name:        "goroutine.map",
+					Description: "Execute a function in parallel for each item in a list",
+					Parameters:  "items (table), function",
+					Returns:     "nil",
+					Example: `goroutine.map({"server1", "server2", "server3"}, function(server)
+    log.info("Processing: " .. server)
+    -- Do work on each server
+end)`,
 				},
 			},
 		},
@@ -1083,6 +1224,7 @@ end)`,
 					Name:        "incus.instance",
 					Description: "Create an instance builder for containers or VMs",
 					Parameters:  "{name = 'string', image = 'string', type = 'container|virtual-machine', profiles = {...}}",
+					Returns:     "userdata (instance builder)",
 					Example: `local web = incus.instance({
     name = "web-01",
     image = "ubuntu:22.04",
@@ -1094,18 +1236,21 @@ web:create():start():wait_running()`,
 					Name:        "instance:create",
 					Description: "Create the instance",
 					Parameters:  "none",
+					Returns:     "userdata (instance builder for chaining)",
 					Example:     `instance:create()`,
 				},
 				{
 					Name:        "instance:start",
 					Description: "Start the instance",
 					Parameters:  "none",
+					Returns:     "userdata (instance builder for chaining)",
 					Example:     `instance:start()`,
 				},
 				{
 					Name:        "instance:stop",
 					Description: "Stop the instance (optionally force)",
 					Parameters:  "force (boolean, optional)",
+					Returns:     "userdata (instance builder for chaining)",
 					Example: `instance:stop()       -- graceful
 instance:stop(true)  -- force`,
 				},
@@ -1113,43 +1258,53 @@ instance:stop(true)  -- force`,
 					Name:        "instance:restart",
 					Description: "Restart the instance",
 					Parameters:  "none",
+					Returns:     "userdata (instance builder for chaining)",
 					Example:     `instance:restart()`,
 				},
 				{
 					Name:        "instance:delete",
 					Description: "Delete the instance",
 					Parameters:  "none",
+					Returns:     "userdata (instance builder for chaining)",
 					Example:     `instance:delete()`,
 				},
 				{
 					Name:        "instance:wait_running",
 					Description: "Wait for instance to be running",
 					Parameters:  "timeout (number, optional)",
+					Returns:     "userdata (instance builder for chaining)",
 					Example:     `instance:wait_running(120)  -- wait up to 120 seconds`,
 				},
 				{
 					Name:        "instance:exec",
 					Description: "Execute command in the instance",
 					Parameters:  "command (string), options (table, optional)",
-					Example: `instance:exec("apt update && apt upgrade -y")
-instance:exec("whoami", {user = "ubuntu"})`,
+					Returns:     "table (result: stdout, stderr, exit_code) or nil, string (error)",
+					Example: `local result = instance:exec("apt update && apt upgrade -y")
+local result = instance:exec("whoami", {user = "ubuntu"})
+if result then
+    print("Output: " .. result.stdout)
+end`,
 				},
 				{
 					Name:        "instance:file_push",
 					Description: "Upload file to the instance",
 					Parameters:  "local_path (string), remote_path (string)",
+					Returns:     "userdata (instance builder for chaining)",
 					Example:     `instance:file_push("./config.yaml", "/etc/app/config.yaml")`,
 				},
 				{
 					Name:        "instance:file_pull",
 					Description: "Download file from the instance",
 					Parameters:  "remote_path (string), local_path (string)",
+					Returns:     "userdata (instance builder for chaining)",
 					Example:     `instance:file_pull("/var/log/app.log", "./logs/app.log")`,
 				},
 				{
 					Name:        "instance:set_config",
 					Description: "Set instance configuration",
 					Parameters:  "{[key] = value, ...}",
+					Returns:     "userdata (instance builder for chaining)",
 					Example: `instance:set_config({
     ["limits.cpu"] = "4",
     ["limits.memory"] = "8GB"
@@ -1159,6 +1314,7 @@ instance:exec("whoami", {user = "ubuntu"})`,
 					Name:        "instance:add_device",
 					Description: "Add a device to the instance",
 					Parameters:  "name (string), config (table)",
+					Returns:     "userdata (instance builder for chaining)",
 					Example: `instance:add_device("eth0", {
     type = "nic",
     nictype = "bridged",
@@ -1169,12 +1325,14 @@ instance:exec("whoami", {user = "ubuntu"})`,
 					Name:        "instance:delegate_to",
 					Description: "Execute instance operations on a specific agent",
 					Parameters:  "agent_name (string)",
+					Returns:     "userdata (instance builder for chaining)",
 					Example:     `instance:delegate_to("incus-host-01")`,
 				},
 				{
 					Name:        "incus.network",
 					Description: "Create a network builder",
 					Parameters:  "{name = 'string', type = 'bridge|macvlan|...'}",
+					Returns:     "userdata (network builder)",
 					Example: `incus.network({
     name = "web-dmz",
     type = "bridge"
@@ -1187,24 +1345,28 @@ instance:exec("whoami", {user = "ubuntu"})`,
 					Name:        "network:create",
 					Description: "Create the network",
 					Parameters:  "none",
+					Returns:     "userdata (network builder for chaining)",
 					Example:     `network:create()`,
 				},
 				{
 					Name:        "network:attach",
 					Description: "Attach network to an instance",
 					Parameters:  "instance_name (string)",
+					Returns:     "userdata (network builder for chaining)",
 					Example:     `network:attach("web-01")`,
 				},
 				{
 					Name:        "network:detach",
 					Description: "Detach network from an instance",
 					Parameters:  "instance_name (string)",
+					Returns:     "userdata (network builder for chaining)",
 					Example:     `network:detach("web-01")`,
 				},
 				{
 					Name:        "incus.profile",
 					Description: "Create a profile builder",
 					Parameters:  "{name = 'string', description = 'string'}",
+					Returns:     "userdata (profile builder)",
 					Example: `incus.profile({
     name = "web-server",
     description = "Web server profile"
@@ -1216,12 +1378,14 @@ instance:exec("whoami", {user = "ubuntu"})`,
 					Name:        "profile:apply",
 					Description: "Apply profile to an instance",
 					Parameters:  "instance_name (string)",
+					Returns:     "userdata (profile builder for chaining)",
 					Example:     `profile:apply("web-01")`,
 				},
 				{
 					Name:        "incus.storage",
 					Description: "Create a storage pool builder",
 					Parameters:  "{name = 'string', driver = 'zfs|btrfs|dir|lvm'}",
+					Returns:     "userdata (storage builder)",
 					Example: `incus.storage({
     name = "ssd-pool",
     driver = "zfs"
@@ -1233,6 +1397,7 @@ instance:exec("whoami", {user = "ubuntu"})`,
 					Name:        "incus.snapshot",
 					Description: "Create a snapshot builder",
 					Parameters:  "{instance = 'string', name = 'string', stateful = boolean}",
+					Returns:     "userdata (snapshot builder)",
 					Example: `incus.snapshot({
     instance = "web-01",
     name = "backup-20241002",
@@ -1243,31 +1408,204 @@ instance:exec("whoami", {user = "ubuntu"})`,
 					Name:        "snapshot:restore",
 					Description: "Restore a snapshot",
 					Parameters:  "none",
+					Returns:     "userdata (snapshot builder for chaining)",
 					Example:     `snapshot:restore()`,
 				},
 				{
 					Name:        "incus.list",
 					Description: "List Incus resources",
 					Parameters:  "type (string): 'instances', 'networks', 'profiles', 'storage-pools'",
-					Example:     `local instances = incus.list("instances")`,
+					Returns:     "table (array of resource info) or nil, string (error)",
+					Example: `local instances, err = incus.list("instances")
+if instances then
+    for i, inst in ipairs(instances) do
+        print(inst.name .. " - " .. inst.status)
+    end
+end`,
 				},
 				{
 					Name:        "incus.info",
 					Description: "Get information about a resource",
 					Parameters:  "type (string), name (string)",
-					Example:     `local info = incus.info("instance", "web-01")`,
+					Returns:     "table (resource info) or nil, string (error)",
+					Example: `local info, err = incus.info("instance", "web-01")
+if info then
+    print("Status: " .. info.status)
+    print("IP: " .. info.ip)
+end`,
 				},
 				{
 					Name:        "incus.exec",
 					Description: "Execute command in an instance (standalone)",
 					Parameters:  "instance (string), command (string), options (table, optional)",
-					Example:     `incus.exec("web-01", "systemctl status nginx")`,
+					Returns:     "table (result: stdout, stderr, exit_code) or nil, string (error)",
+					Example: `local result, err = incus.exec("web-01", "systemctl status nginx")
+if result then
+    print(result.stdout)
+end`,
 				},
 				{
 					Name:        "incus.delete",
 					Description: "Delete a resource (standalone)",
 					Parameters:  "type (string), name (string)",
-					Example:     `incus.delete("instance", "old-container")`,
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = incus.delete("instance", "old-container")`,
+				},
+			},
+		},
+		{
+			Name:        "stow",
+			Description: "GNU Stow for managing dotfiles and symlinks",
+			Functions: []FunctionDoc{
+				{
+					Name:        "stow.stow",
+					Description: "Stow (symlink) packages from source directory to target directory",
+					Parameters:  "{packages = {...}, dir = 'path', target = 'path', agent = 'agent_name'}",
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = stow.stow({
+    packages = {"nvim", "tmux", "zsh"},
+    dir = "/home/user/dotfiles",
+    target = "/home/user",
+    agent = "web-server"
+})`,
+				},
+				{
+					Name:        "stow.unstow",
+					Description: "Unstow (remove symlinks) packages",
+					Parameters:  "{packages = {...}, dir = 'path', target = 'path', agent = 'agent_name'}",
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = stow.unstow({
+    packages = {"nvim"},
+    dir = "/home/user/dotfiles",
+    target = "/home/user",
+    agent = "web-server"
+})`,
+				},
+				{
+					Name:        "stow.restow",
+					Description: "Restow (unstow then stow) packages to update symlinks",
+					Parameters:  "{packages = {...}, dir = 'path', target = 'path', agent = 'agent_name'}",
+					Returns:     "boolean (success), string (message)",
+					Example: `local success, msg = stow.restow({
+    packages = {"nvim", "tmux"},
+    dir = "/home/user/dotfiles",
+    target = "/home/user",
+    agent = "web-server"
+})`,
+				},
+			},
+		},
+		{
+			Name:        "facts",
+			Description: "Access system facts collected by agents",
+			Functions: []FunctionDoc{
+				{
+					Name:        "facts.get",
+					Description: "Get all facts from an agent",
+					Parameters:  "agent_name (string)",
+					Returns:     "table (facts: hostname, os, kernel, cpu, memory, disk, network, packages, etc.) or nil, string (error)",
+					Example: `local facts, err = facts.get("web-server")
+if facts then
+    print("Hostname: " .. facts.hostname)
+    print("OS: " .. facts.os.name .. " " .. facts.os.version)
+    print("CPU Cores: " .. facts.cpu.cores)
+    print("Memory: " .. facts.memory.total .. "GB")
+    
+    -- Access packages
+    for pkg, version in pairs(facts.packages) do
+        print(pkg .. " = " .. version)
+    end
+end`,
+				},
+				{
+					Name:        "facts.get_hostname",
+					Description: "Get hostname from an agent",
+					Parameters:  "agent_name (string)",
+					Returns:     "string (hostname) or nil, string (error)",
+					Example: `local hostname, err = facts.get_hostname("web-server")
+if hostname then
+    print("Hostname: " .. hostname)
+end`,
+				},
+				{
+					Name:        "facts.get_os",
+					Description: "Get OS information from an agent",
+					Parameters:  "agent_name (string)",
+					Returns:     "table (os: name, version, arch, family) or nil, string (error)",
+					Example: `local os, err = facts.get_os("web-server")
+if os then
+    print(os.name .. " " .. os.version .. " " .. os.arch)
+end`,
+				},
+				{
+					Name:        "facts.get_packages",
+					Description: "Get installed packages from an agent",
+					Parameters:  "agent_name (string)",
+					Returns:     "table (packages: map of package_name => version) or nil, string (error)",
+					Example: `local packages, err = facts.get_packages("web-server")
+if packages then
+    if packages["nginx"] then
+        print("nginx version: " .. packages["nginx"])
+    end
+end`,
+				},
+				{
+					Name:        "facts.get_network",
+					Description: "Get network information from an agent",
+					Parameters:  "agent_name (string)",
+					Returns:     "table (network: interfaces with IPs, MACs, etc.) or nil, string (error)",
+					Example: `local network, err = facts.get_network("web-server")
+if network then
+    for iface, info in pairs(network.interfaces) do
+        print(iface .. ": " .. table.concat(info.ips, ", "))
+    end
+end`,
+				},
+				{
+					Name:        "facts.get_memory",
+					Description: "Get memory information from an agent",
+					Parameters:  "agent_name (string)",
+					Returns:     "table (memory: total, available, used, free in GB) or nil, string (error)",
+					Example: `local mem, err = facts.get_memory("web-server")
+if mem then
+    print("Total: " .. mem.total .. "GB")
+    print("Available: " .. mem.available .. "GB")
+end`,
+				},
+				{
+					Name:        "facts.get_cpu",
+					Description: "Get CPU information from an agent",
+					Parameters:  "agent_name (string)",
+					Returns:     "table (cpu: model, cores, threads, mhz) or nil, string (error)",
+					Example: `local cpu, err = facts.get_cpu("web-server")
+if cpu then
+    print("Model: " .. cpu.model)
+    print("Cores: " .. cpu.cores)
+end`,
+				},
+				{
+					Name:        "facts.get_disk",
+					Description: "Get disk information from an agent",
+					Parameters:  "agent_name (string)",
+					Returns:     "table (disks: array of disk info with size, used, available) or nil, string (error)",
+					Example: `local disks, err = facts.get_disk("web-server")
+if disks then
+    for i, disk in ipairs(disks) do
+        print(disk.device .. ": " .. disk.size .. "GB")
+    end
+end`,
+				},
+				{
+					Name:        "facts.package_installed",
+					Description: "Check if a specific package is installed on an agent",
+					Parameters:  "agent_name (string), package_name (string)",
+					Returns:     "boolean (installed), string (version or error message)",
+					Example: `local installed, version = facts.package_installed("web-server", "nginx")
+if installed then
+    print("nginx " .. version .. " is installed")
+else
+    print("nginx is not installed")
+end`,
 				},
 			},
 		},
