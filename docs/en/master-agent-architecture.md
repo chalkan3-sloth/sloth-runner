@@ -92,6 +92,22 @@ This architecture provides a flexible and scalable way to manage and execute tas
 
 When deploying agents inside Incus (or LXC) containers, you need to configure port forwarding and use the `--report-address` flag because the container's internal IP is not accessible from the master.
 
+#### Quick Start
+
+For a fast setup in an Incus container:
+
+```bash
+# 1. On the HOST - Configure port forwarding
+sudo incus config device add main sloth-proxy proxy \
+  listen=tcp:0.0.0.0:50052 \
+  connect=tcp:127.0.0.1:50051
+
+# 2. In the CONTAINER - Install with bootstrap script
+sudo incus exec main -- bash -c "curl -fsSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/bootstrap.sh | bash -s -- --name main --master 192.168.1.29:50053 --incus 192.168.1.17:50052"
+
+# Done! The agent is now running and configured.
+```
+
 #### Setup Steps
 
 1. **Configure Port Forwarding on the Host**
@@ -115,6 +131,24 @@ When deploying agents inside Incus (or LXC) containers, you need to configure po
 2. **Start Agent with Report Address**
 
    Inside the container, start the agent with:
+
+   **Option A: Using Bootstrap Script (Recommended)**
+
+   ```bash
+   # Inside the container
+   bash <(curl -fsSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/bootstrap.sh) \
+     --name <agent_name> \
+     --master <master_ip>:<master_port> \
+     --incus <host_ip>:<host_port>
+   ```
+
+   The `--incus` flag automatically sets:
+   - `--bind-address 0.0.0.0` (listen on all interfaces)
+   - `--report-address <host_ip>:<host_port>` (master connects via host)
+   - Creates and enables systemd service
+
+   **Option B: Manual Configuration**
+
    - `--bind-address 0.0.0.0` to listen on all interfaces
    - `--report-address <host_ip>:<host_port>` to tell the master how to reach this agent
 

@@ -2,6 +2,22 @@
 
 Este guia explica como configurar agentes sloth-runner dentro de containers Incus (ou LXC), incluindo configuração de port forwarding e endereços de reporte.
 
+## Quick Start
+
+Para uma instalação rápida em container Incus:
+
+```bash
+# 1. No HOST (192.168.1.17) - Configure port forwarding
+sudo incus config device add main sloth-proxy proxy \
+  listen=tcp:0.0.0.0:50052 \
+  connect=tcp:127.0.0.1:50051
+
+# 2. No CONTAINER - Instale com bootstrap script
+sudo incus exec main -- bash -c "curl -fsSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/bootstrap.sh | bash -s -- --name main --master 192.168.1.29:50053 --incus 192.168.1.17:50052"
+
+# Pronto! O agente já está rodando e configurado.
+```
+
 ## Problema
 
 Quando você executa um agente dentro de um container Incus, o container recebe um IP interno (ex: `10.193.121.186`) que não é acessível diretamente do master server. Isso causa timeouts quando você tenta executar comandos no agente.
@@ -37,6 +53,25 @@ sudo incus config device add main sloth-proxy proxy \
 ### 2. Instale e Configure o Agente no Container
 
 Dentro do container, instale o sloth-runner e inicie o agente:
+
+#### Opção 1: Usando Bootstrap Script (Recomendado)
+
+O bootstrap script agora suporta a flag `--incus` que configura automaticamente tudo:
+
+```bash
+# Dentro do container
+bash <(curl -fsSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/bootstrap.sh) \
+  --name main \
+  --master 192.168.1.29:50053 \
+  --incus 192.168.1.17:50052
+```
+
+Isso configura automaticamente:
+- `--bind-address 0.0.0.0` (escuta em todas as interfaces)
+- `--report-address 192.168.1.17:50052` (IP do host + porta forwarded)
+- Cria e habilita o serviço systemd
+
+#### Opção 2: Instalação Manual
 
 ```bash
 # Instalar o sloth-runner (adapte conforme seu método de instalação)
@@ -252,7 +287,38 @@ sudo systemctl enable sloth-runner-agent
 Aqui está um exemplo completo de configuração de agente no container "main":
 
 ```bash
-# 1. No HOST (192.168.1.17)
+# 1. No HOST (192.168.1.17) - Configure port forwarding
+sudo incus config device add main sloth-proxy proxy \
+  listen=tcp:0.0.0.0:50052 \
+  connect=tcp:127.0.0.1:50051
+
+# 2. No CONTAINER - Use bootstrap script com flag --incus
+sudo incus exec main -- bash -c "curl -fsSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/bootstrap.sh | bash -s -- --name main --master 192.168.1.29:50053 --incus 192.168.1.17:50052"
+
+# OU se preferir fazer dentro do container interativamente:
+sudo incus exec main -- bash
+
+# Dentro do container:
+bash <(curl -fsSL https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/bootstrap.sh) \
+  --name main \
+  --master 192.168.1.29:50053 \
+  --incus 192.168.1.17:50052
+
+# Verificar status
+systemctl status sloth-runner-agent
+exit
+
+# 3. Do MASTER (192.168.1.29) - Testar o agente
+sloth-runner agent list
+sloth-runner agent run main 'uname -a'
+```
+
+### Exemplo com Instalação Manual de Binário
+
+Se você já tem o binário compilado:
+
+```bash
+# 1. No HOST - Configure port forwarding
 sudo incus config device add main sloth-proxy proxy \
   listen=tcp:0.0.0.0:50052 \
   connect=tcp:127.0.0.1:50051
@@ -261,25 +327,26 @@ sudo incus config device add main sloth-proxy proxy \
 sudo incus file push /caminho/sloth-runner main/usr/local/bin/sloth-runner
 sudo incus exec main -- chmod +x /usr/local/bin/sloth-runner
 
-# 3. No CONTAINER (via incus exec)
+# 3. No CONTAINER - Use bootstrap local
 sudo incus exec main -- bash
 mkdir -p /var/lib/sloth-runner
 
-# 4. Criar serviço systemd (copiar o exemplo acima)
-# ... criar /etc/systemd/system/sloth-runner-agent.service ...
+# Criar e iniciar o serviço
+/usr/local/bin/sloth-runner agent start \
+  --name main \
+  --master 192.168.1.29:50053 \
+  --port 50051 \
+  --bind-address 0.0.0.0 \
+  --report-address 192.168.1.17:50052 \
+  --daemon
 
-# 5. Habilitar e iniciar
-systemctl daemon-reload
-systemctl enable sloth-runner-agent
-systemctl start sloth-runner-agent
-
-# 6. Verificar
-systemctl status sloth-runner-agent
+# Verificar
+ps aux | grep sloth-runner
 exit
 
-# 7. Do MASTER (192.168.1.29)
+# 4. Do MASTER - Verificar
 sloth-runner agent list
-sloth-runner agent run main 'uname -a'
+sloth-runner agent run main 'hostname && whoami'
 ```
 
 ## Conclusão
