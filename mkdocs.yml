@@ -188,6 +188,9 @@ nav:
     - '🔔 Notifications': 'modules/notifications'
     - '💾 State Module': 'modules/state'
     - '🔧 Lua API': 'en/plugin-development'
+  - '🗄️ State Management':
+    - '📋 State Management Guide 🔥': 'state-management'
+    - '🔄 Idempotency': 'idempotency'
   - '📖 Guides':
     - '✨ Using Values with delegate_to 🔥': 'guides/values-delegate-to'
   - '🎭 Examples': 'en/advanced-examples'
