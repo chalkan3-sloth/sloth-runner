@@ -1,0 +1,163 @@
+-- Example: Idempotent Web Server Setup
+-- This example shows how to use state management for idempotent operations
+
+task({
+    name = "install-nginx",
+    run = function()
+        local pkg_key = "package:installed:nginx"
+        
+        -- Check if nginx is already installed (tracked)
+        if state.exists(pkg_key) then
+            print("✓ nginx already installed (skipping)")
+            return {changed = false, skipped = true}
+        end
+        
+        -- Install nginx
+        print("⚙ Installing nginx...")
+        pkg.install({
+            name = "nginx",
+            delegate_to = values.host or "localhost"
+        })
+        
+        -- Track installation
+        state.set(pkg_key, tostring(os.time()))
+        print("✓ nginx installed successfully")
+        
+        return {changed = true}
+    end
+})
+
+task({
+    name = "configure-nginx",
+    run = function()
+        local template_src = "./templates/nginx.conf.tmpl"
+        local config_file = "/etc/nginx/nginx.conf"
+        local state_key = "config:nginx:main"
+        
+        -- Read and render template
+        local file_handle = io.open(template_src, "r")
+        if not file_handle then
+            error("Template file not found: " .. template_src)
+        end
+        
+        local content = file_handle:read("*all")
+        file_handle:close()
+        
+        -- Simple variable substitution
+        content = content:gsub("{{worker_processes}}", values.worker_processes or "auto")
+        content = content:gsub("{{worker_connections}}", values.worker_connections or "1024")
+        
+        -- Calculate checksum of new content
+        local new_hash = crypto.sha256(content)
+        
+        -- Get stored hash
+        local old_hash = state.get(state_key)
+        
+        if old_hash == new_hash then
+            print("✓ nginx configuration unchanged (skipping)")
+            return {changed = false, skipped = true}
+        end
+        
+        -- Write configuration file
+        print("⚙ Updating nginx configuration...")
+        
+        -- Save to temporary file first
+        local tmp_file = "/tmp/nginx.conf.new"
+        local tmp_handle = io.open(tmp_file, "w")
+        tmp_handle:write(content)
+        tmp_handle:close()
+        
+        -- Copy to destination
+        file.copy({
+            src = tmp_file,
+            dest = config_file,
+            mode = "0644",
+            owner = "root",
+            group = "root",
+            delegate_to = values.host or "localhost"
+        })
+        
+        -- Update state
+        state.set(state_key, new_hash)
+        print("✓ nginx configuration updated")
+        
+        return {changed = true, config_hash = new_hash}
+    end
+})
+
+task({
+    name = "start-nginx",
+    run = function()
+        local service_key = "service:started:nginx"
+        
+        -- Check if service is tracked as started
+        if not state.exists(service_key) then
+            print("⚙ Starting nginx service...")
+            
+            systemd.start({
+                name = "nginx",
+                delegate_to = values.host or "localhost"
+            })
+            
+            state.set(service_key, tostring(os.time()))
+            print("✓ nginx service started")
+            
+            return {changed = true}
+        else
+            print("✓ nginx service already running")
+            return {changed = false, skipped = true}
+        end
+    end
+})
+
+task({
+    name = "enable-nginx",
+    run = function()
+        local enable_key = "service:enabled:nginx"
+        
+        if not state.exists(enable_key) then
+            print("⚙ Enabling nginx service...")
+            
+            systemd.enable({
+                name = "nginx",
+                delegate_to = values.host or "localhost"
+            })
+            
+            state.set(enable_key, tostring(os.time()))
+            print("✓ nginx service enabled")
+            
+            return {changed = true}
+        else
+            print("✓ nginx service already enabled")
+            return {changed = false, skipped = true}
+        end
+    end
+})
+
+task({
+    name = "summary",
+    run = function()
+        print("\n=== Deployment Summary ===")
+        
+        -- Show state statistics
+        local stats = {
+            {key = "package:installed:nginx", label = "nginx package"},
+            {key = "config:nginx:main", label = "nginx config"},
+            {key = "service:started:nginx", label = "nginx service"},
+            {key = "service:enabled:nginx", label = "nginx enabled"}
+        }
+        
+        print("\nTracked Resources:")
+        for _, item in ipairs(stats) do
+            local exists = state.exists(item.key)
+            if exists then
+                local value = state.get(item.key)
+                print(string.format("  ✓ %s: tracked (timestamp: %s)", item.label, value))
+            else
+                print(string.format("  ✗ %s: not tracked", item.label))
+            end
+        end
+        
+        print("\n=== End Summary ===\n")
+    end
+})
