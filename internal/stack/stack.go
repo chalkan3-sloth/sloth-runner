@@ -113,6 +113,30 @@ func (sm *StackManager) initSchema() error {
 
 	CREATE INDEX IF NOT EXISTS idx_executions_stack_id ON stack_executions(stack_id);
 	CREATE INDEX IF NOT EXISTS idx_executions_started_at ON stack_executions(started_at);
+
+	CREATE TABLE IF NOT EXISTS resources (
+		id TEXT PRIMARY KEY,
+		stack_id TEXT NOT NULL,
+		type TEXT NOT NULL,
+		name TEXT NOT NULL,
+		module TEXT NOT NULL,
+		properties TEXT,
+		dependencies TEXT,
+		state TEXT NOT NULL DEFAULT 'pending',
+		checksum TEXT,
+		created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		last_applied DATETIME,
+		error_message TEXT,
+		metadata TEXT,
+		FOREIGN KEY (stack_id) REFERENCES stacks(id) ON DELETE CASCADE
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_resources_stack_id ON resources(stack_id);
+	CREATE INDEX IF NOT EXISTS idx_resources_type ON resources(type);
+	CREATE INDEX IF NOT EXISTS idx_resources_state ON resources(state);
+	CREATE INDEX IF NOT EXISTS idx_resources_checksum ON resources(checksum);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_resources_stack_type_name ON resources(stack_id, type, name);
 	`
 
 	if _, err := sm.db.Exec(schema); err != nil {
@@ -514,6 +538,258 @@ func (sm *StackManager) GetStackExecutions(stackID string, limit int) ([]*StackE
 	}
 
 	return executions, nil
+}
+
+// Resource represents a managed resource in a stack
+type Resource struct {
+	ID           string                 `json:"id"`
+	StackID      string                 `json:"stack_id"`
+	Type         string                 `json:"type"`
+	Name         string                 `json:"name"`
+	Module       string                 `json:"module"`
+	Properties   map[string]interface{} `json:"properties"`
+	Dependencies []string               `json:"dependencies"`
+	State        string                 `json:"state"` // pending, applied, failed, drift
+	Checksum     string                 `json:"checksum"`
+	CreatedAt    time.Time              `json:"created_at"`
+	UpdatedAt    time.Time              `json:"updated_at"`
+	LastApplied  *time.Time             `json:"last_applied,omitempty"`
+	ErrorMessage string                 `json:"error_message,omitempty"`
+	Metadata     map[string]interface{} `json:"metadata"`
+}
+
+// CreateResource creates a new resource in the stack
+func (sm *StackManager) CreateResource(resource *Resource) error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	if resource.ID == "" {
+		return fmt.Errorf("resource ID is required")
+	}
+
+	resource.CreatedAt = time.Now()
+	resource.UpdatedAt = time.Now()
+
+	propertiesJSON, _ := json.Marshal(resource.Properties)
+	dependenciesJSON, _ := json.Marshal(resource.Dependencies)
+	metadataJSON, _ := json.Marshal(resource.Metadata)
+
+	query := `
+		INSERT INTO resources (
+			id, stack_id, type, name, module, properties, dependencies,
+			state, checksum, created_at, updated_at, metadata
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+
+	_, err := sm.db.Exec(query,
+		resource.ID, resource.StackID, resource.Type, resource.Name, resource.Module,
+		string(propertiesJSON), string(dependenciesJSON),
+		resource.State, resource.Checksum, resource.CreatedAt, resource.UpdatedAt,
+		string(metadataJSON),
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to create resource: %w", err)
+	}
+
+	return nil
+}
+
+// GetResource retrieves a resource by ID
+func (sm *StackManager) GetResource(id string) (*Resource, error) {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+
+	query := `
+		SELECT id, stack_id, type, name, module, properties, dependencies,
+		       state, checksum, created_at, updated_at, last_applied,
+		       COALESCE(error_message, '') as error_message, metadata
+		FROM resources WHERE id = ?
+	`
+
+	row := sm.db.QueryRow(query, id)
+
+	var resource Resource
+	var propertiesJSON, dependenciesJSON, metadataJSON string
+	var lastApplied sql.NullTime
+
+	err := row.Scan(
+		&resource.ID, &resource.StackID, &resource.Type, &resource.Name, &resource.Module,
+		&propertiesJSON, &dependenciesJSON,
+		&resource.State, &resource.Checksum, &resource.CreatedAt, &resource.UpdatedAt,
+		&lastApplied, &resource.ErrorMessage, &metadataJSON,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("resource not found: %s", id)
+		}
+		return nil, fmt.Errorf("failed to get resource: %w", err)
+	}
+
+	if lastApplied.Valid {
+		resource.LastApplied = &lastApplied.Time
+	}
+
+	json.Unmarshal([]byte(propertiesJSON), &resource.Properties)
+	json.Unmarshal([]byte(dependenciesJSON), &resource.Dependencies)
+	json.Unmarshal([]byte(metadataJSON), &resource.Metadata)
+
+	return &resource, nil
+}
+
+// UpdateResource updates a resource
+func (sm *StackManager) UpdateResource(resource *Resource) error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	resource.UpdatedAt = time.Now()
+
+	propertiesJSON, _ := json.Marshal(resource.Properties)
+	dependenciesJSON, _ := json.Marshal(resource.Dependencies)
+	metadataJSON, _ := json.Marshal(resource.Metadata)
+
+	query := `
+		UPDATE resources SET
+			type = ?, name = ?, module = ?, properties = ?, dependencies = ?,
+			state = ?, checksum = ?, updated_at = ?, last_applied = ?,
+			error_message = ?, metadata = ?
+		WHERE id = ?
+	`
+
+	var lastApplied interface{}
+	if resource.LastApplied != nil {
+		lastApplied = *resource.LastApplied
+	}
+
+	_, err := sm.db.Exec(query,
+		resource.Type, resource.Name, resource.Module, string(propertiesJSON), string(dependenciesJSON),
+		resource.State, resource.Checksum, resource.UpdatedAt, lastApplied,
+		resource.ErrorMessage, string(metadataJSON),
+		resource.ID,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to update resource: %w", err)
+	}
+
+	return nil
+}
+
+// ListResources lists all resources in a stack
+func (sm *StackManager) ListResources(stackID string) ([]*Resource, error) {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+
+	query := `
+		SELECT id, stack_id, type, name, module, properties, dependencies,
+		       state, checksum, created_at, updated_at, last_applied,
+		       COALESCE(error_message, '') as error_message, metadata
+		FROM resources WHERE stack_id = ? ORDER BY created_at ASC
+	`
+
+	rows, err := sm.db.Query(query, stackID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list resources: %w", err)
+	}
+	defer rows.Close()
+
+	var resources []*Resource
+
+	for rows.Next() {
+		var resource Resource
+		var propertiesJSON, dependenciesJSON, metadataJSON string
+		var lastApplied sql.NullTime
+
+		err := rows.Scan(
+			&resource.ID, &resource.StackID, &resource.Type, &resource.Name, &resource.Module,
+			&propertiesJSON, &dependenciesJSON,
+			&resource.State, &resource.Checksum, &resource.CreatedAt, &resource.UpdatedAt,
+			&lastApplied, &resource.ErrorMessage, &metadataJSON,
+		)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan resource: %w", err)
+		}
+
+		if lastApplied.Valid {
+			resource.LastApplied = &lastApplied.Time
+		}
+
+		json.Unmarshal([]byte(propertiesJSON), &resource.Properties)
+		json.Unmarshal([]byte(dependenciesJSON), &resource.Dependencies)
+		json.Unmarshal([]byte(metadataJSON), &resource.Metadata)
+
+		resources = append(resources, &resource)
+	}
+
+	return resources, nil
+}
+
+// DeleteResource deletes a resource
+func (sm *StackManager) DeleteResource(id string) error {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+
+	query := `DELETE FROM resources WHERE id = ?`
+	result, err := sm.db.Exec(query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete resource: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("resource not found: %s", id)
+	}
+
+	return nil
+}
+
+// GetResourceByStackAndName retrieves a resource by stack ID, type and name
+func (sm *StackManager) GetResourceByStackAndName(stackID, resType, name string) (*Resource, error) {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+
+	query := `
+		SELECT id, stack_id, type, name, module, properties, dependencies,
+		       state, checksum, created_at, updated_at, last_applied,
+		       COALESCE(error_message, '') as error_message, metadata
+		FROM resources WHERE stack_id = ? AND type = ? AND name = ?
+	`
+
+	row := sm.db.QueryRow(query, stackID, resType, name)
+
+	var resource Resource
+	var propertiesJSON, dependenciesJSON, metadataJSON string
+	var lastApplied sql.NullTime
+
+	err := row.Scan(
+		&resource.ID, &resource.StackID, &resource.Type, &resource.Name, &resource.Module,
+		&propertiesJSON, &dependenciesJSON,
+		&resource.State, &resource.Checksum, &resource.CreatedAt, &resource.UpdatedAt,
+		&lastApplied, &resource.ErrorMessage, &metadataJSON,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // Not found is not an error
+		}
+		return nil, fmt.Errorf("failed to get resource: %w", err)
+	}
+
+	if lastApplied.Valid {
+		resource.LastApplied = &lastApplied.Time
+	}
+
+	json.Unmarshal([]byte(propertiesJSON), &resource.Properties)
+	json.Unmarshal([]byte(dependenciesJSON), &resource.Dependencies)
+	json.Unmarshal([]byte(metadataJSON), &resource.Metadata)
+
+	return &resource, nil
 }
 
 // Close closes the database connection

@@ -42,6 +42,74 @@ task({
 })
 ```
 
+### 📊 **Stack-Based State Management**
+*Infrastructure as Code with Pulumi-like state tracking!*
+
+Sloth Runner includes a **sophisticated stack management system** that tracks all your infrastructure resources:
+
+- 🎯 **Automatic Change Detection** - Resources only update when properties change
+- 🔍 **Drift Detection** - Know when infrastructure has changed outside of automation
+- 📝 **Execution History** - Complete audit trail of all changes
+- 💾 **Persistent State** - SQLite-based state storage
+- 🔒 **Resource Locking** - Prevent concurrent modifications
+
+```lua
+workflow({
+    name = "production-infrastructure",
+    description = "Complete production setup with state tracking"
+})
+
+task({
+    name = "deploy-database",
+    run = function()
+        -- Resources are automatically tracked in the stack
+        local status, resource = stack.register_resource({
+            type = "database",
+            name = "postgres-prod",
+            module = "terraform",
+            properties = {
+                engine = "postgres",
+                version = "14.5",
+                instance_type = "db.t3.medium"
+            }
+        })
+        
+        if status == "unchanged" then
+            print("✓ Database already configured correctly")
+        elseif status == "changed" then
+            print("→ Updating database configuration...")
+            -- Apply changes
+            stack.update_resource("database", "postgres-prod", {
+                state = "applied"
+            })
+        elseif status == "created" then
+            print("→ Creating new database...")
+            -- Create resource
+            stack.update_resource("database", "postgres-prod", {
+                state = "applied"
+            })
+        end
+        
+        -- Store outputs for other tasks
+        stack.set_output("db_endpoint", "postgres-prod.example.com")
+    end
+})
+
+-- CLI Commands for Stack Management
+-- sloth-runner stack list                    # List all stacks
+-- sloth-runner stack show production         # Show stack details
+-- sloth-runner stack resources production    # List managed resources
+-- sloth-runner stack export production       # Export state to JSON
+```
+
+**Benefits:**
+- 🚀 Safe to run workflows multiple times
+- 📈 Track infrastructure changes over time
+- 🔄 Automatic rollback on failures
+- 📊 View resource dependencies
+- 💡 Know exactly what changed in each run
+
+
 ### 📦 **Native Modules - No require() Needed!**
 *All native modules are available globally - just use them!*
 
