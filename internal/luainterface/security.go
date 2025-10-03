@@ -112,8 +112,9 @@ func (s *SecurityModule) luaScanPorts(L *lua.LState) int {
 	L.SetField(result, "total_scanned", lua.LNumber(endPort-startPort+1))
 	L.SetField(result, "open_count", lua.LNumber(openCount-1))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SecurityModule) luaCheckSSLCert(L *lua.LState) int {
@@ -173,8 +174,9 @@ func (s *SecurityModule) luaCheckSSLCert(L *lua.LState) int {
 	
 	L.SetField(result, "issues", issues)
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SecurityModule) luaCheckHTTPHeaders(L *lua.LState) int {
@@ -225,8 +227,9 @@ func (s *SecurityModule) luaCheckHTTPHeaders(L *lua.LState) int {
 	L.SetField(result, "security_issues", security_issues)
 	L.SetField(result, "status_code", lua.LNumber(resp.StatusCode))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // File and directory security
@@ -273,8 +276,9 @@ func (s *SecurityModule) luaAuditPermissions(L *lua.LState) int {
 	L.SetField(result, "issues", issues)
 	L.SetField(result, "total_issues", lua.LNumber(issueCount-1))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SecurityModule) luaFindSUIDFiles(L *lua.LState) int {
@@ -298,8 +302,9 @@ func (s *SecurityModule) luaFindSUIDFiles(L *lua.LState) int {
 		}
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SecurityModule) luaCheckFileIntegrity(L *lua.LState) int {
@@ -310,8 +315,9 @@ func (s *SecurityModule) luaCheckFileIntegrity(L *lua.LState) int {
 	// Basic file integrity checks
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		L.SetField(result, "exists", lua.LBool(false))
+		L.Push(lua.LTrue)
 		L.Push(result)
-		return 1
+		return 2
 	}
 	
 	L.SetField(result, "exists", lua.LBool(true))
@@ -338,8 +344,9 @@ func (s *SecurityModule) luaCheckFileIntegrity(L *lua.LState) int {
 		}
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // Password and authentication
@@ -437,8 +444,9 @@ func (s *SecurityModule) luaPasswordStrength(L *lua.LState) int {
 	L.SetField(result, "length", lua.LNumber(len(password)))
 	L.SetField(result, "character_variety", lua.LNumber(variety))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SecurityModule) luaCheckWeakPasswords(L *lua.LState) int {
@@ -449,8 +457,9 @@ func (s *SecurityModule) luaCheckWeakPasswords(L *lua.LState) int {
 	result := L.NewTable()
 	L.SetField(result, "message", lua.LString("Weak password checking requires elevated privileges"))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // System security
@@ -484,8 +493,9 @@ func (s *SecurityModule) luaFirewallStatus(L *lua.LState) int {
 		L.SetField(result, "firewalld_active", lua.LBool(strings.TrimSpace(string(output)) == "running"))
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SecurityModule) luaSELinuxStatus(L *lua.LState) int {
@@ -504,8 +514,9 @@ func (s *SecurityModule) luaSELinuxStatus(L *lua.LState) int {
 		L.SetField(result, "status", lua.LString("Not available"))
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SecurityModule) luaCheckUpdates(L *lua.LState) int {
@@ -540,8 +551,9 @@ func (s *SecurityModule) luaCheckUpdates(L *lua.LState) int {
 		L.SetField(result, "output", lua.LString(string(output)))
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // Vulnerability scanning
@@ -581,8 +593,9 @@ func (s *SecurityModule) luaVulnerabilityScan(L *lua.LState) int {
 	L.SetField(result, "target", lua.LString(target))
 	L.SetField(result, "timestamp", lua.LNumber(time.Now().Unix()))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SecurityModule) luaCheckOpenPorts(L *lua.LState) int {
@@ -619,8 +632,9 @@ func (s *SecurityModule) luaCheckOpenPorts(L *lua.LState) int {
 	L.SetField(result, "listening_ports", ports)
 	L.SetField(result, "total_ports", lua.LNumber(portCount-1))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SecurityModule) luaMalwareScan(L *lua.LState) int {
@@ -655,8 +669,9 @@ func (s *SecurityModule) luaMalwareScan(L *lua.LState) int {
 	L.SetField(result, "suspicious_count", lua.LNumber(suspiciousCount-1))
 	L.SetField(result, "scan_path", lua.LString(path))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // Compliance and hardening
@@ -710,8 +725,9 @@ func (s *SecurityModule) luaSecurityBaseline(L *lua.LState) int {
 	L.SetField(result, "passed_checks", lua.LNumber(passed))
 	L.SetField(result, "compliance_percentage", lua.LNumber(float64(passed)/float64(total)*100))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SecurityModule) luaCISBenchmark(L *lua.LState) int {
@@ -726,8 +742,9 @@ func (s *SecurityModule) luaCISBenchmark(L *lua.LState) int {
 	// - OpenSCAP
 	// - Custom compliance scripts
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // Helper functions

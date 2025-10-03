@@ -247,8 +247,9 @@ func (p *PkgModule) install(L *lua.LState) int {
 		result := L.NewTable()
 		result.RawSetString("changed", lua.LFalse)
 		result.RawSetString("message", lua.LString("All packages already installed"))
+		L.Push(lua.LTrue)
 		L.Push(result)
-		return 1
+		return 2
 	}
 	
 	args := p.buildInstallCommand(manager, packagesToInstall)
@@ -265,8 +266,9 @@ func (p *PkgModule) install(L *lua.LState) int {
 	result.RawSetString("changed", lua.LTrue)
 	result.RawSetString("installed", lua.LString(strings.Join(packagesToInstall, ", ")))
 	result.RawSetString("output", lua.LString(string(output)))
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // remove removes packages (with idempotency)
@@ -308,8 +310,9 @@ func (p *PkgModule) remove(L *lua.LState) int {
 		result := L.NewTable()
 		result.RawSetString("changed", lua.LFalse)
 		result.RawSetString("message", lua.LString("Packages already not installed"))
+		L.Push(lua.LTrue)
 		L.Push(result)
-		return 1
+		return 2
 	}
 	
 	args := p.buildRemoveCommand(manager, packagesToRemove)
@@ -326,8 +329,9 @@ func (p *PkgModule) remove(L *lua.LState) int {
 	result.RawSetString("changed", lua.LTrue)
 	result.RawSetString("removed", lua.LString(strings.Join(packagesToRemove, ", ")))
 	result.RawSetString("output", lua.LString(string(output)))
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // update updates package list

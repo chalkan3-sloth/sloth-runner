@@ -85,8 +85,9 @@ func (mod *AzureModule) azExec(L *lua.LState) int {
 	result.RawSetString("stderr", lua.LString(stderr.String()))
 	result.RawSetString("exit_code", lua.LNumber(exitCode))
 
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // rgDelete provides a high-level interface for `az group delete`.

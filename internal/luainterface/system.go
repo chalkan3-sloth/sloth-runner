@@ -97,8 +97,9 @@ func (s *SystemModule) luaCPUInfo(L *lua.LState) int {
 		result.RawSetInt(i+1, cpuTable)
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SystemModule) luaCPUUsage(L *lua.LState) int {
@@ -154,8 +155,9 @@ func (s *SystemModule) luaLoadAverage(L *lua.LState) int {
 	L.SetField(result, "load5", lua.LNumber(loadAvg.Load5))
 	L.SetField(result, "load15", lua.LNumber(loadAvg.Load15))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // Memory information
@@ -176,8 +178,9 @@ func (s *SystemModule) luaMemoryInfo(L *lua.LState) int {
 	L.SetField(result, "buffers", lua.LNumber(memInfo.Buffers))
 	L.SetField(result, "cached", lua.LNumber(memInfo.Cached))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SystemModule) luaMemoryUsage(L *lua.LState) int {
@@ -206,8 +209,9 @@ func (s *SystemModule) luaSwapInfo(L *lua.LState) int {
 	L.SetField(result, "free", lua.LNumber(swapInfo.Free))
 	L.SetField(result, "percent", lua.LNumber(swapInfo.UsedPercent))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // Disk information
@@ -230,8 +234,9 @@ func (s *SystemModule) luaDiskUsage(L *lua.LState) int {
 	L.SetField(result, "inodes_used", lua.LNumber(diskInfo.InodesUsed))
 	L.SetField(result, "inodes_free", lua.LNumber(diskInfo.InodesFree))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SystemModule) luaDiskIO(L *lua.LState) int {
@@ -256,8 +261,9 @@ func (s *SystemModule) luaDiskIO(L *lua.LState) int {
 		result.RawSetString(device, deviceTable)
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SystemModule) luaDiskPartitions(L *lua.LState) int {
@@ -280,8 +286,9 @@ func (s *SystemModule) luaDiskPartitions(L *lua.LState) int {
 		result.RawSetInt(i+1, partTable)
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // Network information
@@ -314,8 +321,9 @@ func (s *SystemModule) luaNetworkInterfaces(L *lua.LState) int {
 		result.RawSetInt(i+1, ifaceTable)
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SystemModule) luaNetworkStats(L *lua.LState) int {
@@ -343,8 +351,9 @@ func (s *SystemModule) luaNetworkStats(L *lua.LState) int {
 		result.RawSetInt(i+1, statTable)
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SystemModule) luaNetworkConnections(L *lua.LState) int {
@@ -374,8 +383,9 @@ func (s *SystemModule) luaNetworkConnections(L *lua.LState) int {
 		result.RawSetInt(i+1, connTable)
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // Process information
@@ -420,8 +430,9 @@ func (s *SystemModule) luaProcesses(L *lua.LState) int {
 		result.RawSetInt(i+1, procTable)
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SystemModule) luaProcessInfo(L *lua.LState) int {
@@ -472,8 +483,9 @@ func (s *SystemModule) luaProcessInfo(L *lua.LState) int {
 		L.SetField(result, "memory", memTable)
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SystemModule) luaKillProcess(L *lua.LState) int {
@@ -522,8 +534,9 @@ func (s *SystemModule) luaHostInfo(L *lua.LState) int {
 	L.SetField(result, "virtualization_role", lua.LString(hostInfo.VirtualizationRole))
 	L.SetField(result, "host_id", lua.LString(hostInfo.HostID))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SystemModule) luaUptime(L *lua.LState) int {
@@ -543,8 +556,9 @@ func (s *SystemModule) luaUptime(L *lua.LState) int {
 	L.SetField(result, "hours", lua.LNumber((hostInfo.Uptime%86400)/3600))
 	L.SetField(result, "minutes", lua.LNumber((hostInfo.Uptime%3600)/60))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SystemModule) luaEnvironment(L *lua.LState) int {
@@ -558,8 +572,9 @@ func (s *SystemModule) luaEnvironment(L *lua.LState) int {
 		}
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SystemModule) luaUsers(L *lua.LState) int {
@@ -595,8 +610,9 @@ func (s *SystemModule) luaUsers(L *lua.LState) int {
 			}
 		}
 		
+		L.Push(lua.LTrue)
 		L.Push(result)
-		return 1
+		return 2
 	}
 	
 	L.Push(lua.LNil)
@@ -643,8 +659,9 @@ func (s *SystemModule) luaPerformanceSnapshot(L *lua.LState) int {
 	// Timestamp
 	L.SetField(result, "timestamp", lua.LNumber(time.Now().Unix()))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (s *SystemModule) luaSystemHealth(L *lua.LState) int {
@@ -727,6 +744,7 @@ func (s *SystemModule) luaSystemHealth(L *lua.LState) int {
 	L.SetField(result, "issues", issues)
 	L.SetField(result, "timestamp", lua.LNumber(time.Now().Unix()))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
