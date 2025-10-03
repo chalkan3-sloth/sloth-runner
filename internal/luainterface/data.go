@@ -295,8 +295,9 @@ func (d *DataModule) luaCSVParse(L *lua.LState) int {
 		result.RawSetInt(i+1, row)
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (d *DataModule) luaCSVGenerate(L *lua.LState) int {
@@ -337,8 +338,9 @@ func (d *DataModule) luaDeepMerge(L *lua.LState) int {
 		result.RawSet(key, value)
 	})
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (d *DataModule) luaFlatten(L *lua.LState) int {
@@ -348,8 +350,9 @@ func (d *DataModule) luaFlatten(L *lua.LState) int {
 	result := L.NewTable()
 	flattenTable(table, result, "", separator)
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (d *DataModule) luaUnflatten(L *lua.LState) int {
@@ -377,8 +380,9 @@ func (d *DataModule) luaUnflatten(L *lua.LState) int {
 		}
 	})
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (d *DataModule) luaGetPath(L *lua.LState) int {

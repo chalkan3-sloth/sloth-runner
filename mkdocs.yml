@@ -233,6 +233,7 @@ nav:
     - 'Avançado': 'pt/advanced-features'
     - 'Exemplos': 'pt/advanced-examples'
     - 'Distribuído': 'pt/distributed'
+    - 'Agentes em Containers': 'pt/agente-em-containers'
     - 'Scheduler': 'pt/scheduler'
     - 'Testes': 'pt/testing'
     - 'Plugin Dev': 'pt/plugin-development'

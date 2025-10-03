@@ -133,8 +133,9 @@ func (li *LuaInterface) luaGitOpsWorkflow(L *lua.LState) int {
 	L.SetField(result, "diff_preview", lua.LBool(diffPreview))
 	L.SetField(result, "rollback_on_failure", lua.LBool(rollbackOnFailure))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // luaGitOpsCreateWorkflow creates a detailed GitOps workflow
@@ -250,8 +251,9 @@ func (li *LuaInterface) luaGitOpsGetWorkflowStatus(L *lua.LState) int {
 		L.SetField(result, "last_sync_result", syncResult)
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // luaGitOpsListWorkflows lists all workflows
@@ -277,8 +279,9 @@ func (li *LuaInterface) luaGitOpsListWorkflows(L *lua.LState) int {
 		i++
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // luaGitOpsRegisterRepository registers a new repository
@@ -373,8 +376,9 @@ func (li *LuaInterface) luaGitOpsGenerateDiff(L *lua.LState) int {
 	}
 	L.SetField(result, "warnings", warnings)
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // luaGitOpsPreviewChanges is an alias for generate_diff

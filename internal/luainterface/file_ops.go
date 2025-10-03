@@ -88,8 +88,9 @@ func (f *FileOpsModule) copy(L *lua.LState) int {
 			L.SetField(result, "dest", lua.LString(dst))
 			L.SetField(result, "size", lua.LNumber(dstInfo.Size()))
 			L.SetField(result, "message", lua.LString("Files are identical, no copy needed"))
+			L.Push(lua.LTrue)
 			L.Push(result)
-			return 1
+			return 2
 		}
 	}
 
@@ -142,8 +143,9 @@ func (f *FileOpsModule) copy(L *lua.LState) int {
 	L.SetField(result, "dest", lua.LString(dst))
 	L.SetField(result, "size", lua.LNumber(srcInfo.Size()))
 
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // fetch downloads a file from remote to local
@@ -203,8 +205,9 @@ func (f *FileOpsModule) fetch(L *lua.LState) int {
 	L.SetField(result, "dest", lua.LString(dst))
 	L.SetField(result, "size", lua.LNumber(size))
 
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // templateRender renders a template file with variables
@@ -281,8 +284,9 @@ func (f *FileOpsModule) templateRender(L *lua.LState) int {
 	L.SetField(result, "src", lua.LString(src))
 	L.SetField(result, "dest", lua.LString(dst))
 
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // lineinfile ensures a line exists in a file
@@ -394,8 +398,9 @@ func (f *FileOpsModule) lineinfile(L *lua.LState) int {
 	L.SetField(result, "changed", lua.LBool(changed))
 	L.SetField(result, "path", lua.LString(path))
 
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // blockinfile inserts/updates/removes a block of lines in a file
@@ -518,8 +523,9 @@ func (f *FileOpsModule) blockinfile(L *lua.LState) int {
 	L.SetField(result, "changed", lua.LBool(changed))
 	L.SetField(result, "path", lua.LString(path))
 
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // replace replaces all occurrences of a pattern in a file
@@ -579,8 +585,9 @@ func (f *FileOpsModule) replace(L *lua.LState) int {
 	L.SetField(result, "changed", lua.LBool(changed))
 	L.SetField(result, "path", lua.LString(path))
 
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // unarchive extracts an archive file
@@ -637,8 +644,9 @@ func (f *FileOpsModule) unarchive(L *lua.LState) int {
 	L.SetField(result, "src", lua.LString(src))
 	L.SetField(result, "dest", lua.LString(dst))
 
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // stat gets file information
@@ -658,8 +666,9 @@ func (f *FileOpsModule) stat(L *lua.LState) int {
 		if os.IsNotExist(err) {
 			result := L.NewTable()
 			L.SetField(result, "exists", lua.LBool(false))
+			L.Push(lua.LTrue)
 			L.Push(result)
-			return 1
+			return 2
 		}
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to stat: %v", err)))
@@ -685,8 +694,9 @@ func (f *FileOpsModule) stat(L *lua.LState) int {
 		L.SetField(result, "gid", lua.LNumber(stat.Gid))
 	}
 
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // Helper functions

@@ -309,8 +309,9 @@ func (i *GCPInstances) list(L *lua.LState) int {
 	result.RawSetString("success", lua.LBool(err == nil))
 	result.RawSetString("stdout", lua.LString(stdout))
 	result.RawSetString("stderr", lua.LString(stderr))
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // --- Storage Methods ---
@@ -339,8 +340,9 @@ func (b *GCPBuckets) list(L *lua.LState) int {
 	result.RawSetString("success", lua.LBool(err == nil))
 	result.RawSetString("stdout", lua.LString(stdout))
 	result.RawSetString("stderr", lua.LString(stderr))
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // --- Sql Methods ---
@@ -369,8 +371,9 @@ func (i *GCPSqlInstances) list(L *lua.LState) int {
 	result.RawSetString("success", lua.LBool(err == nil))
 	result.RawSetString("stdout", lua.LString(stdout))
 	result.RawSetString("stderr", lua.LString(stderr))
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // --- Gke Methods ---
@@ -399,8 +402,9 @@ func (c *GCPGkeClusters) list(L *lua.LState) int {
 	result.RawSetString("success", lua.LBool(err == nil))
 	result.RawSetString("stdout", lua.LString(stdout))
 	result.RawSetString("stderr", lua.LString(stderr))
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // --- Service Account Methods ---

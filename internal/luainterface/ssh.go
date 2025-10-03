@@ -174,8 +174,9 @@ func sshExec(L *lua.LState) int {
 	L.SetField(result, "exit_code", lua.LNumber(exitCode))
 	L.SetField(result, "success", lua.LBool(exitCode == 0))
 
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // sshUpload uploads a file to the remote server
@@ -472,8 +473,9 @@ func sshStat(L *lua.LState) int {
 	L.SetField(result, "is_dir", lua.LBool(info.IsDir()))
 	L.SetField(result, "mod_time", lua.LNumber(info.ModTime().Unix()))
 
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // sshMkdir creates a directory on the remote server
@@ -667,8 +669,9 @@ func sshListDir(L *lua.LState) int {
 		result.RawSetInt(i+1, fileInfo)
 	}
 
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // sshLoadPrivateKey loads a private key from file
