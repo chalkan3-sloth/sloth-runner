@@ -167,7 +167,7 @@ func (mod *SystemdModule) systemdCommand(command, serviceName string) (string, e
 	return stdout.String(), nil
 }
 
-// startService starts a systemd service
+// startService starts a systemd service (with idempotency)
 // Usage: systemd.start({name="nginx"})
 func (mod *SystemdModule) startService(L *lua.LState) int {
 	opts := L.CheckTable(1)
@@ -179,19 +179,31 @@ func (mod *SystemdModule) startService(L *lua.LState) int {
 		return 2
 	}
 	
-	output, err := mod.systemdCommand("start", serviceName)
+	// IDEMPOTENCY: Check if already active
+	output, err := mod.systemdCommand("is-active", serviceName)
+	if err == nil && strings.TrimSpace(output) == "active" {
+		result := L.NewTable()
+		result.RawSetString("changed", lua.LFalse)
+		result.RawSetString("message", lua.LString(fmt.Sprintf("Service %s is already active", serviceName)))
+		L.Push(result)
+		return 1
+	}
+	
+	output, err = mod.systemdCommand("start", serviceName)
 	if err != nil {
 		L.Push(lua.LBool(false))
 		L.Push(lua.LString(err.Error()))
 		return 2
 	}
 	
-	L.Push(lua.LBool(true))
-	L.Push(lua.LString(output))
-	return 2
+	result := L.NewTable()
+	result.RawSetString("changed", lua.LTrue)
+	result.RawSetString("message", lua.LString(fmt.Sprintf("Service %s started", serviceName)))
+	L.Push(result)
+	return 1
 }
 
-// stopService stops a systemd service
+// stopService stops a systemd service (with idempotency)
 // Usage: systemd.stop({name="nginx"})
 func (mod *SystemdModule) stopService(L *lua.LState) int {
 	opts := L.CheckTable(1)
@@ -203,16 +215,28 @@ func (mod *SystemdModule) stopService(L *lua.LState) int {
 		return 2
 	}
 	
-	output, err := mod.systemdCommand("stop", serviceName)
+	// IDEMPOTENCY: Check if already inactive
+	output, err := mod.systemdCommand("is-active", serviceName)
+	if err != nil || strings.TrimSpace(output) != "active" {
+		result := L.NewTable()
+		result.RawSetString("changed", lua.LFalse)
+		result.RawSetString("message", lua.LString(fmt.Sprintf("Service %s is already inactive", serviceName)))
+		L.Push(result)
+		return 1
+	}
+	
+	output, err = mod.systemdCommand("stop", serviceName)
 	if err != nil {
 		L.Push(lua.LBool(false))
 		L.Push(lua.LString(err.Error()))
 		return 2
 	}
 	
-	L.Push(lua.LBool(true))
-	L.Push(lua.LString(output))
-	return 2
+	result := L.NewTable()
+	result.RawSetString("changed", lua.LTrue)
+	result.RawSetString("message", lua.LString(fmt.Sprintf("Service %s stopped", serviceName)))
+	L.Push(result)
+	return 1
 }
 
 // restartService restarts a systemd service
@@ -263,7 +287,7 @@ func (mod *SystemdModule) reloadService(L *lua.LState) int {
 	return 2
 }
 
-// enableService enables a systemd service
+// enableService enables a systemd service (with idempotency)
 // Usage: systemd.enable({name="nginx"})
 func (mod *SystemdModule) enableService(L *lua.LState) int {
 	opts := L.CheckTable(1)
@@ -275,19 +299,31 @@ func (mod *SystemdModule) enableService(L *lua.LState) int {
 		return 2
 	}
 	
-	output, err := mod.systemdCommand("enable", serviceName)
+	// IDEMPOTENCY: Check if already enabled
+	output, err := mod.systemdCommand("is-enabled", serviceName)
+	if err == nil && strings.TrimSpace(output) == "enabled" {
+		result := L.NewTable()
+		result.RawSetString("changed", lua.LFalse)
+		result.RawSetString("message", lua.LString(fmt.Sprintf("Service %s is already enabled", serviceName)))
+		L.Push(result)
+		return 1
+	}
+	
+	output, err = mod.systemdCommand("enable", serviceName)
 	if err != nil {
 		L.Push(lua.LBool(false))
 		L.Push(lua.LString(err.Error()))
 		return 2
 	}
 	
-	L.Push(lua.LBool(true))
-	L.Push(lua.LString(output))
-	return 2
+	result := L.NewTable()
+	result.RawSetString("changed", lua.LTrue)
+	result.RawSetString("message", lua.LString(fmt.Sprintf("Service %s enabled", serviceName)))
+	L.Push(result)
+	return 1
 }
 
-// disableService disables a systemd service
+// disableService disables a systemd service (with idempotency)
 // Usage: systemd.disable({name="nginx"})
 func (mod *SystemdModule) disableService(L *lua.LState) int {
 	opts := L.CheckTable(1)
@@ -299,16 +335,28 @@ func (mod *SystemdModule) disableService(L *lua.LState) int {
 		return 2
 	}
 	
-	output, err := mod.systemdCommand("disable", serviceName)
+	// IDEMPOTENCY: Check if already disabled
+	output, err := mod.systemdCommand("is-enabled", serviceName)
+	if err != nil || strings.TrimSpace(output) == "disabled" {
+		result := L.NewTable()
+		result.RawSetString("changed", lua.LFalse)
+		result.RawSetString("message", lua.LString(fmt.Sprintf("Service %s is already disabled", serviceName)))
+		L.Push(result)
+		return 1
+	}
+	
+	output, err = mod.systemdCommand("disable", serviceName)
 	if err != nil {
 		L.Push(lua.LBool(false))
 		L.Push(lua.LString(err.Error()))
 		return 2
 	}
 	
-	L.Push(lua.LBool(true))
-	L.Push(lua.LString(output))
-	return 2
+	result := L.NewTable()
+	result.RawSetString("changed", lua.LTrue)
+	result.RawSetString("message", lua.LString(fmt.Sprintf("Service %s disabled", serviceName)))
+	L.Push(result)
+	return 1
 }
 
 // statusService gets the status of a systemd service

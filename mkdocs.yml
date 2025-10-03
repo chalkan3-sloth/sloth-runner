@@ -154,6 +154,7 @@ nav:
     - '🚀 Agent Bootstrap': 'en/master-agent-architecture'
     - '🎯 GitOps Example': 'en/gitops-features'
     - '🧠 Core Concepts': 'en/core-concepts'
+    - '🔄 Idempotency 🔥': 'idempotency'
     - '🆕 Latest Features': 'en/enterprise-features'
     - '🗂️ Stack Management': 'en/stack-management'
     - '🎯 Advanced Features': 'en/advanced-features'
