@@ -59,6 +59,65 @@ func ParseLuaScript(ctx context.Context, filePath string, valuesTable *lua.LTabl
 
 	// Extract task groups from TaskDefinitions
 	globalTaskDefs := L.GetGlobal("TaskDefinitions")
+	
+	// After script execution, check if any workflows were defined
+	// If workflows exist, remove default_group to prevent duplicate execution
+	// The new behavior: tasks alone are NOT executable, only workflows can trigger execution
+	if globalTaskDefs.Type() == lua.LTTable {
+		hasWorkflow := false
+		workflowNames := []string{}
+		globalTaskDefs.(*lua.LTable).ForEach(func(k, v lua.LValue) {
+			if k.Type() == lua.LTString && k.String() != "default_group" && v.Type() == lua.LTTable {
+				hasWorkflow = true
+				workflowNames = append(workflowNames, k.String())
+			}
+		})
+		
+		// If workflow exists, remove default_group
+		if hasWorkflow {
+			slog.Info("Workflows detected, removing default_group", "workflows", workflowNames)
+			globalTaskDefs.(*lua.LTable).RawSetString("default_group", lua.LNil)
+		} else {
+			slog.Debug("No workflows detected, keeping default_group")
+		}
+	}
+	
+	// Check for modern DSL tasks (registered with __task_ prefix)
+	var hasModernTasks bool
+	modernTasks := make(map[string]*lua.LTable)
+	L.GetGlobal("_G").(*lua.LTable).ForEach(func(k, v lua.LValue) {
+		if strings.HasPrefix(k.String(), "__task_") && v.Type() == lua.LTTable {
+			taskName := strings.TrimPrefix(k.String(), "__task_")
+			modernTasks[taskName] = v.(*lua.LTable)
+			hasModernTasks = true
+		}
+	})
+	
+	// NEW BEHAVIOR: Tasks alone are NOT executable
+	// Only create default_group if tasks exist AND no workflow was defined
+	// However, we now REQUIRE workflow.define() for execution
+	// So we DON'T create default_group at all - tasks must be in a workflow
+	
+	// Check if workflows were defined
+	hasWorkflowDefined := globalTaskDefs.Type() == lua.LTTable
+	if hasWorkflowDefined {
+		// Check if there are actual workflows (not just default_group)
+		hasActualWorkflow := false
+		globalTaskDefs.(*lua.LTable).ForEach(func(k, v lua.LValue) {
+			if k.Type() == lua.LTString && k.String() != "default_group" && v.Type() == lua.LTTable {
+				hasActualWorkflow = true
+			}
+		})
+		
+		if !hasActualWorkflow && hasModernTasks {
+			// Tasks defined but no workflow - this is not allowed
+			slog.Warn("Tasks defined without workflow.define() - tasks will not be executable")
+			slog.Warn("Please use workflow.define() to create a workflow that includes your tasks")
+		}
+	}
+	
+	// Don't create default_group anymore - workflows are required
+	
 	if globalTaskDefs.Type() != lua.LTTable {
 		return nil, fmt.Errorf("no valid task definitions found. Expected 'TaskDefinitions' table (legacy) or workflows defined with Modern DSL")
 	}
@@ -499,8 +558,8 @@ func RegisterAllModules(L *lua.LState) {
 	// Register Incus module for container/VM management
 	RegisterIncusModule(L)
 	
-	// Register Stow module for dotfiles management
-	stowModule := NewStowModule(nil) // State manager is optional
+	// Register Stow module for dotfiles management (as PreloadModule for require compatibility)
+	stowModule := NewStowModule(nil)
 	L.PreloadModule("stow", stowModule.Loader)
 	
 	// Register Facts module for accessing agent system information
@@ -535,98 +594,67 @@ func RegisterAllModules(L *lua.LState) {
 // RegisterModulesGlobally loads all modules automatically as global variables
 // Users can use pkg.install(), user.create(), etc. without require()
 func RegisterModulesGlobally(L *lua.LState) {
-	modulesToLoad := []string{
-		// Core modules
-		"data",
-		"fs",
-		"net",
-		"exec",
-		"log",
-		
-		// Package and User Management
-		"pkg",
-		"user",
-		
-		// File Operations
-		"file_ops",
-		
-		// Infrastructure as Code
-		"salt",
-		"pulumi",
-		"terraform",
-		
-		// Cloud Native
-		"kubernetes",
-		"helm",
-		
-		// Cloud Providers
-		"aws",
-		"gcp",
-		"azure",
-		"digitalocean",
-		
-		// Version Control
-		"git",
-		
-		// Containers and VMs
-		"docker",
-		"incus",
-		
-		// System Management
-		"state",
-		"systemd",
-		
-		// Infrastructure Testing
-		"infra_test",
-		
-		// Configuration Management
-		"stow",
-		
-		// Programming Languages
-		"python",
-		
-		// Data and Observability
-		// Note: 'database' is registered as 'db' globally by RegisterDatabaseModule
-		"metrics",
-		
-		// Networking and Communication
-		// Note: 'network' is registered globally by RegisterNetworkModule
-		"notifications",
-		
-		// Reliability
-		"reliability",
-		
-		// Parallel Execution
-		"goroutine",
-	}
-	
-	for _, modName := range modulesToLoad {
+	// Helper function to load a module and set it globally
+	loadModuleGlobally := func(modName string, loader lua.LGFunction) {
 		// Skip if module is already registered as global
 		if L.GetGlobal(modName) != lua.LNil {
 			slog.Debug("Module already registered globally", "module", modName)
-			continue
+			return
 		}
 		
-		// Call require() internally to load the module
+		// If loader is provided, call it directly
+		if loader != nil {
+			L.Push(L.NewFunction(loader))
+			L.Call(0, 1)
+			modTable := L.Get(-1)
+			L.Pop(1)
+			L.SetGlobal(modName, modTable)
+			slog.Debug("Module registered globally via loader", "module", modName)
+			return
+		}
+		
+		// Otherwise try require()
 		if err := L.CallByParam(lua.P{
 			Fn:      L.GetGlobal("require"),
 			NRet:    1,
 			Protect: true,
 		}, lua.LString(modName)); err != nil {
 			slog.Warn("Failed to auto-load module globally", "module", modName, "error", err)
-			continue
+			return
 		}
 		
-		// Pop the result and set it as a global variable
 		modTable := L.Get(-1)
 		L.Pop(1)
 		L.SetGlobal(modName, modTable)
-		
-		slog.Debug("Module registered globally", "module", modName)
+		slog.Debug("Module registered globally via require", "module", modName)
 	}
 	
+	// Register all modules with their loaders
+	loadModuleGlobally("pkg", NewPkgModule().Loader)
+	loadModuleGlobally("user", NewUserModule().Loader)
+	loadModuleGlobally("file_ops", NewFileOpsModule().Loader)
+	loadModuleGlobally("salt", ObjectOrientedSaltLoader)
+	loadModuleGlobally("pulumi", NewPulumiModule().Loader)
+	loadModuleGlobally("terraform", NewTerraformModule().Loader)
+	loadModuleGlobally("kubernetes", NewKubernetesModule().Loader)
+	loadModuleGlobally("helm", NewHelmModule().Loader)
+	loadModuleGlobally("azure", NewAzureModule().Loader)
+	loadModuleGlobally("digitalocean", NewDigitalOceanModule().Loader)
+	loadModuleGlobally("docker", NewDockerModule().Loader)
+	loadModuleGlobally("stow", NewStowModule(nil).Loader)
+	loadModuleGlobally("metrics", NewMetricsModule().Loader)
+	loadModuleGlobally("notifications", NewNotificationsModule().Loader)
+	loadModuleGlobally("reliability", NewReliabilityModule().Loader)
+	loadModuleGlobally("state", StateLoader)
+	loadModuleGlobally("systemd", SystemdLoader)
+	loadModuleGlobally("infra_test", NewInfraTestModule().Loader)
+	
+	// Core modules that are already registered globally by their Open* functions
+	// data, fs, net, exec, log, git, python, gcp, aws - already global
+	
 	// SSH, http, strings, math, crypto, time, security, observability are already registered globally
-	// by their respective Register* functions, no need to load them via require()
+	// by their respective Register* functions
+	
 	// db and network are also registered directly as globals
 	
 	// Register stack management functions

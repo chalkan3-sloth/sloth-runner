@@ -2,12 +2,25 @@ package core
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
 	lua "github.com/yuin/gopher-lua"
 )
+
+// execAsTaskUser executes a command, optionally as a specific user using sudo
+func execAsTaskUser(L *lua.LState, command string, args []string) *exec.Cmd {
+	taskUser := L.GetGlobal("__TASK_USER__")
+	if taskUser.Type() == lua.LTString && taskUser.String() != "" && taskUser.String() != "root" {
+		// Run as specific user using sudo
+		allArgs := append([]string{"-u", taskUser.String(), command}, args...)
+		return exec.Command("sudo", allArgs...)
+	}
+	// Run as current user (root)
+	return exec.Command(command, args...)
+}
 
 // RegisterStowModule registers the stow module in the Lua state
 func RegisterStowModule(L *lua.LState) {
@@ -37,7 +50,7 @@ func stowLink(L *lua.LState) int {
 
 	if pkg == "" {
 		L.Push(lua.LBool(false))
-		L.Push(lua.LString("package is required"))
+		L.Push(lua.LString("package name is required"))
 		return 2
 	}
 
@@ -53,7 +66,32 @@ func stowLink(L *lua.LState) int {
 		return 2
 	}
 
-	// Build stow command
+	// IDEMPOTENCY CHECK: Verify if package is already stowed
+	// Check if symlinks already exist by running stow with --no-folding in simulation mode
+	checkArgs := []string{"-d", sourceDir, "-t", targetDir, "-n", "-v"}
+	if noFolding {
+		checkArgs = append(checkArgs, "--no-folding")
+	}
+	checkArgs = append(checkArgs, pkg)
+	
+	checkCmd := execAsTaskUser(L, "stow", checkArgs)
+	checkOutput, checkErr := checkCmd.CombinedOutput()
+	
+	// If simulation shows no changes needed (empty output or already linked), it's already stowed
+	outputStr := strings.TrimSpace(string(checkOutput))
+	if checkErr == nil && (outputStr == "" || strings.Contains(outputStr, "LINK:")) {
+		// Check if links actually exist
+		pkgPath := filepath.Join(sourceDir, pkg)
+		if _, err := os.Stat(pkgPath); err == nil {
+			// Package exists, check if already linked
+			// If stow simulation succeeds with no errors, assume already stowed
+			L.Push(lua.LBool(true))
+			L.Push(lua.LString("package already stowed"))
+			return 2
+		}
+	}
+
+	// Build stow command for actual execution
 	args := []string{"-d", sourceDir, "-t", targetDir}
 
 	if verbose {
@@ -66,10 +104,18 @@ func stowLink(L *lua.LState) int {
 
 	args = append(args, pkg)
 
-	// Execute stow
-	cmd := exec.Command("stow", args...)
+	// Execute stow (as task user if specified)
+	cmd := execAsTaskUser(L, "stow", args)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
+		// Check if error is about existing links (idempotent case)
+		errStr := strings.ToLower(string(output))
+		if strings.Contains(errStr, "already") || strings.Contains(errStr, "existing target") {
+			L.Push(lua.LBool(true))
+			L.Push(lua.LString("package already stowed"))
+			return 2
+		}
+		
 		L.Push(lua.LBool(false))
 		L.Push(lua.LString(fmt.Sprintf("stow link failed: %s - %s", err.Error(), strings.TrimSpace(string(output)))))
 		return 2
@@ -123,8 +169,8 @@ func stowUnlink(L *lua.LState) int {
 
 	args = append(args, pkg)
 
-	// Execute stow
-	cmd := exec.Command("stow", args...)
+	// Execute stow (as task user if specified)
+	cmd := execAsTaskUser(L, "stow", args)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		L.Push(lua.LBool(false))
@@ -189,8 +235,8 @@ func stowRestow(L *lua.LState) int {
 
 	args = append(args, pkg)
 
-	// Execute stow
-	cmd := exec.Command("stow", args...)
+	// Execute stow (as task user if specified)
+	cmd := execAsTaskUser(L, "stow", args)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		L.Push(lua.LBool(false))

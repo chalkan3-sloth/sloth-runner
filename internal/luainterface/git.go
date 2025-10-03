@@ -2,7 +2,9 @@ package luainterface
 
 import (
 	"bytes"
+	"os"
 	"os/exec"
+	"path/filepath"
 
 	lua "github.com/yuin/gopher-lua"
 )
@@ -19,10 +21,30 @@ type GitRepo struct {
 // --- Module Functions ---
 
 // git.clone(url, path) -> repo
+// Idempotent: If path exists and is a git repo, skip clone and return repo object
 func gitClone(L *lua.LState) int {
 	url := L.CheckString(1)
 	path := L.CheckString(2)
 
+	// Check if directory already exists
+	if _, err := os.Stat(path); err == nil {
+		// Directory exists, check if it's a git repository
+		gitDir := filepath.Join(path, ".git")
+		if _, err := os.Stat(gitDir); err == nil {
+			// It's already a git repository, return repo object without cloning
+			repo := &GitRepo{Path: path}
+			ud := L.NewUserData()
+			ud.Value = repo
+			L.SetMetatable(ud, L.GetTypeMetatable(luaGitRepoTypeName))
+			L.Push(ud)
+			return 1
+		}
+		// Directory exists but is not a git repo
+		L.RaiseError("git clone failed: directory '%s' exists but is not a git repository", path)
+		return 0
+	}
+
+	// Directory doesn't exist, proceed with clone
 	cmd := ExecCommand("git", "clone", url, path)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -149,5 +171,19 @@ func GitLoader(L *lua.LState) int {
 }
 
 func OpenGit(L *lua.LState) {
+	// Register as preload module (for backward compatibility with require("git"))
 	L.PreloadModule("git", GitLoader)
+	
+	// Also register as global module (for use without require)
+	// This makes git.clone() available directly
+	mt := L.NewTypeMetatable(luaGitRepoTypeName)
+	L.SetField(mt, "__index", L.NewFunction(repoIndex))
+	L.SetFuncs(mt, gitRepoMethods)
+
+	// Create git table with functions
+	gitTable := L.NewTable()
+	L.SetField(gitTable, "clone", L.NewFunction(gitClone))
+	
+	// Set git as global
+	L.SetGlobal("git", gitTable)
 }
