@@ -139,7 +139,7 @@ func (u *UserModule) parseUserOptions(L *lua.LState, idx int) map[string]string 
 	return options
 }
 
-// createUser creates a new user
+// createUser creates a new user (with idempotency)
 func (u *UserModule) createUser(L *lua.LState) int {
 	var username string
 	var options map[string]string
@@ -168,6 +168,20 @@ func (u *UserModule) createUser(L *lua.LState) int {
 		return 2
 	}
 	fmt.Printf("DEBUG createUser: Creating user %q with options: %+v\n", username, options)
+	
+	// IDEMPOTENCY: Check if user already exists
+	if _, err := user.Lookup(username); err == nil {
+		// User already exists - verify properties match
+		result := L.NewTable()
+		result.RawSetString("changed", lua.LFalse)
+		result.RawSetString("message", lua.LString(fmt.Sprintf("User %s already exists", username)))
+		
+		// Return: success (true), message, result table
+		L.Push(lua.LTrue)
+		L.Push(lua.LString(fmt.Sprintf("User %s already exists", username)))
+		L.Push(result)
+		return 3
+	}
 	
 	var args []string
 	if u.needsSudo() {
@@ -237,9 +251,15 @@ func (u *UserModule) createUser(L *lua.LState) int {
 		}
 	}
 	
+	result := L.NewTable()
+	result.RawSetString("changed", lua.LTrue)
+	result.RawSetString("message", lua.LString(fmt.Sprintf("User %s created successfully", username)))
+	
+	// Return: success (true), message, result table
 	L.Push(lua.LTrue)
-	L.Push(lua.LString(string(output)))
-	return 2
+	L.Push(lua.LString(fmt.Sprintf("User %s created successfully", username)))
+	L.Push(result)
+	return 3
 }
 
 // deleteUser deletes a user

@@ -15,6 +15,33 @@ A **modern task orchestration platform** built with Go and powered by **Lua scri
 
 ## ✨ **Key Features**
 
+### 🔄 **Idempotent Operations**
+*Run your automation safely - operations only make changes when needed!*
+
+All configuration modules (pkg, user, systemd, file_ops, etc.) are **fully idempotent**:
+- ✅ Check current state before making changes
+- ✅ Only modify when needed (e.g., package already installed? Skip it!)
+- ✅ Return `changed=true/false` to know what was modified
+- ✅ Safe to run multiple times without side effects
+
+```lua
+task({
+    name = "configure-server",
+    run = function()
+        -- First run: installs packages, creates user
+        -- Second run: skips everything (already done)
+        local pkg_result = pkg.install({packages = {"nginx", "vim"}})
+        local user_result = user.create({username = "webuser"})
+        
+        if pkg_result.changed or user_result.changed then
+            print("Changes were made")
+        else
+            print("System already in desired state")
+        end
+    end
+})
+```
+
 ### 📦 **Native Modules - No require() Needed!**
 *All native modules are available globally - just use them!*
 

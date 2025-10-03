@@ -272,10 +272,26 @@ func (tr *TaskRunner) executeTaskWithRetries(t *types.Task, inputFromDependencie
 			taskErr = tr.runTask(ctx, t, inputFromDependencies, mu, completedTasks, taskOutputs, runningTasks, session, groupName)
 
 			if taskErr == nil {
-				pterm.Printf("    %s %s\n", 
-					pterm.Green("✓"),
-					pterm.Green("completed"))
-				slog.Debug("task finished", "task", t.Name, "status", "success")
+				// Check if the task output indicates no changes (idempotent)
+				isUnchanged := false
+				if t.Output != nil {
+					changedVal := t.Output.RawGetString("changed")
+					if changedVal.Type() == lua.LTBool && changedVal == lua.LFalse {
+						isUnchanged = true
+					}
+				}
+				
+				if isUnchanged {
+					pterm.Printf("    %s %s\n", 
+						pterm.Yellow("●"),
+						pterm.Yellow("unchanged"))
+					slog.Debug("task finished", "task", t.Name, "status", "unchanged")
+				} else {
+					pterm.Printf("    %s %s\n", 
+						pterm.Green("✓"),
+						pterm.Green("completed"))
+					slog.Debug("task finished", "task", t.Name, "status", "success")
+				}
 				return nil // Success
 			}
 
@@ -792,7 +808,9 @@ func (tr *TaskRunner) Run() error {
 
 				switch action {
 				case "skip":
-					pterm.Info.Printf("Skipping task '%s' by user choice.\n", task.Name)
+					pterm.Printf("    %s %s\n", 
+						pterm.Yellow("⊘"),
+						pterm.Gray("skipped by user"))
 					taskStatus[task.Name] = "Skipped"
 					continue
 				case "abort":
@@ -1117,8 +1135,7 @@ func (tr *TaskRunner) Run() error {
 		return fmt.Errorf("✗ task execution failed")
 	}
 	
-	// Success banner
-	pterm.Println()
+	// Success summary - more compact
 	pterm.Println()
 	successCount := 0
 	skippedCount := 0
@@ -1130,20 +1147,19 @@ func (tr *TaskRunner) Run() error {
 		}
 	}
 	
-	// Success summary with box
-	pterm.Println()
-	pterm.DefaultBox.
-		WithTitle("✅ Workflow Completed").
-		WithTitleTopCenter().
-		WithBoxStyle(pterm.NewStyle(pterm.FgGreen, pterm.Bold)).
-		WithRightPadding(2).
-		WithLeftPadding(2).
-		Printfln("%s tasks completed successfully", 
-			pterm.Green(fmt.Sprintf("%d", successCount)))
+	// Success header
+	pterm.DefaultHeader.
+		WithFullWidth(false).
+		WithBackgroundStyle(pterm.NewStyle(pterm.BgGreen)).
+		WithTextStyle(pterm.NewStyle(pterm.FgBlack, pterm.Bold)).
+		Printfln("✅ Workflow Completed Successfully")
+	pterm.Printf("%s %s tasks completed", 
+		pterm.Green("│"),
+		pterm.Green(fmt.Sprintf("%d", successCount)))
 	if skippedCount > 0 {
-		pterm.Printf("  %s %d tasks skipped\n", pterm.Yellow("⊘"), skippedCount)
+		pterm.Printf(" | %s %d skipped", pterm.Yellow("⊘"), skippedCount)
 	}
-	pterm.Println()
+	pterm.Println("\n")
 	
 	return nil
 }

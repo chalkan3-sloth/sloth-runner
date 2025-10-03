@@ -208,7 +208,7 @@ func (p *PkgModule) buildUpgradeCommand(manager string) []string {
 	return args
 }
 
-// install installs packages
+// install installs packages (with idempotency)
 // pkg.install({packages = "vim"}) or pkg.install({packages = {"vim", "git"}})
 func (p *PkgModule) install(L *lua.LState) int {
 	opts := L.CheckTable(1)
@@ -234,7 +234,24 @@ func (p *PkgModule) install(L *lua.LState) int {
 		return 2
 	}
 	
-	args := p.buildInstallCommand(manager, packages)
+	// IDEMPOTENCY: Check which packages need to be installed
+	var packagesToInstall []string
+	for _, pkg := range packages {
+		if !p.isPackageInstalled(manager, pkg) {
+			packagesToInstall = append(packagesToInstall, pkg)
+		}
+	}
+	
+	// If all packages are already installed, return changed=false
+	if len(packagesToInstall) == 0 {
+		result := L.NewTable()
+		result.RawSetString("changed", lua.LFalse)
+		result.RawSetString("message", lua.LString("All packages already installed"))
+		L.Push(result)
+		return 1
+	}
+	
+	args := p.buildInstallCommand(manager, packagesToInstall)
 	cmd := exec.Command(args[0], args[1:]...)
 	
 	output, err := cmd.CombinedOutput()
@@ -244,12 +261,15 @@ func (p *PkgModule) install(L *lua.LState) int {
 		return 2
 	}
 	
-	L.Push(lua.LTrue)
-	L.Push(lua.LString(string(output)))
-	return 2
+	result := L.NewTable()
+	result.RawSetString("changed", lua.LTrue)
+	result.RawSetString("installed", lua.LString(strings.Join(packagesToInstall, ", ")))
+	result.RawSetString("output", lua.LString(string(output)))
+	L.Push(result)
+	return 1
 }
 
-// remove removes packages
+// remove removes packages (with idempotency)
 // pkg.remove({packages = "vim"}) or pkg.remove({packages = {"vim", "git"}})
 func (p *PkgModule) remove(L *lua.LState) int {
 	opts := L.CheckTable(1)
@@ -275,7 +295,24 @@ func (p *PkgModule) remove(L *lua.LState) int {
 		return 2
 	}
 	
-	args := p.buildRemoveCommand(manager, packages)
+	// IDEMPOTENCY: Check which packages are actually installed
+	var packagesToRemove []string
+	for _, pkg := range packages {
+		if p.isPackageInstalled(manager, pkg) {
+			packagesToRemove = append(packagesToRemove, pkg)
+		}
+	}
+	
+	// If no packages are installed, return changed=false
+	if len(packagesToRemove) == 0 {
+		result := L.NewTable()
+		result.RawSetString("changed", lua.LFalse)
+		result.RawSetString("message", lua.LString("Packages already not installed"))
+		L.Push(result)
+		return 1
+	}
+	
+	args := p.buildRemoveCommand(manager, packagesToRemove)
 	cmd := exec.Command(args[0], args[1:]...)
 	
 	output, err := cmd.CombinedOutput()
@@ -285,9 +322,12 @@ func (p *PkgModule) remove(L *lua.LState) int {
 		return 2
 	}
 	
-	L.Push(lua.LTrue)
-	L.Push(lua.LString(string(output)))
-	return 2
+	result := L.NewTable()
+	result.RawSetString("changed", lua.LTrue)
+	result.RawSetString("removed", lua.LString(strings.Join(packagesToRemove, ", ")))
+	result.RawSetString("output", lua.LString(string(output)))
+	L.Push(result)
+	return 1
 }
 
 // update updates package list
@@ -493,6 +533,32 @@ func (p *PkgModule) list(L *lua.LState) int {
 	return 2
 }
 
+// isPackageInstalled checks if a package is installed (internal helper)
+func (p *PkgModule) isPackageInstalled(manager, pkgName string) bool {
+	var cmd *exec.Cmd
+	switch manager {
+	case "apt", "apt-get":
+		cmd = exec.Command("dpkg", "-l", pkgName)
+	case "yum", "dnf":
+		cmd = exec.Command(manager, "list", "installed", pkgName)
+	case "pacman":
+		cmd = exec.Command(manager, "-Q", pkgName)
+	case "zypper":
+		cmd = exec.Command(manager, "search", "--installed-only", pkgName)
+	case "brew":
+		cmd = exec.Command(manager, "list", pkgName)
+	default:
+		cmd = exec.Command(manager, "list", pkgName)
+	}
+	
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return false
+	}
+	
+	return strings.Contains(string(output), pkgName)
+}
+
 // isInstalled checks if a package is installed
 // pkg.is_installed({package = "nginx"})
 func (p *PkgModule) isInstalled(L *lua.LState) int {
@@ -512,31 +578,7 @@ func (p *PkgModule) isInstalled(L *lua.LState) int {
 		return 2
 	}
 	
-	var cmd *exec.Cmd
-	switch manager {
-	case "apt", "apt-get":
-		cmd = exec.Command("dpkg", "-l", pkgName)
-	case "yum", "dnf":
-		cmd = exec.Command(manager, "list", "installed", pkgName)
-	case "pacman":
-		cmd = exec.Command(manager, "-Q", pkgName)
-	case "zypper":
-		cmd = exec.Command(manager, "search", "--installed-only", pkgName)
-	case "brew":
-		cmd = exec.Command(manager, "list", pkgName)
-	default:
-		cmd = exec.Command(manager, "list", pkgName)
-	}
-	
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		L.Push(lua.LFalse)
-		L.Push(lua.LString("Package not installed"))
-		return 2
-	}
-	
-	// Check if output contains package name
-	if strings.Contains(string(output), pkgName) {
+	if p.isPackageInstalled(manager, pkgName) {
 		L.Push(lua.LTrue)
 		L.Push(lua.LString("Package is installed"))
 		return 2
