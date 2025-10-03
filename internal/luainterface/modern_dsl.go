@@ -410,6 +410,80 @@ func (m *ModernDSL) taskBuilderIndex(L *lua.LState) int {
 			L.Push(ud) // Return self for chaining
 			return 1
 		}))
+	case "run":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			runFunc := L.CheckFunction(2) // The run function
+			
+			// Store the function as the command
+			builder.definition.Command = runFunc
+			
+			// Automatically call build() to register the task
+			// Convert TaskDefinition to Lua table compatible with parseLuaTask
+			taskTable := L.NewTable()
+			
+			// Basic fields
+			taskTable.RawSetString("name", lua.LString(builder.definition.Name))
+			taskTable.RawSetString("description", lua.LString(builder.definition.Description))
+			taskTable.RawSetString("workdir", lua.LString(builder.definition.Workdir))
+			
+			// User field
+			if builder.definition.User != "" {
+				taskTable.RawSetString("user", lua.LString(builder.definition.User))
+			}
+			
+			// Command
+			taskTable.RawSetString("command", runFunc)
+			
+			// Timeout
+			if builder.definition.Timeout > 0 {
+				taskTable.RawSetString("timeout", lua.LString(builder.definition.Timeout.String()))
+			}
+			
+			// Delegation - Convert DelegationConfig to delegate_to
+			if builder.definition.Delegation.Agent != "" {
+				taskTable.RawSetString("delegate_to", lua.LString(builder.definition.Delegation.Agent))
+			}
+			
+			// Add the task to TaskDefinitions global table
+			taskDefs := L.GetGlobal("TaskDefinitions")
+			if taskDefs.Type() != lua.LTTable {
+				taskDefs = L.NewTable()
+				L.SetGlobal("TaskDefinitions", taskDefs)
+			}
+			
+			// Get the current workflow group name or use default
+			groupName := "default_group"
+			if currentWorkflow := L.GetGlobal("__current_workflow_name"); currentWorkflow.Type() == lua.LTString {
+				groupName = currentWorkflow.String()
+			}
+			
+			// Create a task group if it doesn't exist
+			groupTable := taskDefs.(*lua.LTable).RawGetString(groupName)
+			if groupTable.Type() != lua.LTTable {
+				groupTable = L.NewTable()
+				// Set group description if we're in a workflow
+				if groupName != "default_group" {
+					if workflowDesc := L.GetGlobal("__current_workflow_desc"); workflowDesc.Type() == lua.LTString {
+						groupTable.(*lua.LTable).RawSetString("description", workflowDesc)
+					}
+				}
+				// Add tasks table
+				tasksTable := L.NewTable()
+				groupTable.(*lua.LTable).RawSetString("tasks", tasksTable)
+				taskDefs.(*lua.LTable).RawSetString(groupName, groupTable)
+			}
+			
+			// Add the task to the group's tasks table
+			tasksTable := groupTable.(*lua.LTable).RawGetString("tasks")
+			if tasksTable.Type() != lua.LTTable {
+				tasksTable = L.NewTable()
+				groupTable.(*lua.LTable).RawSetString("tasks", tasksTable)
+			}
+			tasksTable.(*lua.LTable).Append(taskTable)
+			
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
 	case "build":
 		L.Push(L.NewFunction(func(L *lua.LState) int {
 			// Convert TaskDefinition to Lua table compatible with parseLuaTask
@@ -807,14 +881,41 @@ func (m *ModernDSL) registerSecurityPolicies(L *lua.LState) {
 
 // Task builder function implementations
 func (m *ModernDSL) taskBuilderFunc(L *lua.LState) int {
-	name := L.CheckString(1)
+	// Accept both task("name") and task({name = "name"}) syntax
+	var name string
+	var description string
+	
+	firstArg := L.Get(1)
+	if firstArg.Type() == lua.LTString {
+		// Old syntax: task("name")
+		name = L.CheckString(1)
+	} else if firstArg.Type() == lua.LTTable {
+		// New syntax: task({name = "name", description = "..."})
+		tbl := L.CheckTable(1)
+		nameVal := tbl.RawGetString("name")
+		if nameVal.Type() != lua.LTString {
+			L.RaiseError("task table must have a 'name' field")
+			return 0
+		}
+		name = nameVal.String()
+		
+		// Optional description
+		descVal := tbl.RawGetString("description")
+		if descVal.Type() == lua.LTString {
+			description = descVal.String()
+		}
+	} else {
+		L.RaiseError("task() expects either a string or a table as first argument")
+		return 0
+	}
 	
 	builder := &TaskBuilder{
 		definition: &TaskDefinition{
-			Name:      name,
-			CreatedAt: time.Now(),
-			UpdatedAt: time.Now(),
-			Metadata:  make(map[string]interface{}), // Initialize metadata map
+			Name:        name,
+			Description: description,
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+			Metadata:    make(map[string]interface{}), // Initialize metadata map
 		},
 		context: &BuildContext{},
 		chain:   []BuildStep{},

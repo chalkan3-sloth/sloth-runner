@@ -36,6 +36,7 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/internal/stack"
 	"github.com/chalkan3-sloth/sloth-runner/internal/state"
 	"github.com/chalkan3-sloth/sloth-runner/internal/taskrunner"
+	"github.com/chalkan3-sloth/sloth-runner/internal/types"
 	"github.com/chalkan3-sloth/sloth-runner/internal/ui"
 	pb "github.com/chalkan3-sloth/sloth-runner/proto"
 	lua "github.com/yuin/gopher-lua"
@@ -2625,6 +2626,33 @@ func (s *agentServer) ExecuteTask(ctx context.Context, in *pb.ExecuteTaskRequest
 	}
 	defer os.Chdir(originalDir) // Restore original directory after execution
 
+	// When a specific task is delegated to the agent, we should execute ONLY that task, not the entire group
+	// Filter the task group to contain only the specified task
+	targetTaskName := in.GetTaskName()
+	if targetTaskName != "" && targetTaskName != "nil" {
+		slog.Info("Agent filtering for specific task", "task", targetTaskName, "group", in.GetTaskGroup())
+		if group, exists := taskGroups[in.GetTaskGroup()]; exists {
+			// Find the specific task
+			var filteredTasks []types.Task
+			for _, task := range group.Tasks {
+				if task.Name == targetTaskName {
+					filteredTasks = append(filteredTasks, task)
+					slog.Info("Found target task for agent execution", "task", task.Name)
+					break
+				}
+			}
+			
+			if len(filteredTasks) > 0 {
+				// Replace the task group with filtered version containing only the target task
+				group.Tasks = filteredTasks
+				taskGroups[in.GetTaskGroup()] = group
+				slog.Info("Agent will execute only the delegated task", "task", targetTaskName)
+			} else {
+				slog.Warn("Target task not found in group, will execute entire group", "task", targetTaskName, "group", in.GetTaskGroup())
+			}
+		}
+	}
+
 	// Create task runner with all groups and let it find the specific task
 	runner := taskrunner.NewTaskRunner(L, taskGroups, in.GetTaskGroup(), nil, false, false, &taskrunner.DefaultSurveyAsker{}, in.GetLuaScript())
 	
@@ -2664,15 +2692,31 @@ func (s *agentServer) ExecuteTask(ctx context.Context, in *pb.ExecuteTaskRequest
 		// Build detailed error message for client
 		var errorDetails strings.Builder
 		
-		// Extract the root cause error message
+		// Extract the root cause error message - look for Lua errors first
 		rootCause := errorMsg
+		stackTrace := ""
 		
 		// Try to find the most specific error message
-		// Look for common error patterns
-		for _, line := range errorLines {
+		// Look for Lua error patterns first (.lua:line: message)
+		for i, line := range errorLines {
 			line = strings.TrimSpace(line)
 			if line == "" {
 				continue
+			}
+			
+			// Look for Lua errors (file.lua:line: message format)
+			if strings.Contains(line, ".lua:") && strings.Contains(line, ": ") {
+				rootCause = line
+				// Collect stack trace if present
+				if i+1 < len(errorLines) && strings.Contains(errorLines[i+1], "stack traceback") {
+					for j := i; j < len(errorLines) && j < i+8; j++ {
+						if stackTrace != "" {
+							stackTrace += "\n║   "
+						}
+						stackTrace += strings.TrimSpace(errorLines[j])
+					}
+				}
+				break
 			}
 			
 			// Check for specific error patterns (like from useradd, apt, etc)
@@ -2680,7 +2724,6 @@ func (s *agentServer) ExecuteTask(ctx context.Context, in *pb.ExecuteTaskRequest
 			   !strings.HasPrefix(line, "- task") && !strings.Contains(line, "failed with errors") {
 				// This looks like an actual error message
 				rootCause = line
-				break
 			}
 		}
 		
@@ -2690,10 +2733,14 @@ func (s *agentServer) ExecuteTask(ctx context.Context, in *pb.ExecuteTaskRequest
 		errorDetails.WriteString(fmt.Sprintf("║ Task  : %s\n", in.GetTaskName()))
 		errorDetails.WriteString(fmt.Sprintf("║ Group : %s\n", in.GetTaskGroup()))
 		errorDetails.WriteString(fmt.Sprintf("╠═══════════════════════════════════════════════════════════════════════════════════\n"))
-		errorDetails.WriteString(fmt.Sprintf("║ 🔴 ROOT CAUSE:\n"))
+		errorDetails.WriteString(fmt.Sprintf("║ 🔴 ERROR:\n"))
 		errorDetails.WriteString(fmt.Sprintf("╠═══════════════════════════════════════════════════════════════════════════════════\n"))
 		errorDetails.WriteString(fmt.Sprintf("║ \n"))
 		errorDetails.WriteString(fmt.Sprintf("║   %s\n", rootCause))
+		if stackTrace != "" {
+			errorDetails.WriteString(fmt.Sprintf("║ \n"))
+			errorDetails.WriteString(fmt.Sprintf("║   %s\n", stackTrace))
+		}
 		errorDetails.WriteString(fmt.Sprintf("║ \n"))
 		errorDetails.WriteString(fmt.Sprintf("╚═══════════════════════════════════════════════════════════════════════════════════\n"))
 		

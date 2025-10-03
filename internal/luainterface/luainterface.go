@@ -446,6 +446,24 @@ func RegisterAllModules(L *lua.LState) {
 	L.PreloadModule("kubernetes", NewKubernetesModule().Loader)
 	L.PreloadModule("helm", NewHelmModule().Loader)
 	
+	// Register cloud provider modules
+	L.PreloadModule("azure", NewAzureModule().Loader)
+	L.PreloadModule("digitalocean", NewDigitalOceanModule().Loader)
+	
+	// Register container management
+	L.PreloadModule("docker", NewDockerModule().Loader)
+	
+	// Register data and monitoring modules
+	RegisterDatabaseModule(L)
+	L.PreloadModule("metrics", NewMetricsModule().Loader)
+	
+	// Register network and notification modules
+	RegisterNetworkModule(L)
+	L.PreloadModule("notifications", NewNotificationsModule().Loader)
+	
+	// Register reliability module
+	L.PreloadModule("reliability", NewReliabilityModule().Loader)
+	
 	// Register state module
 	L.PreloadModule("state", StateLoader)
 	
@@ -518,18 +536,68 @@ func RegisterAllModules(L *lua.LState) {
 // Users can use pkg.install(), user.create(), etc. without require()
 func RegisterModulesGlobally(L *lua.LState) {
 	modulesToLoad := []string{
+		// Core modules
+		"data",
+		"fs",
+		"net",
+		"exec",
+		"log",
+		
+		// Package and User Management
 		"pkg",
 		"user",
+		
+		// File Operations
 		"file_ops",
+		
+		// Infrastructure as Code
 		"salt",
 		"pulumi",
 		"terraform",
+		
+		// Cloud Native
 		"kubernetes",
 		"helm",
+		
+		// Cloud Providers
+		"aws",
+		"gcp",
+		"azure",
+		"digitalocean",
+		
+		// Version Control
+		"git",
+		
+		// Containers and VMs
+		"docker",
+		"incus",
+		
+		// System Management
 		"state",
 		"systemd",
+		
+		// Infrastructure Testing
 		"infra_test",
+		
+		// Configuration Management
 		"stow",
+		
+		// Programming Languages
+		"python",
+		
+		// Data and Observability
+		// Note: 'database' is registered as 'db' globally by RegisterDatabaseModule
+		"metrics",
+		
+		// Networking and Communication
+		// Note: 'network' is registered globally by RegisterNetworkModule
+		"notifications",
+		
+		// Reliability
+		"reliability",
+		
+		// Parallel Execution
+		"goroutine",
 	}
 	
 	for _, modName := range modulesToLoad {
@@ -557,10 +625,9 @@ func RegisterModulesGlobally(L *lua.LState) {
 		slog.Debug("Module registered globally", "module", modName)
 	}
 	
-	// SSH is already registered globally by RegisterSSHModule
-	// http, strings, math, crypto, time, data, security, observability are already global
-	// goroutine is already registered globally
-	// No need to load them again
+	// SSH, http, strings, math, crypto, time, security, observability are already registered globally
+	// by their respective Register* functions, no need to load them via require()
+	// db and network are also registered directly as globals
 	
 	// Register stack management functions
 	RegisterStackFunctions(L)
