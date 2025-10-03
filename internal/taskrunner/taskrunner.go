@@ -578,6 +578,10 @@ t.Output = L.NewTable()
 		taskWorkdir := session.Workdir
 		if t.Workdir != "" {
 			taskWorkdir = t.Workdir
+			// ✅ Create workdir if it doesn't exist
+			if err := os.MkdirAll(taskWorkdir, 0755); err != nil {
+				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to create workdir %s: %w", taskWorkdir, err)}
+			}
 		}
 		t.Params["workdir"] = taskWorkdir
 
@@ -1132,6 +1136,18 @@ func (tr *TaskRunner) Run() error {
 		}
 		
 		pterm.Error.Println("\n════════════════════════════════════════════════════════════════════════════")
+		
+		// Build combined error message with all error details for remote propagation
+		var allErrors []string
+		for _, result := range tr.Results {
+			if result.Error != nil {
+				allErrors = append(allErrors, result.Error.Error())
+			}
+		}
+		
+		if len(allErrors) > 0 {
+			return fmt.Errorf("✗ task execution failed:\n%s", strings.Join(allErrors, "\n"))
+		}
 		
 		return fmt.Errorf("✗ task execution failed")
 	}
