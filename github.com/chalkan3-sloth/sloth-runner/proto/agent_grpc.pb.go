@@ -207,6 +207,7 @@ const (
 	AgentRegistry_UnregisterAgent_FullMethodName = "/agent.AgentRegistry/UnregisterAgent"
 	AgentRegistry_ExecuteCommand_FullMethodName  = "/agent.AgentRegistry/ExecuteCommand"
 	AgentRegistry_Heartbeat_FullMethodName       = "/agent.AgentRegistry/Heartbeat"
+	AgentRegistry_GetAgentInfo_FullMethodName    = "/agent.AgentRegistry/GetAgentInfo"
 )
 
 // AgentRegistryClient is the client API for AgentRegistry service.
@@ -219,6 +220,7 @@ type AgentRegistryClient interface {
 	UnregisterAgent(ctx context.Context, in *UnregisterAgentRequest, opts ...grpc.CallOption) (*UnregisterAgentResponse, error)
 	ExecuteCommand(ctx context.Context, in *ExecuteCommandRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamOutputResponse], error)
 	Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
+	GetAgentInfo(ctx context.Context, in *GetAgentInfoRequest, opts ...grpc.CallOption) (*GetAgentInfoResponse, error)
 }
 
 type agentRegistryClient struct {
@@ -298,6 +300,16 @@ func (c *agentRegistryClient) Heartbeat(ctx context.Context, in *HeartbeatReques
 	return out, nil
 }
 
+func (c *agentRegistryClient) GetAgentInfo(ctx context.Context, in *GetAgentInfoRequest, opts ...grpc.CallOption) (*GetAgentInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAgentInfoResponse)
+	err := c.cc.Invoke(ctx, AgentRegistry_GetAgentInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AgentRegistryServer is the server API for AgentRegistry service.
 // All implementations must embed UnimplementedAgentRegistryServer
 // for forward compatibility.
@@ -308,6 +320,7 @@ type AgentRegistryServer interface {
 	UnregisterAgent(context.Context, *UnregisterAgentRequest) (*UnregisterAgentResponse, error)
 	ExecuteCommand(*ExecuteCommandRequest, grpc.ServerStreamingServer[StreamOutputResponse]) error
 	Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
+	GetAgentInfo(context.Context, *GetAgentInfoRequest) (*GetAgentInfoResponse, error)
 	mustEmbedUnimplementedAgentRegistryServer()
 }
 
@@ -335,6 +348,9 @@ func (UnimplementedAgentRegistryServer) ExecuteCommand(*ExecuteCommandRequest, g
 }
 func (UnimplementedAgentRegistryServer) Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Heartbeat not implemented")
+}
+func (UnimplementedAgentRegistryServer) GetAgentInfo(context.Context, *GetAgentInfoRequest) (*GetAgentInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAgentInfo not implemented")
 }
 func (UnimplementedAgentRegistryServer) mustEmbedUnimplementedAgentRegistryServer() {}
 func (UnimplementedAgentRegistryServer) testEmbeddedByValue()                       {}
@@ -458,6 +474,24 @@ func _AgentRegistry_Heartbeat_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentRegistry_GetAgentInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAgentInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentRegistryServer).GetAgentInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentRegistry_GetAgentInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentRegistryServer).GetAgentInfo(ctx, req.(*GetAgentInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AgentRegistry_ServiceDesc is the grpc.ServiceDesc for AgentRegistry service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -484,6 +518,10 @@ var AgentRegistry_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Heartbeat",
 			Handler:    _AgentRegistry_Heartbeat_Handler,
+		},
+		{
+			MethodName: "GetAgentInfo",
+			Handler:    _AgentRegistry_GetAgentInfo_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

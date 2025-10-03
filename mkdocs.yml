@@ -195,6 +195,7 @@ nav:
     - '🔄 Idempotency': 'idempotency'
   - '📖 Guides':
     - '✨ Using Values with delegate_to 🔥': 'guides/values-delegate-to'
+    - '👤 Running Tasks as Different Users 🔥': 'features/user-field'
   - '🎭 Examples': 'en/advanced-examples'
   - '⚡ Enterprise Features':
     - '🤖 AI Integration': 'en/ai-features'

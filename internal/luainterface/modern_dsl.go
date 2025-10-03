@@ -55,6 +55,7 @@ Version         string                 `json:"version"`
 Tags            []string               `json:"tags"`
 Category        string                 `json:"category"`
 Workdir         string                 `json:"workdir"` // ✅ Added workdir field
+User            string                 `json:"user"`    // ✅ User to run the task as (default: root)
 
 // Execution properties
 Command         interface{}            `json:"command"`
@@ -283,6 +284,13 @@ func (m *ModernDSL) taskBuilderIndex(L *lua.LState) int {
 			L.Push(ud) // Return self for chaining
 			return 1
 		}))
+	case "user":
+		L.Push(L.NewFunction(func(L *lua.LState) int {
+			userName := L.CheckString(2) // Argument position 2 (1 is self)
+			builder.definition.User = userName
+			L.Push(ud) // Return self for chaining
+			return 1
+		}))
 	case "depends_on":
 		L.Push(L.NewFunction(func(L *lua.LState) int {
 			_ = L.CheckAny(2) // deps variable - simplified for now
@@ -411,6 +419,11 @@ func (m *ModernDSL) taskBuilderIndex(L *lua.LState) int {
 			taskTable.RawSetString("name", lua.LString(builder.definition.Name))
 			taskTable.RawSetString("description", lua.LString(builder.definition.Description))
 			taskTable.RawSetString("workdir", lua.LString(builder.definition.Workdir))
+			
+			// User field
+			if builder.definition.User != "" {
+				taskTable.RawSetString("user", lua.LString(builder.definition.User))
+			}
 			
 			// Command
 			if builder.definition.Command != nil {
@@ -602,6 +615,11 @@ func (m *ModernDSL) buildAndRegisterWorkflow(L *lua.LState, builder *WorkflowBui
 			// Set workdir if specified
 			if taskDef.Workdir != "" {
 				legacyTask.RawSetString("workdir", lua.LString(taskDef.Workdir))
+			}
+			
+			// Set user if specified
+			if taskDef.User != "" {
+				legacyTask.RawSetString("user", lua.LString(taskDef.User))
 			}
 			
 			// Convert command

@@ -434,6 +434,7 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 			TaskGroup:   groupName,
 			LuaScript:   agentScript,
 			Workspace:   buf.Bytes(),
+			User:        t.User, // ✅ Pass user to agent
 		})
 		if err != nil {
 			pterm.Error.Println("═════════════════════════════════════════════════════════════════════════════════════")
