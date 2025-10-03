@@ -554,6 +554,9 @@ func RegisterModulesGlobally(L *lua.LState) {
 	// http, strings, math, crypto, time, data, security, observability are already global
 	// goroutine is already registered globally
 	// No need to load them again
+	
+	// Register stack management functions
+	RegisterStackFunctions(L)
 }
 
 // --- Data Module ---
