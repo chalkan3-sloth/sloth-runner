@@ -12,6 +12,7 @@
 #   --port PORT              Agent port (default: 50051)
 #   --bind-address IP        IP address for the agent to bind to
 #   --report-address IP      IP address to report to master (useful for NAT/port forwarding)
+#   --incus HOST_IP:PORT     Auto-configure for Incus container (sets bind-address to 0.0.0.0 and report-address)
 #   --user USER              User to run the agent as (default: current user)
 #   --install-dir DIR        Installation directory (default: /usr/local/bin)
 #   --no-systemd            Skip systemd service creation
@@ -91,7 +92,8 @@ ${GREEN}Bootstrap Options:${NC}
   --master HOST:PORT       Master server address (default: localhost:50053)
   --port PORT              Agent port (default: 50051)
   --bind-address IP        IP address for agent to bind to (auto-detected if not set)
-  --report-address IP      IP address to report to master (useful for NAT/port forwarding)
+  --report-address IP:PORT IP address to report to master (useful for NAT/port forwarding)
+  --incus HOST_IP:PORT     Auto-configure for Incus container (sets bind to 0.0.0.0, report to HOST_IP:PORT)
   --user USER              User to run the agent as (default: $USER)
   --install-dir DIR        Installation directory (default: /usr/local/bin)
   --version VERSION        Install specific version (default: latest)
@@ -104,19 +106,44 @@ ${GREEN}Examples:${NC}
   # Basic installation with agent name
   bash <(curl -fsSL $INSTALL_SCRIPT_URL) --name myagent
 
+  # Incus container setup (auto-configures bind and report addresses)
+  bash <(curl -fsSL $INSTALL_SCRIPT_URL) \\
+    --name main \\
+    --master 192.168.1.29:50053 \\
+    --incus 192.168.1.17:50052
+
   # Full configuration with port forwarding/NAT
   bash <(curl -fsSL $INSTALL_SCRIPT_URL) \\
     --name production-agent-1 \\
     --master 192.168.1.10:50053 \\
     --port 50051 \\
     --bind-address 0.0.0.0 \\
-    --report-address 192.168.1.20
+    --report-address 192.168.1.20:50052
 
   # User installation (no systemd, no sudo)
   bash <(curl -fsSL $INSTALL_SCRIPT_URL) \\
     --name myagent \\
     --no-sudo \\
     --no-systemd
+
+${GREEN}Incus/LXC Container Setup:${NC}
+
+  When deploying in Incus/LXC containers, use --incus flag:
+
+  1. On the host, configure port forwarding:
+     sudo incus config device add <container> sloth-proxy proxy \\
+       listen=tcp:0.0.0.0:50052 connect=tcp:127.0.0.1:50051
+
+  2. Inside the container, run bootstrap:
+     bash <(curl -fsSL $INSTALL_SCRIPT_URL) \\
+       --name main \\
+       --master <master_ip>:50053 \\
+       --incus <host_ip>:50052
+
+  This automatically sets:
+    --bind-address 0.0.0.0  (listen on all interfaces)
+    --report-address <host_ip>:50052  (master connects via host)
+
 
 ${GREEN}Post-Installation:${NC}
 
@@ -155,6 +182,13 @@ while [[ $# -gt 0 ]]; do
             ;;
         --report-address)
             REPORT_ADDRESS="$2"
+            shift 2
+            ;;
+        --incus)
+            # Auto-configure for Incus container
+            BIND_ADDRESS="0.0.0.0"
+            REPORT_ADDRESS="$2"
+            info "Incus mode: bind-address=0.0.0.0, report-address=$2"
             shift 2
             ;;
         --user)
@@ -240,6 +274,15 @@ detect_bind_address() {
         else
             info "Detected bind address: $BIND_ADDRESS"
         fi
+    elif [ "$BIND_ADDRESS" = "0.0.0.0" ]; then
+        info "Using bind address: 0.0.0.0 (all interfaces)"
+    else
+        info "Using bind address: $BIND_ADDRESS"
+    fi
+    
+    # If report address is set, show it
+    if [ -n "$REPORT_ADDRESS" ]; then
+        info "Using report address: $REPORT_ADDRESS (for master connection)"
     fi
 }
 
