@@ -7,6 +7,18 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+// execAsTaskUserGit executes a git command, optionally as a specific user using sudo
+func execAsTaskUserGit(L *lua.LState, args []string) *exec.Cmd {
+	taskUser := L.GetGlobal("__TASK_USER__")
+	if taskUser.Type() == lua.LTString && taskUser.String() != "" && taskUser.String() != "root" {
+		// Run as specific user using sudo
+		allArgs := append([]string{"-u", taskUser.String(), "git"}, args...)
+		return exec.Command("sudo", allArgs...)
+	}
+	// Run as current user (root)
+	return exec.Command("git", args...)
+}
+
 // RegisterGitModule registers the git module in the Lua state
 func RegisterGitModule(L *lua.LState) {
 	// Create git module table
@@ -60,8 +72,8 @@ func gitClone(L *lua.LState) int {
 	
 	args = append(args, url, localPath)
 
-	// Execute git clone
-	cmd := exec.Command("git", args...)
+	// Execute git clone (as task user if specified)
+	cmd := execAsTaskUserGit(L, args)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		L.Push(lua.LNil)

@@ -1,6 +1,7 @@
 package luainterface
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"sync"
@@ -417,70 +418,6 @@ func (m *ModernDSL) taskBuilderIndex(L *lua.LState) int {
 			// Store the function as the command
 			builder.definition.Command = runFunc
 			
-			// Automatically call build() to register the task
-			// Convert TaskDefinition to Lua table compatible with parseLuaTask
-			taskTable := L.NewTable()
-			
-			// Basic fields
-			taskTable.RawSetString("name", lua.LString(builder.definition.Name))
-			taskTable.RawSetString("description", lua.LString(builder.definition.Description))
-			taskTable.RawSetString("workdir", lua.LString(builder.definition.Workdir))
-			
-			// User field
-			if builder.definition.User != "" {
-				taskTable.RawSetString("user", lua.LString(builder.definition.User))
-			}
-			
-			// Command
-			taskTable.RawSetString("command", runFunc)
-			
-			// Timeout
-			if builder.definition.Timeout > 0 {
-				taskTable.RawSetString("timeout", lua.LString(builder.definition.Timeout.String()))
-			}
-			
-			// Delegation - Convert DelegationConfig to delegate_to
-			if builder.definition.Delegation.Agent != "" {
-				taskTable.RawSetString("delegate_to", lua.LString(builder.definition.Delegation.Agent))
-			}
-			
-			// Add the task to TaskDefinitions global table
-			taskDefs := L.GetGlobal("TaskDefinitions")
-			if taskDefs.Type() != lua.LTTable {
-				taskDefs = L.NewTable()
-				L.SetGlobal("TaskDefinitions", taskDefs)
-			}
-			
-			// Get the current workflow group name or use default
-			groupName := "default_group"
-			if currentWorkflow := L.GetGlobal("__current_workflow_name"); currentWorkflow.Type() == lua.LTString {
-				groupName = currentWorkflow.String()
-			}
-			
-			// Create a task group if it doesn't exist
-			groupTable := taskDefs.(*lua.LTable).RawGetString(groupName)
-			if groupTable.Type() != lua.LTTable {
-				groupTable = L.NewTable()
-				// Set group description if we're in a workflow
-				if groupName != "default_group" {
-					if workflowDesc := L.GetGlobal("__current_workflow_desc"); workflowDesc.Type() == lua.LTString {
-						groupTable.(*lua.LTable).RawSetString("description", workflowDesc)
-					}
-				}
-				// Add tasks table
-				tasksTable := L.NewTable()
-				groupTable.(*lua.LTable).RawSetString("tasks", tasksTable)
-				taskDefs.(*lua.LTable).RawSetString(groupName, groupTable)
-			}
-			
-			// Add the task to the group's tasks table
-			tasksTable := groupTable.(*lua.LTable).RawGetString("tasks")
-			if tasksTable.Type() != lua.LTTable {
-				tasksTable = L.NewTable()
-				groupTable.(*lua.LTable).RawSetString("tasks", tasksTable)
-			}
-			tasksTable.(*lua.LTable).Append(taskTable)
-			
 			L.Push(ud) // Return self for chaining
 			return 1
 		}))
@@ -514,44 +451,14 @@ func (m *ModernDSL) taskBuilderIndex(L *lua.LState) int {
 				taskTable.RawSetString("delegate_to", lua.LString(builder.definition.Delegation.Agent))
 			}
 			
-			// Add the task to TaskDefinitions global table
-			taskDefs := L.GetGlobal("TaskDefinitions")
-			if taskDefs.Type() != lua.LTTable {
-				taskDefs = L.NewTable()
-				L.SetGlobal("TaskDefinitions", taskDefs)
-			}
+			// NEW BEHAVIOR: Tasks are only registered globally for workflows
+			// They are NOT added to any group automatically
+			// Only workflow.define() can include tasks in a group for execution
 			
-			// Get the current workflow group name or use default
-			groupName := "default_group"
-			if currentWorkflow := L.GetGlobal("__current_workflow_name"); currentWorkflow.Type() == lua.LTString {
-				groupName = currentWorkflow.String()
-			}
+			// Register task globally for workflow to reference
+			L.SetGlobal(fmt.Sprintf("__task_%s", builder.definition.Name), taskTable)
 			
-			// Create a task group if it doesn't exist
-			groupTable := taskDefs.(*lua.LTable).RawGetString(groupName)
-			if groupTable.Type() != lua.LTTable {
-				groupTable = L.NewTable()
-				// Set group description if we're in a workflow
-				if groupName != "default_group" {
-					if workflowDesc := L.GetGlobal("__current_workflow_desc"); workflowDesc.Type() == lua.LTString {
-						groupTable.(*lua.LTable).RawSetString("description", workflowDesc)
-					}
-				}
-				// Add tasks table
-				tasksTable := L.NewTable()
-				groupTable.(*lua.LTable).RawSetString("tasks", tasksTable)
-				taskDefs.(*lua.LTable).RawSetString(groupName, groupTable)
-			}
-			
-			// Add the task to the group's tasks table
-			tasksTable := groupTable.(*lua.LTable).RawGetString("tasks")
-			if tasksTable.Type() != lua.LTTable {
-				tasksTable = L.NewTable()
-				groupTable.(*lua.LTable).RawSetString("tasks", tasksTable)
-			}
-			tasksTable.(*lua.LTable).RawSetString(builder.definition.Name, taskTable)
-			
-			// Return the built task table for backward compatibility
+			// Return the built task as UserData for workflow.define() to use
 			taskUd := L.NewUserData()
 			taskUd.Value = builder.definition
 			L.Push(taskUd)
@@ -762,6 +669,10 @@ func (m *ModernDSL) buildAndRegisterWorkflow(L *lua.LState, builder *WorkflowBui
 		groupTable.RawSetString("on_start", builder.onStart)
 	}
 	
+	// Remove default_group if it exists (to prevent duplicate execution)
+	// When workflow.define() is used, we only want the workflow group, not default_group
+	taskDefs.(*lua.LTable).RawSetString("default_group", lua.LNil)
+	
 	// Add to TaskDefinitions
 	taskDefs.(*lua.LTable).RawSetString(builder.name, groupTable)
 }
@@ -884,13 +795,16 @@ func (m *ModernDSL) taskBuilderFunc(L *lua.LState) int {
 	// Accept both task("name") and task({name = "name"}) syntax
 	var name string
 	var description string
+	var delegateTo string
+	var user string
+	var runFunc *lua.LFunction
 	
 	firstArg := L.Get(1)
 	if firstArg.Type() == lua.LTString {
 		// Old syntax: task("name")
 		name = L.CheckString(1)
 	} else if firstArg.Type() == lua.LTTable {
-		// New syntax: task({name = "name", description = "..."})
+		// New syntax: task({name = "name", description = "...", delegate_to = "...", user = "...", run = function() ... })
 		tbl := L.CheckTable(1)
 		nameVal := tbl.RawGetString("name")
 		if nameVal.Type() != lua.LTString {
@@ -904,6 +818,24 @@ func (m *ModernDSL) taskBuilderFunc(L *lua.LState) int {
 		if descVal.Type() == lua.LTString {
 			description = descVal.String()
 		}
+		
+		// Optional delegate_to
+		delegateToVal := tbl.RawGetString("delegate_to")
+		if delegateToVal.Type() == lua.LTString {
+			delegateTo = delegateToVal.String()
+		}
+		
+		// Optional user
+		userVal := tbl.RawGetString("user")
+		if userVal.Type() == lua.LTString {
+			user = userVal.String()
+		}
+		
+		// Optional run function
+		runVal := tbl.RawGetString("run")
+		if runVal.Type() == lua.LTFunction {
+			runFunc = runVal.(*lua.LFunction)
+		}
 	} else {
 		L.RaiseError("task() expects either a string or a table as first argument")
 		return 0
@@ -913,12 +845,56 @@ func (m *ModernDSL) taskBuilderFunc(L *lua.LState) int {
 		definition: &TaskDefinition{
 			Name:        name,
 			Description: description,
+			User:        user,
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 			Metadata:    make(map[string]interface{}), // Initialize metadata map
 		},
 		context: &BuildContext{},
 		chain:   []BuildStep{},
+	}
+	
+	// Set delegate_to if provided
+	if delegateTo != "" {
+		builder.definition.Delegation.Agent = delegateTo
+	}
+	
+	// If run function is provided, immediately build the task
+	if runFunc != nil {
+		builder.definition.Command = runFunc
+		
+		// Convert TaskDefinition to Lua table compatible with parseLuaTask
+		taskTable := L.NewTable()
+		
+		// Basic fields
+		taskTable.RawSetString("name", lua.LString(builder.definition.Name))
+		taskTable.RawSetString("description", lua.LString(builder.definition.Description))
+		taskTable.RawSetString("workdir", lua.LString(builder.definition.Workdir))
+		
+		// User field
+		if builder.definition.User != "" {
+			taskTable.RawSetString("user", lua.LString(builder.definition.User))
+		}
+		
+		// Command
+		taskTable.RawSetString("command", runFunc)
+		
+		// Timeout
+		if builder.definition.Timeout > 0 {
+			taskTable.RawSetString("timeout", lua.LString(builder.definition.Timeout.String()))
+		}
+		
+		// Delegation - Convert DelegationConfig to delegate_to
+		if builder.definition.Delegation.Agent != "" {
+			taskTable.RawSetString("delegate_to", lua.LString(builder.definition.Delegation.Agent))
+		}
+		
+		// Register task globally for workflow
+		L.SetGlobal(fmt.Sprintf("__task_%s", name), taskTable)
+		
+		// Return nil (task was auto-built)
+		L.Push(lua.LNil)
+		return 1
 	}
 	
 	m.mu.Lock()
@@ -1054,6 +1030,10 @@ func (m *ModernDSL) workflowDefineFunc(L *lua.LState) int {
 			L.SetGlobal("TaskDefinitions", taskDefs)
 		}
 		
+		// Remove default_group if it exists (to prevent duplicate execution)
+		// When workflow.define() is used, we only want the workflow group, not default_group
+		taskDefs.(*lua.LTable).RawSetString("default_group", lua.LNil)
+		
 		// Create group structure compatible with legacy parser
 		groupTable := L.NewTable()
 		
@@ -1081,6 +1061,16 @@ func (m *ModernDSL) workflowDefineFunc(L *lua.LState) int {
 							if luaValue, ok := taskDef.Command.(lua.LValue); ok {
 								legacyTask.RawSetString("command", luaValue)
 							}
+						}
+						
+						// Add user if specified
+						if taskDef.User != "" {
+							legacyTask.RawSetString("user", lua.LString(taskDef.User))
+						}
+						
+						// Add workdir if specified
+						if taskDef.Workdir != "" {
+							legacyTask.RawSetString("workdir", lua.LString(taskDef.Workdir))
 						}
 						
 						// Convert delegate_to (FIX for remote execution)

@@ -2562,6 +2562,12 @@ func (s *agentServer) ExecuteTask(ctx context.Context, in *pb.ExecuteTaskRequest
 	L := lua.NewState()
 	defer L.Close()
 	
+	// Set task user as global variable for modules to use
+	if in.GetUser() != "" {
+		L.SetGlobal("__TASK_USER__", lua.LString(in.GetUser()))
+		slog.Info("Task will run with user context", "user", in.GetUser(), "task", in.GetTaskName())
+	}
+	
 	// Register all modules
 	luainterface.RegisterAllModules(L)
 	luainterface.OpenImport(L, scriptPath)
