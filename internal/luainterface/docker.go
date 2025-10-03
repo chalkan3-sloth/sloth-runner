@@ -63,8 +63,9 @@ func (mod *DockerModule) goDockerExec(L *lua.LState, args []string) int {
 	result.RawSetString("exit_code", lua.LNumber(exitCode))
 	result.RawSetString("success", lua.LBool(exitCode == 0))
 
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // docker.build({tag="my-image:latest", path=".", dockerfile="Dockerfile", build_args={...}})

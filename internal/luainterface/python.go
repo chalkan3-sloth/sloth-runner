@@ -91,8 +91,9 @@ func venvExec(L *lua.LState) int {
 	result.RawSetString("success", lua.LBool(success))
 	result.RawSetString("stdout", lua.LString(stdout))
 	result.RawSetString("stderr", lua.LString(stderr))
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // Methods that will be registered for the types.PythonVenv type in Lua.

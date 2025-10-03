@@ -98,8 +98,9 @@ func (n *NetworkModule) luaPing(L *lua.LState) int {
 		}
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (n *NetworkModule) luaPortCheck(L *lua.LState) int {
@@ -191,8 +192,9 @@ func (n *NetworkModule) luaTelnet(L *lua.LState) int {
 		L.SetField(result, "banner", lua.LString(string(buffer[:bytesRead])))
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // DNS operations
@@ -231,8 +233,9 @@ func (n *NetworkModule) luaDNSLookup(L *lua.LState) int {
 		result.RawSetInt(i+1, lua.LString(ip))
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (n *NetworkModule) luaReverseDNS(L *lua.LState) int {
@@ -250,8 +253,9 @@ func (n *NetworkModule) luaReverseDNS(L *lua.LState) int {
 		result.RawSetInt(i+1, lua.LString(host))
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (n *NetworkModule) luaMXLookup(L *lua.LState) int {
@@ -272,8 +276,9 @@ func (n *NetworkModule) luaMXLookup(L *lua.LState) int {
 		result.RawSetInt(i+1, record)
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // Network information
@@ -307,8 +312,9 @@ func (n *NetworkModule) luaInterfaces(L *lua.LState) int {
 		result.RawSetInt(i+1, ifaceTable)
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (n *NetworkModule) luaPublicIP(L *lua.LState) int {
@@ -383,8 +389,9 @@ func (n *NetworkModule) luaTraceroute(L *lua.LState) int {
 		L.SetField(result, "hops", hops)
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (n *NetworkModule) luaWhois(L *lua.LState) int {
@@ -434,8 +441,9 @@ func (n *NetworkModule) luaSSLCheck(L *lua.LState) int {
 		}
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // Speed tests
@@ -488,6 +496,7 @@ func (n *NetworkModule) luaLatencyTest(L *lua.LState) int {
 	L.SetField(result, "total_tests", lua.LNumber(count))
 	L.SetField(result, "successful_tests", lua.LNumber(successCount))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }

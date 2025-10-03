@@ -96,8 +96,9 @@ func (li *LuaInterface) luaAIOptimizeCommand(L *lua.LState) int {
 	}
 	L.SetField(result, "resource_savings", savings)
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // luaAIPredictFailure predicts failure probability for a task
@@ -147,8 +148,9 @@ func (li *LuaInterface) luaAIPredictFailure(L *lua.LState) int {
 	}
 	L.SetField(result, "recommendations", recommendations)
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // luaAIFindSimilarTasks finds similar tasks
@@ -184,8 +186,9 @@ func (li *LuaInterface) luaAIFindSimilarTasks(L *lua.LState) int {
 		result.RawSetInt(i+1, taskTable)
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // luaAIGetTaskHistory gets execution history for a command
@@ -223,8 +226,9 @@ func (li *LuaInterface) luaAIGetTaskHistory(L *lua.LState) int {
 		result.RawSetInt(i+1, execTable)
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // luaAIRecordExecution records a task execution for learning
@@ -317,8 +321,9 @@ func (li *LuaInterface) luaAIGetTaskStats(L *lua.LState) int {
 	L.SetField(result, "total_time", lua.LString(stats.TotalTime.String()))
 	L.SetField(result, "avg_time", lua.LString(stats.AvgTime.String()))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // luaAIConfigure configures AI settings
@@ -371,8 +376,9 @@ func (li *LuaInterface) luaAIGetConfig(L *lua.LState) int {
 	L.SetField(result, "failure_prediction", lua.LBool(config.FailurePrediction))
 	L.SetField(result, "auto_optimize", lua.LBool(config.AutoOptimize))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // luaAIAnalyzePerformance analyzes task performance patterns
@@ -413,8 +419,9 @@ func (li *LuaInterface) luaAIAnalyzePerformance(L *lua.LState) int {
 	}
 	L.SetField(result, "insights", insights)
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // luaAIGenerateInsights generates AI-powered insights
@@ -443,8 +450,9 @@ func (li *LuaInterface) luaAIGenerateInsights(L *lua.LState) int {
 		result.RawSetInt(i+1, lua.LString(insight))
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // getAIIntelligence gets or creates AI intelligence instance

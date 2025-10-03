@@ -185,8 +185,9 @@ func (mod *SystemdModule) startService(L *lua.LState) int {
 		result := L.NewTable()
 		result.RawSetString("changed", lua.LFalse)
 		result.RawSetString("message", lua.LString(fmt.Sprintf("Service %s is already active", serviceName)))
+		L.Push(lua.LTrue)
 		L.Push(result)
-		return 1
+		return 2
 	}
 	
 	output, err = mod.systemdCommand("start", serviceName)
@@ -199,8 +200,9 @@ func (mod *SystemdModule) startService(L *lua.LState) int {
 	result := L.NewTable()
 	result.RawSetString("changed", lua.LTrue)
 	result.RawSetString("message", lua.LString(fmt.Sprintf("Service %s started", serviceName)))
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // stopService stops a systemd service (with idempotency)
@@ -221,8 +223,9 @@ func (mod *SystemdModule) stopService(L *lua.LState) int {
 		result := L.NewTable()
 		result.RawSetString("changed", lua.LFalse)
 		result.RawSetString("message", lua.LString(fmt.Sprintf("Service %s is already inactive", serviceName)))
+		L.Push(lua.LTrue)
 		L.Push(result)
-		return 1
+		return 2
 	}
 	
 	output, err = mod.systemdCommand("stop", serviceName)
@@ -235,8 +238,9 @@ func (mod *SystemdModule) stopService(L *lua.LState) int {
 	result := L.NewTable()
 	result.RawSetString("changed", lua.LTrue)
 	result.RawSetString("message", lua.LString(fmt.Sprintf("Service %s stopped", serviceName)))
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // restartService restarts a systemd service
@@ -305,8 +309,9 @@ func (mod *SystemdModule) enableService(L *lua.LState) int {
 		result := L.NewTable()
 		result.RawSetString("changed", lua.LFalse)
 		result.RawSetString("message", lua.LString(fmt.Sprintf("Service %s is already enabled", serviceName)))
+		L.Push(lua.LTrue)
 		L.Push(result)
-		return 1
+		return 2
 	}
 	
 	output, err = mod.systemdCommand("enable", serviceName)
@@ -319,8 +324,9 @@ func (mod *SystemdModule) enableService(L *lua.LState) int {
 	result := L.NewTable()
 	result.RawSetString("changed", lua.LTrue)
 	result.RawSetString("message", lua.LString(fmt.Sprintf("Service %s enabled", serviceName)))
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // disableService disables a systemd service (with idempotency)
@@ -341,8 +347,9 @@ func (mod *SystemdModule) disableService(L *lua.LState) int {
 		result := L.NewTable()
 		result.RawSetString("changed", lua.LFalse)
 		result.RawSetString("message", lua.LString(fmt.Sprintf("Service %s is already disabled", serviceName)))
+		L.Push(lua.LTrue)
 		L.Push(result)
-		return 1
+		return 2
 	}
 	
 	output, err = mod.systemdCommand("disable", serviceName)
@@ -355,8 +362,9 @@ func (mod *SystemdModule) disableService(L *lua.LState) int {
 	result := L.NewTable()
 	result.RawSetString("changed", lua.LTrue)
 	result.RawSetString("message", lua.LString(fmt.Sprintf("Service %s disabled", serviceName)))
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // statusService gets the status of a systemd service

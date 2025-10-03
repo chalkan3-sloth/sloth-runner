@@ -202,8 +202,9 @@ func (db *DatabaseModule) luaQuery(L *lua.LState) int {
 		return 2
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (db *DatabaseModule) luaExec(L *lua.LState) int {

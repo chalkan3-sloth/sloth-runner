@@ -181,8 +181,9 @@ func (o *ObservabilityModule) luaGetTrace(L *lua.LState) int {
 	}
 	
 	result := o.traceToLuaTable(L, trace)
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (o *ObservabilityModule) luaListTraces(L *lua.LState) int {
@@ -211,8 +212,9 @@ func (o *ObservabilityModule) luaListTraces(L *lua.LState) int {
 		}
 	}
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // Span management
@@ -492,8 +494,9 @@ func (o *ObservabilityModule) luaExportJaeger(L *lua.LState) int {
 	L.SetField(result, "exported_traces", lua.LNumber(traceCount))
 	L.SetField(result, "note", lua.LString("Jaeger export requires Jaeger client library"))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (o *ObservabilityModule) luaExportPrometheus(L *lua.LState) int {
@@ -510,8 +513,9 @@ func (o *ObservabilityModule) luaExportPrometheus(L *lua.LState) int {
 	L.SetField(result, "exported_metrics", lua.LNumber(metricCount))
 	L.SetField(result, "note", lua.LString("Prometheus export requires Prometheus client library"))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (o *ObservabilityModule) luaExportJSON(L *lua.LState) int {
@@ -555,8 +559,9 @@ func (o *ObservabilityModule) luaExportJSON(L *lua.LState) int {
 	L.SetField(result, "metrics", metrics)
 	L.SetField(result, "exported_at", lua.LNumber(time.Now().Unix()))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // Health and monitoring
@@ -585,8 +590,9 @@ func (o *ObservabilityModule) luaHealthCheck(L *lua.LState) int {
 	L.SetField(result, "total_metrics", lua.LNumber(totalMetrics))
 	L.SetField(result, "timestamp", lua.LNumber(time.Now().Unix()))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 func (o *ObservabilityModule) luaSystemMetrics(L *lua.LState) int {
@@ -612,8 +618,9 @@ func (o *ObservabilityModule) luaSystemMetrics(L *lua.LState) int {
 	
 	L.SetField(result, "timestamp", lua.LNumber(time.Now().Unix()))
 	
+	L.Push(lua.LTrue)
 	L.Push(result)
-	return 1
+	return 2
 }
 
 // Helper functions
