@@ -99,6 +99,7 @@ type ExecuteTaskRequest struct {
 	TaskGroup     string                 `protobuf:"bytes,2,opt,name=task_group,json=taskGroup,proto3" json:"task_group,omitempty"`
 	LuaScript     string                 `protobuf:"bytes,3,opt,name=lua_script,json=luaScript,proto3" json:"lua_script,omitempty"`
 	Workspace     []byte                 `protobuf:"bytes,4,opt,name=workspace,proto3" json:"workspace,omitempty"`
+	User          string                 `protobuf:"bytes,5,opt,name=user,proto3" json:"user,omitempty"` // User to run the task as (default: root)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -159,6 +160,13 @@ func (x *ExecuteTaskRequest) GetWorkspace() []byte {
 		return x.Workspace
 	}
 	return nil
+}
+
+func (x *ExecuteTaskRequest) GetUser() string {
+	if x != nil {
+		return x.User
+	}
+	return ""
 }
 
 type ExecuteTaskResponse struct {
@@ -736,6 +744,7 @@ func (x *ExecuteCommandRequest) GetCommand() string {
 type RunCommandRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Command       string                 `protobuf:"bytes,1,opt,name=command,proto3" json:"command,omitempty"`
+	User          string                 `protobuf:"bytes,2,opt,name=user,proto3" json:"user,omitempty"` // User to run the command as (default: root)
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -773,6 +782,13 @@ func (*RunCommandRequest) Descriptor() ([]byte, []int) {
 func (x *RunCommandRequest) GetCommand() string {
 	if x != nil {
 		return x.Command
+	}
+	return ""
+}
+
+func (x *RunCommandRequest) GetUser() string {
+	if x != nil {
+		return x.User
 	}
 	return ""
 }
@@ -1068,14 +1084,15 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\n" +
 	"\x11proto/agent.proto\x12\x05agent\"\x11\n" +
 	"\x0fShutdownRequest\"\x12\n" +
-	"\x10ShutdownResponse\"\x8d\x01\n" +
+	"\x10ShutdownResponse\"\xa1\x01\n" +
 	"\x12ExecuteTaskRequest\x12\x1b\n" +
 	"\ttask_name\x18\x01 \x01(\tR\btaskName\x12\x1d\n" +
 	"\n" +
 	"task_group\x18\x02 \x01(\tR\ttaskGroup\x12\x1d\n" +
 	"\n" +
 	"lua_script\x18\x03 \x01(\tR\tluaScript\x12\x1c\n" +
-	"\tworkspace\x18\x04 \x01(\fR\tworkspace\"e\n" +
+	"\tworkspace\x18\x04 \x01(\fR\tworkspace\x12\x12\n" +
+	"\x04user\x18\x05 \x01(\tR\x04user\"e\n" +
 	"\x13ExecuteTaskResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x16\n" +
 	"\x06output\x18\x02 \x01(\tR\x06output\x12\x1c\n" +
@@ -1113,9 +1130,10 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\x15ExecuteCommandRequest\x12\x1d\n" +
 	"\n" +
 	"agent_name\x18\x01 \x01(\tR\tagentName\x12\x18\n" +
-	"\acommand\x18\x02 \x01(\tR\acommand\"-\n" +
+	"\acommand\x18\x02 \x01(\tR\acommand\"A\n" +
 	"\x11RunCommandRequest\x12\x18\n" +
-	"\acommand\x18\x01 \x01(\tR\acommand\"\xab\x01\n" +
+	"\acommand\x18\x01 \x01(\tR\acommand\x12\x12\n" +
+	"\x04user\x18\x02 \x01(\tR\x04user\"\xab\x01\n" +
 	"\x14StreamOutputResponse\x12!\n" +
 	"\fstdout_chunk\x18\x01 \x01(\tR\vstdoutChunk\x12!\n" +
 	"\fstderr_chunk\x18\x02 \x01(\tR\vstderrChunk\x12\x1a\n" +

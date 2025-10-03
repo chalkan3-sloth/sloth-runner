@@ -2465,7 +2465,17 @@ type agentServer struct {
 func (s *agentServer) RunCommand(in *pb.RunCommandRequest, stream pb.Agent_RunCommandServer) error {
 	slog.Info(fmt.Sprintf("Executing command on agent: %s", in.GetCommand()))
 
-	cmd := exec.Command("bash", "-c", in.GetCommand())
+	var cmd *exec.Cmd
+	
+	// If user is specified and not root, run command as that user
+	if in.GetUser() != "" && in.GetUser() != "root" {
+		// Use sudo to run as specific user
+		cmd = exec.Command("sudo", "-u", in.GetUser(), "bash", "-c", in.GetCommand())
+		slog.Info(fmt.Sprintf("Running command as user: %s", in.GetUser()))
+	} else {
+		// Run as current user (typically root for agent)
+		cmd = exec.Command("bash", "-c", in.GetCommand())
+	}
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {

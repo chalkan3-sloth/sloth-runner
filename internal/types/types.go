@@ -15,6 +15,7 @@ type Task struct {
 	Name        string
 	Description string
 	Workdir     string // ✅ Added individual task workdir support
+	User        string // ✅ User to run the task as (default: root)
 	CommandFunc *lua.LFunction
 	CommandStr  string
 	DependsOn   []string

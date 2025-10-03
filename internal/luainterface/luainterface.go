@@ -139,6 +139,7 @@ func parseLuaTask(L *lua.LState, taskTable *lua.LTable) types.Task {
 	name := taskTable.RawGetString("name").String()
 	desc := taskTable.RawGetString("description").String()
 	workdir := taskTable.RawGetString("workdir").String() // ✅ Parse workdir for individual task
+	user := taskTable.RawGetString("user").String()       // ✅ Parse user for individual task
 	var cmdFunc *lua.LFunction
 	var cmdStr string
 	luaCommand := taskTable.RawGetString("command")
@@ -293,6 +294,7 @@ func parseLuaTask(L *lua.LState, taskTable *lua.LTable) types.Task {
 		Name:        name,
 		Description: desc,
 		Workdir:     workdir, // ✅ Include workdir in task
+		User:        user,    // ✅ Include user in task
 		CommandFunc: cmdFunc,
 		CommandStr:  cmdStr,
 		Params:      params,
