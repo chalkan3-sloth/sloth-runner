@@ -47,7 +47,7 @@ func (s *StowModule) exports() map[string]lua.LGFunction {
 }
 
 type stowConfig struct {
-	Package     string
+	Packages    []string
 	Target      string
 	StowDir     string
 	Verbose     bool
@@ -73,7 +73,13 @@ func (s *StowModule) parseConfig(L *lua.LState) (*stowConfig, error) {
 	tbl.ForEach(func(key, value lua.LValue) {
 		switch key.String() {
 		case "package":
-			config.Package = value.String()
+			config.Packages = []string{value.String()}
+		case "packages":
+			if tbl, ok := value.(*lua.LTable); ok {
+				tbl.ForEach(func(_, v lua.LValue) {
+					config.Packages = append(config.Packages, v.String())
+				})
+			}
 		case "target":
 			config.Target = value.String()
 		case "dir", "stow_dir":
@@ -109,14 +115,14 @@ func (s *StowModule) parseConfig(L *lua.LState) (*stowConfig, error) {
 		}
 	})
 
-	if config.Package == "" {
-		return nil, fmt.Errorf("package name is required")
+	if len(config.Packages) == 0 {
+		return nil, fmt.Errorf("package name or packages list is required")
 	}
 
 	return config, nil
 }
 
-func (s *StowModule) buildStowArgs(config *stowConfig, action string) []string {
+func (s *StowModule) buildStowArgs(config *stowConfig, action string, pkg string) []string {
 	args := []string{action}
 
 	if config.Target != "" && config.Target != os.Getenv("HOME") {
@@ -147,21 +153,21 @@ func (s *StowModule) buildStowArgs(config *stowConfig, action string) []string {
 		args = append(args, "--defer", deferPattern)
 	}
 
-	args = append(args, config.Package)
+	args = append(args, pkg)
 	return args
 }
 
-func (s *StowModule) calculateStateHash(config *stowConfig, action string) string {
-	data := fmt.Sprintf("%s:%s:%s:%s", action, config.Package, config.StowDir, config.Target)
+func (s *StowModule) calculateStateHash(config *stowConfig, action string, pkg string) string {
+	data := fmt.Sprintf("%s:%s:%s:%s", action, pkg, config.StowDir, config.Target)
 	hash := sha256.Sum256([]byte(data))
 	return hex.EncodeToString(hash[:])
 }
 
-func (s *StowModule) getCurrentState(config *stowConfig) (map[string]interface{}, error) {
+func (s *StowModule) getCurrentState(config *stowConfig, pkg string) (map[string]interface{}, error) {
 	state := make(map[string]interface{})
 	
 	// Check if package directory exists
-	pkgPath := filepath.Join(config.StowDir, config.Package)
+	pkgPath := filepath.Join(config.StowDir, pkg)
 	if _, err := os.Stat(pkgPath); err != nil {
 		state["package_exists"] = false
 		return state, nil
@@ -191,7 +197,7 @@ func (s *StowModule) getCurrentState(config *stowConfig) (map[string]interface{}
 		targetPath := filepath.Join(config.Target, file)
 		if info, err := os.Lstat(targetPath); err == nil && info.Mode()&os.ModeSymlink != 0 {
 			if link, err := os.Readlink(targetPath); err == nil {
-				expectedLink := filepath.Join(config.StowDir, config.Package, file)
+				expectedLink := filepath.Join(config.StowDir, pkg, file)
 				if link == expectedLink || filepath.Clean(link) == filepath.Clean(expectedLink) {
 					links = append(links, file)
 				}
@@ -213,14 +219,27 @@ func (s *StowModule) stow(L *lua.LState) int {
 		return 2
 	}
 
-	resourceID := fmt.Sprintf("stow:%s:%s", config.Package, config.Target)
+	results := L.NewTable()
+
+	for _, pkg := range config.Packages {
+		result := s.stowSingle(L, config, pkg)
+		results.Append(result)
+	}
+
+	L.Push(results)
+	L.Push(lua.LNil)
+	return 2
+}
+
+func (s *StowModule) stowSingle(L *lua.LState, config *stowConfig, pkg string) *lua.LTable {
+	result := L.NewTable()
+	resourceID := fmt.Sprintf("stow:%s:%s", pkg, config.Target)
 
 	// Check current state
-	currentState, err := s.getCurrentState(config)
+	currentState, err := s.getCurrentState(config, pkg)
 	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString(fmt.Sprintf("failed to get current state: %v", err)))
-		return 2
+		L.SetField(result, "error", lua.LString(fmt.Sprintf("failed to get current state: %v", err)))
+		return result
 	}
 
 	// Check if already stowed (idempotency)
@@ -230,48 +249,40 @@ func (s *StowModule) stow(L *lua.LState) int {
 		
 		// If all files are stowed, no action needed
 		if len(stowedLinks) == len(files) {
-			// Record in state as unchanged
 			if s.sm != nil {
 				stateData, _ := json.Marshal(currentState)
 				s.sm.Set(resourceID, string(stateData))
 			}
 			
-			result := L.NewTable()
 			L.SetField(result, "changed", lua.LBool(false))
 			L.SetField(result, "status", lua.LString("already_stowed"))
-			L.SetField(result, "package", lua.LString(config.Package))
-			L.Push(result)
-			L.Push(lua.LNil)
-			return 2
+			L.SetField(result, "package", lua.LString(pkg))
+			return result
 		}
 	}
 
 	// Execute stow command
-	args := s.buildStowArgs(config, "-S")
+	args := s.buildStowArgs(config, "-S", pkg)
 	
 	var cmd *exec.Cmd
 	if config.DelegatedTo != "" {
-		// TODO: Implement remote execution via agent
-		L.Push(lua.LNil)
-		L.Push(lua.LString("remote execution not yet implemented"))
-		return 2
+		L.SetField(result, "error", lua.LString("remote execution not yet implemented"))
+		return result
 	} else {
 		cmd = exec.Command("stow", args...)
 	}
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString(fmt.Sprintf("stow failed: %v - %s", err, string(output))))
-		return 2
+		L.SetField(result, "error", lua.LString(fmt.Sprintf("stow failed: %v - %s", err, string(output))))
+		return result
 	}
 
 	// Get new state
-	newState, err := s.getCurrentState(config)
+	newState, err := s.getCurrentState(config, pkg)
 	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString(fmt.Sprintf("failed to get new state: %v", err)))
-		return 2
+		L.SetField(result, "error", lua.LString(fmt.Sprintf("failed to get new state: %v", err)))
+		return result
 	}
 
 	// Record in state
@@ -280,10 +291,9 @@ func (s *StowModule) stow(L *lua.LState) int {
 		s.sm.Set(resourceID, string(stateData))
 	}
 
-	result := L.NewTable()
 	L.SetField(result, "changed", lua.LBool(true))
 	L.SetField(result, "status", lua.LString("stowed"))
-	L.SetField(result, "package", lua.LString(config.Package))
+	L.SetField(result, "package", lua.LString(pkg))
 	L.SetField(result, "target", lua.LString(config.Target))
 	L.SetField(result, "output", lua.LString(string(output)))
 	
@@ -295,9 +305,7 @@ func (s *StowModule) stow(L *lua.LState) int {
 		L.SetField(result, "links", linksTable)
 	}
 
-	L.Push(result)
-	L.Push(lua.LNil)
-	return 2
+	return result
 }
 
 // unstow: Remove stowed symlinks
@@ -309,44 +317,52 @@ func (s *StowModule) unstow(L *lua.LState) int {
 		return 2
 	}
 
-	resourceID := fmt.Sprintf("stow:%s:%s", config.Package, config.Target)
+	results := L.NewTable()
+
+	for _, pkg := range config.Packages {
+		result := s.unstowSingle(L, config, pkg)
+		results.Append(result)
+	}
+
+	L.Push(results)
+	L.Push(lua.LNil)
+	return 2
+}
+
+func (s *StowModule) unstowSingle(L *lua.LState, config *stowConfig, pkg string) *lua.LTable {
+	result := L.NewTable()
+	resourceID := fmt.Sprintf("stow:%s:%s", pkg, config.Target)
 
 	// Check current state
-	currentState, err := s.getCurrentState(config)
+	currentState, err := s.getCurrentState(config, pkg)
 	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString(fmt.Sprintf("failed to get current state: %v", err)))
-		return 2
+		L.SetField(result, "error", lua.LString(fmt.Sprintf("failed to get current state: %v", err)))
+		return result
 	}
 
 	// Check if not stowed (idempotency)
 	if isStowed, ok := currentState["is_stowed"].(bool); ok && !isStowed {
-		result := L.NewTable()
 		L.SetField(result, "changed", lua.LBool(false))
 		L.SetField(result, "status", lua.LString("not_stowed"))
-		L.SetField(result, "package", lua.LString(config.Package))
-		L.Push(result)
-		L.Push(lua.LNil)
-		return 2
+		L.SetField(result, "package", lua.LString(pkg))
+		return result
 	}
 
 	// Execute unstow command
-	args := s.buildStowArgs(config, "-D")
+	args := s.buildStowArgs(config, "-D", pkg)
 	
 	var cmd *exec.Cmd
 	if config.DelegatedTo != "" {
-		L.Push(lua.LNil)
-		L.Push(lua.LString("remote execution not yet implemented"))
-		return 2
+		L.SetField(result, "error", lua.LString("remote execution not yet implemented"))
+		return result
 	} else {
 		cmd = exec.Command("stow", args...)
 	}
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString(fmt.Sprintf("unstow failed: %v - %s", err, string(output))))
-		return 2
+		L.SetField(result, "error", lua.LString(fmt.Sprintf("unstow failed: %v - %s", err, string(output))))
+		return result
 	}
 
 	// Remove from state
@@ -354,15 +370,12 @@ func (s *StowModule) unstow(L *lua.LState) int {
 		s.sm.Delete(resourceID)
 	}
 
-	result := L.NewTable()
 	L.SetField(result, "changed", lua.LBool(true))
 	L.SetField(result, "status", lua.LString("unstowed"))
-	L.SetField(result, "package", lua.LString(config.Package))
+	L.SetField(result, "package", lua.LString(pkg))
 	L.SetField(result, "output", lua.LString(string(output)))
 
-	L.Push(result)
-	L.Push(lua.LNil)
-	return 2
+	return result
 }
 
 // restow: Restow a package (unstow then stow)
@@ -374,48 +387,57 @@ func (s *StowModule) restow(L *lua.LState) int {
 		return 2
 	}
 
-	args := s.buildStowArgs(config, "-R")
+	results := L.NewTable()
+
+	for _, pkg := range config.Packages {
+		result := s.restowSingle(L, config, pkg)
+		results.Append(result)
+	}
+
+	L.Push(results)
+	L.Push(lua.LNil)
+	return 2
+}
+
+func (s *StowModule) restowSingle(L *lua.LState, config *stowConfig, pkg string) *lua.LTable {
+	result := L.NewTable()
+
+	args := s.buildStowArgs(config, "-R", pkg)
 	
 	var cmd *exec.Cmd
 	if config.DelegatedTo != "" {
-		L.Push(lua.LNil)
-		L.Push(lua.LString("remote execution not yet implemented"))
-		return 2
+		L.SetField(result, "error", lua.LString("remote execution not yet implemented"))
+		return result
 	} else {
 		cmd = exec.Command("stow", args...)
 	}
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString(fmt.Sprintf("restow failed: %v - %s", err, string(output))))
-		return 2
+		L.SetField(result, "error", lua.LString(fmt.Sprintf("restow failed: %v - %s", err, string(output))))
+		return result
 	}
 
 	// Get new state
-	newState, err := s.getCurrentState(config)
+	newState, err := s.getCurrentState(config, pkg)
 	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString(fmt.Sprintf("failed to get new state: %v", err)))
-		return 2
+		L.SetField(result, "error", lua.LString(fmt.Sprintf("failed to get new state: %v", err)))
+		return result
 	}
 
 	// Record in state
-	resourceID := fmt.Sprintf("stow:%s:%s", config.Package, config.Target)
+	resourceID := fmt.Sprintf("stow:%s:%s", pkg, config.Target)
 	if s.sm != nil {
 		stateData, _ := json.Marshal(newState)
 		s.sm.Set(resourceID, string(stateData))
 	}
 
-	result := L.NewTable()
 	L.SetField(result, "changed", lua.LBool(true))
 	L.SetField(result, "status", lua.LString("restowed"))
-	L.SetField(result, "package", lua.LString(config.Package))
+	L.SetField(result, "package", lua.LString(pkg))
 	L.SetField(result, "output", lua.LString(string(output)))
 
-	L.Push(result)
-	L.Push(lua.LNil)
-	return 2
+	return result
 }
 
 // adopt: Adopt existing files into the stow package
@@ -427,33 +449,43 @@ func (s *StowModule) adopt(L *lua.LState) int {
 		return 2
 	}
 
-	args := s.buildStowArgs(config, "--adopt")
+	results := L.NewTable()
+
+	for _, pkg := range config.Packages {
+		result := s.adoptSingle(L, config, pkg)
+		results.Append(result)
+	}
+
+	L.Push(results)
+	L.Push(lua.LNil)
+	return 2
+}
+
+func (s *StowModule) adoptSingle(L *lua.LState, config *stowConfig, pkg string) *lua.LTable {
+	result := L.NewTable()
+
+	args := s.buildStowArgs(config, "--adopt", pkg)
 	
 	var cmd *exec.Cmd
 	if config.DelegatedTo != "" {
-		L.Push(lua.LNil)
-		L.Push(lua.LString("remote execution not yet implemented"))
-		return 2
+		L.SetField(result, "error", lua.LString("remote execution not yet implemented"))
+		return result
 	} else {
 		cmd = exec.Command("stow", args...)
 	}
 
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString(fmt.Sprintf("adopt failed: %v - %s", err, string(output))))
-		return 2
+		L.SetField(result, "error", lua.LString(fmt.Sprintf("adopt failed: %v - %s", err, string(output))))
+		return result
 	}
 
-	result := L.NewTable()
 	L.SetField(result, "changed", lua.LBool(true))
 	L.SetField(result, "status", lua.LString("adopted"))
-	L.SetField(result, "package", lua.LString(config.Package))
+	L.SetField(result, "package", lua.LString(pkg))
 	L.SetField(result, "output", lua.LString(string(output)))
 
-	L.Push(result)
-	L.Push(lua.LNil)
-	return 2
+	return result
 }
 
 // check: Check stow operations without executing
@@ -465,27 +497,38 @@ func (s *StowModule) check(L *lua.LState) int {
 		return 2
 	}
 
-	args := append([]string{"-n", "-v"}, s.buildStowArgs(config, "-S")...)
+	results := L.NewTable()
+
+	for _, pkg := range config.Packages {
+		result := s.checkSingle(L, config, pkg)
+		results.Append(result)
+	}
+
+	L.Push(results)
+	L.Push(lua.LNil)
+	return 2
+}
+
+func (s *StowModule) checkSingle(L *lua.LState, config *stowConfig, pkg string) *lua.LTable {
+	result := L.NewTable()
+
+	args := append([]string{"-n", "-v"}, s.buildStowArgs(config, "-S", pkg)...)
 	
 	var cmd *exec.Cmd
 	if config.DelegatedTo != "" {
-		L.Push(lua.LNil)
-		L.Push(lua.LString("remote execution not yet implemented"))
-		return 2
+		L.SetField(result, "error", lua.LString("remote execution not yet implemented"))
+		return result
 	} else {
 		cmd = exec.Command("stow", args...)
 	}
 
 	output, err := cmd.CombinedOutput()
 	
-	result := L.NewTable()
-	L.SetField(result, "package", lua.LString(config.Package))
+	L.SetField(result, "package", lua.LString(pkg))
 	L.SetField(result, "output", lua.LString(string(output)))
 	L.SetField(result, "would_succeed", lua.LBool(err == nil))
 
-	L.Push(result)
-	L.Push(lua.LNil)
-	return 2
+	return result
 }
 
 // simulate: Simulate stow operations
@@ -502,21 +545,25 @@ func (s *StowModule) getLinks(L *lua.LState) int {
 		return 2
 	}
 
-	state, err := s.getCurrentState(config)
-	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString(err.Error()))
-		return 2
-	}
+	results := L.NewTable()
 
-	linksTable := L.NewTable()
-	if links, ok := state["stowed_links"].([]string); ok {
-		for i, link := range links {
-			linksTable.RawSetInt(i+1, lua.LString(link))
+	for _, pkg := range config.Packages {
+		state, err := s.getCurrentState(config, pkg)
+		if err != nil {
+			// handle error
+			continue
 		}
+
+		linksTable := L.NewTable()
+		if links, ok := state["stowed_links"].([]string); ok {
+			for i, link := range links {
+				linksTable.RawSetInt(i+1, lua.LString(link))
+			}
+		}
+		results.Append(linksTable)
 	}
 
-	L.Push(linksTable)
+	L.Push(results)
 	L.Push(lua.LNil)
 	return 2
 }
@@ -530,19 +577,23 @@ func (s *StowModule) isStowed(L *lua.LState) int {
 		return 2
 	}
 
-	state, err := s.getCurrentState(config)
-	if err != nil {
-		L.Push(lua.LBool(false))
-		L.Push(lua.LString(err.Error()))
-		return 2
+	results := L.NewTable()
+
+	for _, pkg := range config.Packages {
+		state, err := s.getCurrentState(config, pkg)
+		if err != nil {
+			// handle error
+			continue
+		}
+
+		isStowed := false
+		if val, ok := state["is_stowed"].(bool); ok {
+			isStowed = val
+		}
+		results.Append(lua.LBool(isStowed))
 	}
 
-	isStowed := false
-	if val, ok := state["is_stowed"].(bool); ok {
-		isStowed = val
-	}
-
-	L.Push(lua.LBool(isStowed))
+	L.Push(results)
 	L.Push(lua.LNil)
 	return 2
 }
@@ -587,15 +638,28 @@ func (s *StowModule) verify(L *lua.LState) int {
 		return 2
 	}
 
-	state, err := s.getCurrentState(config)
-	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString(err.Error()))
-		return 2
+	results := L.NewTable()
+
+	for _, pkg := range config.Packages {
+		result := s.verifySingle(L, config, pkg)
+		results.Append(result)
 	}
 
+	L.Push(results)
+	L.Push(lua.LNil)
+	return 2
+}
+
+func (s *StowModule) verifySingle(L *lua.LState, config *stowConfig, pkg string) *lua.LTable {
 	result := L.NewTable()
-	L.SetField(result, "package", lua.LString(config.Package))
+
+	state, err := s.getCurrentState(config, pkg)
+	if err != nil {
+		L.SetField(result, "error", lua.LString(err.Error()))
+		return result
+	}
+
+	L.SetField(result, "package", lua.LString(pkg))
 	
 	stowedLinks, _ := state["stowed_links"].([]string)
 	files, _ := state["files"].([]string)
@@ -620,7 +684,5 @@ func (s *StowModule) verify(L *lua.LState) int {
 	L.SetField(result, "broken_links", brokenTable)
 	L.SetField(result, "is_valid", lua.LBool(len(brokenLinks) == 0))
 
-	L.Push(result)
-	L.Push(lua.LNil)
-	return 2
+	return result
 }
