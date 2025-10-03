@@ -1,0 +1,115 @@
+-- Simple Dotfiles Setup Example
+-- Quick start guide for using the stow module
+
+stack("my-dotfiles")
+
+-- Basic example: Stow a single package
+task({
+    name = "stow-vim",
+    description = "Deploy Vim configuration",
+    run = function()
+        local result, err = stow.stow({
+            package = "vim"
+        })
+        
+        if err then
+            error("Failed: " .. err)
+        end
+        
+        if result.changed then
+            print("✓ Vim config deployed")
+        else
+            print("• Already configured")
+        end
+    end
+})
+
+-- Deploy multiple packages
+task({
+    name = "stow-all",
+    description = "Deploy all my dotfiles",
+    run = function()
+        local configs = {"vim", "zsh", "tmux", "git"}
+        
+        for _, config in ipairs(configs) do
+            print("Setting up " .. config .. "...")
+            
+            stow.stow({
+                package = config,
+                dir = os.getenv("HOME") .. "/.dotfiles"
+            })
+        end
+        
+        print("✅ All configs deployed!")
+    end
+})
+
+-- Remove a configuration
+task({
+    name = "unstow-vim",
+    description = "Remove Vim configuration",
+    run = function()
+        stow.unstow({
+            package = "vim"
+        })
+        
+        print("✓ Vim config removed")
+    end
+})
+
+-- Check what's currently stowed
+task({
+    name = "list-stowed",
+    description = "List all stowed packages",
+    run = function()
+        local packages = stow.list_packages()
+        
+        print("Your dotfiles packages:")
+        
+        for _, pkg in ipairs(packages) do
+            local is_stowed = stow.is_stowed({
+                package = pkg
+            })
+            
+            local status = is_stowed and "✓" or "○"
+            print(status .. " " .. pkg)
+        end
+    end
+})
+
+-- Verify a package
+task({
+    name = "verify-vim",
+    description = "Check Vim config integrity",
+    run = function()
+        local result = stow.verify({
+            package = "vim"
+        })
+        
+        print("Vim Configuration Status:")
+        print("  Files: " .. result.total_files)
+        print("  Links: " .. result.stowed_links)
+        print("  Valid: " .. (result.is_valid and "Yes" or "No"))
+        
+        if result.is_valid then
+            print("✅ Configuration is healthy")
+        else
+            print("⚠ Issues detected!")
+        end
+    end
+})
+
+-- Deploy to remote server
+task({
+    name = "deploy-to-server",
+    description = "Deploy configs to remote server",
+    run = function()
+        stow.stow({
+            package = "vim",
+            dir = "/home/user/.dotfiles",
+            delegate_to = "my-server"
+        })
+        
+        print("✓ Deployed to remote server")
+    end
+})

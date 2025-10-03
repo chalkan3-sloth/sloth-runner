@@ -479,6 +479,10 @@ func RegisterAllModules(L *lua.LState) {
 	// Register Incus module for container/VM management
 	RegisterIncusModule(L)
 	
+	// Register Stow module for dotfiles management
+	stowModule := NewStowModule(nil) // State manager is optional
+	L.PreloadModule("stow", stowModule.Loader)
+	
 	// Register Facts module for accessing agent system information
 	// Note: masterAddr should be set globally or passed through context
 	// For now, using default localhost:50053
@@ -523,6 +527,7 @@ func RegisterModulesGlobally(L *lua.LState) {
 		"state",
 		"systemd",
 		"infra_test",
+		"stow",
 	}
 	
 	for _, modName := range modulesToLoad {

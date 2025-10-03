@@ -1,0 +1,364 @@
+#!/usr/bin/env sloth-runner
+-- Incus Infrastructure Provisioning Example
+-- This example demonstrates how to:
+-- 1. Create network configuration
+-- 2. Setup storage pools
+-- 3. Create and configure profiles
+-- 4. Launch containers and VMs
+-- 5. Execute commands inside instances
+
+stack("incus-infrastructure")
+
+values({
+    -- Network Configuration
+    network_name = "incus-dmz",
+    network_subnet = "10.20.0.1/24",
+    network_nat = "true",
+    
+    -- Storage Configuration
+    storage_name = "local-pool",
+    storage_driver = "dir",
+    storage_path = "/var/lib/incus/storage-pools/local",
+    
+    -- Profile Configuration
+    profile_name = "web-server",
+    
+    -- Instance Configuration
+    base_image = "ubuntu:22.04",
+    instances = {
+        {name = "web-01", type = "container"},
+        {name = "web-02", type = "container"},
+        {name = "db-01", type = "vm", memory = "4GB", cpu = "2"}
+    },
+    
+    -- Target host
+    incus_host = "incus-host-01"
+})
+
+-- Task 1: Create Network
+task({
+    name = "create-network",
+    delegate_to = values.incus_host,
+    description = "Create Incus network for infrastructure",
+    run = function()
+        log.info("Creating network: " .. values.network_name)
+        
+        incus.network({
+            name = values.network_name,
+            type = "bridge",
+            description = "DMZ network for web services"
+        }):set_config({
+            ["ipv4.address"] = values.network_subnet,
+            ["ipv4.nat"] = values.network_nat,
+            ["ipv6.address"] = "none",
+            ["dns.domain"] = "incus.local"
+        }):create()
+        
+        log.success("Network created successfully")
+    end
+})
+
+-- Task 2: Create Storage Pool
+task({
+    name = "create-storage",
+    delegate_to = values.incus_host,
+    description = "Create storage pool for instances",
+    run = function()
+        log.info("Creating storage pool: " .. values.storage_name)
+        
+        incus.storage({
+            name = values.storage_name,
+            driver = values.storage_driver
+        }):set_config({
+            source = values.storage_path,
+            ["volume.size"] = "50GB"
+        }):create()
+        
+        log.success("Storage pool created successfully")
+    end
+})
+
+-- Task 3: Create Custom Profile
+task({
+    name = "create-profile",
+    delegate_to = values.incus_host,
+    description = "Create custom profile for web servers",
+    depends_on = {"create-network", "create-storage"},
+    run = function()
+        log.info("Creating profile: " .. values.profile_name)
+        
+        incus.profile({
+            name = values.profile_name,
+            description = "Profile for web server instances"
+        }):set_config({
+            ["limits.cpu"] = "2",
+            ["limits.memory"] = "2GB",
+            ["security.nesting"] = "true",
+            ["security.privileged"] = "false"
+        }):set_devices({
+            eth0 = {
+                type = "nic",
+                network = values.network_name,
+                ["name"] = "eth0"
+            },
+            root = {
+                type = "disk",
+                pool = values.storage_name,
+                path = "/"
+            }
+        }):create()
+        
+        log.success("Profile created successfully")
+    end
+})
+
+-- Task 4: Launch Container Instances (Parallel)
+task({
+    name = "launch-containers",
+    delegate_to = values.incus_host,
+    description = "Launch web server containers in parallel",
+    depends_on = {"create-profile"},
+    run = function()
+        log.info("Launching container instances...")
+        
+        -- Filter only containers
+        local containers = {}
+        for _, inst in ipairs(values.instances) do
+            if inst.type == "container" then
+                table.insert(containers, inst)
+            end
+        end
+        
+        -- Launch containers in parallel using goroutines
+        goroutine.map(containers, function(inst)
+            log.info("Launching container: " .. inst.name)
+            
+            local instance = incus.instance({
+                name = inst.name,
+                image = values.base_image,
+                type = "container",
+                profiles = {"default", values.profile_name}
+            })
+            
+            -- Create instance
+            instance:create()
+            
+            -- Start instance
+            instance:start()
+            
+            -- Wait until running
+            instance:wait_running(30)
+            
+            log.success("Container " .. inst.name .. " is running")
+            
+            -- Install web server
+            log.info("Installing nginx on " .. inst.name)
+            instance:exec({command = "apt update && apt install -y nginx"})
+            
+            -- Configure simple web page
+            instance:exec({command = "echo '<h1>" .. inst.name .. "</h1>' > /var/www/html/index.html"})
+            
+            log.success("Container " .. inst.name .. " configured successfully")
+        end)
+        
+        log.success("All containers launched and configured")
+    end
+})
+
+-- Task 5: Launch VM Instances
+task({
+    name = "launch-vms",
+    delegate_to = values.incus_host,
+    description = "Launch virtual machine instances",
+    depends_on = {"create-profile"},
+    run = function()
+        log.info("Launching VM instances...")
+        
+        -- Filter only VMs
+        for _, inst in ipairs(values.instances) do
+            if inst.type == "vm" then
+                log.info("Launching VM: " .. inst.name)
+                
+                local vm = incus.instance({
+                    name = inst.name,
+                    image = values.base_image,
+                    type = "vm",
+                    profiles = {"default"}
+                })
+                
+                -- Set VM-specific configuration
+                vm:set_config({
+                    ["limits.memory"] = inst.memory or "2GB",
+                    ["limits.cpu"] = inst.cpu or "2"
+                })
+                
+                -- Set devices
+                vm:set_devices({
+                    eth0 = {
+                        type = "nic",
+                        network = values.network_name
+                    },
+                    root = {
+                        type = "disk",
+                        pool = values.storage_name,
+                        path = "/",
+                        size = "20GB"
+                    }
+                })
+                
+                -- Create and start VM
+                vm:create()
+                vm:start()
+                vm:wait_running(60) -- VMs take longer to boot
+                
+                log.success("VM " .. inst.name .. " is running")
+                
+                -- Install database (example for db-01)
+                if inst.name == "db-01" then
+                    log.info("Installing PostgreSQL on " .. inst.name)
+                    vm:exec({command = "apt update && apt install -y postgresql postgresql-contrib"})
+                    log.success("PostgreSQL installed on " .. inst.name)
+                end
+            end
+        end
+        
+        log.success("All VMs launched successfully")
+    end
+})
+
+-- Task 6: Configure Networking
+task({
+    name = "configure-networking",
+    delegate_to = values.incus_host,
+    description = "Configure instance networking and firewall",
+    depends_on = {"launch-containers", "launch-vms"},
+    run = function()
+        log.info("Configuring network rules...")
+        
+        -- Get network info
+        local net_info = incus.network({name = values.network_name}):info()
+        
+        log.info("Network " .. values.network_name .. " is configured")
+        log.info("  Subnet: " .. net_info.config["ipv4.address"])
+        
+        -- List all instances on this network
+        for _, inst in ipairs(values.instances) do
+            local instance = incus.instance({name = inst.name})
+            local state = instance:state()
+            
+            if state.network and state.network.eth0 then
+                local ip = state.network.eth0.addresses[1].address
+                log.info("  " .. inst.name .. ": " .. ip)
+            end
+        end
+        
+        log.success("Network configuration complete")
+    end
+})
+
+-- Task 7: Create Snapshots
+task({
+    name = "create-snapshots",
+    delegate_to = values.incus_host,
+    description = "Create initial snapshots of all instances",
+    depends_on = {"configure-networking"},
+    run = function()
+        log.info("Creating snapshots...")
+        
+        goroutine.map(values.instances, function(inst)
+            log.info("Creating snapshot for " .. inst.name)
+            
+            incus.instance({name = inst.name}):snapshot({
+                name = "initial",
+                stateful = false
+            })
+            
+            log.success("Snapshot created for " .. inst.name)
+        end)
+        
+        log.success("All snapshots created")
+    end
+})
+
+-- Task 8: Verification
+task({
+    name = "verify-deployment",
+    delegate_to = values.incus_host,
+    description = "Verify all instances are healthy",
+    depends_on = {"create-snapshots"},
+    run = function()
+        log.info("Verifying deployment...")
+        
+        local healthy = true
+        
+        for _, inst in ipairs(values.instances) do
+            local instance = incus.instance({name = inst.name})
+            local state = instance:state()
+            
+            if state.status == "Running" then
+                log.success("✓ " .. inst.name .. " is running")
+                
+                -- Test network connectivity
+                if inst.type == "container" then
+                    local result = instance:exec({command = "curl -s http://localhost"})
+                    if result.exit_code == 0 then
+                        log.success("  ✓ Web server is responding")
+                    else
+                        log.warn("  ✗ Web server is not responding")
+                        healthy = false
+                    end
+                end
+            else
+                log.error("✗ " .. inst.name .. " is " .. state.status)
+                healthy = false
+            end
+        end
+        
+        if healthy then
+            log.success("=== Deployment verified successfully ===")
+        else
+            log.error("=== Deployment has issues ===")
+            error("Deployment verification failed")
+        end
+    end
+})
+
+-- Task 9: Display Summary
+task({
+    name = "display-summary",
+    delegate_to = values.incus_host,
+    description = "Display deployment summary",
+    depends_on = {"verify-deployment"},
+    run = function()
+        log.info("=== Incus Infrastructure Summary ===")
+        log.info("")
+        log.info("Network: " .. values.network_name)
+        log.info("  Subnet: " .. values.network_subnet)
+        log.info("")
+        log.info("Storage Pool: " .. values.storage_name)
+        log.info("  Driver: " .. values.storage_driver)
+        log.info("")
+        log.info("Profile: " .. values.profile_name)
+        log.info("")
+        log.info("Instances:")
+        
+        for _, inst in ipairs(values.instances) do
+            local instance = incus.instance({name = inst.name})
+            local state = instance:state()
+            
+            log.info("  " .. inst.name .. " (" .. inst.type .. ")")
+            log.info("    Status: " .. state.status)
+            
+            if state.network and state.network.eth0 then
+                for _, addr in ipairs(state.network.eth0.addresses) do
+                    if addr.family == "inet" then
+                        log.info("    IP: " .. addr.address)
+                    end
+                end
+            end
+        end
+        
+        log.info("")
+        log.info("=== Deployment Complete ===")
+    end
+})

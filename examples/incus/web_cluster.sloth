@@ -1,109 +1,138 @@
 -- Incus Web Cluster Deployment Example
 -- Demonstrates: Fluent API, Remote Execution, Parallel Deployment
 
+stack("web-cluster")
+
+values({
+    network_name = "web-dmz",
+    profile_name = "web-server",
+    servers = {"web-01", "web-02", "web-03"},
+    incus_host = "incus-host-01"
+})
+
 task({
     name = "deploy-web-cluster",
     description = "Deploy a complete web server cluster using Incus",
-    delegate_to = "incus-host-01",  -- Execute on remote Incus host
+    delegate_to = values.incus_host,
     run = function()
         log.info("🚀 Starting web cluster deployment...")
         
         -- Step 1: Create network infrastructure
         log.info("📡 Creating network infrastructure...")
-        incus.network({
-            name = "web-dmz",
-            type = "bridge"
-        }):set_config({
-            ["ipv4.address"] = "10.10.0.1/24",
-            ["ipv4.nat"] = "true",
-            ["ipv6.address"] = "none",
-            ["dns.mode"] = "managed"
-        }):create()
         
-        log.info("✅ Network 'web-dmz' created")
+        incus.network({
+            name = values.network_name,
+            type = "bridge"
+        })
+          :set_config({
+              ["ipv4.address"] = "10.10.0.1/24",
+              ["ipv4.nat"] = "true",
+              ["ipv6.address"] = "none",
+              ["dns.mode"] = "managed"
+          })
+          :create()
+        
+        log.success("✅ Network '" .. values.network_name .. "' created")
         
         -- Step 2: Create optimized profile for web servers
         log.info("⚙️ Creating web server profile...")
-        incus.profile({
-            name = "web-server",
-            description = "Optimized profile for web servers"
-        }):set_config({
-            ["limits.cpu"] = "4",
-            ["limits.memory"] = "4GB",
-            ["limits.memory.swap"] = "false",
-            ["boot.autostart"] = "true",
-            ["security.nesting"] = "true"
-        }):create()
         
-        log.info("✅ Profile 'web-server' created")
+        incus.profile({
+            name = values.profile_name,
+            description = "Optimized profile for web servers"
+        })
+          :set_config({
+              ["limits.cpu"] = "4",
+              ["limits.memory"] = "4GB",
+              ["limits.memory.swap"] = "false",
+              ["boot.autostart"] = "true",
+              ["security.nesting"] = "true"
+          })
+          :set_devices({
+              eth0 = {
+                  type = "nic",
+                  network = values.network_name
+              }
+          })
+          :create()
+        
+        log.success("✅ Profile '" .. values.profile_name .. "' created")
         
         -- Step 3: Deploy web servers in parallel using goroutines
-        log.info("🔥 Deploying 3 web servers in parallel...")
-        local servers = {"web-01", "web-02", "web-03"}
+        log.info("🔥 Deploying " .. #values.servers .. " web servers in parallel...")
         
-        goroutine.map(servers, function(name)
+        goroutine.map(values.servers, function(name)
             log.info("  📦 Creating " .. name .. "...")
             
-            -- Create instance with fluent API
-            local web = incus.instance({
+            -- Create instance with fluent API chaining
+            incus.instance({
                 name = name,
                 image = "ubuntu:22.04",
-                profiles = {"default", "web-server"}
+                profiles = {"default", values.profile_name}
             })
+              :create()
+              :start()
+              :wait_running(120)
             
-            -- Fluent chain: create → start → wait
-            web:create()
-            web:start()
-            web:wait_running(120)  -- Wait up to 2 minutes
+            log.success("  ✅ " .. name .. " is running")
             
-            log.info("  ✅ " .. name .. " is running")
-            
-            -- Attach to network
-            incus.network({name = "web-dmz"}):attach(name)
-            log.info("  🔗 " .. name .. " attached to web-dmz")
+            -- Get instance for further operations
+            local web = incus.instance({name = name})
             
             -- Install nginx
             log.info("  📥 Installing nginx on " .. name .. "...")
-            web:exec("apt update -qq")
-            web:exec("apt install -y nginx")
+            web:exec({command = "apt update -qq && apt install -y nginx"})
             
-            -- Push custom nginx configuration
-            web:file_push("./nginx/default.conf", "/etc/nginx/sites-available/default")
-            web:file_push("./nginx/index.html", "/var/www/html/index.html")
+            -- Create simple index page
+            local html = string.format([[
+<!DOCTYPE html>
+<html>
+<head><title>%s</title></head>
+<body>
+  <h1>Web Server: %s</h1>
+  <p>Powered by Sloth Runner + Incus</p>
+</body>
+</html>
+]], name, name)
             
-            -- Restart nginx
-            web:exec("systemctl restart nginx")
-            web:exec("systemctl enable nginx")
+            web:exec({command = "echo '" .. html .. "' > /var/www/html/index.html"})
+            web:exec({command = "systemctl restart nginx"})
+            web:exec({command = "systemctl enable nginx"})
             
             -- Verify nginx is running
-            local status = web:exec("systemctl is-active nginx")
-            if status:find("active") then
-                log.info("  ✅ Nginx is running on " .. name)
+            local status_result = web:exec({command = "systemctl is-active nginx"})
+            if status_result.stdout and status_result.stdout:find("active") then
+                log.success("  ✅ Nginx is running on " .. name)
             else
                 log.error("  ❌ Nginx failed to start on " .. name)
             end
             
             -- Create initial snapshot
             log.info("  💾 Creating snapshot for " .. name .. "...")
-            incus.snapshot({
-                instance = name,
+            web:snapshot({
                 name = "initial-setup",
-                stateful = true  -- Include memory state
-            }):create()
+                stateful = true
+            })
             
-            log.info("  ✅ " .. name .. " deployed successfully!")
+            log.success("  ✅ " .. name .. " deployed successfully!")
         end)
         
-        log.info("🎉 Web cluster deployed successfully!")
+        log.success("🎉 Web cluster deployed successfully!")
         
         -- Step 4: Verify deployment
         log.info("🔍 Verifying deployment...")
-        local instances = incus.list("instances")
-        log.info("Active instances: " .. instances)
         
-        log.info("✨ Deployment complete! Access your web servers at:")
-        for i, server in ipairs(servers) do
-            log.info("  - " .. server .. ": http://10.10.0." .. (10 + i))
+        log.success("✨ Deployment complete! Access your web servers at:")
+        for i, server in ipairs(values.servers) do
+            local inst = incus.instance({name = server})
+            local state = inst:state()
+            
+            if state and state.network and state.network.eth0 then
+                local addrs = state.network.eth0.addresses
+                if addrs and #addrs > 0 then
+                    log.info("  - " .. server .. ": http://" .. addrs[1].address)
+                end
+            end
         end
     end
 })
@@ -111,99 +140,88 @@ task({
 task({
     name = "cleanup-web-cluster",
     description = "Remove the entire web cluster",
-    delegate_to = "incus-host-01",
+    delegate_to = values.incus_host,
     run = function()
         log.info("🧹 Cleaning up web cluster...")
         
-        local servers = {"web-01", "web-02", "web-03"}
-        
         -- Stop and delete instances in parallel
-        goroutine.map(servers, function(name)
+        goroutine.map(values.servers, function(name)
             log.info("  🛑 Stopping " .. name .. "...")
-            incus.instance({name = name}):stop(true)  -- Force stop
             
-            log.info("  🗑️ Deleting " .. name .. "...")
-            incus.instance({name = name}):delete()
+            incus.instance({name = name})
+              :stop({force = true})
+              :delete()
             
-            log.info("  ✅ " .. name .. " removed")
+            log.success("  ✅ " .. name .. " removed")
         end)
         
-        -- Remove network and profile
-        log.info("🗑️ Removing network and profile...")
-        incus.network({name = "web-dmz"}):delete()
-        incus.profile({name = "web-server"}):delete()
+        -- Remove profile and network
+        log.info("🗑️ Removing profile and network...")
         
-        log.info("✅ Cleanup complete!")
+        incus.profile({name = values.profile_name}):delete()
+        incus.network({name = values.network_name}):delete()
+        
+        log.success("✅ Cleanup complete!")
     end
 })
 
 task({
     name = "backup-web-cluster",
     description = "Create snapshots of all web servers",
-    delegate_to = "incus-host-01",
+    delegate_to = values.incus_host,
     run = function()
         local timestamp = os.date("%Y%m%d-%H%M%S")
         log.info("💾 Creating backups with timestamp: " .. timestamp)
         
-        local servers = {"web-01", "web-02", "web-03"}
-        
-        goroutine.map(servers, function(name)
+        goroutine.map(values.servers, function(name)
             local snap_name = "backup-" .. timestamp
             
             log.info("  💾 Creating snapshot " .. snap_name .. " for " .. name .. "...")
-            incus.snapshot({
-                instance = name,
-                name = snap_name,
-                stateful = true
-            }):create()
             
-            log.info("  ✅ Snapshot created: " .. name .. "/" .. snap_name)
+            incus.instance({name = name})
+              :snapshot({
+                  name = snap_name,
+                  stateful = true
+              })
+            
+            log.success("  ✅ Snapshot created: " .. name .. "/" .. snap_name)
         end)
         
-        log.info("✅ Backup complete!")
+        log.success("✅ Backup complete!")
     end
 })
 
 task({
     name = "restore-web-server",
     description = "Restore a web server from snapshot",
-    delegate_to = "incus-host-01",
+    delegate_to = values.incus_host,
     run = function()
         local instance = values.instance or "web-01"
         local snapshot = values.snapshot or error("Please provide snapshot name via --values snapshot=NAME")
         
         log.info("🔄 Restoring " .. instance .. " from snapshot " .. snapshot .. "...")
         
-        -- Stop instance
-        log.info("  🛑 Stopping " .. instance .. "...")
-        incus.instance({name = instance}):stop(true)
+        -- Stop, restore and start instance
+        incus.instance({name = instance})
+          :stop({force = true})
+          :restore({snapshot = snapshot})
+          :start()
+          :wait_running()
         
-        -- Restore snapshot
-        log.info("  💾 Restoring snapshot...")
-        incus.snapshot({
-            instance = instance,
-            name = snapshot
-        }):restore()
-        
-        -- Start instance
-        log.info("  ▶️ Starting " .. instance .. "...")
-        incus.instance({name = instance}):start():wait_running()
-        
-        log.info("✅ Restore completed successfully!")
+        log.success("✅ Restore completed successfully!")
     end
 })
 
 task({
     name = "scale-web-cluster",
     description = "Add more web servers to the cluster",
-    delegate_to = "incus-host-01",
+    delegate_to = values.incus_host,
     run = function()
         local count = tonumber(values.count) or 2
         log.info("📈 Scaling cluster by adding " .. count .. " servers...")
         
-        -- Get current server count
-        local existing_servers = {"web-01", "web-02", "web-03"}
-        local start_index = #existing_servers + 1
+        -- Calculate starting index
+        local start_index = #values.servers + 1
         
         local new_servers = {}
         for i = start_index, start_index + count - 1 do
@@ -214,29 +232,28 @@ task({
         goroutine.map(new_servers, function(name)
             log.info("  📦 Deploying " .. name .. "...")
             
-            local web = incus.instance({
+            incus.instance({
                 name = name,
                 image = "ubuntu:22.04",
-                profiles = {"default", "web-server"}
+                profiles = {"default", values.profile_name}
             })
+              :create()
+              :start()
+              :wait_running()
             
-            web:create():start():wait_running()
+            local web = incus.instance({name = name})
             
-            incus.network({name = "web-dmz"}):attach(name)
+            web:exec({command = "apt update -qq && apt install -y nginx"})
+            web:exec({command = "systemctl restart nginx && systemctl enable nginx"})
             
-            web:exec("apt update -qq && apt install -y nginx")
-            web:file_push("./nginx/default.conf", "/etc/nginx/sites-available/default")
-            web:exec("systemctl restart nginx && systemctl enable nginx")
-            
-            incus.snapshot({
-                instance = name,
+            web:snapshot({
                 name = "initial-setup",
                 stateful = true
-            }):create()
+            })
             
-            log.info("  ✅ " .. name .. " deployed!")
+            log.success("  ✅ " .. name .. " deployed!")
         end)
         
-        log.info("✅ Cluster scaled successfully! Added " .. count .. " new servers.")
+        log.success("✅ Cluster scaled successfully! Added " .. count .. " new servers.")
     end
 })
