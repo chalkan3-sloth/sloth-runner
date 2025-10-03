@@ -2972,6 +2972,11 @@ func init() {
 	runCmd.Flags().Bool("interactive", false, "Run in interactive mode")
 	runCmd.Flags().StringP("output", "o", "basic", "Output style: basic, enhanced, rich, modern, json")
 
+	// Preview command
+	rootCmd.AddCommand(previewCmd)
+	previewCmd.Flags().StringP("file", "f", "", "Path to the Lua task file")
+	previewCmd.Flags().StringP("values", "v", "", "Path to the values file")
+
 	// List command
 	rootCmd.AddCommand(listCmd)
 	listCmd.Flags().StringP("file", "f", "", "Path to the Lua workflow file")
