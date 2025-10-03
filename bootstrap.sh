@@ -18,6 +18,7 @@
 #   --no-systemd            Skip systemd service creation
 #   --no-sudo               Install without sudo to ~/.local/bin
 #   --version VERSION        Install specific version
+#   --update                Update existing installation and restart service
 #   --help                  Show this help message
 #
 
@@ -46,6 +47,7 @@ INSTALL_DIR=""
 SKIP_SYSTEMD=false
 USE_SUDO="auto"
 VERSION=""
+UPDATE_MODE=false
 INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/${OWNER}/${REPO}/master/install.sh"
 
 # Helper functions
@@ -97,6 +99,7 @@ ${GREEN}Bootstrap Options:${NC}
   --user USER              User to run the agent as (default: $USER)
   --install-dir DIR        Installation directory (default: /usr/local/bin)
   --version VERSION        Install specific version (default: latest)
+  --update                 Update existing installation and restart service
   --no-systemd            Skip systemd service creation
   --no-sudo               Install without sudo to ~/.local/bin
   --help                  Show this help message
@@ -125,6 +128,11 @@ ${GREEN}Examples:${NC}
     --name myagent \\
     --no-sudo \\
     --no-systemd
+
+  # Update existing installation
+  bash <(curl -fsSL $INSTALL_SCRIPT_URL) \\
+    --name myagent \\
+    --update
 
 ${GREEN}Incus/LXC Container Setup:${NC}
 
@@ -211,6 +219,10 @@ while [[ $# -gt 0 ]]; do
             USE_SUDO="no"
             shift
             ;;
+        --update)
+            UPDATE_MODE=true
+            shift
+            ;;
         --help|-h)
             show_help
             exit 0
@@ -222,7 +234,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate required parameters
-if [ -z "$AGENT_NAME" ]; then
+if [ -z "$AGENT_NAME" ] && [ "$UPDATE_MODE" = false ]; then
     error "Agent name is required. Use --name to specify it.\nExample: $0 --name myagent\nUse --help for more information."
 fi
 
@@ -288,7 +300,23 @@ detect_bind_address() {
 
 # Install sloth-runner
 install_sloth_runner() {
-    info "Downloading and running installer..."
+    if [ "$UPDATE_MODE" = true ]; then
+        info "Update mode: stopping existing service..."
+        
+        # Stop service if running
+        if systemctl is-active --quiet sloth-runner-agent 2>/dev/null; then
+            if command -v sudo &> /dev/null && [ "$(id -u)" -ne 0 ]; then
+                sudo systemctl stop sloth-runner-agent
+            else
+                systemctl stop sloth-runner-agent
+            fi
+            success "Service stopped"
+        fi
+        
+        info "Updating sloth-runner binary..."
+    else
+        info "Downloading and running installer..."
+    fi
     
     # Build install command
     INSTALL_CMD="bash"
@@ -322,7 +350,11 @@ install_sloth_runner() {
         error "Failed to install sloth-runner"
     fi
     
-    success "sloth-runner installed successfully"
+    if [ "$UPDATE_MODE" = true ]; then
+        success "sloth-runner updated successfully"
+    else
+        success "sloth-runner installed successfully"
+    fi
 }
 
 # Create systemd service
@@ -424,21 +456,31 @@ start_service() {
         systemctl daemon-reload
     fi
     
-    info "Enabling sloth-runner-agent service..."
-    if command -v sudo &> /dev/null && [ "$(id -u)" -ne 0 ]; then
-        sudo systemctl enable sloth-runner-agent
+    if [ "$UPDATE_MODE" = true ]; then
+        info "Restarting sloth-runner-agent service..."
+        if command -v sudo &> /dev/null && [ "$(id -u)" -ne 0 ]; then
+            sudo systemctl restart sloth-runner-agent
+        else
+            systemctl restart sloth-runner-agent
+        fi
+        success "Service restarted"
     else
-        systemctl enable sloth-runner-agent
+        info "Enabling sloth-runner-agent service..."
+        if command -v sudo &> /dev/null && [ "$(id -u)" -ne 0 ]; then
+            sudo systemctl enable sloth-runner-agent
+        else
+            systemctl enable sloth-runner-agent
+        fi
+        
+        info "Starting sloth-runner-agent service..."
+        if command -v sudo &> /dev/null && [ "$(id -u)" -ne 0 ]; then
+            sudo systemctl start sloth-runner-agent
+        else
+            systemctl start sloth-runner-agent
+        fi
+        
+        success "Service started and enabled"
     fi
-    
-    info "Starting sloth-runner-agent service..."
-    if command -v sudo &> /dev/null && [ "$(id -u)" -ne 0 ]; then
-        sudo systemctl start sloth-runner-agent
-    else
-        systemctl start sloth-runner-agent
-    fi
-    
-    success "Service started and enabled"
 }
 
 # Verify agent is running
@@ -560,33 +602,56 @@ start_agent_directly() {
 main() {
     print_banner
     
-    info "Starting Sloth Runner Agent bootstrap..."
+    if [ "$UPDATE_MODE" = true ]; then
+        info "🔄 Update mode: Updating sloth-runner agent..."
+    else
+        info "Starting Sloth Runner Agent bootstrap..."
+    fi
     echo ""
     
     # Detect OS
     detect_os
     
-    # Detect bind address
-    detect_bind_address
+    # Detect bind address (skip in update mode if service exists)
+    if [ "$UPDATE_MODE" = false ]; then
+        detect_bind_address
+    fi
     
-    # Install sloth-runner
+    # Install/Update sloth-runner
     install_sloth_runner
     echo ""
     
     # Create systemd service or start directly
     if [ "$SKIP_SYSTEMD" = false ]; then
-        create_systemd_service
-        echo ""
+        if [ "$UPDATE_MODE" = false ]; then
+            create_systemd_service
+            echo ""
+        fi
         start_service
         echo ""
         verify_agent
     else
-        start_agent_directly
-        echo ""
+        if [ "$UPDATE_MODE" = false ]; then
+            start_agent_directly
+            echo ""
+        else
+            warn "Update complete. Please restart your agent manually."
+        fi
     fi
     
     # Show post-install info
-    show_post_install
+    if [ "$UPDATE_MODE" = true ]; then
+        echo ""
+        echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
+        echo -e "${GREEN}    🎉 Sloth Runner Agent Update Complete!${NC}"
+        echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
+        echo ""
+        if [ "$SKIP_SYSTEMD" = false ]; then
+            echo -e "${CYAN}Service restarted and running with updated binary${NC}"
+        fi
+    else
+        show_post_install
+    fi
 }
 
 # Run main function
