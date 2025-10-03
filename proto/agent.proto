@@ -19,6 +19,7 @@ message ExecuteTaskRequest {
   string task_group = 2;
   string lua_script = 3;
   bytes workspace = 4;
+  string user = 5; // User to run the task as (default: root)
 }
 
 message ExecuteTaskResponse {
@@ -79,6 +80,7 @@ message ExecuteCommandRequest {
 
 message RunCommandRequest {
   string command = 1;
+  string user = 2; // User to run the command as (default: root)
 }
 
 // New message for streaming output
