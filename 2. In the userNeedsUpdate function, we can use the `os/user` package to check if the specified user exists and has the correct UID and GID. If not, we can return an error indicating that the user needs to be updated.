@@ -1,0 +1,25 @@
+// Check if a user needs to be updated based on the specified options
+func (u *User) userNeedsUpdate(options map[string]string) bool {
+    // ...
+    
+    // Check if the specified UID and GID exist for the user
+    uid, err := strconv.Atoi(options["uid"])
+    if err != nil {
+        return false
+    }
+    gid, err := strconv.Atoi(options["gid"])
+    if err != nil {
+        return false
+    }
+    
+    // Check if the user exists and has the correct UID and GID
+    _, err = os.Stat(fmt.Sprintf("/home/%s", options["username"]))
+    if err != nil {
+        return true
+    }
+    if uid != int(os.Getuid()) || gid != int(os.Getgid()) {
+        return true
+    }
+    
+    // ...
+}
