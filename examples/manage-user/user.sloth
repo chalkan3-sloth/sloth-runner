@@ -1,0 +1,22 @@
+workflow.define("manage-user-workflow")
+    :description("A workflow to demonstrate using a values file")
+    :version("1.0.0")
+    :tasks({
+        task("print-hostname")
+            :description("Prints the hostname of the agent")
+            :delegate_to("${values.host}")
+            :command("hostname")
+            :build()
+    })
+    :config({
+        values = {
+            host = "default-host" -- Default value
+        }
+    })
+    :on_complete(function(success, results) 
+        if success then
+            log.info("🎉 Workflow completed successfully!")
+        else
+            log.error("❌ Workflow failed!")
+        end
+    end)
