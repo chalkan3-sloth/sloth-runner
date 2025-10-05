@@ -6,7 +6,7 @@ This document explains the fundamental concepts of `sloth-runner` using the **Mo
 
 ## Modern DSL Overview
 
-The Modern DSL replaces the legacy `Modern DSLs` approach with a more intuitive, fluent API for defining workflows. Instead of large table structures, you now use chainable methods to build tasks and define workflows declaratively.
+The Modern DSL provides an intuitive, fluent API for defining workflows. You can use chainable methods to build tasks and define workflows declaratively.
 
 ```lua
 -- my_pipeline.sloth - Modern DSL
@@ -66,22 +66,23 @@ local my_task = task("task_name")
 
 **Example:**
 ```lua
-Modern DSLs = {
-  my_group = {
-    description = "A group that manages its own temporary directory.",
-    create_workdir_before_run = true,
-    clean_workdir_after_run = function(result)
-      if not result.success then
-        log.warn("Group failed. Workdir will be kept for debugging.")
-      end
-      return result.success -- Only clean up if everything succeeded
-    end,
-    tasks = {
-      -- Tasks go here
-    }
-  }
-}
-```
+-- Define a workflow with workdir management
+workflow
+  .define("my_workflow")
+  :description("A workflow that manages its own temporary directory")
+  :config({
+    workdir = "/tmp/my_workflow",
+    cleanup = "on_success"  -- or "always", "never"
+  })
+  :tasks({
+    task("setup")
+      :description("Setup task")
+      :command(function()
+        print("Setting up...")
+        return true
+      end)
+      :build()
+  })
 
 ---
 

@@ -48,10 +48,10 @@ sloth-runner run -f examples/deploy_git_terraform.sloth -v examples/values.yaml 
 Deploy a complete web cluster in parallel using containers:
 
 ```lua
-task({
-    name = "deploy-web-cluster",
-    delegate_to = "incus-host-01",
-    run = function()
+task("deploy-web-cluster")
+    :description("Deploy complete web cluster with Incus")
+    :delegate_to("incus-host-01")
+    :command(function()
         -- Create isolated network
         incus.network({
             name = "web-dmz",
@@ -70,10 +70,11 @@ task({
               :wait_running()
               :exec("apt install -y nginx")
         end)
-        
+
         log.info("✅ Web cluster deployed!")
-    end
-})
+        return true
+    end)
+    :build()
 ```
 
 **What's happening here:**
@@ -91,12 +92,12 @@ task({
 Make smart deployment decisions based on real-time system state:
 
 ```lua
-task({
-    name = "intelligent-deploy",
-    run = function()
+task("intelligent-deploy")
+    :description("Intelligent deployment based on system facts")
+    :command(function()
         -- Collect system information
         local info = facts.get_all({ agent = "prod-server-01" })
-        
+
         log.info("🔍 Analyzing: " .. info.hostname)
         log.info("   Platform: " .. info.platform.os)
         log.info("   Memory: " .. string.format("%.2f GB", 
@@ -120,13 +121,14 @@ task({
         end
         
         -- Conditional deploy based on architecture
-        local image_tag = info.platform.architecture == "arm64" 
-            and "latest-arm64" 
+        local image_tag = info.platform.architecture == "arm64"
+            and "latest-arm64"
             or "latest-amd64"
-        
+
         log.info("🚀 Deploying: myapp:" .. image_tag)
-    end
-})
+        return true
+    end)
+    :build()
 ```
 
 **What's happening here:**

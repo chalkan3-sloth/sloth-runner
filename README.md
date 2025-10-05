@@ -25,21 +25,22 @@ All configuration modules (pkg, user, systemd, file_ops, etc.) are **fully idemp
 - ✅ Safe to run multiple times without side effects
 
 ```lua
-task({
-    name = "configure-server",
-    run = function()
+task("configure-server")
+    :description("Configure server with packages and users")
+    :command(function()
         -- First run: installs packages, creates user
         -- Second run: skips everything (already done)
         local pkg_result = pkg.install({packages = {"nginx", "vim"}})
         local user_result = user.create({username = "webuser"})
-        
+
         if pkg_result.changed or user_result.changed then
             print("Changes were made")
         else
             print("System already in desired state")
         end
-    end
-})
+        return true
+    end)
+    :build()
 ```
 
 ### 📊 **Stack-Based State Management**
@@ -54,14 +55,10 @@ Sloth Runner includes a **sophisticated stack management system** that tracks al
 - 🔒 **Resource Locking** - Prevent concurrent modifications
 
 ```lua
-workflow({
-    name = "production-infrastructure",
-    description = "Complete production setup with state tracking"
-})
-
-task({
-    name = "deploy-database",
-    run = function()
+-- Define tasks
+local deploy_db = task("deploy-database")
+    :description("Deploy database with state tracking")
+    :command(function()
         -- Resources are automatically tracked in the stack
         local status, resource = stack.register_resource({
             type = "database",
@@ -73,7 +70,7 @@ task({
                 instance_type = "db.t3.medium"
             }
         })
-        
+
         if status == "unchanged" then
             print("✓ Database already configured correctly")
         elseif status == "changed" then
@@ -89,11 +86,19 @@ task({
                 state = "applied"
             })
         end
-        
+
         -- Store outputs for other tasks
         stack.set_output("db_endpoint", "postgres-prod.example.com")
-    end
-})
+        return true
+    end)
+    :build()
+
+-- Define workflow
+workflow
+    .define("production-infrastructure")
+    :description("Complete production setup with state tracking")
+    :version("1.0.0")
+    :tasks({deploy_db})
 
 -- CLI Commands for Stack Management
 -- sloth-runner stack list                    # List all stacks
@@ -274,29 +279,27 @@ end, 30) -- 30 second timeout
 #### GitOps Module Examples
 
 ```lua
--- Git operations
-local git = require("git")
+-- Git operations (no require needed - modules are global!)
 local repo = git.clone("https://github.com/company/infra", "/tmp/infra")
 git.checkout(repo, "production")
 
--- Terraform operations  
+-- Terraform operations
 local result = terraform.init({ workdir = "/tmp/infra/terraform/" })
 if not result.success then return false, "Init failed" end
 
-local result_plan = terraform.plan({ 
+local result_plan = terraform.plan({
   workdir = "/tmp/infra/terraform/",
-  out = "prod.tfplan" 
+  out = "prod.tfplan"
 })
 if not result_plan.success then return false, "Plan failed" end
 
-local result_apply = terraform.apply({ 
+local result_apply = terraform.apply({
   workdir = "/tmp/infra/terraform/",
-  auto_approve = true 
+  auto_approve = true
 })
 if not result_apply.success then return false, "Apply failed" end
 
--- State management
-local state = require("state")
+-- State management (state module is also global!)
 state.set("deployment_version", "v2.1.0", 3600)
 local version = state.get("deployment_version")
 ```
@@ -432,14 +435,13 @@ local clone_repo_task = task("clone_repo")
     :description("Clone Git repository with infrastructure code")
     :workdir("/tmp/infrastructure")
     :command(function(this, params)
-        local git = require("git")
-        
+        -- No require needed - git is a global module!
         log.info("📡 Cloning repository...")
         local repository = git.clone(
             "https://github.com/your-org/terraform-infrastructure",
             this.workdir.get()
         )
-        
+
         return true, "Repository cloned successfully", {
             repository_url = "https://github.com/your-org/terraform-infrastructure",
             clone_destination = this.workdir.get()
@@ -452,22 +454,21 @@ local deploy_infrastructure = task("deploy_terraform")
     :description("Deploy infrastructure using Terraform")
     :workdir("/tmp/infrastructure/environments/prod/")
     :command(function(this, params)
-        local terraform = require("terraform")
-        
+        -- terraform module is global - no require needed!
         -- Terraform init is called automatically
         log.info("🔄 Initializing Terraform...")
         local client = terraform.init(this.workdir:get())
-        
+
         -- Load configuration from values.yaml
         local terraform_config = {
             environment = values.terraform.environment or "prod",
             instance_type = values.terraform.instance_type or "t3.micro",
             region = values.terraform.region or "us-east-1"
         }
-        
+
         -- Create terraform.tfvars from configuration
         local tfvars = client:create_tfvars("terraform.tfvars", terraform_config)
-        
+
         -- Plan and apply
         local plan_result = client:plan({ var_file = tfvars.filename })
         if plan_result.success then
@@ -476,14 +477,14 @@ local deploy_infrastructure = task("deploy_terraform")
                 var_file = tfvars.filename,
                 auto_approve = true
             })
-            
+
             return apply_result.success, "Infrastructure deployment", {
                 terraform_used = true,
                 plan_success = true,
                 apply_success = apply_result.success
             }
         end
-        
+
         return false, "Terraform plan failed"
     end)
     :timeout("15m")
