@@ -1,280 +1,142 @@
-# Stow Module
+# 📦 Stow Module
 
-The `stow` module provides comprehensive GNU Stow integration for managing dotfiles and symbolic link packages. It includes full idempotency support and state management, making it perfect for configuration management and dotfile deployment.
+The `stow` module provides native GNU Stow integration for managing dotfiles and symlink farms in Sloth Runner. It's a **global module** (no `require()` needed) with full idempotency and task user support.
 
-## Overview
+## Features
 
-GNU Stow is a symlink farm manager which takes distinct packages of software and/or data located in separate directories on the filesystem, and makes them appear to be installed in a single directory tree.
-
-The Sloth Runner `stow` module wraps Stow functionality with:
-- **Idempotent operations** - Only makes changes when necessary
-- **State tracking** - Tracks what has been stowed
-- **Remote execution** - Can delegate to agents via `:delegate_to()`
-- **Verification** - Check integrity of stowed packages
+- ✅ **Automatic target directory creation** with proper ownership
+- ✅ **Idempotent operations** - safe to run multiple times
+- ✅ **Task user integration** - respects `:user()` directive
+- ✅ **Multiple stow operations** - link, unlink, restow
+- ✅ **Advanced options** - no-folding, verbose, and more
 
 ## Functions
 
-### stow.stow()
+### `stow.link()`
 
-Stow a package by creating symlinks from the stow directory to the target directory.
-
-**Parameters:**
-- `package` (string, required): Name of the package to stow
-- `dir` or `stow_dir` (string, optional): Stow directory (default: `$HOME/.dotfiles`)
-- `target` (string, optional): Target directory (default: `$HOME`)
-- `verbose` (boolean, optional): Enable verbose output
-- `no_folding` (boolean, optional): Disable directory folding
-- `ignore` (table, optional): List of patterns to ignore
-- `override` (table, optional): List of patterns to override
-- `defer` (table, optional): List of patterns to defer
-- `delegate_to` (string, optional): Agent name for remote execution
-
-**Returns:**
-- `result` (table): Operation result with fields:
-  - `changed` (boolean): Whether changes were made
-  - `status` (string): Operation status ("stowed", "already_stowed")
-  - `package` (string): Package name
-  - `target` (string): Target directory
-  - `links` (table): List of created symlinks
-- `error` (string or nil): Error message if operation failed
-
-**Example:**
-```lua
-task({
-    name = "setup-nvim-config",
-    run = function()
-        local result, err = stow.stow({
-            package = "nvim",
-            dir = "/home/user/.dotfiles",
-            target = "/home/user/.config"
-        })
-        
-        if err then
-            error("Failed to stow nvim config: " .. err)
-        end
-        
-        if result.changed then
-            print("✓ Neovim configuration stowed")
-        else
-            print("• Neovim configuration already in place")
-        end
-    end
-})
-```
-
-### stow.unstow()
-
-Remove stowed symlinks for a package.
-
-**Parameters:** Same as `stow.stow()`
-
-**Returns:** Same structure as `stow.stow()`
-
-**Example:**
-```lua
-task({
-    name = "remove-old-config",
-    run = function()
-        local result, err = stow.unstow({
-            package = "old-vim",
-            dir = "/home/user/.dotfiles"
-        })
-        
-        if result.changed then
-            print("✓ Old configuration removed")
-        end
-    end
-})
-```
-
-### stow.restow()
-
-Restow a package (unstow then stow) - useful for updating symlinks.
-
-**Parameters:** Same as `stow.stow()`
-
-**Returns:** Same structure as `stow.stow()`
-
-**Example:**
-```lua
-task({
-    name = "update-configs",
-    run = function()
-        stow.restow({
-            package = "zsh",
-            verbose = true
-        })
-    end
-})
-```
-
-### stow.adopt()
-
-Adopt existing files into the stow package. Files in the target directory will be moved to the stow directory and replaced with symlinks.
-
-**Parameters:** Same as `stow.stow()`
-
-**Example:**
-```lua
-task({
-    name = "adopt-existing-configs",
-    run = function()
-        -- Move existing .bashrc into dotfiles and create symlink
-        stow.adopt({
-            package = "bash",
-            dir = "/home/user/.dotfiles"
-        })
-    end
-})
-```
-
-### stow.check()
-
-Check what would happen without actually making changes (dry run).
-
-**Parameters:** Same as `stow.stow()`
-
-**Returns:**
-- `result` (table):
-  - `package` (string): Package name
-  - `output` (string): Detailed output
-  - `would_succeed` (boolean): Whether operation would succeed
-
-**Example:**
-```lua
-task({
-    name = "check-before-stow",
-    run = function()
-        local result, err = stow.check({
-            package = "tmux"
-        })
-        
-        if result.would_succeed then
-            print("Safe to stow tmux config")
-        else
-            print("Conflicts detected: " .. result.output)
-        end
-    end
-})
-```
-
-### stow.simulate()
-
-Alias for `stow.check()`.
-
-### stow.is_stowed()
-
-Check if a package is currently stowed.
-
-**Parameters:** Same as `stow.stow()`
-
-**Returns:**
-- `is_stowed` (boolean): True if package is stowed
-- `error` (string or nil): Error message if check failed
-
-**Example:**
-```lua
-task({
-    name = "conditional-stow",
-    run = function()
-        local is_stowed = stow.is_stowed({
-            package = "vim"
-        })
-        
-        if not is_stowed then
-            stow.stow({ package = "vim" })
-        end
-    end
-})
-```
-
-### stow.get_links()
-
-Get a list of symlinks created by a stowed package.
-
-**Parameters:** Same as `stow.stow()`
-
-**Returns:**
-- `links` (table): List of symlink paths
-- `error` (string or nil): Error message if operation failed
-
-**Example:**
-```lua
-task({
-    name = "list-config-links",
-    run = function()
-        local links = stow.get_links({
-            package = "nvim"
-        })
-        
-        for i, link in ipairs(links) do
-            print("  " .. link)
-        end
-    end
-})
-```
-
-### stow.list_packages()
-
-List all available packages in the stow directory.
+Creates symlinks for a package (stow operation).
 
 **Parameters:**
-- `dir` or `stow_dir` (string, optional): Stow directory to scan
+```lua
+{
+    package = "package_name",      -- Required: package/directory to stow
+    source_dir = "/path/to/stow",  -- Required: stow directory
+    target_dir = "/path/to/target", -- Required: target directory
+    create_target = true,          -- Optional: create target dir if missing (default: true)
+    verbose = false,               -- Optional: verbose output
+    no_folding = false            -- Optional: don't fold directories
+}
+```
 
-**Returns:**
-- `packages` (table): List of package names
-- `error` (string or nil): Error message if operation failed
+**Returns:** `success (bool), message (string)`
 
 **Example:**
 ```lua
-task({
-    name = "show-all-packages",
-    run = function()
-        local packages = stow.list_packages({
-            dir = "/home/user/.dotfiles"
-        })
-        
-        print("Available dotfile packages:")
-        for i, pkg in ipairs(packages) do
-            print("  • " .. pkg)
-        end
-    end
+local ok, msg = stow.link({
+    package = "zsh",
+    source_dir = "/home/user/dotfiles",
+    target_dir = "/home/user",
+    create_target = true,
+    verbose = true
+})
+
+if not ok then
+    return false, msg
+end
+```
+
+**With automatic directory creation:**
+```lua
+-- This will create /home/user/.zsh if it doesn't exist
+-- and set ownership to the task user
+local ok, msg = stow.link({
+    package = ".",
+    source_dir = "/home/user/dotfiles/zsh",
+    target_dir = "/home/user/.zsh",
+    create_target = true  -- Creates dir with task user ownership
 })
 ```
 
-### stow.verify()
+### `stow.unlink()`
 
-Verify the integrity of a stowed package by checking all symlinks.
+Removes symlinks for a package (unstow operation).
 
-**Parameters:** Same as `stow.stow()`
+**Parameters:**
+```lua
+{
+    package = "package_name",      -- Required
+    source_dir = "/path/to/stow",  -- Required
+    target_dir = "/path/to/target", -- Required
+    verbose = false                -- Optional
+}
+```
 
-**Returns:**
-- `result` (table):
-  - `package` (string): Package name
-  - `total_files` (number): Total files in package
-  - `stowed_links` (number): Number of stowed symlinks
-  - `is_complete` (boolean): Whether all files are stowed
-  - `broken_links` (table): List of broken symlinks
-  - `is_valid` (boolean): Whether all symlinks are valid
-- `error` (string or nil): Error message if check failed
+**Returns:** `success (bool), message (string)`
 
 **Example:**
 ```lua
-task({
-    name = "verify-dotfiles",
-    run = function()
-        local result = stow.verify({
-            package = "zsh"
-        })
-        
-        if result.is_valid and result.is_complete then
-            print("✓ All zsh configs properly linked")
-        else
-            print("⚠ Issues detected:")
-            print("  Complete: " .. tostring(result.is_complete))
-            print("  Valid: " .. tostring(result.is_valid))
-        end
-    end
+local ok, msg = stow.unlink({
+    package = "vim",
+    source_dir = "/home/user/dotfiles",
+    target_dir = "/home/user"
+})
+```
+
+### `stow.restow()`
+
+Removes and re-creates symlinks for a package (useful for updates).
+
+**Parameters:**
+```lua
+{
+    package = "package_name",      -- Required
+    source_dir = "/path/to/stow",  -- Required
+    target_dir = "/path/to/target", -- Required
+    verbose = false,               -- Optional
+    no_folding = false            -- Optional
+}
+```
+
+**Returns:** `success (bool), message (string)`
+
+**Example:**
+```lua
+-- Refresh all links for the package
+local ok, msg = stow.restow({
+    package = "zshrc",
+    source_dir = "/home/user/dotfiles",
+    target_dir = "/home/user",
+    verbose = true
+})
+```
+
+### `stow.ensure_target()` 🆕
+
+Ensures a target directory exists with proper ownership and permissions.
+
+**Parameters:**
+```lua
+{
+    path = "/path/to/directory",  -- Required: directory path
+    owner = "username",           -- Optional: owner (uses task user if not specified)
+    mode = "0755"                -- Optional: permissions in octal (default: "0755")
+}
+```
+
+**Returns:** `success (bool), message (string)`
+
+**Example:**
+```lua
+-- Create directory as task user
+local ok, msg = stow.ensure_target({
+    path = "/home/user/.config/nvim"
+})
+
+-- Create with specific owner and permissions
+local ok, msg = stow.ensure_target({
+    path = "/home/user/.local/bin",
+    owner = "user",
+    mode = "0700"
 })
 ```
 
@@ -283,252 +145,329 @@ task({
 ### Basic Dotfiles Setup
 
 ```lua
-task({
-    name = "setup-dotfiles",
-    description = "Deploy all dotfiles using Stow",
-    run = function()
-        local packages = {"vim", "zsh", "tmux", "git"}
-        
+local stow_dotfiles = task("stow-dotfiles")
+    :description("Stow all dotfiles")
+    :user("myuser")
+    :command(function(this, params)
+        local packages = { "zsh", "vim", "tmux", "git" }
+
         for _, pkg in ipairs(packages) do
-            local result, err = stow.stow({
+            local ok, msg = stow.link({
                 package = pkg,
-                dir = "/home/user/.dotfiles"
+                source_dir = "/home/myuser/dotfiles",
+                target_dir = "/home/myuser",
+                create_target = true
             })
-            
-            if err then
-                error("Failed to stow " .. pkg .. ": " .. err)
-            end
-            
-            if result.changed then
-                print("✓ " .. pkg .. " configured")
+
+            if ok then
+                log.info("✅ " .. pkg .. " stowed")
             else
-                print("• " .. pkg .. " already configured")
+                log.error("❌ " .. pkg .. ": " .. msg)
+                return false, msg
             end
         end
-    end
-})
+
+        return true, "All dotfiles stowed"
+    end)
+    :build()
 ```
 
-### Remote Dotfiles Deployment
+### Nested Directory Structure
 
 ```lua
-task({
-    name = "deploy-team-configs",
-    description = "Deploy standard configs to all dev machines",
-    run = function()
-        local servers = {"dev-01", "dev-02", "dev-03"}
-        local configs = {"vim", "tmux", "git"}
-        
-        for _, server in ipairs(servers) do
-            print("Deploying to " .. server .. "...")
-            
-            for _, config in ipairs(configs) do
-                stow.stow({
-                    package = config,
-                    dir = "/opt/team-dotfiles",
-                    target = "/home/developer",
-                    delegate_to = server
-                })
-            end
-        end
-    end
-})
-```
-
-### Advanced Configuration with Verification
-
-```lua
-task({
-    name = "managed-nvim-setup",
-    description = "Complete Neovim configuration with verification",
-    run = function()
-        -- Check if already configured
-        local is_stowed = stow.is_stowed({
-            package = "nvim",
-            target = os.getenv("HOME") .. "/.config"
+local stow_zsh = task("stow-zsh-config")
+    :description("Stow zsh configuration into .zsh directory")
+    :user("igor")
+    :command(function(this, params)
+        -- Ensure target directory exists
+        local ok_dir, msg_dir = stow.ensure_target({
+            path = "/home/igor/.zsh",
+            owner = "igor"
         })
-        
-        if not is_stowed then
-            -- Dry run first
-            local check_result = stow.check({
-                package = "nvim",
-                target = os.getenv("HOME") .. "/.config"
+
+        if not ok_dir then
+            return false, "Failed to create .zsh: " .. msg_dir
+        end
+
+        -- Stow the configuration
+        local ok_stow, msg_stow = stow.link({
+            package = ".",
+            source_dir = "/home/igor/dotfiles/zsh",
+            target_dir = "/home/igor/.zsh",
+            no_folding = false
+        })
+
+        if not ok_stow then
+            return false, "Failed to stow: " .. msg_stow
+        end
+
+        return true, "Zsh config stowed to .zsh directory"
+    end)
+    :build()
+```
+
+### User Environment Setup
+
+```lua
+workflow
+    .define("user_dotfiles_setup")
+    :description("Complete user dotfiles setup")
+    :tasks({
+        task("install-deps")
+            :delegate_to("server1")
+            :command(function()
+                pkg.install({ packages = { "stow", "git", "zsh" } })
+                return true
+            end)
+            :build(),
+
+        task("create-user")
+            :delegate_to("server1")
+            :command(function()
+                user.create({
+                    username = "myuser",
+                    shell = "/bin/zsh",
+                    create_home = true
+                })
+                return true
+            end)
+            :build(),
+
+        task("clone-dotfiles")
+            :delegate_to("server1")
+            :user("myuser")
+            :command(function()
+                exec.run("git clone https://github.com/user/dotfiles.git ~/dotfiles")
+                return true
+            end)
+            :build(),
+
+        task("stow-all")
+            :delegate_to("server1")
+            :user("myuser")
+            :command(function()
+                -- Stow zsh to .zsh directory
+                stow.link({
+                    package = ".",
+                    source_dir = "/home/myuser/dotfiles/zsh",
+                    target_dir = "/home/myuser/.zsh",
+                    create_target = true
+                })
+
+                -- Stow zshrc to home
+                stow.link({
+                    package = "zshrc",
+                    source_dir = "/home/myuser/dotfiles",
+                    target_dir = "/home/myuser"
+                })
+
+                return true, "All dotfiles stowed"
+            end)
+            :build()
+    })
+```
+
+### Multiple Packages with Error Handling
+
+```lua
+local stow_multiple = task("stow-multiple")
+    :user("myuser")
+    :command(function(this, params)
+        local packages = {
+            { name = "zsh", target = "/home/myuser" },
+            { name = "vim", target = "/home/myuser" },
+            { name = "scripts", target = "/home/myuser/.local/bin" },
+        }
+
+        local results = {}
+        local failed = {}
+
+        for _, pkg_info in ipairs(packages) do
+            local ok, msg = stow.link({
+                package = pkg_info.name,
+                source_dir = "/home/myuser/dotfiles",
+                target_dir = pkg_info.target,
+                create_target = true,
+                verbose = true
             })
-            
-            if not check_result.would_succeed then
-                print("Conflicts detected, adopting existing files...")
-                stow.adopt({
-                    package = "nvim",
-                    target = os.getenv("HOME") .. "/.config"
-                })
-            end
-            
-            -- Now stow
-            stow.stow({
-                package = "nvim",
-                target = os.getenv("HOME") .. "/.config",
-                ignore = {"*.swp", "*.bak"}
-            })
-        end
-        
-        -- Verify integrity
-        local verify = stow.verify({
-            package = "nvim",
-            target = os.getenv("HOME") .. "/.config"
-        })
-        
-        if verify.is_valid and verify.is_complete then
-            print("✓ Neovim fully configured and verified")
-        else
-            error("Configuration verification failed!")
-        end
-    end
-})
-```
 
-### Parallel Dotfiles Deployment
-
-```lua
-task({
-    name = "parallel-dotfile-deployment",
-    description = "Deploy dotfiles to multiple servers in parallel",
-    run = function()
-        local servers = {"web-01", "web-02", "web-03", "web-04"}
-        local packages = {"bash", "vim", "git", "tmux"}
-        
-        -- Deploy to all servers in parallel
-        goroutine.map(servers, function(server)
-            print("Deploying to " .. server)
-            
-            for _, pkg in ipairs(packages) do
-                local result = stow.stow({
-                    package = pkg,
-                    dir = "/opt/dotfiles",
-                    delegate_to = server
-                })
-                
-                if result.changed then
-                    print("[" .. server .. "] ✓ " .. pkg)
-                end
-            end
-            
-            -- Verify all packages
-            for _, pkg in ipairs(packages) do
-                local verify = stow.verify({
-                    package = pkg,
-                    delegate_to = server
-                })
-                
-                if not verify.is_valid then
-                    error("[" .. server .. "] Verification failed for " .. pkg)
-                end
-            end
-            
-            print("[" .. server .. "] All dotfiles deployed and verified")
-        end)
-    end
-})
-```
-
-### Dotfiles Rotation Strategy
-
-```lua
-task({
-    name = "rotate-configs",
-    description = "Safely rotate configuration versions",
-    run = function()
-        local old_version = "vim-v1"
-        local new_version = "vim-v2"
-        
-        -- Check current state
-        local is_old_stowed = stow.is_stowed({
-            package = old_version
-        })
-        
-        if is_old_stowed then
-            print("Removing old version...")
-            stow.unstow({ package = old_version })
-        end
-        
-        -- Stow new version
-        print("Deploying new version...")
-        local result = stow.stow({
-            package = new_version,
-            verbose = true
-        })
-        
-        if not result.changed then
-            print("No changes needed - already on new version")
-        else
-            -- Verify new deployment
-            local verify = stow.verify({ package = new_version })
-            
-            if verify.is_valid and verify.is_complete then
-                print("✓ Successfully rotated to " .. new_version)
+            if ok then
+                table.insert(results, pkg_info.name)
+                log.info("✅ " .. pkg_info.name .. ": " .. msg)
             else
-                -- Rollback
-                print("⚠ Verification failed, rolling back...")
-                stow.unstow({ package = new_version })
-                stow.stow({ package = old_version })
-                error("Rollback completed due to verification failure")
+                table.insert(failed, pkg_info.name)
+                log.error("❌ " .. pkg_info.name .. ": " .. msg)
             end
         end
-    end
-})
-```
 
-## Idempotency
+        if #failed > 0 then
+            return false, "Failed to stow: " .. table.concat(failed, ", ")
+        end
 
-All `stow` operations are idempotent:
-
-- **stow()**: Will skip if package is already fully stowed
-- **unstow()**: Will skip if package is not stowed
-- **restow()**: Only restows if necessary
-
-The module tracks state and only makes changes when needed, making it safe to run repeatedly.
-
-## State Management
-
-When a state stack is active, the `stow` module tracks:
-
-- Which packages are stowed
-- Where they are stowed
-- The hash of the configuration
-- Symlink details
-
-This enables:
-- Change detection
-- Rollback capabilities
-- Audit trails
-
-## Requirements
-
-- GNU Stow must be installed on the target system
-- Stow package directory must exist and contain valid packages
-- Appropriate permissions for creating symlinks in target directory
-
-## Error Handling
-
-All functions return `(result, error)`. Always check for errors:
-
-```lua
-local result, err = stow.stow({ package = "vim" })
-if err then
-    error("Operation failed: " .. err)
-end
+        return true, "Successfully stowed: " .. table.concat(results, ", ")
+    end)
+    :build()
 ```
 
 ## Best Practices
 
-1. **Always verify** after stowing critical configurations
-2. **Use check()** before stowing to detect conflicts
-3. **Leverage idempotency** - safe to run multiple times
-4. **Version your packages** for easy rollback
-5. **Use delegate_to** for remote deployments
-6. **Combine with goroutines** for parallel deployment
+### 1. **Always use `create_target = true`** for new setups
+```lua
+-- Good: Automatically creates missing directories
+stow.link({
+    package = "zsh",
+    source_dir = "~/dotfiles",
+    target_dir = "~/.config/zsh",
+    create_target = true
+})
+```
+
+### 2. **Use `:user()` directive** for proper ownership
+```lua
+task("stow-config")
+    :user("myuser")  -- All stow operations will run as myuser
+    :command(function()
+        stow.link({ ... })
+    end)
+    :build()
+```
+
+### 3. **Explicitly create complex directory structures**
+```lua
+-- For complex structures, ensure directories first
+stow.ensure_target({ path = "/home/user/.config/nvim" })
+stow.ensure_target({ path = "/home/user/.local/share" })
+
+-- Then stow
+stow.link({ package = "nvim", ... })
+```
+
+### 4. **Use `restow` for updates**
+```lua
+-- When dotfiles change, use restow
+stow.restow({
+    package = "vim",
+    source_dir = "~/dotfiles",
+    target_dir = "~"
+})
+```
+
+### 5. **Check results and log appropriately**
+```lua
+local ok, msg = stow.link({ ... })
+
+if ok then
+    log.info("✅ " .. msg)
+else
+    log.error("❌ " .. msg)
+    return false, msg
+end
+```
+
+## Idempotency
+
+All stow operations are **fully idempotent**:
+
+- `stow.link()` - Checks if links already exist before creating
+- `stow.unlink()` - Only removes links if they exist
+- `stow.restow()` - Safe to run multiple times
+- `stow.ensure_target()` - Only creates directory if missing
+
+**Example:**
+```lua
+-- Safe to run multiple times
+stow.link({
+    package = "zsh",
+    source_dir = "/home/user/dotfiles",
+    target_dir = "/home/user"
+})
+-- First run: Creates symlinks
+-- Second run: Detects existing links, returns success
+```
+
+## Task User Integration
+
+The stow module respects the task `:user()` directive:
+
+```lua
+task("stow-as-user")
+    :user("igor")  -- Run as igor
+    :command(function()
+        -- This will:
+        -- 1. Create /home/igor/.zsh owned by igor
+        -- 2. Run stow as igor
+        stow.link({
+            package = ".",
+            source_dir = "/home/igor/dotfiles/zsh",
+            target_dir = "/home/igor/.zsh"
+        })
+    end)
+    :build()
+```
+
+## Troubleshooting
+
+### Links not created
+```bash
+# Check stow is installed
+pkg.install({ packages = { "stow" } })
+
+# Check source directory exists
+log.info("Source: " .. exec.run("ls -la /home/user/dotfiles"))
+
+# Use verbose mode
+stow.link({ ..., verbose = true })
+```
+
+### Permission denied
+```bash
+# Ensure proper task user
+task("fix-perms")
+    :user("targetuser")  # Must match target directory owner
+    :command(function()
+        stow.link({ ... })
+    end)
+    :build()
+```
+
+### Directory already exists
+```bash
+# Use ensure_target to handle existing directories
+stow.ensure_target({ path = "/home/user/.config" })
+stow.link({
+    package = "config",
+    target_dir = "/home/user/.config",
+    create_target = false  # Already ensured above
+})
+```
+
+## Migration from Manual exec.run()
+
+**Before (manual stow):**
+```lua
+exec.run("sudo -u igor -- /bin/sh -c 'mkdir -p /home/igor/.zsh'")
+exec.run("sudo -u igor -- /bin/sh -c 'stow -d /home/igor/dotfiles/zsh -t /home/igor/.zsh .'")
+```
+
+**After (using stow module):**
+```lua
+stow.link({
+    package = ".",
+    source_dir = "/home/igor/dotfiles/zsh",
+    target_dir = "/home/igor/.zsh",
+    create_target = true  -- Handles mkdir and ownership
+})
+```
+
+**Benefits:**
+- ✅ Automatic directory creation
+- ✅ Proper ownership handling
+- ✅ Idempotent by default
+- ✅ Better error messages
+- ✅ Cleaner code
 
 ## See Also
 
-- [File Operations Module](file-ops.md)
-- [User Module](user.md)
-- [SSH Module](ssh.md)
+- [file_ops module](./file_ops.md) - For file operations
+- [user module](./user.md) - For user management
+- [exec module](./exec.md) - For command execution

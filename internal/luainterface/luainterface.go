@@ -14,7 +14,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	agentclient "github.com/chalkan3-sloth/sloth-runner/internal/agent/client"
 	"github.com/chalkan3-sloth/sloth-runner/internal/ai"
 	"github.com/chalkan3-sloth/sloth-runner/internal/core"
 	"github.com/chalkan3-sloth/sloth-runner/internal/gitops"
@@ -41,11 +40,8 @@ func ParseLuaScript(ctx context.Context, filePath string, valuesTable *lua.LTabl
 	L := lua.NewState()
 	defer L.Close()
 
-	masterAddr := core.GetGlobalCore().MasterAddr
-	agentClient := agentclient.NewAgentClient(masterAddr)
-
 	// Register all modules
-	RegisterAllModules(L, agentClient)
+	RegisterAllModules(L, nil)
 	
 	// Set up import function
 	OpenImport(L, filePath)
@@ -473,8 +469,17 @@ func LuaToGoValue(L *lua.LState, value lua.LValue) interface{} {
 	}
 }
 
-// RegisterAllModules registers all Lua modules for compatibility
-func RegisterAllModules(L *lua.LState, agentClient *agentclient.AgentClient) {
+// RegisterAllModules registers all Lua modules (wrapper for backwards compatibility)
+func RegisterAllModules(L *lua.LState, agentClient ...interface{}) {
+	var client interface{}
+	if len(agentClient) > 0 {
+		client = agentClient[0]
+	}
+	registerAllModulesInternal(L, client)
+}
+
+// registerAllModulesInternal is the actual implementation
+func registerAllModulesInternal(L *lua.LState, agentClient interface{}) {
 	// Register core modules
 	OpenData(L)
 	OpenFs(L)
@@ -483,7 +488,7 @@ func RegisterAllModules(L *lua.LState, agentClient *agentclient.AgentClient) {
 	OpenLog(L)
 
 	// Register extended modules from other files
-	OpenGit(L)
+	RegisterGitModule(L)  // Use new git module with table-based API
 	OpenPython(L)
 	OpenGCP(L)
 	OpenAWS(L)
@@ -555,6 +560,9 @@ func RegisterAllModules(L *lua.LState, agentClient *agentclient.AgentClient) {
 	
 	// Register goroutine module for parallel execution
 	RegisterGoroutineModule(L)
+
+	// Register stow module for dotfiles management
+	RegisterStowModule(L)
 	
 	// Register infra_test module for infrastructure testing
 	L.PreloadModule("infra_test", NewInfraTestModule().Loader)
@@ -563,7 +571,7 @@ func RegisterAllModules(L *lua.LState, agentClient *agentclient.AgentClient) {
 	RegisterIncusModule(L)
 	
 	// Register Stow module for dotfiles management (as PreloadModule for require compatibility)
-	stowModule := NewStowModule(nil, agentClient)
+	stowModule := NewStowModule(nil)
 	L.PreloadModule("stow", stowModule.Loader)
 	
 	// Register Facts module for accessing agent system information
@@ -597,7 +605,7 @@ func RegisterAllModules(L *lua.LState, agentClient *agentclient.AgentClient) {
 
 // RegisterModulesGlobally loads all modules automatically as global variables
 // Users can use pkg.install(), user.create(), etc. without require()
-func RegisterModulesGlobally(L *lua.LState, agentClient *agentclient.AgentClient) {
+func RegisterModulesGlobally(L *lua.LState, agentClient interface{}) {
 	// Helper function to load a module and set it globally
 	loadModuleGlobally := func(modName string, loader lua.LGFunction) {
 		// Skip if module is already registered as global
@@ -645,7 +653,7 @@ func RegisterModulesGlobally(L *lua.LState, agentClient *agentclient.AgentClient
 	loadModuleGlobally("azure", NewAzureModule().Loader)
 	loadModuleGlobally("digitalocean", NewDigitalOceanModule().Loader)
 	loadModuleGlobally("docker", NewDockerModule().Loader)
-	loadModuleGlobally("stow", NewStowModule(nil, agentClient).Loader)
+	loadModuleGlobally("stow", NewStowModule(nil).Loader)
 	loadModuleGlobally("metrics", NewMetricsModule().Loader)
 	loadModuleGlobally("notifications", NewNotificationsModule().Loader)
 	loadModuleGlobally("reliability", NewReliabilityModule().Loader)

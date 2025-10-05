@@ -31,13 +31,15 @@ func RegisterGitModule(L *lua.LState) {
 	L.SetField(gitModule, "checkout", L.NewFunction(gitCheckout))
 	L.SetField(gitModule, "commit", L.NewFunction(gitCommit))
 	L.SetField(gitModule, "push", L.NewFunction(gitPush))
+	L.SetField(gitModule, "is_repo", L.NewFunction(gitIsRepo))
+	L.SetField(gitModule, "ensure_clean", L.NewFunction(gitEnsureClean))
 
 	// Set as global
 	L.SetGlobal("git", gitModule)
 }
 
-// gitClone clones a git repository
-// Usage: local repo, err = git.clone({url = "...", local_path = "..."})
+// gitClone clones a git repository with idempotency
+// Usage: local repo, err = git.clone({url = "...", local_path = "...", clean = false})
 func gitClone(L *lua.LState) int {
 	// Get parameters table
 	params := L.CheckTable(1)
@@ -46,6 +48,7 @@ func gitClone(L *lua.LState) int {
 	localPath := getStringField(L, params, "local_path", "")
 	branch := getStringField(L, params, "branch", "")
 	depth := getIntField(L, params, "depth", 0)
+	clean := getBoolField(L, params, "clean", false)
 
 	if url == "" {
 		L.Push(lua.LNil)
@@ -59,17 +62,36 @@ func gitClone(L *lua.LState) int {
 		return 2
 	}
 
+	// Check if directory already exists and is a git repo
+	checkCmd := exec.Command("git", "-C", localPath, "rev-parse", "--git-dir")
+	if err := checkCmd.Run(); err == nil {
+		// Directory exists and is a git repo
+		if !clean {
+			// Return existing repo
+			repoTable := L.NewTable()
+			L.SetField(repoTable, "path", lua.LString(localPath))
+			L.SetField(repoTable, "url", lua.LString(url))
+			L.SetField(repoTable, "exists", lua.LBool(true))
+
+			L.Push(repoTable)
+			L.Push(lua.LNil)
+			return 2
+		}
+		// Clean requested, remove directory
+		exec.Command("rm", "-rf", localPath).Run()
+	}
+
 	// Build git clone command
 	args := []string{"clone"}
-	
+
 	if branch != "" {
 		args = append(args, "-b", branch)
 	}
-	
+
 	if depth > 0 {
 		args = append(args, "--depth", fmt.Sprintf("%d", depth))
 	}
-	
+
 	args = append(args, url, localPath)
 
 	// Execute git clone (as task user if specified)
@@ -85,7 +107,8 @@ func gitClone(L *lua.LState) int {
 	repoTable := L.NewTable()
 	L.SetField(repoTable, "path", lua.LString(localPath))
 	L.SetField(repoTable, "url", lua.LString(url))
-	
+	L.SetField(repoTable, "exists", lua.LBool(false))
+
 	L.Push(repoTable)
 	L.Push(lua.LNil)
 	return 2
@@ -279,4 +302,49 @@ func getBoolField(L *lua.LState, tbl *lua.LTable, key string, defaultValue bool)
 		return bool(b)
 	}
 	return defaultValue
+}
+
+// gitIsRepo checks if a directory is a git repository
+// Usage: local is_repo = git.is_repo({path = "..."})
+func gitIsRepo(L *lua.LState) int {
+	params := L.CheckTable(1)
+
+	path := getStringField(L, params, "path", "")
+	if path == "" {
+		L.Push(lua.LBool(false))
+		return 1
+	}
+
+	// Check if directory is a git repo
+	cmd := exec.Command("git", "-C", path, "rev-parse", "--git-dir")
+	err := cmd.Run()
+
+	L.Push(lua.LBool(err == nil))
+	return 1
+}
+
+// gitEnsureClean ensures a directory is clean (removes it if exists)
+// Usage: local success, err = git.ensure_clean({path = "..."})
+func gitEnsureClean(L *lua.LState) int {
+	params := L.CheckTable(1)
+
+	path := getStringField(L, params, "path", "")
+	if path == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("path is required"))
+		return 2
+	}
+
+	// Remove directory if it exists
+	cmd := exec.Command("rm", "-rf", path)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to clean directory: %s - %s", err.Error(), string(output))))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LNil)
+	return 2
 }

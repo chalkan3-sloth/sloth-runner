@@ -31,13 +31,14 @@ func RegisterStowModule(L *lua.LState) {
 	L.SetField(stowModule, "link", L.NewFunction(stowLink))
 	L.SetField(stowModule, "unlink", L.NewFunction(stowUnlink))
 	L.SetField(stowModule, "restow", L.NewFunction(stowRestow))
+	L.SetField(stowModule, "ensure_target", L.NewFunction(stowEnsureTarget))
 
 	// Set as global
 	L.SetGlobal("stow", stowModule)
 }
 
 // stowLink creates symlinks for a package
-// Usage: local success, msg = stow.link({package = "...", source_dir = "...", target_dir = "..."})
+// Usage: local success, msg = stow.link({package = "...", source_dir = "...", target_dir = "...", create_target = true})
 func stowLink(L *lua.LState) int {
 	// Get parameters table
 	params := L.CheckTable(1)
@@ -47,6 +48,7 @@ func stowLink(L *lua.LState) int {
 	targetDir := getStringField(L, params, "target_dir", "")
 	verbose := getBoolField(L, params, "verbose", false)
 	noFolding := getBoolField(L, params, "no_folding", false)
+	createTarget := getBoolField(L, params, "create_target", true) // Default true
 
 	if pkg == "" {
 		L.Push(lua.LBool(false))
@@ -66,6 +68,31 @@ func stowLink(L *lua.LState) int {
 		return 2
 	}
 
+	// Create target directory if requested and it doesn't exist
+	if createTarget {
+		if _, err := os.Stat(targetDir); os.IsNotExist(err) {
+			// Get task user to determine ownership
+			taskUser := L.GetGlobal("__TASK_USER__")
+
+			// Create directory with proper permissions
+			if err := os.MkdirAll(targetDir, 0755); err != nil {
+				L.Push(lua.LBool(false))
+				L.Push(lua.LString(fmt.Sprintf("failed to create target directory: %v", err)))
+				return 2
+			}
+
+			// If task user is set and not root, change ownership
+			if taskUser.Type() == lua.LTString && taskUser.String() != "" && taskUser.String() != "root" {
+				chownCmd := exec.Command("chown", "-R", taskUser.String()+":"+taskUser.String(), targetDir)
+				if err := chownCmd.Run(); err != nil {
+					L.Push(lua.LBool(false))
+					L.Push(lua.LString(fmt.Sprintf("failed to set ownership of target directory: %v", err)))
+					return 2
+				}
+			}
+		}
+	}
+
 	// IDEMPOTENCY CHECK: Verify if package is already stowed
 	// Check if symlinks already exist by running stow with --no-folding in simulation mode
 	checkArgs := []string{"-d", sourceDir, "-t", targetDir, "-n", "-v"}
@@ -73,22 +100,18 @@ func stowLink(L *lua.LState) int {
 		checkArgs = append(checkArgs, "--no-folding")
 	}
 	checkArgs = append(checkArgs, pkg)
-	
+
 	checkCmd := execAsTaskUser(L, "stow", checkArgs)
 	checkOutput, checkErr := checkCmd.CombinedOutput()
-	
-	// If simulation shows no changes needed (empty output or already linked), it's already stowed
+
+	// If simulation shows no changes needed (empty output), it's already stowed
+	// Note: "LINK:" in output means stow WILL create links, so NOT already stowed
 	outputStr := strings.TrimSpace(string(checkOutput))
-	if checkErr == nil && (outputStr == "" || strings.Contains(outputStr, "LINK:")) {
-		// Check if links actually exist
-		pkgPath := filepath.Join(sourceDir, pkg)
-		if _, err := os.Stat(pkgPath); err == nil {
-			// Package exists, check if already linked
-			// If stow simulation succeeds with no errors, assume already stowed
-			L.Push(lua.LBool(true))
-			L.Push(lua.LString("package already stowed"))
-			return 2
-		}
+	if checkErr == nil && outputStr == "" {
+		// No output means no changes needed - already stowed
+		L.Push(lua.LBool(true))
+		L.Push(lua.LString("package already stowed"))
+		return 2
 	}
 
 	// Build stow command for actual execution
@@ -251,5 +274,71 @@ func stowRestow(L *lua.LState) int {
 
 	L.Push(lua.LBool(true))
 	L.Push(lua.LString(msg))
+	return 2
+}
+
+// stowEnsureTarget ensures a target directory exists with proper ownership
+// Usage: local success, msg = stow.ensure_target({path = "/home/user/.zsh", owner = "user"})
+func stowEnsureTarget(L *lua.LState) int {
+	params := L.CheckTable(1)
+
+	path := getStringField(L, params, "path", "")
+	owner := getStringField(L, params, "owner", "")
+	mode := getStringField(L, params, "mode", "0755")
+
+	if path == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("path is required"))
+		return 2
+	}
+
+	// If owner is not specified, try to get from __TASK_USER__
+	if owner == "" {
+		taskUser := L.GetGlobal("__TASK_USER__")
+		if taskUser.Type() == lua.LTString && taskUser.String() != "" {
+			owner = taskUser.String()
+		}
+	}
+
+	// Check if directory already exists
+	if info, err := os.Stat(path); err == nil {
+		// Directory exists
+		if !info.IsDir() {
+			L.Push(lua.LBool(false))
+			L.Push(lua.LString(fmt.Sprintf("%s exists but is not a directory", path)))
+			return 2
+		}
+
+		// Directory already exists
+		L.Push(lua.LBool(true))
+		L.Push(lua.LString(fmt.Sprintf("directory %s already exists", path)))
+		return 2
+	}
+
+	// Parse mode (simplified - assumes octal)
+	var fileMode os.FileMode = 0755
+	if mode != "" {
+		fmt.Sscanf(mode, "%o", &fileMode)
+	}
+
+	// Create directory
+	if err := os.MkdirAll(path, fileMode); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to create directory: %v", err)))
+		return 2
+	}
+
+	// Set ownership if specified
+	if owner != "" && owner != "root" {
+		chownCmd := exec.Command("chown", "-R", owner+":"+owner, path)
+		if err := chownCmd.Run(); err != nil {
+			L.Push(lua.LBool(false))
+			L.Push(lua.LString(fmt.Sprintf("failed to set ownership: %v", err)))
+			return 2
+		}
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("directory %s created successfully", path)))
 	return 2
 }

@@ -1,0 +1,155 @@
+-- Workflow for managing user environment with dotfiles
+-- Using improved stow module with automatic directory creation
+
+local install_packages_task = task("install-packages")
+    :description("Install default packages")
+    :delegate_to("lady-arch")
+    :command(function(this, params)
+        local success, msg = pkg.install({
+            packages = { "kitty-terminfo", "stow", "git", "zsh", "lsd", "fzf" },
+        })
+
+        if not success then
+            return false, "Failed to install packages: " .. tostring(msg)
+        end
+
+        return true, "Packages installed successfully"
+    end)
+    :build()
+
+local manager_user_task = task("manager-user")
+    :description("Create and configure user")
+    :delegate_to("lady-arch")
+    :command(function(this, params)
+        local success, msg = user.create({
+            username = "igor",
+            password = "changeme123",
+            home = "/home/igor",
+            shell = "/bin/zsh",
+            groups = { "wheel" },
+            create_home = true,
+        })
+
+        if not success then
+            return false, "Failed to create user: " .. tostring(msg)
+        end
+
+        return true, "User created successfully: " .. msg
+    end)
+    :build()
+
+local clone_dotfiles_task = task("clone-dotfiles")
+    :description("Clone dotfiles repository")
+    :delegate_to("lady-arch")
+    :user("igor")
+    :workdir("/home/igor")
+    :command(function(this, params)
+        -- Clone dotfiles using improved git module with idempotency
+        local repo, err = git.clone({
+            url = "https://github.com/chalkan3/dotfiles.git",
+            local_path = "/home/igor/dotfiles",
+            clean = false  -- Don't re-clone if already exists
+        })
+
+        if err then
+            return false, "Failed to clone dotfiles: " .. err
+        end
+
+        if repo.exists then
+            log.info("✓ Dotfiles repository already exists")
+        else
+            log.info("✓ Dotfiles cloned successfully")
+        end
+
+        return true, "Dotfiles ready"
+    end)
+    :build()
+
+local stow_zsh_config = task("stow-zsh-config")
+    :description("Stow zsh configuration files")
+    :delegate_to("lady-arch")
+    :user("igor")
+    :command(function(this, params)
+        -- Ensure .zsh directory exists with proper ownership
+        local ok_dir, msg_dir = stow.ensure_target({
+            path = "/home/igor/.zsh",
+            owner = "igor",
+            mode = "0755"
+        })
+
+        if not ok_dir then
+            return false, "Failed to create .zsh directory: " .. msg_dir
+        end
+
+        log.info("✓ " .. msg_dir)
+
+        -- Stow zsh configuration into .zsh directory
+        local ok_stow, msg_stow = stow.link({
+            package = ".",
+            source_dir = "/home/igor/dotfiles/zsh",
+            target_dir = "/home/igor/.zsh",
+            create_target = true,
+            no_folding = false,
+            verbose = true
+        })
+
+        if not ok_stow then
+            return false, "Failed to stow zsh config: " .. msg_stow
+        end
+
+        log.info("✓ " .. msg_stow)
+        return true, "Zsh config stowed successfully"
+    end)
+    :build()
+
+local stow_zshrc_task = task("stow-zshrc")
+    :description("Stow .zshrc file")
+    :delegate_to("lady-arch")
+    :user("igor")
+    :command(function(this, params)
+        -- Stow zshrc directly to home directory
+        local ok, msg = stow.link({
+            package = "zshrc",
+            source_dir = "/home/igor/dotfiles",
+            target_dir = "/home/igor",
+            create_target = true,
+            verbose = true
+        })
+
+        if not ok then
+            return false, "Failed to stow .zshrc: " .. msg
+        end
+
+        log.info("✓ " .. msg)
+        return true, ".zshrc stowed successfully"
+    end)
+    :build()
+
+workflow
+    .define("user_environment_setup")
+    :description("Complete user environment setup with dotfiles management")
+    :version("2.0.0")
+    :tasks({
+        install_packages_task,
+        manager_user_task,
+        clone_dotfiles_task,
+        stow_zsh_config,
+        stow_zshrc_task
+    })
+    :config({
+        timeout = "30m",
+        max_parallel_tasks = 1,
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 User environment setup completed successfully!")
+            log.info("📋 Summary:")
+            log.info("  ✓ Packages installed")
+            log.info("  ✓ User 'igor' created with password")
+            log.info("  ✓ Dotfiles cloned")
+            log.info("  ✓ Zsh configuration stowed")
+            log.info("  ✓ .zshrc stowed")
+        else
+            log.error("❌ User environment setup failed")
+        end
+    end)
