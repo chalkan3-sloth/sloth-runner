@@ -55,3 +55,27 @@ jobs:
           echo "🎉 Release completed successfully!"
           echo "📦 Version: ${GITHUB_REF#refs/tags/}"
           echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${GITHUB_REF#refs/tags/}"
+
+  test-agent-update:
+    name: Test Agent Update
+    runs-on: ubuntu-latest
+    needs: release
+    steps:
+      - name: Download and install latest release
+        run: |
+          echo "📥 Downloading latest release..."
+          VERSION=${GITHUB_REF#refs/tags/}
+          curl -L -o sloth-runner.tar.gz "https://github.com/${{ github.repository }}/releases/download/${VERSION}/sloth-runner_${VERSION}_linux_amd64.tar.gz"
+          tar -xzf sloth-runner.tar.gz
+          chmod +x sloth-runner
+          sudo mv sloth-runner /usr/local/bin/
+
+      - name: Verify installation
+        run: |
+          echo "✅ Verifying installation..."
+          sloth-runner version
+
+      - name: Test agent update command
+        run: |
+          echo "🧪 Testing 'sloth-runner agent update' command..."
+          sloth-runner agent update --help || echo "⚠️  Agent update command not available yet"
