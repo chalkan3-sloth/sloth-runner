@@ -2057,6 +2057,99 @@ var agentMetricsPromCmd = &cobra.Command{
 	},
 }
 
+var agentGrafanaCmd = &cobra.Command{
+	Use:   "grafana <agent_name>",
+	Short: "Display detailed metrics dashboard for an agent",
+	Long:  `Shows a comprehensive terminal-based dashboard with detailed graphs and metrics visualization.`,
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		agentName := args[0]
+		masterAddr, _ := cmd.Flags().GetString("master")
+		watch, _ := cmd.Flags().GetBool("watch")
+		interval, _ := cmd.Flags().GetInt("interval")
+
+		// Connect to master to get agent address
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		conn, err := grpc.Dial(masterAddr,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			return formatConnectionError(err, masterAddr)
+		}
+		defer conn.Close()
+
+		registryClient := pb.NewAgentRegistryClient(conn)
+
+		// Get agent info from list to find its address
+		listResp, err := registryClient.ListAgents(ctx, &pb.ListAgentsRequest{})
+		if err != nil {
+			return fmt.Errorf("failed to list agents: %v", err)
+		}
+
+		// Find the specific agent
+		var agentAddress string
+		for _, agent := range listResp.GetAgents() {
+			if agent.GetAgentName() == agentName {
+				agentAddress = agent.GetAgentAddress()
+				break
+			}
+		}
+
+		if agentAddress == "" {
+			return fmt.Errorf("agent '%s' not found", agentName)
+		}
+
+		// Extract host from address (remove port if present)
+		host := agentAddress
+		if strings.Contains(agentAddress, ":") {
+			host = strings.Split(agentAddress, ":")[0]
+		}
+
+		// Metrics endpoint
+		metricsEndpoint := fmt.Sprintf("http://%s:9090/metrics", host)
+
+		// Function to fetch and display dashboard
+		displayDashboard := func() error {
+			// Fetch metrics
+			data, err := telemetry.FetchMetrics(metricsEndpoint)
+			if err != nil {
+				pterm.Error.Printf("❌ Failed to fetch metrics: %v\n", err)
+				fmt.Println()
+				pterm.Info.Println("💡 Ensure the agent is running with telemetry enabled:")
+				fmt.Printf("  sloth-runner agent start --name %s --telemetry\n", agentName)
+				return err
+			}
+
+			// Display comprehensive dashboard
+			telemetry.DisplayDashboard(data, agentName)
+			return nil
+		}
+
+		// Display dashboard
+		if watch {
+			// Watch mode: continuously update dashboard
+			pterm.Info.Printf("🔄 Watching metrics for %s (refresh every %ds, press Ctrl+C to stop)\n", agentName, interval)
+			fmt.Println()
+
+			for {
+				// Clear screen for watch mode
+				fmt.Print("\033[H\033[2J")
+
+				if err := displayDashboard(); err != nil {
+					return err
+				}
+
+				time.Sleep(time.Duration(interval) * time.Second)
+			}
+		} else {
+			// One-time display
+			return displayDashboard()
+		}
+	},
+}
+
 // State command and subcommands
 var stateCmd = &cobra.Command{
 	Use:   "state",
@@ -3130,6 +3223,9 @@ func init() {
 	agentCmd.AddCommand(agentMetricsCmd)
 	agentMetricsCmd.AddCommand(agentMetricsPromCmd)
 	agentMetricsPromCmd.Flags().Bool("snapshot", false, "Display current metrics snapshot instead of endpoint URL")
+	agentMetricsCmd.AddCommand(agentGrafanaCmd)
+	agentGrafanaCmd.Flags().Bool("watch", false, "Continuously update dashboard every N seconds")
+	agentGrafanaCmd.Flags().Int("interval", 5, "Update interval in seconds when using --watch")
 
 	// Scheduler command and subcommands
 	rootCmd.AddCommand(schedulerCmd)
