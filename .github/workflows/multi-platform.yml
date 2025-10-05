@@ -16,12 +16,24 @@ on:
 
 jobs:
   test-builds:
-    name: Test Build on ${{ matrix.os }}
+    name: Test Build on ${{ matrix.os }} ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            arch: amd64
+            goos: linux
+            goarch: amd64
+          - os: ubuntu-latest
+            arch: arm64
+            goos: linux
+            goarch: arm64
+          - os: macos-latest
+            arch: amd64
+            goos: darwin
+            goarch: amd64
       fail-fast: false
         
     steps:
@@ -45,7 +57,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential sqlite3 libsqlite3-dev
+          sudo apt-get install -y build-essential sqlite3 libsqlite3-dev gcc-aarch64-linux-gnu
 
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
@@ -56,25 +68,32 @@ jobs:
         run: go mod download
         timeout-minutes: 3
 
-      - name: Build binary (Linux with SQLite)
-        if: runner.os == 'Linux'
+      - name: Build binary with telemetry (Linux ARM64)
+        if: runner.os == 'Linux' && matrix.arch == 'arm64'
         run: |
-          CGO_ENABLED=1 go build -v -o sloth-runner-test ./cmd/sloth-runner
+          CC=aarch64-linux-gnu-gcc CGO_ENABLED=1 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -v -o sloth-runner-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/sloth-runner
         timeout-minutes: 5
 
-      - name: Build binary (macOS without SQLite)
+      - name: Build binary with telemetry (Linux AMD64)
+        if: runner.os == 'Linux' && matrix.arch == 'amd64'
+        run: |
+          CGO_ENABLED=1 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -v -o sloth-runner-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/sloth-runner
+        timeout-minutes: 5
+
+      - name: Build binary with telemetry (macOS)
         if: runner.os == 'macOS'
         run: |
-          CGO_ENABLED=0 go build -v -o sloth-runner-test ./cmd/sloth-runner
+          CGO_ENABLED=0 GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -v -o sloth-runner-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/sloth-runner
         timeout-minutes: 5
 
-      - name: Test binary execution
-        run: ./sloth-runner-test version || echo "Binary built successfully"
+      - name: Test binary execution (skip ARM64)
+        if: matrix.arch != 'arm64'
+        run: ./sloth-runner-${{ matrix.goos }}-${{ matrix.goarch }} version || echo "Binary built successfully"
         timeout-minutes: 1
 
       - name: Upload test binary
         uses: actions/upload-artifact@v4
         with:
-          name: sloth-runner-${{ matrix.os }}
-          path: sloth-runner-test*
+          name: sloth-runner-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: sloth-runner-${{ matrix.goos }}-${{ matrix.goarch }}
           retention-days: 1

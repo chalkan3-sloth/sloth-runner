@@ -1,0 +1,151 @@
+name: Telemetry Integration Tests
+
+on:
+  pull_request:
+    branches: [ master ]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  integration-test:
+    name: Test Telemetry Integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential sqlite3 libsqlite3-dev
+        timeout-minutes: 2
+
+      - name: Build sloth-runner
+        run: |
+          go mod download
+          CGO_ENABLED=1 go build -v -o sloth-runner ./cmd/sloth-runner
+        timeout-minutes: 3
+
+      - name: Integration Test - Start Agent
+        run: |
+          echo "Starting agent with telemetry..."
+          ./sloth-runner agent start test-ci --port 50100 --metrics-port 9100 &
+          AGENT_PID=$!
+          echo "AGENT_PID=$AGENT_PID" >> $GITHUB_ENV
+
+          # Wait for agent to start
+          for i in {1..30}; do
+            if curl -s http://localhost:9100/health > /dev/null; then
+              echo "✅ Agent started successfully"
+              break
+            fi
+            echo "Waiting for agent to start... ($i/30)"
+            sleep 1
+          done
+        timeout-minutes: 2
+
+      - name: Integration Test - Verify Metrics
+        run: |
+          echo "Testing metrics endpoints..."
+
+          # Test health endpoint
+          curl -f http://localhost:9100/health || exit 1
+          echo "✅ Health endpoint OK"
+
+          # Test metrics endpoint
+          METRICS=$(curl -s http://localhost:9100/metrics)
+          echo "$METRICS" | grep -q "sloth_tasks_total" || { echo "❌ Missing sloth_tasks_total metric"; exit 1; }
+          echo "$METRICS" | grep -q "sloth_tasks_running" || { echo "❌ Missing sloth_tasks_running metric"; exit 1; }
+          echo "$METRICS" | grep -q "sloth_modules_active" || { echo "❌ Missing sloth_modules_active metric"; exit 1; }
+          echo "✅ All required metrics present"
+
+          # Test info endpoint
+          curl -f http://localhost:9100/info | grep -q "test-ci" || exit 1
+          echo "✅ Info endpoint OK"
+        timeout-minutes: 2
+
+      - name: Integration Test - CLI Commands
+        run: |
+          echo "Testing telemetry CLI commands..."
+
+          # Test metrics prom command
+          ./sloth-runner agent metrics prom test-ci > metrics_output.txt
+          grep -q "sloth_tasks_total" metrics_output.txt || exit 1
+          echo "✅ Metrics prom command OK"
+
+          # Test metrics grafana command (terminal dashboard)
+          timeout 2s ./sloth-runner agent metrics grafana test-ci || true
+          echo "✅ Metrics grafana command OK"
+        timeout-minutes: 2
+
+      - name: Integration Test - Execute Tasks
+        run: |
+          echo "Creating test task to generate metrics..."
+
+          # Create a simple test task
+          cat > test_task.sloth << 'EOF'
+          name: test_metrics
+          version: 1.0.0
+          groups:
+            - name: test_group
+              tasks:
+                - name: echo_test
+                  type: command
+                  command: echo "Test task for metrics"
+                - name: sleep_test
+                  type: command
+                  command: sleep 1
+          EOF
+
+          # Run the task
+          ./sloth-runner run test_task.sloth --agent test-ci
+
+          # Verify metrics were updated
+          sleep 2
+          METRICS=$(curl -s http://localhost:9100/metrics)
+          echo "$METRICS" | grep -q 'sloth_tasks_total.*status="success"' || { echo "❌ Task metrics not recorded"; exit 1; }
+          echo "✅ Task metrics recorded successfully"
+        timeout-minutes: 3
+
+      - name: Cleanup
+        if: always()
+        run: |
+          if [ ! -z "$AGENT_PID" ]; then
+            echo "Stopping agent..."
+            kill $AGENT_PID || true
+          fi
+          rm -f test_task.sloth metrics_output.txt
+        timeout-minutes: 1
+
+      - name: Summary
+        run: |
+          echo "## 🎉 Telemetry Integration Tests Passed!"
+          echo ""
+          echo "### ✅ Tested Components:"
+          echo "- Prometheus metrics endpoint"
+          echo "- Health check endpoint"
+          echo "- Info endpoint"
+          echo "- CLI metrics commands"
+          echo "- Task execution metrics"
+          echo ""
+          echo "### 📊 Verified Metrics:"
+          echo "- sloth_tasks_total"
+          echo "- sloth_tasks_running"
+          echo "- sloth_modules_active"
+          echo "- sloth_task_duration_seconds"

@@ -37,7 +37,12 @@ release:
     - [📖 Getting Started](https://chalkan3.github.io/sloth-runner/en/quick-start/)
     - [🌐 Multilingual Docs](https://chalkan3.github.io/sloth-runner/)
     - [💾 State Management](https://chalkan3.github.io/sloth-runner/en/modules/state/)
-    - [📊 Metrics & Monitoring](https://chalkan3.github.io/sloth-runner/en/modules/metrics/)
+    - [📊 Telemetry & Monitoring](https://chalkan3.github.io/sloth-runner/en/telemetry/)
+
+    ### 🆕 New Features
+    - **Prometheus Telemetry**: Built-in metrics collection and export
+    - **Terminal Grafana**: Rich terminal-based metrics dashboard
+    - **Automatic Metrics**: Zero-configuration metrics collection
 
     **Full Changelog**: https://github.com/chalkan3-sloth/sloth-runner/compare/{{ .PreviousTag }}...{{ .Tag }}
 
