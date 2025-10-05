@@ -1609,5 +1609,97 @@ end`,
 				},
 			},
 		},
+		{
+			Name:        "git",
+			Description: "Git version control with idempotent operations",
+			Functions: []FunctionDoc{
+				{
+					Name:        "git.clone",
+					Description: "Clone a git repository with idempotency support",
+					Parameters:  "{url = 'url', local_path = 'path', branch = 'name', depth = number, clean = boolean}",
+					Returns:     "table (repo: path, url, exists) or nil, string (error)",
+					Example: `local repo, err = git.clone({
+    url = "https://github.com/user/repo.git",
+    local_path = "/home/user/repo",
+    branch = "main",
+    clean = false  -- won't clone if already exists
+})
+if err then
+    return false, "Clone failed: " .. err
+end
+if repo.exists then
+    log.info("Repository already exists")
+else
+    log.info("Repository cloned successfully")
+end`,
+				},
+				{
+					Name:        "git.pull",
+					Description: "Pull changes from remote repository",
+					Parameters:  "{path = 'path'}",
+					Returns:     "boolean (success), string (message or error)",
+					Example: `local success, msg = git.pull({
+    path = "/home/user/repo"
+})
+if not success then
+    return false, "Pull failed: " .. msg
+end`,
+				},
+				{
+					Name:        "git.is_repo",
+					Description: "Check if a directory is a git repository",
+					Parameters:  "{path = 'path'}",
+					Returns:     "boolean (is_repo)",
+					Example: `local is_repo = git.is_repo({path = "/home/user/repo"})
+if is_repo then
+    log.info("Directory is a git repository")
+end`,
+				},
+				{
+					Name:        "git.ensure_clean",
+					Description: "Ensure a directory is clean (removes it if exists)",
+					Parameters:  "{path = 'path'}",
+					Returns:     "boolean (success), string (error)",
+					Example: `local success, err = git.ensure_clean({
+    path = "/home/user/old-repo"
+})
+if not success then
+    return false, "Failed to clean: " .. err
+end`,
+				},
+				{
+					Name:        "git.checkout",
+					Description: "Checkout a branch or commit",
+					Parameters:  "{path = 'path', branch = 'name'}",
+					Returns:     "boolean (success), string (message or error)",
+					Example: `local success, msg = git.checkout({
+    path = "/home/user/repo",
+    branch = "develop"
+})`,
+				},
+				{
+					Name:        "git.commit",
+					Description: "Create a commit",
+					Parameters:  "{path = 'path', message = 'text', add_all = boolean}",
+					Returns:     "boolean (success), string (message or error)",
+					Example: `local success, msg = git.commit({
+    path = "/home/user/repo",
+    message = "Update configuration",
+    add_all = true
+})`,
+				},
+				{
+					Name:        "git.push",
+					Description: "Push changes to remote repository",
+					Parameters:  "{path = 'path', remote = 'origin', branch = 'name'}",
+					Returns:     "boolean (success), string (message or error)",
+					Example: `local success, msg = git.push({
+    path = "/home/user/repo",
+    remote = "origin",
+    branch = "main"
+})`,
+				},
+			},
+		},
 	}
 }
