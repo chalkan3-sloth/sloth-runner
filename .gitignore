@@ -1,15 +1,15 @@
 # Binaries for programs and plugins
 *.exe
+*.exe~
 *.dll
 *.so
 *.dylib
-*.o
-*.test
-*.prof
 
-# Output of the go toolchain
-/bin
-/pkg
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with `-o`
+*.out
 
 # Editor directories and files
 .idea/
@@ -17,82 +17,34 @@
 *.swp
 *.swo
 *~
-.DS_Store
-
-# Log files
+*.bak
+*.tmp
 *.log
 
 # Dependency directories
 vendor/
 node_modules/
 
-# Build outputs
-dist/
-build/
-artifacts/
+# Compiled files
+*.pyc
+*.class
 
-# Environment variables
-.env
-.env.*
+# OS generated files
+.DS_Store
+Thumbs.db
 
-# Temporary files
-*.tmp
-*.temp
-.cache/
-.sloth-cache/
+# IDE specific files
+.project
+.classpath
+.settings/
 
-# Documentation build
-site/
-
-# Binary outputs
+# Sloth Runner specific
 sloth-runner
 sloth-runner.exe
-sloth-runner-*
+sloth-runner-agent
+sloth-runner-agent.exe
 
-# Test coverage
-coverage.out
-coverage.html
-
-# Release artifacts
-releases/
-
-# Local testing
-test_output/
-temp/
-# Temporary and test files
-*.log
-*.pid
-sloth-runner-*
-!sloth-runner
-test_*.sloth
-exemplo_*.sloth
-guia_*.sloth
-teste_*.sloth
-*_backup
-*.backup
-
-# Test scripts
-cluster_status.sh
-connect_agents.sh
-manage_remote_agent.sh
-setup_path.sh
-start_agents.sh
-start_local_agent.sh
-start_master.sh
-test_install.sh
-
-# Summary and temporary documentation
-*_SUMMARY.md
-*_COMPLETE.md
-*_IMPLEMENTATION*.md
-*_IMPROVEMENTS*.md
-PROMPT_*.md
-HOW_TO_*.md
-QUICK_START.md
-INDEX.md
-STATUS_*.md
-TASK_*.md
-RESUMO_*.md
-CHEATSHEET.md
-*.txt
-.aider*
+# Temporary files and directories
+tmp/
+nil/
+tmp/user_environment_setup_values.yaml
