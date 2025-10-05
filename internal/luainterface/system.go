@@ -165,10 +165,9 @@ func (s *SystemModule) luaMemoryInfo(L *lua.LState) int {
 	memInfo, err := mem.VirtualMemory()
 	if err != nil {
 		L.Push(lua.LNil)
-		L.Push(lua.LString(err.Error()))
-		return 2
+		return 1
 	}
-	
+
 	result := L.NewTable()
 	L.SetField(result, "total", lua.LNumber(memInfo.Total))
 	L.SetField(result, "available", lua.LNumber(memInfo.Available))
@@ -177,10 +176,9 @@ func (s *SystemModule) luaMemoryInfo(L *lua.LState) int {
 	L.SetField(result, "percent", lua.LNumber(memInfo.UsedPercent))
 	L.SetField(result, "buffers", lua.LNumber(memInfo.Buffers))
 	L.SetField(result, "cached", lua.LNumber(memInfo.Cached))
-	
-	L.Push(lua.LTrue)
+
 	L.Push(result)
-	return 2
+	return 1
 }
 
 func (s *SystemModule) luaMemoryUsage(L *lua.LState) int {
@@ -515,10 +513,9 @@ func (s *SystemModule) luaHostInfo(L *lua.LState) int {
 	hostInfo, err := host.Info()
 	if err != nil {
 		L.Push(lua.LNil)
-		L.Push(lua.LString(err.Error()))
-		return 2
+		return 1
 	}
-	
+
 	result := L.NewTable()
 	L.SetField(result, "hostname", lua.LString(hostInfo.Hostname))
 	L.SetField(result, "uptime", lua.LNumber(hostInfo.Uptime))
@@ -533,10 +530,9 @@ func (s *SystemModule) luaHostInfo(L *lua.LState) int {
 	L.SetField(result, "virtualization_system", lua.LString(hostInfo.VirtualizationSystem))
 	L.SetField(result, "virtualization_role", lua.LString(hostInfo.VirtualizationRole))
 	L.SetField(result, "host_id", lua.LString(hostInfo.HostID))
-	
-	L.Push(lua.LTrue)
+
 	L.Push(result)
-	return 2
+	return 1
 }
 
 func (s *SystemModule) luaUptime(L *lua.LState) int {
@@ -564,17 +560,16 @@ func (s *SystemModule) luaUptime(L *lua.LState) int {
 func (s *SystemModule) luaEnvironment(L *lua.LState) int {
 	envVars := os.Environ()
 	result := L.NewTable()
-	
+
 	for _, env := range envVars {
 		parts := strings.SplitN(env, "=", 2)
 		if len(parts) == 2 {
 			result.RawSetString(parts[0], lua.LString(parts[1]))
 		}
 	}
-	
-	L.Push(lua.LTrue)
+
 	L.Push(result)
-	return 2
+	return 1
 }
 
 func (s *SystemModule) luaUsers(L *lua.LState) int {
