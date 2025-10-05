@@ -904,8 +904,8 @@ func (tr *TaskRunner) Run() error {
 		}
 
 		if shouldClean {
-			slog.Info("Cleaning up workdir", "group", groupName, "workdir", workdir)
-			os.RemoveAll(workdir)
+			slog.Info("Automatic workdir cleanup is disabled. Workdir preserved.", "group", groupName, "workdir", workdir)
+			// os.RemoveAll(workdir)
 		} else {
 			slog.Warn("Workdir preserved", "group", groupName, "workdir", workdir)
 		}
@@ -1176,7 +1176,7 @@ func (tr *TaskRunner) Run() error {
 	if skippedCount > 0 {
 		pterm.Printf(" | %s %d skipped", pterm.Yellow("⊘"), skippedCount)
 	}
-	pterm.Println("\n")
+	pterm.Println()
 	
 	return nil
 }
