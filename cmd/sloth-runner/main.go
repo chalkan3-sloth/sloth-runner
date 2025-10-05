@@ -642,12 +642,22 @@ var runCmd = &cobra.Command{
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		filePath, _ := cmd.Flags().GetString("file")
-		
+
 		values, _ := cmd.Flags().GetString("values")
 		_, _ = cmd.Flags().GetBool("yes") // yes flag - for future use
 		interactive, _ := cmd.Flags().GetBool("interactive")
 		outputStyle, _ := cmd.Flags().GetString("output")
-		
+		debug, _ := cmd.Flags().GetBool("debug")
+
+		// Configure log level based on debug flag
+		if debug {
+			pterm.DefaultLogger.Level = pterm.LogLevelDebug
+			slog.SetDefault(slog.New(pterm.NewSlogHandler(&pterm.DefaultLogger)))
+		} else {
+			pterm.DefaultLogger.Level = pterm.LogLevelInfo
+			slog.SetDefault(slog.New(pterm.NewSlogHandler(&pterm.DefaultLogger)))
+		}
+
 		// Determine if argument is a file path or stack name
 		var stackName string
 		if len(args) > 0 {
@@ -2989,6 +2999,7 @@ func init() {
 	runCmd.Flags().Bool("yes", false, "Skip confirmation prompts")
 	runCmd.Flags().Bool("interactive", false, "Run in interactive mode")
 	runCmd.Flags().StringP("output", "o", "basic", "Output style: basic, enhanced, rich, modern, json")
+	runCmd.Flags().Bool("debug", false, "Enable debug logging (shows technical details)")
 
 	// Preview command
 	rootCmd.AddCommand(previewCmd)

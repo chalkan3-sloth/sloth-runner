@@ -310,7 +310,7 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 	var agentAddress string
 
 	// DEBUG: Log delegate_to information
-	slog.Info("DEBUG: Task delegate_to info", 
+	slog.Debug("Task delegate_to info", 
 		"task_name", t.Name, 
 		"delegate_to", t.DelegateTo, 
 		"delegate_to_type", fmt.Sprintf("%T", t.DelegateTo),
@@ -318,17 +318,17 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 
 	// Determine agent address from task's DelegateTo or group's DelegateTo
 	if t.DelegateTo != nil {
-		slog.Info("DEBUG: Processing task delegate_to", "task_name", t.Name, "delegate_to", t.DelegateTo)
+		slog.Debug("Processing task delegate_to", "task_name", t.Name, "delegate_to", t.DelegateTo)
 		switch v := t.DelegateTo.(type) {
 		case string:
-			slog.Info("DEBUG: Resolving agent name", "agent_name", v)
+			slog.Debug("Resolving agent name", "agent_name", v)
 			// Try to resolve agent name to address
 			resolvedAddress, err := resolveAgentAddress(v)
 			if err != nil {
-				slog.Error("DEBUG: Failed to resolve agent", "agent_name", v, "error", err)
+				slog.Error("Failed to resolve agent", "agent_name", v, "error", err)
 				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to resolve agent '%s': %w", v, err)}
 			}
-			slog.Info("DEBUG: Agent resolved successfully", "agent_name", v, "address", resolvedAddress)
+			slog.Debug("Agent resolved successfully", "agent_name", v, "address", resolvedAddress)
 			agentAddress = resolvedAddress
 		case map[string]interface{}:
 			if addr, ok := v["address"].(string); ok {
@@ -340,7 +340,7 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("invalid type for task delegate_to: %T", v)}
 		}
 	} else if tr.TaskGroups[groupName].DelegateTo != nil {
-		slog.Info("DEBUG: Processing group delegate_to", "group_name", groupName, "delegate_to", tr.TaskGroups[groupName].DelegateTo)
+		slog.Debug("Processing group delegate_to", "group_name", groupName, "delegate_to", tr.TaskGroups[groupName].DelegateTo)
 		switch v := tr.TaskGroups[groupName].DelegateTo.(type) {
 		case string:
 			// Try to resolve agent name to address
@@ -359,10 +359,10 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("invalid type for group delegate_to: %T", v)}
 		}
 	} else {
-		slog.Info("DEBUG: No delegate_to found", "task_name", t.Name)
+		slog.Debug("No delegate_to found", "task_name", t.Name)
 	}
 
-	slog.Info("DEBUG: Final agent address", "task_name", t.Name, "agent_address", agentAddress)
+	slog.Debug("Final agent address", "task_name", t.Name, "agent_address", agentAddress)
 
 	if agentAddress != "" {
 		// Connect to the agent
