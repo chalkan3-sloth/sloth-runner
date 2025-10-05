@@ -1,14 +1,6 @@
 name: Telemetry CI
 
 on:
-  push:
-    branches: [ master ]
-    paths:
-      - 'internal/telemetry/**'
-      - 'cmd/sloth-runner/**'
-      - 'go.mod'
-      - 'go.sum'
-      - '.github/workflows/telemetry-ci.yml'
   pull_request:
     branches: [ master ]
     paths:
