@@ -1,238 +1,351 @@
-# 🎯 Modern DSL Introduction
+# 🎨 Modern DSL Introduction
 
-Welcome to the **Modern DSL** (Domain Specific Language) for Sloth Runner - a powerful approach to defining workflows that combines the flexibility of Lua with an intuitive, fluent API.
+## Overview
 
-## 🚀 What is Modern DSL?
+The **Modern DSL (Domain Specific Language)** is a powerful, Lua-based configuration language for Sloth Runner that makes task automation intuitive and expressive. It provides a clean, readable syntax for defining complex automation workflows while leveraging the full power of Lua and Sloth Runner's extensive module ecosystem.
 
-The Modern DSL is the syntax for Sloth Runner that provides:
+## Why Modern DSL?
 
-- **🎯 Fluent API**: Chainable, intuitive method calls
-- **📋 Declarative Workflows**: Configuration-driven workflow definitions  
-- **🔄 Enhanced Features**: Built-in retry strategies, circuit breakers, and resilience patterns
-- **🛡️ Type Safety**: Better validation and error detection
-- **📊 Rich Metadata**: Comprehensive workflow and task information
-- **⚡ Modern Patterns**: Async operations, performance monitoring, and observability
+The Modern DSL offers several advantages over traditional YAML-based configuration:
 
-## 🎨 Modern DSL Syntax
+- **🚀 Dynamic Configuration**: Use variables, loops, and conditionals
+- **📦 Module System**: Access powerful built-in and custom modules
+- **🔄 Reusability**: Create functions and templates for common patterns
+- **🎯 Type Safety**: Leverage Lua's type system for safer configurations
+- **⚡ Performance**: Direct execution without YAML parsing overhead
+- **🧩 Composability**: Build complex workflows from simple components
 
-### Task Definition
+## Basic Structure
+
+A Modern DSL file is a Lua script that defines tasks using Sloth Runner's API:
+
 ```lua
--- Define tasks with fluent API
-local build_task = task("build_app")
-    :description("Build application with modern features")
-    :command(function(params, deps)
-        log.info("Building application...")
-        local result = exec.run("go build -o app ./cmd/main.go")
-        
-        if not result.success then
-            return false, "Build failed: " .. result.stderr
-        end
-        
-        return true, "Build completed", {
-            artifact = "app",
-            size = fs.size("app"),
-            build_time = result.duration
+-- Basic task definition
+name = "my-automation"
+version = "1.0.0"
+description = "My first Modern DSL automation"
+
+-- Define a task group
+group "setup" {
+    description = "Initial setup tasks",
+
+    task "create_directory" {
+        module = "fs",
+        action = "mkdir",
+        path = "/opt/myapp",
+        mode = "0755"
+    }
+}
+```
+
+## Module System
+
+The power of Modern DSL comes from its seamless integration with Sloth Runner's module system:
+
+```lua
+-- Using modules directly without require
+group "system_setup" {
+    task "install_packages" {
+        module = "pkg",
+        action = "install",
+        packages = {"nginx", "postgresql", "redis"},
+        state = "present"
+    }
+
+    task "configure_service" {
+        module = "systemd",
+        action = "service",
+        name = "nginx",
+        state = "started",
+        enabled = true
+    }
+}
+```
+
+## Dynamic Capabilities
+
+Unlike static YAML, Modern DSL supports full programming constructs:
+
+```lua
+-- Variables and conditionals
+local environments = {"dev", "staging", "prod"}
+local base_path = "/opt/applications"
+
+for _, env in ipairs(environments) do
+    group("setup_" .. env) {
+        task("create_env_directory") {
+            module = "fs",
+            action = "mkdir",
+            path = base_path .. "/" .. env,
+            mode = "0755"
         }
-    end)
-    :timeout("5m")
-    :retries(3, "exponential")
-    :depends_on({"setup"})
-    :artifacts({"app"})
-    :on_success(function(params, output)
-        log.info("Build completed! Artifact size: " .. output.size .. " bytes")
-    end)
-    :build()
 
-local test_task = task("run_tests")
-    :description("Run comprehensive test suite")
-    :command("go test ./...")
-    :depends_on({"build_app"})
-    :timeout("10m")
-    :condition(when("params.skip_tests != true"))
-    :build()
-
--- Define workflow with rich configuration
-workflow.define("my_pipeline", {
-    description = "Modern CI/CD Pipeline",
-    version = "2.0.0",
-    
-    metadata = {
-        author = "DevOps Team",
-        tags = {"ci", "golang", "build"},
-        created_at = os.date(),
-        repository = "github.com/company/project"
-    },
-    
-    tasks = { build_task, test_task },
-    
-    config = {
-        timeout = "30m",
-        retry_policy = "exponential",
-        max_parallel_tasks = 4,
-        cleanup_on_failure = true
-    },
-    
-    on_start = function()
-        log.info("🚀 Starting modern CI/CD pipeline...")
-        return true
-    end,
-    
-    on_complete = function(success, results)
-        if success then
-            log.info("✅ Pipeline completed successfully!")
-            -- Send notification, update status, etc.
-        else
-            log.error("❌ Pipeline failed!")
+        if env == "prod" then
+            task("setup_monitoring") {
+                module = "systemd",
+                action = "service",
+                name = "prometheus-node-exporter",
+                state = "started"
+            }
         end
-        return true
-    end
-})
+    }
+end
 ```
 
-## 🎯 Key Benefits
+## Global Modules
 
-### 1. **Enhanced Readability**
-The fluent API makes workflows self-documenting and easier to understand:
+Sloth Runner provides global modules that don't require explicit imports:
 
 ```lua
--- Clear, expressive syntax
-local deploy_task = task("deploy_to_production")
-    :description("Deploy application to production environment")
-    :command(function(params, deps)
-        -- Business logic is clear and well-structured
-        return deploy_application(deps.build_app.artifact)
-    end)
-    :condition(when("env.ENVIRONMENT == 'production'"))
-    :retries(2, "exponential")
-    :timeout("15m")
-    :on_failure(function(params, error)
-        alert.send("deployment_failed", {
-            environment = "production",
-            error = error
-        })
-    end)
-    :build()
+-- State management
+state.set("app_version", "2.0.1")
+local version = state.get("app_version")
+
+-- Logging
+log.info("Starting deployment for version: " .. version)
+
+-- Facts (system information)
+local os_info = facts.get_os()
+if os_info.family == "debian" then
+    -- Debian-specific tasks
+end
+
+-- HTTP operations
+local response = http.get("https://api.github.com/repos/myorg/myrepo/releases/latest")
+local latest_release = json.decode(response.body)
 ```
 
-### 2. **Built-in Resilience Patterns**
-Modern DSL includes enterprise-grade resilience patterns out of the box:
+## Parallel Execution
+
+Execute tasks in parallel for better performance:
 
 ```lua
--- Circuit breaker for external dependencies
-local api_task = task("call_external_api")
-    :command(function()
-        return circuit.protect("payment_api", function()
-            return net.http_post("https://api.payment.com/charge", data)
-        end)
-    end)
-    :retries(3, "exponential")
-    :build()
+group "parallel_deployment" {
+    parallel = true,  -- Enable parallel execution for this group
 
--- Saga pattern for distributed transactions
-local payment_saga = saga.define("payment_process")
-    :step("validate_payment", validate_task)
-    :step("charge_card", charge_task)
-    :step("update_inventory", inventory_task)
-    :compensate("charge_card", refund_task)
-    :compensate("update_inventory", restore_inventory_task)
-    :build()
+    task "deploy_web" {
+        module = "docker",
+        action = "container",
+        name = "web-app",
+        image = "myapp:latest",
+        state = "started"
+    }
+
+    task "deploy_api" {
+        module = "docker",
+        action = "container",
+        name = "api-server",
+        image = "myapi:latest",
+        state = "started"
+    }
+
+    task "deploy_worker" {
+        module = "docker",
+        action = "container",
+        name = "background-worker",
+        image = "myworker:latest",
+        state = "started"
+    }
+}
 ```
 
-### 3. **Advanced Async Operations**
-Modern patterns for parallel and asynchronous execution:
+## Error Handling
+
+Robust error handling with retry logic:
 
 ```lua
-local parallel_build = task("parallel_build")
-    :command(function()
-        -- Modern async patterns
-        local results = async.parallel({
-            frontend = function()
-                return exec.run("npm run build:frontend")
-            end,
-            backend = function() 
-                return exec.run("go build ./cmd/server")
-            end,
-            docs = function()
-                return exec.run("mkdocs build")
-            end
-        }, {
-            max_workers = 3,
-            timeout = "10m",
-            fail_fast = false
-        })
-        
-        return true, "All builds completed", results
-    end)
-    :build()
+group "deployment" {
+    on_error = "continue",  -- Continue on error
+    max_retries = 3,
+    retry_delay = 5,  -- seconds
+
+    task "download_artifact" {
+        module = "net",
+        action = "download",
+        url = "https://releases.example.com/app.tar.gz",
+        dest = "/tmp/app.tar.gz",
+
+        on_success = function(result)
+            log.info("Download completed: " .. result.size .. " bytes")
+        end,
+
+        on_failure = function(error)
+            log.error("Download failed: " .. error.message)
+            -- Send notification
+            notification.send("slack", {
+                channel = "#alerts",
+                message = "Deployment failed: " .. error.message
+            })
+        end
+    }
+}
 ```
 
-### 4. **Rich Metadata and Observability**
-Comprehensive tracking and monitoring capabilities:
+## Templates and Functions
+
+Create reusable components:
 
 ```lua
-workflow.define("data_pipeline", {
-    description = "ETL Data Processing Pipeline",
-    version = "3.1.0",
-    
-    metadata = {
-        author = "Data Team",
-        tags = {"etl", "data", "analytics"},
-        sla = "4h",
-        cost_center = "analytics",
-        compliance = ["GDPR", "SOX"]
-    },
-    
-    config = {
-        monitoring = {
-            metrics = true,
-            alerts = true,
-            dashboard = "grafana://data-pipeline"
-        },
-        performance = {
-            expected_duration = "2h",
-            memory_limit = "4GB",
-            cpu_limit = "2 cores"
+-- Define a reusable function for creating services
+function create_service(name, port, replicas)
+    return task("deploy_" .. name) {
+        module = "docker",
+        action = "service",
+        name = name,
+        image = name .. ":latest",
+        replicas = replicas or 1,
+        ports = {port .. ":" .. port},
+        networks = {"app-network"},
+        environment = {
+            SERVICE_NAME = name,
+            SERVICE_PORT = port
         }
     }
-})
+end
+
+-- Use the function
+group "microservices" {
+    create_service("auth-service", 3000, 2),
+    create_service("user-service", 3001, 3),
+    create_service("payment-service", 3002, 2),
+    create_service("notification-service", 3003, 1)
+}
 ```
 
-## 🎓 Learning Path
+## Integration with External Data
 
-### Beginner
-1. Start with simple task definitions
-2. Learn the fluent API basics
-3. Explore basic workflow configuration
+Load configuration from external sources:
 
-### Intermediate  
-4. Add error handling and retries
-5. Use conditional execution
-6. Implement parallel tasks
+```lua
+-- Load configuration from JSON
+local config = json.decode(fs.read("/etc/myapp/config.json"))
 
-### Advanced
-7. Master circuit breaker patterns
-8. Implement saga patterns
-9. Build enterprise-grade pipelines
+-- Load secrets from environment
+local db_password = os.getenv("DB_PASSWORD") or vault.get("database/password")
 
-## 🚀 Getting Started
+group "database_setup" {
+    task "configure_database" {
+        module = "postgresql",
+        action = "database",
+        name = config.database.name,
+        owner = config.database.user,
+        encoding = "UTF-8"
+    }
 
-Ready to start with Modern DSL? Check out these resources:
+    task "create_user" {
+        module = "postgresql",
+        action = "user",
+        name = config.database.user,
+        password = db_password,
+        privileges = ["CREATEDB", "CREATEROLE"]
+    }
+}
+```
 
-- [Task Definition API](./task-api.md) - Complete task builder reference
-- [Workflow Definition](./workflow-api.md) - Workflow configuration guide
-- [Migration Guide](./migration-guide.md) - Convert existing workflows
-- [Best Practices](./best-practices.md) - Modern DSL patterns and guidelines
-- [Examples](../../examples/) - Browse modernized examples
+## Best Practices
 
-## 🤝 Community
+1. **Use descriptive names**: Make your tasks and groups self-documenting
+2. **Leverage modules**: Don't reinvent the wheel - use existing modules
+3. **Handle errors gracefully**: Always consider failure scenarios
+4. **Keep it DRY**: Use functions and templates for repeated patterns
+5. **Document complex logic**: Add comments for non-obvious implementations
+6. **Test incrementally**: Use `--dry-run` flag to preview changes
+7. **Version control**: Track your DSL files in Git
 
-The Modern DSL is designed with community feedback in mind:
+## Next Steps
 
-- **🐛 Issues**: Report bugs and request features
-- **💡 Ideas**: Propose new DSL features
-- **📚 Documentation**: Help improve guides and examples
-- **🔧 Tools**: Build migration and validation tools
+- [📚 Module API Examples](module-api-examples.md) - Comprehensive module usage examples
+- [🎯 Best Practices](best-practices.md) - Advanced patterns and techniques
+- [📖 Reference Guide](reference-guide.md) - Complete API reference
 
----
+## Quick Example: Complete Infrastructure Setup
 
-**🎯 The Modern DSL represents the future of workflow automation - more powerful, more intuitive, and more maintainable than ever before!**
+```lua
+name = "infrastructure-setup"
+version = "2.0.0"
+description = "Complete infrastructure automation with Modern DSL"
+
+-- Global configuration
+local app_name = "myapp"
+local domain = "example.com"
+local environments = {"dev", "staging", "prod"}
+
+-- Helper function for environment-specific configs
+function get_replicas(env)
+    local replicas_map = {
+        dev = 1,
+        staging = 2,
+        prod = 5
+    }
+    return replicas_map[env] or 1
+end
+
+-- Setup for each environment
+for _, env in ipairs(environments) do
+    group("setup_" .. env) {
+        description = "Setup " .. env .. " environment",
+
+        -- Create namespace
+        task("create_namespace") {
+            module = "k8s",
+            action = "namespace",
+            name = app_name .. "-" .. env,
+            state = "present"
+        },
+
+        -- Deploy application
+        task("deploy_app") {
+            module = "k8s",
+            action = "deployment",
+            name = app_name,
+            namespace = app_name .. "-" .. env,
+            replicas = get_replicas(env),
+            image = app_name .. ":" .. state.get("version", "latest"),
+
+            -- Environment-specific configuration
+            environment = {
+                APP_ENV = env,
+                APP_NAME = app_name,
+                DB_HOST = env .. "-db." .. domain,
+                CACHE_HOST = env .. "-redis." .. domain
+            },
+
+            -- Health checks
+            readiness_probe = {
+                http_get = {
+                    path = "/health",
+                    port = 8080
+                },
+                initial_delay_seconds = 10,
+                period_seconds = 5
+            }
+        },
+
+        -- Configure monitoring (production only)
+        when = (env == "prod"),
+        task("setup_monitoring") {
+            module = "prometheus",
+            action = "scrape_config",
+            job_name = app_name .. "_metrics",
+            targets = {app_name .. "-" .. env .. "." .. domain .. ":9090"}
+        }
+    }
+end
+
+-- Post-deployment validation
+group "validation" {
+    task "check_deployments" {
+        module = "http",
+        action = "check",
+        urls = {
+            "https://dev." .. domain .. "/health",
+            "https://staging." .. domain .. "/health",
+            "https://prod." .. domain .. "/health"
+        },
+        expected_status = 200,
+        timeout = 30
+    }
+}
+```
+
+This introduction provides a foundation for understanding and using the Modern DSL. Continue to the [Module API Examples](module-api-examples.md) for detailed examples of working with specific modules.
