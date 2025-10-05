@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -35,6 +36,7 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/internal/stack"
 	"github.com/chalkan3-sloth/sloth-runner/internal/state"
 	"github.com/chalkan3-sloth/sloth-runner/internal/taskrunner"
+	"github.com/chalkan3-sloth/sloth-runner/internal/telemetry"
 	"github.com/chalkan3-sloth/sloth-runner/internal/types"
 	"github.com/chalkan3-sloth/sloth-runner/internal/ui"
 	pb "github.com/chalkan3-sloth/sloth-runner/proto"
@@ -1273,6 +1275,21 @@ var agentStartCmd = &cobra.Command{
 			}()
 		}
 
+		// Initialize telemetry server
+		metricsPort, _ := cmd.Flags().GetInt("metrics-port")
+		telemetryEnabled, _ := cmd.Flags().GetBool("telemetry")
+
+		telemetryServer := telemetry.InitGlobal(metricsPort, telemetryEnabled)
+		if telemetryEnabled {
+			if err := telemetryServer.Start(); err != nil {
+				slog.Error("Failed to start telemetry server", "error", err)
+			} else {
+				// Set agent info
+				telemetry.SetAgentInfo(version, runtime.GOOS, runtime.GOARCH)
+				pterm.Success.Printf("✓ Telemetry server started at %s\n", telemetryServer.GetEndpoint())
+			}
+		}
+
 		s := grpc.NewServer()
 		server := &agentServer{grpcServer: s}
 		pb.RegisterAgentServer(s, server)
@@ -1906,6 +1923,136 @@ var agentModulesCheckCmd = &cobra.Command{
 			),
 		)
 		
+		return nil
+	},
+}
+
+// Agent metrics command
+var agentMetricsCmd = &cobra.Command{
+	Use:   "metrics",
+	Short: "Access agent metrics and monitoring",
+	Long:  `The metrics command provides access to agent metrics, monitoring data, and Prometheus endpoints.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Help()
+	},
+}
+
+var agentMetricsPromCmd = &cobra.Command{
+	Use:   "prom <agent_name>",
+	Short: "Get Prometheus metrics endpoint for an agent",
+	Long:  `Retrieves the Prometheus metrics endpoint URL for a specific agent, or displays current metrics snapshot.`,
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		agentName := args[0]
+		masterAddr, _ := cmd.Flags().GetString("master")
+		showSnapshot, _ := cmd.Flags().GetBool("snapshot")
+
+		pterm.DefaultHeader.WithFullWidth().Printf("Prometheus Metrics - Agent: %s", agentName)
+		fmt.Println()
+
+		// Connect to master to get agent address
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		conn, err := grpc.Dial(masterAddr,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
+		if err != nil {
+			return formatConnectionError(err, masterAddr)
+		}
+		defer conn.Close()
+
+		registryClient := pb.NewAgentRegistryClient(conn)
+
+		// Get agent info from list to find its address
+		listResp, err := registryClient.ListAgents(ctx, &pb.ListAgentsRequest{})
+		if err != nil {
+			return fmt.Errorf("failed to list agents: %v", err)
+		}
+
+		// Find the specific agent
+		var agentAddress string
+		for _, agent := range listResp.GetAgents() {
+			if agent.GetAgentName() == agentName {
+				agentAddress = agent.GetAgentAddress()
+				break
+			}
+		}
+
+		if agentAddress == "" {
+			return fmt.Errorf("agent '%s' not found", agentName)
+		}
+		// Extract host from address (remove port if present)
+		host := agentAddress
+		if strings.Contains(agentAddress, ":") {
+			host = strings.Split(agentAddress, ":")[0]
+		}
+
+		// Metrics endpoint is on port 9090 by default
+		metricsEndpoint := fmt.Sprintf("http://%s:9090/metrics", host)
+
+		if showSnapshot {
+			// Fetch and display current metrics
+			pterm.Info.Println("📊 Fetching metrics snapshot...")
+			fmt.Println()
+
+			// Execute curl command on agent to fetch metrics
+			curlCmd := fmt.Sprintf("curl -s http://localhost:9090/metrics")
+			stream, err := registryClient.ExecuteCommand(ctx, &pb.ExecuteCommandRequest{
+				AgentName: agentName,
+				Command:   curlCmd,
+			})
+
+			if err != nil {
+				return fmt.Errorf("failed to fetch metrics: %v", err)
+			}
+
+			var output strings.Builder
+			for {
+				resp, err := stream.Recv()
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					return fmt.Errorf("error receiving metrics: %v", err)
+				}
+				output.WriteString(resp.GetStdoutChunk())
+			}
+
+			metrics := output.String()
+			if strings.Contains(metrics, "Connection refused") || strings.Contains(metrics, "Failed to connect") {
+				pterm.Error.Println("❌ Telemetry server is not running on this agent")
+				fmt.Println()
+				pterm.Info.Println("💡 Start the agent with telemetry enabled:")
+				fmt.Println("  sloth-runner agent start --name", agentName, "--telemetry")
+				return nil
+			}
+
+			fmt.Println(pterm.DefaultBox.WithTitle("Metrics Snapshot").Sprint(metrics))
+		} else {
+			// Display endpoint information
+			pterm.Success.Println("✅ Metrics Endpoint:")
+			fmt.Println()
+			fmt.Printf("  %s %s\n", pterm.Cyan("URL:"), pterm.Green(metricsEndpoint))
+			fmt.Println()
+
+			pterm.Info.Println("📝 Usage:")
+			fmt.Println()
+			fmt.Printf("  %s\n", pterm.Gray("# View metrics in browser:"))
+			fmt.Printf("  open %s\n", metricsEndpoint)
+			fmt.Println()
+			fmt.Printf("  %s\n", pterm.Gray("# Fetch metrics via curl:"))
+			fmt.Printf("  curl %s\n", metricsEndpoint)
+			fmt.Println()
+			fmt.Printf("  %s\n", pterm.Gray("# Configure Prometheus scraper:"))
+			fmt.Println("  - job_name: 'sloth-runner-agents'")
+			fmt.Println("    static_configs:")
+			fmt.Printf("      - targets: ['%s:9090']\n", host)
+			fmt.Println()
+
+			pterm.Info.Println("💡 Tip: Use --snapshot flag to display current metrics")
+		}
+
 		return nil
 	},
 }
@@ -2965,6 +3112,8 @@ func init() {
 	agentStartCmd.Flags().Bool("daemon", false, "Run the agent as a daemon")
 	agentStartCmd.Flags().String("bind-address", "", "The IP address for the agent to bind to")
 	agentStartCmd.Flags().String("report-address", "", "The IP address to report to the master (defaults to bind-address or auto-detected)")
+	agentStartCmd.Flags().Int("metrics-port", 9090, "The port for the Prometheus metrics endpoint")
+	agentStartCmd.Flags().Bool("telemetry", true, "Enable telemetry and Prometheus metrics")
 	// TLS flags for agent start are now persistent flags on the parent 'agent' command
 
 	// Agent client commands
@@ -2978,6 +3127,9 @@ func init() {
 	agentCmd.AddCommand(agentGetCmd)
 	agentGetCmd.Flags().StringP("output", "o", "text", "Output format: text or json")
 	agentCmd.AddCommand(agentModulesCheckCmd)
+	agentCmd.AddCommand(agentMetricsCmd)
+	agentMetricsCmd.AddCommand(agentMetricsPromCmd)
+	agentMetricsPromCmd.Flags().Bool("snapshot", false, "Display current metrics snapshot instead of endpoint URL")
 
 	// Scheduler command and subcommands
 	rootCmd.AddCommand(schedulerCmd)
