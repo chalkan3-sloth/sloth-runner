@@ -348,9 +348,6 @@ func (s *StowModule) unstowSingle(L *lua.LState, config *stowConfig, pkg string)
 		return result
 	}
 
-	// Execute unstow command
-	args := s.buildStowArgs(config, "-D", pkg)
-	
 	var cmd *exec.Cmd
 	if config.DelegatedTo != "" {
 		L.SetField(result, "error", lua.LString("remote execution not yet implemented"))
@@ -402,8 +399,6 @@ func (s *StowModule) restow(L *lua.LState) int {
 func (s *StowModule) restowSingle(L *lua.LState, config *stowConfig, pkg string) *lua.LTable {
 	result := L.NewTable()
 
-	args := s.buildStowArgs(config, "-R", pkg)
-	
 	var cmd *exec.Cmd
 	if config.DelegatedTo != "" {
 		L.SetField(result, "error", lua.LString("remote execution not yet implemented"))
@@ -479,13 +474,6 @@ func (s *StowModule) adoptSingle(L *lua.LState, config *stowConfig, pkg string) 
 		L.SetField(result, "error", lua.LString(fmt.Sprintf("adopt failed: %v - %s", err, string(output))))
 		return result
 	}
-
-	L.SetField(result, "changed", lua.LBool(true))
-	L.SetField(result, "status", lua.LString("adopted"))
-	L.SetField(result, "package", lua.LString(pkg))
-	L.SetField(result, "output", lua.LString(string(output)))
-
-	return result
 }
 
 // check: Check stow operations without executing
@@ -524,6 +512,11 @@ func (s *StowModule) checkSingle(L *lua.LState, config *stowConfig, pkg string) 
 
 	output, err := cmd.CombinedOutput()
 	
+	L.SetField(result, "package", lua.LString(pkg))
+	L.SetField(result, "output", lua.LString(string(output)))
+	L.SetField(result, "would_succeed", lua.LBool(err == nil))
+
+	return result
 	L.SetField(result, "package", lua.LString(pkg))
 	L.SetField(result, "output", lua.LString(string(output)))
 	L.SetField(result, "would_succeed", lua.LBool(err == nil))

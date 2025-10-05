@@ -2,6 +2,7 @@
 local install_packages_task = task("install-packages")
     :description("Install default packages")
     :delegate_to("maria-guica")
+    :delegate_to("maria-guica")
     :command(function(this, params)
         local success, msg = pkg.install({
             packages = { "kitty-terminfo", "stow", "git", "zsh", "lsd", "fzf" },
@@ -18,12 +19,13 @@ local install_packages_task = task("install-packages")
 local manager_user_task = task("manager-user")
     :description("Create and configure user")
     :delegate_to("maria-guica")
+    :delegate_to("maria-guica")
     :command(function(this, params)
         local success, msg = user.create({
-            username = "chalkan3",
-            password = "Igorgr123@1929",
-            home = "/home/chalkan3",
-            shell = "/bin/bash",
+            username = "igor",
+
+            home = "/home/igor",
+            shell = "/bin/zsh",
             groups = { "wheel" },
             create_home = true,
         })
@@ -32,7 +34,6 @@ local manager_user_task = task("manager-user")
             return false, "Failed to create user: " .. tostring(msg)
         end
 
-
         return true, "User created successfully: " .. msg
     end)
     :build()
@@ -40,12 +41,13 @@ local manager_user_task = task("manager-user")
 local clone_dotfiles_task = task("clone-dotfiles")
     :description("Clone dotfiles repository")
     :delegate_to("maria-guica")
-    :user("chalkan3")
-    :workdir("/home/chalkan3")
+    :user("igor")
+    :workdir("/home/igor")
     :command(function(this, params)
-        local repo =
-            git.clone("https://github.com/chalkan3/dotfiles.git", "/home/chalkan3/dotfiles")
-
+        local success, msg = exec.run("sudo -u igor -- /bin/sh -c 'rm -rf /home/igor/dotfiles && git clone https://github.com/chalkan3/dotfiles.git /home/igor/dotfiles'")
+        if not success then
+            return false, "Failed to clone dotfiles: " .. msg
+        end
         return true, "Dotfiles cloned successfully"
     end)
     :build()
@@ -53,39 +55,39 @@ local clone_dotfiles_task = task("clone-dotfiles")
 local stow_dotfiles_task = task("stow-dotfiles")
     :description("Stow dotfiles configurations")
     :delegate_to("maria-guica")
-    :user("chalkan3")
-    :workdir("/home/chalkan3")
+    :user("igor")
+    :workdir("/home/igor")
     :command(function(this, params)
-        local packages_to_stow = {
-            {
-                name = "zsh",
-                target = "/home/chalkan3/.zsh", -- O link será criado em /home/chalkan3/.zsh
-                dir = this.workdir.get() .. "/dotfiles",
-            },
+        local work_dir = "/home/igor" -- Hardcode work_dir for stow
 
-            {
-                name = "zshrc",
-                target = this.workdir.get(),
-                dir = this.workdir.get() .. "/dotfiles", -- A fonte 'zshrc' está em 'this.workdir.get()/dotfiles/zshrc'
-            },
-        }
+        -- Create .zsh directory if it doesn't exist
+        local ok_mkdir, msg_mkdir = exec.run(string.format("sudo -u igor -- /bin/sh -c 'mkdir -p /home/igor/.zsh'"))
+        if not ok_mkdir then
+            return false, "Falha ao criar o diretório .zsh: " .. msg_mkdir
+        end
 
-        local work_dir = this.workdir.get()
+        -- Stow zsh dotfiles into /home/igor/.zsh
+        local stow_zsh_command = string.format("stow -d %s -t %s %s", work_dir .. "/dotfiles/zsh", "/home/igor/.zsh", ".")
+        local ok_zsh, msg_zsh, output_zsh = exec.run(string.format("sudo -u igor -- /bin/sh -c '%s'", stow_zsh_command))
+        if type(output_zsh) == "string" then
+            log.info("Stow zsh output: " .. output_zsh)
+        else
+            log.info("Stow zsh output: (no string output)")
+        end
+        if not ok_zsh then
+            return false, "Falha ao stocar o pacote 'zsh': " .. msg_zsh
+        end
 
-        for _, package in ipairs(packages_to_stow) do
-            local stow_dir = package.dir or work_dir
-
-            local stow_target = package.target or base_target
-
-            local ok, msg = stow.stow({
-                packages = { package.name },
-                dir = stow_dir,
-                target = stow_target,
-            })
-
-            if not ok then
-                return false, "Falha ao stocar o pacote '" .. package.name .. "': " .. msg
-            end
+        -- Stow zshrc dotfile into /home/igor
+        local stow_zshrc_command = string.format("stow -d %s -t %s %s", work_dir .. "/dotfiles", "/home/igor", "zshrc")
+        local ok_zshrc, msg_zshrc, output_zshrc = exec.run(string.format("sudo -u igor -- /bin/sh -c '%s'", stow_zshrc_command))
+        if type(output_zshrc) == "string" then
+            log.info("Stow zshrc output: " .. output_zshrc)
+        else
+            log.info("Stow zshrc output: (no string output)")
+        end
+        if not ok_zshrc then
+            return false, "Falha ao stocar o pacote 'zshrc': " .. msg_zshrc
         end
 
         return true, "Todos os pacotes dotfiles stocados com sucesso!"

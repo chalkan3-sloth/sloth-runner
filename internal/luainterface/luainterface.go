@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	agentclient "github.com/chalkan3-sloth/sloth-runner/internal/agent/client"
 	"github.com/chalkan3-sloth/sloth-runner/internal/ai"
 	"github.com/chalkan3-sloth/sloth-runner/internal/core"
 	"github.com/chalkan3-sloth/sloth-runner/internal/gitops"
@@ -40,8 +41,11 @@ func ParseLuaScript(ctx context.Context, filePath string, valuesTable *lua.LTabl
 	L := lua.NewState()
 	defer L.Close()
 
+	masterAddr := core.GetGlobalCore().MasterAddr
+	agentClient := agentclient.NewAgentClient(masterAddr)
+
 	// Register all modules
-	RegisterAllModules(L)
+	RegisterAllModules(L, agentClient)
 	
 	// Set up import function
 	OpenImport(L, filePath)
@@ -470,7 +474,7 @@ func LuaToGoValue(L *lua.LState, value lua.LValue) interface{} {
 }
 
 // RegisterAllModules registers all Lua modules for compatibility
-func RegisterAllModules(L *lua.LState) {
+func RegisterAllModules(L *lua.LState, agentClient *agentclient.AgentClient) {
 	// Register core modules
 	OpenData(L)
 	OpenFs(L)
@@ -559,7 +563,7 @@ func RegisterAllModules(L *lua.LState) {
 	RegisterIncusModule(L)
 	
 	// Register Stow module for dotfiles management (as PreloadModule for require compatibility)
-	stowModule := NewStowModule(nil)
+	stowModule := NewStowModule(nil, agentClient)
 	L.PreloadModule("stow", stowModule.Loader)
 	
 	// Register Facts module for accessing agent system information
@@ -588,12 +592,12 @@ func RegisterAllModules(L *lua.LState) {
 	}
 	
 	// ✅ AUTO-LOAD ALL MODULES GLOBALLY (No require() needed)
-	RegisterModulesGlobally(L)
+	RegisterModulesGlobally(L, agentClient)
 }
 
 // RegisterModulesGlobally loads all modules automatically as global variables
 // Users can use pkg.install(), user.create(), etc. without require()
-func RegisterModulesGlobally(L *lua.LState) {
+func RegisterModulesGlobally(L *lua.LState, agentClient *agentclient.AgentClient) {
 	// Helper function to load a module and set it globally
 	loadModuleGlobally := func(modName string, loader lua.LGFunction) {
 		// Skip if module is already registered as global
@@ -641,7 +645,7 @@ func RegisterModulesGlobally(L *lua.LState) {
 	loadModuleGlobally("azure", NewAzureModule().Loader)
 	loadModuleGlobally("digitalocean", NewDigitalOceanModule().Loader)
 	loadModuleGlobally("docker", NewDockerModule().Loader)
-	loadModuleGlobally("stow", NewStowModule(nil).Loader)
+	loadModuleGlobally("stow", NewStowModule(nil, agentClient).Loader)
 	loadModuleGlobally("metrics", NewMetricsModule().Loader)
 	loadModuleGlobally("notifications", NewNotificationsModule().Loader)
 	loadModuleGlobally("reliability", NewReliabilityModule().Loader)
