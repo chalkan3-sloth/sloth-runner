@@ -666,9 +666,8 @@ func (f *FileOpsModule) stat(L *lua.LState) int {
 		if os.IsNotExist(err) {
 			result := L.NewTable()
 			L.SetField(result, "exists", lua.LBool(false))
-			L.Push(lua.LTrue)
 			L.Push(result)
-			return 2
+			return 1
 		}
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to stat: %v", err)))
@@ -694,9 +693,8 @@ func (f *FileOpsModule) stat(L *lua.LState) int {
 		L.SetField(result, "gid", lua.LNumber(stat.Gid))
 	}
 
-	L.Push(lua.LTrue)
 	L.Push(result)
-	return 2
+	return 1
 }
 
 // Helper functions

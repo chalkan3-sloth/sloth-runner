@@ -579,16 +579,31 @@ func (s *StowModule) isStowed(L *lua.LState) int {
 	config, err := s.parseConfig(L)
 	if err != nil {
 		L.Push(lua.LBool(false))
-		L.Push(lua.LString(err.Error()))
-		return 2
+		return 1
 	}
 
-	results := L.NewTable()
+	// For single package, return boolean directly
+	if len(config.Packages) == 1 {
+		pkg := config.Packages[0]
+		state, err := s.getCurrentState(config, pkg)
+		if err != nil {
+			L.Push(lua.LBool(false))
+			return 1
+		}
 
+		isStowed := false
+		if val, ok := state["is_stowed"].(bool); ok {
+			isStowed = val
+		}
+		L.Push(lua.LBool(isStowed))
+		return 1
+	}
+
+	// For multiple packages, return table of booleans
+	results := L.NewTable()
 	for _, pkg := range config.Packages {
 		state, err := s.getCurrentState(config, pkg)
 		if err != nil {
-			// handle error
 			continue
 		}
 
@@ -600,8 +615,7 @@ func (s *StowModule) isStowed(L *lua.LState) int {
 	}
 
 	L.Push(results)
-	L.Push(lua.LNil)
-	return 2
+	return 1
 }
 
 // listPackages: List available packages in stow directory
@@ -640,20 +654,25 @@ func (s *StowModule) verify(L *lua.LState) int {
 	config, err := s.parseConfig(L)
 	if err != nil {
 		L.Push(lua.LNil)
-		L.Push(lua.LString(err.Error()))
-		return 2
+		return 1
 	}
 
-	results := L.NewTable()
+	// For single package, return result table directly
+	if len(config.Packages) == 1 {
+		result := s.verifySingle(L, config, config.Packages[0])
+		L.Push(result)
+		return 1
+	}
 
+	// For multiple packages, return table of results
+	results := L.NewTable()
 	for _, pkg := range config.Packages {
 		result := s.verifySingle(L, config, pkg)
 		results.Append(result)
 	}
 
 	L.Push(results)
-	L.Push(lua.LNil)
-	return 2
+	return 1
 }
 
 func (s *StowModule) verifySingle(L *lua.LState, config *stowConfig, pkg string) *lua.LTable {

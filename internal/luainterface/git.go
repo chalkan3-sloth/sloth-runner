@@ -40,8 +40,15 @@ func gitClone(L *lua.LState) int {
 			return 1
 		}
 		// Directory exists but is not a git repo
-		L.RaiseError("git clone failed: directory '%s' exists but is not a git repository", path)
-		return 0
+		// Check if directory is empty - if so, we can clone into it
+		entries, err := os.ReadDir(path)
+		if err == nil && len(entries) == 0 {
+			// Directory is empty, proceed with clone
+		} else {
+			// Directory is not empty or we can't read it
+			L.RaiseError("git clone failed: directory '%s' exists but is not a git repository", path)
+			return 0
+		}
 	}
 
 	// Directory doesn't exist, proceed with clone
