@@ -8,11 +8,25 @@ service Agent {
   rpc ExecuteTask(ExecuteTaskRequest) returns (ExecuteTaskResponse);
   rpc RunCommand(RunCommandRequest) returns (stream StreamOutputResponse); // Changed to stream
   rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
+  rpc UpdateAgent(UpdateAgentRequest) returns (UpdateAgentResponse);
 }
 
 message ShutdownRequest {}
 
 message ShutdownResponse {}
+
+message UpdateAgentRequest {
+  string target_version = 1; // Empty or "latest" for latest version
+  bool force = 2; // Force update even if already on latest version
+  bool skip_restart = 3; // Skip automatic service restart
+}
+
+message UpdateAgentResponse {
+  bool success = 1;
+  string message = 2;
+  string old_version = 3;
+  string new_version = 4;
+}
 
 message ExecuteTaskRequest {
   string task_name = 1;
