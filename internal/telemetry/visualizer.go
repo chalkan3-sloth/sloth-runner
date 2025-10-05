@@ -158,172 +158,395 @@ func parseMetrics(content string) (*MetricsData, error) {
 	return data, nil
 }
 
-// DisplayDashboard displays a comprehensive dashboard of metrics
+// DisplayDashboard displays a comprehensive dashboard of metrics including system monitoring
 func DisplayDashboard(data *MetricsData, agentName string) {
+	// Collect system metrics
+	systemMetrics, err := CollectSystemMetrics()
+	if err != nil {
+		pterm.Warning.Printf("Failed to collect some system metrics: %v\n", err)
+	}
+
 	// Clear screen
 	pterm.Println()
 
 	// Header
 	pterm.DefaultHeader.WithFullWidth().WithBackgroundStyle(pterm.NewStyle(pterm.BgDarkGray)).
 		WithTextStyle(pterm.NewStyle(pterm.FgLightWhite)).
-		Println(fmt.Sprintf("📊 Sloth Runner Metrics Dashboard - Agent: %s", agentName))
+		Println(fmt.Sprintf("📊 Sloth Runner Complete System Monitor - Agent: %s", agentName))
 	pterm.Println()
 
-	// Agent Info Section
-	agentInfoData := [][]string{
-		{"Version", data.AgentVersion},
-		{"OS", data.AgentOS},
-		{"Architecture", data.AgentArch},
-		{"Uptime", formatDuration(data.AgentUptime)},
-		{"Last Updated", data.Timestamp.Format("2006-01-02 15:04:05")},
+	// System Overview Section
+	if systemMetrics != nil {
+		displaySystemOverview(systemMetrics)
 	}
 
-	pterm.DefaultSection.Println("🔧 Agent Information")
-	pterm.DefaultTable.WithHasHeader(false).WithBoxed(true).WithData(agentInfoData).Render()
-	pterm.Println()
-
-	// System Resources Section
-	pterm.DefaultSection.Println("💻 System Resources")
-
-	memoryMB := data.MemoryAllocated / 1024 / 1024
-	goroutinesBar := createProgressBar("Goroutines", int(data.Goroutines), 1000)
-	memoryBar := createProgressBar("Memory (MB)", int(memoryMB), 512)
-
-	pterm.Println(goroutinesBar)
-	pterm.Println(memoryBar)
-	pterm.Println()
-
-	// Tasks Section
-	pterm.DefaultSection.Println("📋 Task Metrics")
-
-	taskSummary := summarizeTasks(data.TasksTotal)
-	taskData := [][]string{
-		{"Status", "Count"},
+	// CPU Metrics Section
+	if systemMetrics != nil {
+		displayCPUMetrics(systemMetrics)
 	}
-	for status, count := range taskSummary {
-		taskData = append(taskData, []string{
-			formatStatus(status),
-			fmt.Sprintf("%.0f", count),
+
+	// Memory Metrics Section
+	if systemMetrics != nil {
+		displayMemoryMetrics(systemMetrics)
+	}
+
+	// Disk Metrics Section
+	if systemMetrics != nil && len(systemMetrics.DiskMetrics) > 0 {
+		displayDiskMetrics(systemMetrics)
+	}
+
+	// Network Metrics Section
+	if systemMetrics != nil && len(systemMetrics.NetworkInterfaces) > 0 {
+		displayNetworkMetrics(systemMetrics)
+	}
+
+	// Process Metrics Section
+	if systemMetrics != nil && len(systemMetrics.TopProcesses) > 0 {
+		displayProcessMetrics(systemMetrics)
+	}
+
+	// Sloth Runner Agent Section
+	pterm.DefaultSection.WithLevel(2).Println("🦥 Sloth Runner Agent")
+	displaySlothRunnerMetrics(data)
+
+	// Summary Box
+	displaySummary(data, systemMetrics)
+}
+
+func displaySystemOverview(m *SystemMetrics) {
+	pterm.DefaultSection.Println("🖥️  System Overview")
+
+	systemData := [][]string{
+		{"Hostname", m.Hostname},
+		{"OS", fmt.Sprintf("%s %s", m.Platform, m.PlatformVersion)},
+		{"Kernel", fmt.Sprintf("%s (%s)", m.KernelVersion, m.KernelArch)},
+		{"Uptime", FormatUptime(m.Uptime)},
+		{"Boot Time", time.Unix(int64(m.BootTime), 0).Format("2006-01-02 15:04:05")},
+		{"Processes", fmt.Sprintf("%d (Zombies: %d)", m.ProcessCount, m.ZombieCount)},
+		{"Network Connections", fmt.Sprintf("%d", m.NetworkConnections)},
+	}
+
+	pterm.DefaultTable.WithHasHeader(false).WithBoxed(true).WithData(systemData).Render()
+	pterm.Println()
+}
+
+func displayCPUMetrics(m *SystemMetrics) {
+	pterm.DefaultSection.Println("🔥 CPU Metrics")
+
+	// CPU Info
+	cpuInfoData := [][]string{
+		{"Model", m.CPUModel},
+		{"Cores", fmt.Sprintf("%d", m.CPUCores)},
+		{"Threads", fmt.Sprintf("%d", m.CPUThreads)},
+		{"Speed", fmt.Sprintf("%.2f GHz", m.CPUSpeed/1000)},
+		{"Load Average", fmt.Sprintf("%.2f, %.2f, %.2f", m.LoadAverage1, m.LoadAverage5, m.LoadAverage15)},
+	}
+
+	pterm.DefaultTable.WithHasHeader(false).WithBoxed(true).WithData(cpuInfoData).Render()
+
+	// Overall CPU Usage
+	cpuBar := createColoredProgressBar("CPU Usage", m.CPUUsageTotal, 100, "percent")
+	pterm.Println(cpuBar)
+
+	// Per-core usage (if available)
+	if len(m.CPUUsagePerCore) > 0 && len(m.CPUUsagePerCore) <= 16 { // Show only if reasonable number of cores
+		pterm.Println()
+		pterm.DefaultBox.WithTitle("CPU Cores Usage").WithTitleTopCenter().Println(
+			createMultiCoreDisplay(m.CPUUsagePerCore),
+		)
+	}
+	pterm.Println()
+}
+
+func displayMemoryMetrics(m *SystemMetrics) {
+	pterm.DefaultSection.Println("💾 Memory Metrics")
+
+	// Memory bars
+	memBar := createColoredProgressBar("RAM Usage", m.MemoryUsedPct, 100, "percent")
+	pterm.Println(memBar)
+
+	swapBar := createColoredProgressBar("Swap Usage", m.SwapUsedPct, 100, "percent")
+	pterm.Println(swapBar)
+
+	// Memory details table
+	memData := [][]string{
+		{"Type", "Total", "Used", "Free", "Available"},
+		{"RAM", FormatBytes(m.MemoryTotal), FormatBytes(m.MemoryUsed),
+			FormatBytes(m.MemoryFree), FormatBytes(m.MemoryAvailable)},
+		{"Swap", FormatBytes(m.SwapTotal), FormatBytes(m.SwapUsed),
+			FormatBytes(m.SwapFree), "-"},
+	}
+
+	pterm.DefaultTable.WithHasHeader(true).WithHeaderStyle(pterm.NewStyle(pterm.FgLightCyan)).
+		WithBoxed(true).WithData(memData).Render()
+	pterm.Println()
+}
+
+func displayDiskMetrics(m *SystemMetrics) {
+	pterm.DefaultSection.Println("💿 Disk Metrics")
+
+	diskData := [][]string{
+		{"Mount", "Device", "Type", "Size", "Used", "Free", "Use%"},
+	}
+
+	for _, disk := range m.DiskMetrics {
+		// Skip very small partitions
+		if disk.Total < 1024*1024*100 { // Less than 100MB
+			continue
+		}
+
+		usageColor := pterm.FgGreen
+		if disk.UsedPercent > 80 {
+			usageColor = pterm.FgRed
+		} else if disk.UsedPercent > 60 {
+			usageColor = pterm.FgYellow
+		}
+
+		diskData = append(diskData, []string{
+			disk.MountPoint,
+			disk.Device,
+			disk.Fstype,
+			FormatBytes(disk.Total),
+			FormatBytes(disk.Used),
+			FormatBytes(disk.Free),
+			pterm.NewStyle(usageColor).Sprintf("%.1f%%", disk.UsedPercent),
 		})
 	}
 
-	if len(taskData) > 1 {
+	if len(diskData) > 1 {
+		pterm.DefaultTable.WithHasHeader(true).WithHeaderStyle(pterm.NewStyle(pterm.FgLightCyan)).
+			WithBoxed(true).WithData(diskData).Render()
+	}
+	pterm.Println()
+}
+
+func displayNetworkMetrics(m *SystemMetrics) {
+	pterm.DefaultSection.Println("🌐 Network Metrics")
+
+	netData := [][]string{
+		{"Interface", "Sent", "Received", "Packets TX/RX", "Errors", "Drops"},
+	}
+
+	for _, net := range m.NetworkInterfaces {
+		netData = append(netData, []string{
+			net.Name,
+			FormatBytes(net.BytesSent),
+			FormatBytes(net.BytesRecv),
+			fmt.Sprintf("%d/%d", net.PacketsSent, net.PacketsRecv),
+			fmt.Sprintf("%d/%d", net.Errout, net.Errin),
+			fmt.Sprintf("%d/%d", net.Dropout, net.Dropin),
+		})
+	}
+
+	if len(netData) > 1 {
+		pterm.DefaultTable.WithHasHeader(true).WithHeaderStyle(pterm.NewStyle(pterm.FgLightCyan)).
+			WithBoxed(true).WithData(netData).Render()
+	}
+	pterm.Println()
+}
+
+func displayProcessMetrics(m *SystemMetrics) {
+	pterm.DefaultSection.Println("📋 Top Processes")
+
+	processData := [][]string{
+		{"PID", "Name", "User", "CPU%", "Memory", "Status"},
+	}
+
+	for i, proc := range m.TopProcesses {
+		if i >= 10 { // Show top 10
+			break
+		}
+
+		cpuColor := pterm.FgGreen
+		if proc.CPUPercent > 50 {
+			cpuColor = pterm.FgRed
+		} else if proc.CPUPercent > 20 {
+			cpuColor = pterm.FgYellow
+		}
+
+		statusColor := pterm.FgGreen
+		if proc.Status == "Z" {
+			statusColor = pterm.FgRed
+		} else if proc.Status == "T" {
+			statusColor = pterm.FgYellow
+		}
+
+		// Truncate long names
+		name := proc.Name
+		if len(name) > 20 {
+			name = name[:17] + "..."
+		}
+
+		processData = append(processData, []string{
+			fmt.Sprintf("%d", proc.PID),
+			name,
+			proc.Username,
+			pterm.NewStyle(cpuColor).Sprintf("%.1f%%", proc.CPUPercent),
+			fmt.Sprintf("%.1f MB", proc.MemoryMB),
+			pterm.NewStyle(statusColor).Sprint(proc.Status),
+		})
+	}
+
+	pterm.DefaultTable.WithHasHeader(true).WithHeaderStyle(pterm.NewStyle(pterm.FgLightCyan)).
+		WithBoxed(true).WithData(processData).Render()
+	pterm.Println()
+}
+
+func displaySlothRunnerMetrics(data *MetricsData) {
+	// Agent Info
+	agentInfoData := [][]string{
+		{"Version", data.AgentVersion},
+		{"Uptime", formatDuration(data.AgentUptime)},
+		{"Goroutines", fmt.Sprintf("%.0f", data.Goroutines)},
+		{"Memory", fmt.Sprintf("%.0f MB", data.MemoryAllocated/1024/1024)},
+	}
+
+	pterm.DefaultTable.WithHasHeader(false).WithBoxed(true).WithData(agentInfoData).Render()
+
+	// Tasks Summary
+	if len(data.TasksTotal) > 0 {
+		taskSummary := summarizeTasks(data.TasksTotal)
+		taskData := [][]string{
+			{"Status", "Count"},
+		}
+		for status, count := range taskSummary {
+			taskData = append(taskData, []string{
+				formatStatus(status),
+				fmt.Sprintf("%.0f", count),
+			})
+		}
+
+		pterm.Println()
 		pterm.DefaultTable.WithHasHeader(true).WithHeaderStyle(pterm.NewStyle(pterm.FgLightCyan)).
 			WithBoxed(true).WithData(taskData).Render()
-	} else {
-		pterm.Info.Println("No tasks executed yet")
 	}
-
-	runningBar := createProgressBar("Running Tasks", int(data.TasksRunning), 10)
-	pterm.Println(runningBar)
 	pterm.Println()
+}
 
-	// Task Duration Section
-	if len(data.TaskDurationP50) > 0 {
-		pterm.DefaultSection.Println("⏱️  Task Performance")
+func displaySummary(data *MetricsData, systemMetrics *SystemMetrics) {
+	summaryLines := []string{}
 
-		durationData := [][]string{
-			{"Task", "P50 (ms)", "P99 (ms)", "Status"},
-		}
+	if systemMetrics != nil {
+		summaryLines = append(summaryLines,
+			fmt.Sprintf("🖥️  CPU: %s | RAM: %s | Disk: %d mounts",
+				pterm.Cyan(fmt.Sprintf("%.1f%%", systemMetrics.CPUUsageTotal)),
+				pterm.Yellow(fmt.Sprintf("%.1f%%", systemMetrics.MemoryUsedPct)),
+				len(systemMetrics.DiskMetrics)),
+		)
 
-		for key, p50 := range data.TaskDurationP50 {
-			p99 := data.TaskDurationP99[key]
-			parts := strings.Split(key, ":")
-			taskName := key
-			if len(parts) > 1 {
-				taskName = parts[1]
-			}
-
-			status := "🟢 Fast"
-			if p99 > 5.0 {
-				status = "🔴 Slow"
-			} else if p99 > 1.0 {
-				status = "🟡 Normal"
-			}
-
-			durationData = append(durationData, []string{
-				taskName,
-				fmt.Sprintf("%.2f", p50*1000),
-				fmt.Sprintf("%.2f", p99*1000),
-				status,
-			})
-		}
-
-		pterm.DefaultTable.WithHasHeader(true).WithHeaderStyle(pterm.NewStyle(pterm.FgLightCyan)).
-			WithBoxed(true).WithData(durationData).Render()
-		pterm.Println()
+		summaryLines = append(summaryLines,
+			fmt.Sprintf("📊 Processes: %s | Network: %s | Uptime: %s",
+				pterm.Green(fmt.Sprintf("%d", systemMetrics.ProcessCount)),
+				pterm.Blue(fmt.Sprintf("%d conn", systemMetrics.NetworkConnections)),
+				pterm.Magenta(FormatUptime(systemMetrics.Uptime))),
+		)
 	}
 
-	// gRPC Metrics Section
-	if len(data.GRPCRequestsTotal) > 0 {
-		pterm.DefaultSection.Println("🌐 gRPC Metrics")
-
-		grpcData := [][]string{
-			{"Method", "Requests", "Avg Latency (ms)"},
-		}
-
-		methodRequests := make(map[string]float64)
-		for key, count := range data.GRPCRequestsTotal {
-			parts := strings.Split(key, ":")
-			if len(parts) > 0 {
-				method := parts[0]
-				methodRequests[method] += count
-			}
-		}
-
-		for method, requests := range methodRequests {
-			latency := data.GRPCDurationP50[method] * 1000
-			grpcData = append(grpcData, []string{
-				method,
-				fmt.Sprintf("%.0f", requests),
-				fmt.Sprintf("%.2f", latency),
-			})
-		}
-
-		pterm.DefaultTable.WithHasHeader(true).WithHeaderStyle(pterm.NewStyle(pterm.FgLightCyan)).
-			WithBoxed(true).WithData(grpcData).Render()
-		pterm.Println()
-	}
-
-	// Errors Section
-	if len(data.ErrorsTotal) > 0 {
-		pterm.DefaultSection.Println("⚠️  Errors")
-
-		errorData := [][]string{
-			{"Error Type", "Count"},
-		}
-
-		for errorType, count := range data.ErrorsTotal {
-			errorData = append(errorData, []string{
-				errorType,
-				pterm.Red(fmt.Sprintf("%.0f", count)),
-			})
-		}
-
-		pterm.DefaultTable.WithHasHeader(true).WithHeaderStyle(pterm.NewStyle(pterm.FgLightCyan)).
-			WithBoxed(true).WithData(errorData).Render()
-		pterm.Println()
-	}
-
-	// Summary Box
+	// Sloth Runner summary
 	totalTasks := float64(0)
-	for _, count := range taskSummary {
+	for _, count := range data.TasksTotal {
 		totalTasks += count
 	}
 
-	summaryText := fmt.Sprintf(
-		"Total Tasks: %s | Running: %s | Memory: %s | Goroutines: %s",
-		pterm.Cyan(fmt.Sprintf("%.0f", totalTasks)),
-		pterm.Yellow(fmt.Sprintf("%.0f", data.TasksRunning)),
-		pterm.Green(fmt.Sprintf("%.0f MB", memoryMB)),
-		pterm.Magenta(fmt.Sprintf("%.0f", data.Goroutines)),
+	summaryLines = append(summaryLines,
+		fmt.Sprintf("🦥 Tasks: %s | Running: %s | Agent Memory: %s",
+			pterm.Cyan(fmt.Sprintf("%.0f", totalTasks)),
+			pterm.Yellow(fmt.Sprintf("%.0f", data.TasksRunning)),
+			pterm.Green(fmt.Sprintf("%.0f MB", data.MemoryAllocated/1024/1024))),
 	)
 
-	pterm.DefaultBox.WithTitle("📈 Summary").WithTitleTopCenter().
-		WithBoxStyle(pterm.NewStyle(pterm.FgCyan)).Println(summaryText)
+	pterm.DefaultBox.WithTitle("📈 System Summary").WithTitleTopCenter().
+		WithBoxStyle(pterm.NewStyle(pterm.FgCyan)).
+		Println(strings.Join(summaryLines, "\n"))
 }
 
 // Helper functions
+
+func createMultiCoreDisplay(coreUsages []float64) string {
+	lines := []string{}
+	for i, usage := range coreUsages {
+		bar := createMiniBar(usage)
+		color := pterm.FgGreen
+		if usage > 80 {
+			color = pterm.FgRed
+		} else if usage > 60 {
+			color = pterm.FgYellow
+		}
+
+		lines = append(lines, fmt.Sprintf("Core %2d: %s %s",
+			i,
+			bar,
+			pterm.NewStyle(color).Sprintf("%5.1f%%", usage),
+		))
+
+		// Two columns display
+		if (i+1)%2 == 0 && i < len(coreUsages)-1 {
+			lines[len(lines)-2] = lines[len(lines)-2] + "  |  " + lines[len(lines)-1]
+			lines = lines[:len(lines)-1]
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func createMiniBar(percentage float64) string {
+	barWidth := 20
+	filled := int(percentage / 100 * float64(barWidth))
+	if filled > barWidth {
+		filled = barWidth
+	}
+
+	color := pterm.FgGreen
+	if percentage > 80 {
+		color = pterm.FgRed
+	} else if percentage > 60 {
+		color = pterm.FgYellow
+	}
+
+	bar := strings.Repeat("█", filled)
+	empty := strings.Repeat("░", barWidth-filled)
+
+	return pterm.NewStyle(color).Sprint(bar) + empty
+}
+
+func createColoredProgressBar(label string, current, max float64, format string) string {
+	if max == 0 {
+		max = 1
+	}
+
+	percentage := current / max * 100
+	if percentage > 100 {
+		percentage = 100
+	}
+
+	barWidth := 40
+	filled := int(percentage / 100 * float64(barWidth))
+
+	bar := strings.Repeat("█", filled)
+	empty := strings.Repeat("░", barWidth-filled)
+
+	color := pterm.FgGreen
+	if percentage > 80 {
+		color = pterm.FgRed
+	} else if percentage > 60 {
+		color = pterm.FgYellow
+	}
+
+	coloredBar := pterm.NewStyle(color).Sprint(bar)
+
+	var valueStr string
+	if format == "percent" {
+		valueStr = fmt.Sprintf("%.1f%%", percentage)
+	} else {
+		valueStr = fmt.Sprintf("%.0f/%.0f", current, max)
+	}
+
+	return fmt.Sprintf("%s: [%s%s] %s",
+		pterm.Bold.Sprint(label),
+		coloredBar,
+		empty,
+		valueStr,
+	)
+}
 
 func formatDuration(seconds float64) string {
 	duration := time.Duration(seconds) * time.Second
@@ -403,7 +626,7 @@ func createProgressBar(label string, current, max int) string {
 	)
 }
 
-// DisplayHistoricalTrends displays metrics trends over time (for future enhancement)
+// DisplayHistoricalTrends displays metrics trends over time
 func DisplayHistoricalTrends(history []*MetricsData, agentName string) {
 	if len(history) == 0 {
 		pterm.Warning.Println("No historical data available")
@@ -437,5 +660,27 @@ func DisplayHistoricalTrends(history []*MetricsData, agentName string) {
 		if i < len(history)-1 && i%5 == 4 {
 			pterm.Println()
 		}
+	}
+}
+
+// ContinuousMonitor runs continuous monitoring with refresh
+func ContinuousMonitor(endpoint string, agentName string, refreshInterval time.Duration) {
+	ticker := time.NewTicker(refreshInterval)
+	defer ticker.Stop()
+
+	for {
+		// Clear screen
+		fmt.Print("\033[H\033[2J")
+
+		// Fetch and display metrics
+		data, err := FetchMetrics(endpoint)
+		if err != nil {
+			pterm.Error.Printf("Failed to fetch metrics: %v\n", err)
+		} else {
+			DisplayDashboard(data, agentName)
+		}
+
+		// Wait for next refresh
+		<-ticker.C
 	}
 }
