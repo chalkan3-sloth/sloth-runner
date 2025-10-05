@@ -54,6 +54,7 @@ jobs:
       - name: Run tests with coverage
         run: |
           go test -v ./cmd/sloth-runner/... -coverprofile=coverage.out -timeout=2m
+          go test -v ./internal/telemetry/... -coverprofile=telemetry-coverage.out -timeout=2m
         env:
           CGO_ENABLED: 1
         timeout-minutes: 3

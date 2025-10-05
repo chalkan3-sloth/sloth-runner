@@ -1,856 +1,994 @@
-# Module API Examples - Modern DSL
+# 📚 Module API Examples - Modern DSL
 
-This document provides comprehensive examples of all Sloth Runner modules using the modern DSL with table-based parameters.
+This guide provides comprehensive examples of using Sloth Runner modules with the Modern DSL. All examples follow best practices and demonstrate real-world scenarios.
 
-## Core Principles
+## 📦 Package Management Module (`pkg`)
 
-All modules in Sloth Runner follow consistent patterns:
+The package management module provides cross-platform package installation and management.
 
-1. **Table-based parameters**: All functions accept a single table parameter with named fields
-2. **Delegate execution**: Use `:delegate_to()` to execute commands on remote agents
-3. **Consistent error handling**: Functions return success/failure with descriptive messages
-
----
-
-## Package Management (pkg)
-
-### Installing Packages
+### Basic Package Installation
 
 ```lua
-task("install_packages", {
-    description = "Install required packages",
-    command = function()
-        -- Install single package
-        local result = pkg.install({
-            packages = {"nginx"},
-            delegate_to = "web-server"
-        })
-        
-        if not result.success then
-            return false, "Installation failed: " .. result.message
-        end
-        
-        return true, "Packages installed successfully"
-    end
-})
+name = "package-setup"
+version = "1.0.0"
+
+group "system_packages" {
+    task "update_repositories" {
+        module = "pkg",
+        action = "update",
+        -- Automatically detects the package manager (apt, yum, dnf, etc.)
+    }
+
+    task "install_essentials" {
+        module = "pkg",
+        action = "install",
+        packages = {"curl", "git", "vim", "htop"},
+        state = "present"  -- Ensure packages are installed
+    }
+
+    task "install_development_tools" {
+        module = "pkg",
+        action = "install",
+        packages = {"gcc", "make", "python3-pip", "nodejs", "npm"},
+        state = "latest"  -- Ensure latest versions
+    }
+}
 ```
 
-### Multiple Operations
+### Advanced Package Management
 
 ```lua
-task("manage_packages", {
-    description = "Complete package management",
-    command = function()
-        -- Update package database
-        pkg.update({ delegate_to = "web-server" })
-        
-        -- Install multiple packages
-        pkg.install({
-            packages = {"nginx", "postgresql", "redis"},
-            delegate_to = "web-server"
-        })
-        
-        -- Upgrade all packages
-        pkg.upgrade({ delegate_to = "web-server" })
-        
-        -- Remove package
-        pkg.remove({
-            packages = {"apache2"},
-            delegate_to = "web-server"
-        })
-        
-        return true, "Package management completed"
-    end
-})
+-- Package management with version control
+group "versioned_packages" {
+    task "install_specific_versions" {
+        module = "pkg",
+        action = "install",
+        packages = {
+            {name = "postgresql", version = "14"},
+            {name = "redis", version = "7.0*"},
+            {name = "nginx", version = ">=1.20"}
+        }
+    }
+
+    task "remove_unwanted" {
+        module = "pkg",
+        action = "remove",
+        packages = {"apache2", "mysql-server"},
+        state = "absent",
+        purge = true  -- Remove configuration files too
+    }
+}
 ```
 
----
+## ⚙️ Systemd Module
 
-## Systemd Management
+Managing system services with the systemd module.
 
-### Service Operations
+### Service Management
 
 ```lua
-task("manage_services", {
-    description = "Manage systemd services",
-    command = function()
-        -- Start service
-        systemd.start({
-            service = "nginx",
-            delegate_to = "web-server"
-        })
-        
-        -- Enable service
-        systemd.enable({
-            service = "nginx",
-            delegate_to = "web-server"
-        })
-        
-        -- Check status
-        local status = systemd.status({
-            service = "nginx",
-            delegate_to = "web-server"
-        })
-        
-        log.info("Service status: " .. status.state)
-        
-        return true, "Service management completed"
-    end
-})
+group "service_configuration" {
+    task "configure_nginx" {
+        module = "systemd",
+        action = "service",
+        name = "nginx",
+        state = "started",
+        enabled = true,
+        daemon_reload = true  -- Reload systemd if unit files changed
+    }
+
+    task "configure_multiple_services" {
+        module = "systemd",
+        action = "multi_service",
+        services = {
+            {name = "postgresql", state = "started", enabled = true},
+            {name = "redis", state = "started", enabled = true},
+            {name = "memcached", state = "stopped", enabled = false}
+        }
+    }
+}
 ```
 
-### Restart with Verification
+### Custom Service Creation
 
 ```lua
-task("restart_service", {
-    description = "Restart and verify service",
-    command = function()
-        -- Restart service
-        systemd.restart({
-            service = "nginx",
-            delegate_to = "web-server"
-        })
-        
-        -- Wait a moment for service to start
-        goroutine.sleep(2000)
-        
-        -- Verify it's running
-        local status = systemd.is_active({
-            service = "nginx",
-            delegate_to = "web-server"
-        })
-        
-        if not status then
-            return false, "Service failed to start"
-        end
-        
-        return true, "Service restarted successfully"
-    end
-})
+group "custom_service" {
+    task "create_app_service" {
+        module = "fs",
+        action = "write",
+        path = "/etc/systemd/system/myapp.service",
+        content = [[
+[Unit]
+Description=My Application
+After=network.target
+
+[Service]
+Type=simple
+User=appuser
+WorkingDirectory=/opt/myapp
+ExecStart=/opt/myapp/bin/start.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+        ]],
+        mode = "0644"
+    }
+
+    task "reload_and_start" {
+        module = "systemd",
+        action = "daemon_reload"
+    }
+
+    task "start_custom_service" {
+        module = "systemd",
+        action = "service",
+        name = "myapp",
+        state = "started",
+        enabled = true
+    }
+}
 ```
 
----
+## 🐳 Docker Module
 
-## Terraform
+Container management with Docker.
 
-### Complete Infrastructure Lifecycle
+### Container Deployment
 
 ```lua
-task("terraform_deploy", {
-    description = "Deploy infrastructure with Terraform",
-    command = function()
-        local workdir = "./terraform/production"
-        
-        -- Initialize
-        local init_result = terraform.init({
-            workdir = workdir,
-            delegate_to = "deploy-agent"
-        })
-        if not init_result.success then
-            return false, "Init failed: " .. init_result.stderr
-        end
-        
-        -- Plan
-        local plan_result = terraform.plan({
-            workdir = workdir,
-            out = "prod.tfplan",
-            delegate_to = "deploy-agent"
-        })
-        if not plan_result.success then
-            return false, "Plan failed: " .. plan_result.stderr
-        end
-        
-        -- Apply
-        local apply_result = terraform.apply({
-            workdir = workdir,
-            plan = "prod.tfplan",
-            auto_approve = true,
-            delegate_to = "deploy-agent"
-        })
-        if not apply_result.success then
-            return false, "Apply failed: " .. apply_result.stderr
-        end
-        
-        -- Get outputs
-        local vpc_id, err = terraform.output({
-            workdir = workdir,
-            name = "vpc_id",
-            delegate_to = "deploy-agent"
-        })
-        if not vpc_id then
-            return false, "Failed to get output: " .. err
-        end
-        
-        log.info("VPC ID: " .. vpc_id)
-        return true, "Infrastructure deployed successfully"
-    end
-})
+group "docker_deployment" {
+    task "pull_images" {
+        module = "docker",
+        action = "pull",
+        images = {
+            "nginx:latest",
+            "postgres:14-alpine",
+            "redis:7-alpine"
+        }
+    }
+
+    task "run_database" {
+        module = "docker",
+        action = "container",
+        name = "app-postgres",
+        image = "postgres:14-alpine",
+        state = "started",
+        restart_policy = "always",
+        environment = {
+            POSTGRES_DB = "myapp",
+            POSTGRES_USER = "appuser",
+            POSTGRES_PASSWORD = state.get("db_password")
+        },
+        volumes = {
+            "/data/postgres:/var/lib/postgresql/data"
+        },
+        ports = {"5432:5432"}
+    }
+
+    task "run_application" {
+        module = "docker",
+        action = "container",
+        name = "myapp",
+        image = "myapp:latest",
+        state = "started",
+        restart_policy = "always",
+        environment = {
+            DATABASE_URL = "postgresql://appuser@app-postgres/myapp",
+            REDIS_URL = "redis://app-redis:6379"
+        },
+        links = {"app-postgres", "app-redis"},
+        ports = {"80:3000"},
+        healthcheck = {
+            test = ["CMD", "curl", "-f", "http://localhost:3000/health"],
+            interval = "30s",
+            timeout = "10s",
+            retries = 3
+        }
+    }
+}
 ```
 
----
-
-## Pulumi
-
-### Stack Management
+### Docker Compose
 
 ```lua
-task("pulumi_deploy", {
-    description = "Deploy with Pulumi",
-    command = function()
-        -- Create stack object
-        local stack = pulumi.stack({
-            name = "my-org/production/us-east-1",
-            workdir = "./pulumi/infra",
-            delegate_to = "deploy-agent"
-        })
-        
-        -- Preview changes
-        local preview = stack:preview({
-            delegate_to = "deploy-agent"
-        })
-        log.info("Preview:\n" .. preview.stdout)
-        
-        -- Deploy
-        local result = stack:up({
-            yes = true,
-            config = {
-                ["aws:region"] = "us-east-1",
-                ["myapp:environment"] = "production"
-            },
-            delegate_to = "deploy-agent"
-        })
-        
-        if not result.success then
-            return false, "Deploy failed: " .. result.stderr
-        end
-        
-        -- Get outputs
-        local outputs, err = stack:outputs({
-            delegate_to = "deploy-agent"
-        })
-        if err then
-            return false, "Failed to get outputs: " .. err
-        end
-        
-        log.info("Endpoint: " .. outputs.endpoint)
-        return true, "Pulumi deployment completed"
-    end
-})
+group "compose_deployment" {
+    task "deploy_stack" {
+        module = "docker",
+        action = "compose",
+        project_name = "myapp",
+        compose_file = "./docker-compose.yml",
+        state = "present",
+        pull = true,
+        build = true
+    }
+
+    task "scale_services" {
+        module = "docker",
+        action = "compose_scale",
+        project_name = "myapp",
+        services = {
+            web = 3,
+            worker = 2
+        }
+    }
+}
 ```
 
----
+## 🏗️ Terraform Module
 
-## AWS
+Infrastructure as Code with Terraform.
 
-### S3 Sync with aws-vault
-
-```lua
-task("deploy_to_s3", {
-    description = "Deploy static site to S3",
-    command = function()
-        local result = aws.s3.sync({
-            source = "./build",
-            destination = "s3://my-app-bucket/static",
-            profile = "production",
-            delete = true,
-            delegate_to = "deploy-agent"
-        })
-        
-        if not result then
-            return false, "S3 sync failed"
-        end
-        
-        return true, "Site deployed to S3"
-    end
-})
-```
-
-### Secrets Manager
+### Complete Terraform Workflow
 
 ```lua
-task("fetch_secrets", {
-    description = "Fetch secrets from AWS",
-    command = function()
-        local db_password, err = aws.secretsmanager.get_secret({
-            secret_id = "production/database/password",
-            profile = "production",
-            delegate_to = "app-server"
-        })
-        
-        if not db_password then
-            return false, "Failed to fetch secret: " .. err
-        end
-        
-        -- Use the secret to configure application
-        log.info("Secret retrieved successfully")
-        return true, "Secrets configured"
-    end
-})
-```
+group "terraform_infrastructure" {
+    description = "Deploy AWS infrastructure with Terraform",
 
----
+    task "init_terraform" {
+        module = "terraform",
+        action = "init",
+        working_dir = "./terraform/environments/production",
+        backend_config = {
+            bucket = "terraform-state-bucket",
+            key = "production/terraform.tfstate",
+            region = "us-east-1"
+        }
+    }
 
-## Docker
+    task "plan_infrastructure" {
+        module = "terraform",
+        action = "plan",
+        working_dir = "./terraform/environments/production",
+        var_file = "./terraform/environments/production/terraform.tfvars",
+        out = "/tmp/production.tfplan",
+        variables = {
+            environment = "production",
+            instance_count = 3
+        }
+    }
 
-### Build and Push Pipeline
+    task "apply_infrastructure" {
+        module = "terraform",
+        action = "apply",
+        working_dir = "./terraform/environments/production",
+        plan_file = "/tmp/production.tfplan",
+        auto_approve = true,
 
-```lua
-task("docker_pipeline", {
-    description = "Build and push Docker image",
-    command = function()
-        local image_tag = "myapp:v1.2.3"
-        
-        -- Build
-        local build_result = docker.build({
-            tag = image_tag,
-            path = "./app",
-            dockerfile = "./app/Dockerfile",
-            build_args = {
-                VERSION = "1.2.3",
-                BUILD_DATE = os.date("%Y-%m-%d")
-            },
-            delegate_to = "build-agent"
-        })
-        
-        if not build_result.success then
-            return false, "Build failed: " .. build_result.stderr
-        end
-        
-        -- Push
-        local push_result = docker.push({
-            tag = image_tag,
-            delegate_to = "build-agent"
-        })
-        
-        if not push_result.success then
-            return false, "Push failed: " .. push_result.stderr
-        end
-        
-        return true, "Docker image built and pushed"
-    end
-})
-```
-
----
-
-## File Operations
-
-### Copy with Template Rendering
-
-```lua
-task("deploy_config", {
-    description = "Deploy configuration files",
-    command = function()
-        -- Copy file
-        fs.copy({
-            src = "./configs/app.conf",
-            dest = "/etc/myapp/app.conf",
-            mode = "0644",
-            owner = "myapp",
-            group = "myapp",
-            delegate_to = "app-server"
-        })
-        
-        -- Render and copy template
-        fs.template({
-            src = "./templates/database.conf.tmpl",
-            dest = "/etc/myapp/database.conf",
-            vars = {
-                db_host = "db.example.com",
-                db_port = 5432,
-                db_name = "production"
-            },
-            mode = "0600",
-            owner = "myapp",
-            delegate_to = "app-server"
-        })
-        
-        return true, "Configuration deployed"
-    end
-})
-```
-
-### Archive Operations
-
-```lua
-task("backup_data", {
-    description = "Create backup archive",
-    command = function()
-        -- Create archive
-        fs.unarchive({
-            src = "/tmp/backup.tar.gz",
-            dest = "/var/backups/",
-            remote_src = true,
-            delegate_to = "backup-server"
-        })
-        
-        return true, "Backup extracted"
-    end
-})
-```
-
----
-
-## User Management
-
-### Complete User Setup
-
-```lua
-task("setup_user", {
-    description = "Create and configure user",
-    command = function()
-        -- Create user
-        user.create({
-            name = "appuser",
-            uid = 1001,
-            shell = "/bin/bash",
-            home = "/home/appuser",
-            groups = {"sudo", "docker"},
-            delegate_to = "app-server"
-        })
-        
-        -- Set password
-        user.password({
-            name = "appuser",
-            password = "hashed_password_here",
-            delegate_to = "app-server"
-        })
-        
-        -- Add SSH key
-        user.authorized_key({
-            user = "appuser",
-            key = "ssh-rsa AAAAB3NzaC1yc2...",
-            state = "present",
-            delegate_to = "app-server"
-        })
-        
-        return true, "User configured"
-    end
-})
-```
-
----
-
-## SSH Management
-
-### SSH Configuration
-
-```lua
-task("configure_ssh", {
-    description = "Configure SSH access",
-    command = function()
-        -- Add known host
-        ssh.known_host({
-            name = "github.com",
-            key = "github.com ssh-rsa AAAAB3NzaC1yc2...",
-            delegate_to = "app-server"
-        })
-        
-        -- Configure SSH client
-        ssh.config({
-            host = "production",
-            hostname = "prod.example.com",
-            user = "deploy",
-            identity_file = "~/.ssh/deploy_rsa",
-            port = 2222,
-            delegate_to = "jump-box"
-        })
-        
-        return true, "SSH configured"
-    end
-})
-```
-
----
-
-## Infrastructure Testing (infra_test)
-
-### Complete Validation Suite
-
-```lua
-task("validate_infrastructure", {
-    description = "Validate infrastructure state",
-    command = function()
-        -- File tests
-        infra_test.file_exists({
-            path = "/etc/nginx/nginx.conf",
-            delegate_to = "web-server"
-        })
-        
-        infra_test.file_mode({
-            path = "/etc/nginx/nginx.conf",
-            mode = "0644",
-            delegate_to = "web-server"
-        })
-        
-        infra_test.file_contains({
-            path = "/etc/nginx/nginx.conf",
-            pattern = "server_name example.com",
-            delegate_to = "web-server"
-        })
-        
-        -- Service tests
-        infra_test.service_is_running({
-            name = "nginx",
-            delegate_to = "web-server"
-        })
-        
-        infra_test.service_is_enabled({
-            name = "nginx",
-            delegate_to = "web-server"
-        })
-        
-        -- Port tests
-        infra_test.port_is_listening({
-            port = 80,
-            delegate_to = "web-server"
-        })
-        
-        infra_test.port_is_tcp({
-            port = 80,
-            delegate_to = "web-server"
-        })
-        
-        -- Package tests
-        infra_test.package_is_installed({
-            name = "nginx",
-            delegate_to = "web-server"
-        })
-        
-        -- Process tests
-        infra_test.process_is_running({
-            pattern = "nginx",
-            delegate_to = "web-server"
-        })
-        
-        -- Command tests
-        infra_test.command_succeeds({
-            cmd = "nginx -t",
-            delegate_to = "web-server"
-        })
-        
-        -- Network tests
-        infra_test.can_connect({
-            host = "database.example.com",
-            port = 5432,
-            timeout_ms = 5000
-        })
-        
-        return true, "All validation tests passed"
-    end
-})
-```
-
----
-
-## Goroutines (Parallel Execution)
-
-### Parallel Package Installation
-
-```lua
-task("parallel_setup", {
-    description = "Setup multiple servers in parallel",
-    command = function()
-        local servers = {"web-1", "web-2", "web-3"}
-        local wg = goroutine.wait_group()
-        local results = {}
-        
-        for _, server in ipairs(servers) do
-            wg:add(1)
-            goroutine.go(function()
-                log.info("Installing packages on " .. server)
-                
-                pkg.update({ delegate_to = server })
-                pkg.install({
-                    packages = {"nginx", "certbot"},
-                    delegate_to = server
-                })
-                
-                systemd.enable({
-                    service = "nginx",
-                    delegate_to = server
-                })
-                
-                systemd.start({
-                    service = "nginx",
-                    delegate_to = server
-                })
-                
-                results[server] = true
-                wg:done()
-            end)
-        end
-        
-        -- Wait for all goroutines to complete
-        wg:wait()
-        
-        -- Check results
-        for server, success in pairs(results) do
-            if not success then
-                return false, "Setup failed on " .. server
-            end
-            log.info("✓ " .. server .. " configured successfully")
-        end
-        
-        return true, "All servers configured in parallel"
-    end
-})
-```
-
-### Parallel Cloud Deployment
-
-```lua
-task("multi_cloud_deploy", {
-    description = "Deploy to multiple clouds simultaneously",
-    command = function()
-        local wg = goroutine.wait_group()
-        local errors = {}
-        
-        -- Deploy to AWS
-        wg:add(1)
-        goroutine.go(function()
-            local ok, err = aws.s3.sync({
-                source = "./build",
-                destination = "s3://my-app-aws/",
-                delete = true
+        on_success = function(result)
+            -- Store outputs in state
+            local outputs = terraform.get_outputs({
+                working_dir = "./terraform/environments/production"
             })
-            if not ok then
-                errors["aws"] = err
-            end
-            wg:done()
-        end)
-        
-        -- Deploy to Azure
-        wg:add(1)
-        goroutine.go(function()
-            local result = azure.exec({
-                "storage", "blob", "upload-batch",
-                "--destination", "mycontainer",
-                "--source", "./build"
-            })
-            if result.exit_code ~= 0 then
-                errors["azure"] = result.stderr
-            end
-            wg:done()
-        end)
-        
-        -- Deploy to GCP
-        wg:add(1)
-        goroutine.go(function()
-            local result = gcp.exec({
-                "storage", "rsync", "-r", "./build",
-                "gs://my-app-gcp/"
-            })
-            if result.exit_code ~= 0 then
-                errors["gcp"] = result.stderr
-            end
-            wg:done()
-        end)
-        
-        -- Wait for all deployments
-        wg:wait()
-        
-        -- Check for errors
-        if next(errors) then
-            local msg = "Deployment failures:\n"
-            for cloud, err in pairs(errors) do
-                msg = msg .. "  " .. cloud .. ": " .. err .. "\n"
-            end
-            return false, msg
+            state.set("vpc_id", outputs.vpc_id)
+            state.set("subnet_ids", outputs.subnet_ids)
+            log.info("Infrastructure deployed: VPC " .. outputs.vpc_id)
         end
-        
-        return true, "Successfully deployed to all clouds"
-    end
-})
+    }
+}
 ```
 
----
+## 🔀 Git Module
 
-## Complete Real-World Example
+Version control operations.
 
-### Full Application Deployment
+### Git Operations
 
 ```lua
--- Complete deployment workflow with testing and verification
+group "git_operations" {
+    task "clone_repository" {
+        module = "git",
+        action = "clone",
+        repository = "https://github.com/myorg/myapp.git",
+        dest = "/opt/myapp",
+        branch = "main",
+        depth = 1  -- Shallow clone for faster operation
+    }
 
-task("prepare_deployment", {
-    description = "Prepare for deployment",
-    command = function()
-        log.info("Preparing deployment environment")
-        
-        -- Create deployment user
-        user.create({
-            name = "deploy",
-            shell = "/bin/bash",
-            delegate_to = "app-server"
-        })
-        
-        -- Setup SSH access
-        user.authorized_key({
-            user = "deploy",
-            key = fs.read_file("~/.ssh/deploy.pub"),
-            delegate_to = "app-server"
-        })
-        
-        return true, "Deployment prepared"
-    end
-})
+    task "update_code" {
+        module = "git",
+        action = "pull",
+        repo_path = "/opt/myapp",
+        branch = "main",
 
-task("install_dependencies", {
-    description = "Install required packages",
-    depends_on = {"prepare_deployment"},
-    command = function()
-        pkg.update({ delegate_to = "app-server" })
-        pkg.install({
-            packages = {"nginx", "postgresql", "redis", "nodejs"},
-            delegate_to = "app-server"
-        })
-        
-        return true, "Dependencies installed"
-    end
-})
+        before = function()
+            -- Save current commit hash
+            local current = git.get_commit({path = "/opt/myapp"})
+            state.set("previous_commit", current)
+        end,
 
-task("deploy_application", {
-    description = "Deploy application code",
-    depends_on = {"install_dependencies"},
-    command = function()
-        -- Deploy configuration
-        fs.template({
-            src = "./templates/nginx.conf.tmpl",
-            dest = "/etc/nginx/sites-available/myapp",
-            vars = {
-                domain = "example.com",
-                port = 3000
+        after = function()
+            local new_commit = git.get_commit({path = "/opt/myapp"})
+            log.info("Updated from " .. state.get("previous_commit") .. " to " .. new_commit)
+        end
+    }
+
+    task "tag_release" {
+        module = "git",
+        action = "tag",
+        repo_path = "/opt/myapp",
+        tag = "v" .. state.get("version"),
+        message = "Release version " .. state.get("version"),
+        push = true
+    }
+}
+```
+
+## 🔗 Stow Module (Dotfiles Management)
+
+Managing dotfiles and configuration symlinks.
+
+### Dotfiles Setup
+
+```lua
+group "dotfiles_management" {
+    task "clone_dotfiles" {
+        module = "git",
+        action = "clone",
+        repository = "https://github.com/user/dotfiles.git",
+        dest = "$HOME/.dotfiles"
+    }
+
+    task "stow_configurations" {
+        module = "stow",
+        action = "stow",
+        source = "$HOME/.dotfiles",
+        packages = {"vim", "tmux", "zsh", "git"},
+        target = "$HOME",
+
+        on_conflict = function(conflict)
+            log.warn("Conflict detected: " .. conflict.file)
+            -- Backup existing file
+            fs.move({
+                src = conflict.file,
+                dest = conflict.file .. ".backup"
+            })
+            return "retry"  -- Retry stow operation
+        end
+    }
+
+    task "unstow_old_configs" {
+        module = "stow",
+        action = "unstow",
+        source = "$HOME/.dotfiles",
+        packages = {"old-config"},
+        target = "$HOME"
+    }
+}
+```
+
+## 📦 Incus Module (LXC/VM Management)
+
+Container and VM orchestration with Incus.
+
+### Container Creation and Management
+
+```lua
+group "incus_containers" {
+    task "create_web_container" {
+        module = "incus",
+        action = "container",
+        name = "web-01",
+        image = "ubuntu:22.04",
+        state = "started",
+        profiles = {"default", "web"},
+        config = {
+            "limits.cpu" = "2",
+            "limits.memory" = "2GB",
+            "security.nesting" = "true"
+        },
+        devices = {
+            root = {
+                type = "disk",
+                pool = "default",
+                size = "20GB"
             },
-            delegate_to = "app-server"
-        })
-        
-        -- Deploy application files
-        fs.copy({
-            src = "./build/",
-            dest = "/var/www/myapp/",
-            mode = "0755",
-            owner = "deploy",
-            delegate_to = "app-server"
-        })
-        
-        return true, "Application deployed"
-    end
-})
+            eth0 = {
+                type = "nic",
+                network = "lxdbr0",
+                ["ipv4.address"] = "10.0.0.100"
+            }
+        }
+    }
 
-task("configure_services", {
-    description = "Configure and start services",
-    depends_on = {"deploy_application"},
-    command = function()
-        -- Enable services
-        systemd.enable({
-            service = "nginx",
-            delegate_to = "app-server"
-        })
-        
-        systemd.enable({
-            service = "postgresql",
-            delegate_to = "app-server"
-        })
-        
-        -- Restart services
-        systemd.restart({
-            service = "nginx",
-            delegate_to = "app-server"
-        })
-        
-        systemd.restart({
-            service = "postgresql",
-            delegate_to = "app-server"
-        })
-        
-        return true, "Services configured"
-    end
-})
+    task "configure_container" {
+        module = "incus",
+        action = "exec",
+        container = "web-01",
+        command = {
+            "apt-get", "update", "&&",
+            "apt-get", "install", "-y", "nginx"
+        }
+    }
 
-task("verify_deployment", {
-    description = "Verify deployment success",
-    depends_on = {"configure_services"},
-    command = function()
-        log.info("Running verification tests...")
-        
-        -- File tests
-        infra_test.file_exists({
-            path = "/var/www/myapp/index.html",
-            delegate_to = "app-server"
-        })
-        
-        -- Service tests
-        infra_test.service_is_running({
-            name = "nginx",
-            delegate_to = "app-server"
-        })
-        
-        infra_test.service_is_running({
-            name = "postgresql",
-            delegate_to = "app-server"
-        })
-        
-        -- Port tests
-        infra_test.port_is_listening({
-            port = 80,
-            delegate_to = "app-server"
-        })
-        
-        -- HTTP test
-        infra_test.command_succeeds({
-            cmd = "curl -f http://localhost",
-            delegate_to = "app-server"
-        })
-        
-        log.info("✓ All verification tests passed")
-        return true, "Deployment verified successfully"
-    end
-})
+    task "snapshot_container" {
+        module = "incus",
+        action = "snapshot",
+        container = "web-01",
+        name = "after-nginx-install",
+        stateful = false
+    }
+}
 ```
 
----
+## 🧪 Infrastructure Testing Module (`infra_test`)
 
-## Migration Guide
+Validate infrastructure state and configuration.
 
-### Old DSL vs New DSL
+### Comprehensive Testing Suite
 
-**Old (Positional Arguments):**
 ```lua
-local result = pkg.install("nginx", "app-server")
+group "infrastructure_validation" {
+    description = "Validate deployed infrastructure",
+
+    task "test_web_server" {
+        module = "infra_test",
+        action = "suite",
+        tests = {
+            -- File tests
+            {type = "file_exists", path = "/etc/nginx/nginx.conf"},
+            {type = "file_contains", path = "/etc/nginx/nginx.conf", pattern = "worker_processes auto"},
+            {type = "file_mode", path = "/etc/nginx/nginx.conf", mode = "0644"},
+            {type = "file_owner", path = "/etc/nginx/nginx.conf", owner = "root", group = "root"},
+
+            -- Service tests
+            {type = "service_running", name = "nginx"},
+            {type = "service_enabled", name = "nginx"},
+
+            -- Port tests
+            {type = "port_listening", port = 80, protocol = "tcp"},
+            {type = "port_listening", port = 443, protocol = "tcp"},
+
+            -- Process tests
+            {type = "process_running", pattern = "nginx: master process"},
+
+            -- Command tests
+            {type = "command_succeeds", command = "nginx -t"},
+            {type = "command_output", command = "nginx -v", pattern = "nginx/1.2"},
+
+            -- HTTP tests
+            {type = "http_response", url = "http://localhost", status = 200},
+            {type = "http_contains", url = "http://localhost", content = "Welcome"},
+
+            -- SSL tests
+            {type = "ssl_certificate_valid", host = "example.com", port = 443},
+            {type = "ssl_days_remaining", host = "example.com", min_days = 30}
+        },
+
+        on_failure = function(test, error)
+            notification.send("slack", {
+                channel = "#ops-alerts",
+                message = "Infrastructure test failed: " .. test.type .. " - " .. error
+            })
+        end
+    }
+}
 ```
 
-**New (Table Parameters):**
+## ⚡ Parallel Execution with Goroutines
+
+Execute tasks concurrently for improved performance.
+
+### Parallel Multi-Server Deployment
+
 ```lua
-local result = pkg.install({
-    packages = {"nginx"},
-    delegate_to = "app-server"
-})
+group "parallel_deployment" {
+    task "deploy_to_all_servers" {
+        module = "goroutine",
+        action = "parallel",
+
+        execute = function()
+            local servers = {"web-01", "web-02", "web-03", "app-01", "app-02"}
+            local results = {}
+            local wg = goroutine.WaitGroup()
+
+            for _, server in ipairs(servers) do
+                wg:Add(1)
+                goroutine.Go(function()
+                    log.info("Deploying to " .. server)
+
+                    -- Copy application files
+                    fs.sync({
+                        source = "./dist/",
+                        dest = server .. ":/opt/app/",
+                        delete = true
+                    })
+
+                    -- Restart service
+                    systemd.restart({
+                        service = "myapp",
+                        host = server
+                    })
+
+                    -- Verify deployment
+                    local ok = infra_test.http_response({
+                        url = "http://" .. server .. ":3000/health",
+                        status = 200
+                    })
+
+                    results[server] = ok
+                    wg:Done()
+                end)
+            end
+
+            wg:Wait()
+
+            -- Check results
+            local failed = {}
+            for server, ok in pairs(results) do
+                if not ok then
+                    table.insert(failed, server)
+                end
+            end
+
+            if #failed > 0 then
+                return false, "Deployment failed on: " .. table.concat(failed, ", ")
+            end
+
+            return true, "Successfully deployed to all servers"
+        end
+    }
+}
 ```
 
-### Benefits of New Syntax
+### Parallel Cloud Provisioning
 
-1. **Clarity**: Named parameters make code self-documenting
-2. **Flexibility**: Easy to add optional parameters
-3. **Consistency**: All modules follow the same pattern
-4. **Maintainability**: Easier to understand and modify
+```lua
+group "multi_cloud_provisioning" {
+    task "provision_all_clouds" {
+        module = "goroutine",
+        action = "parallel",
 
----
+        execute = function()
+            local tasks = {
+                aws = function()
+                    terraform.apply({
+                        working_dir = "./terraform/aws",
+                        auto_approve = true
+                    })
+                end,
 
-## Best Practices
+                azure = function()
+                    terraform.apply({
+                        working_dir = "./terraform/azure",
+                        auto_approve = true
+                    })
+                end,
 
-1. **Always use table parameters** for better code readability
-2. **Use delegate_to** for remote execution instead of manual SSH
-3. **Check return values** and handle errors appropriately
-4. **Use goroutines** for parallel operations to improve performance
-5. **Leverage infra_test** to verify infrastructure state
-6. **Keep tasks focused** - one task should do one thing well
+                gcp = function()
+                    terraform.apply({
+                        working_dir = "./terraform/gcp",
+                        auto_approve = true
+                    })
+                end
+            }
 
----
+            local results = goroutine.RunParallel(tasks)
 
-## See Also
+            for cloud, result in pairs(results) do
+                if not result.success then
+                    log.error(cloud .. " provisioning failed: " .. result.error)
+                    return false, "Multi-cloud provisioning failed"
+                end
+            end
 
-- [Module Index](../modules/index.md)
-- [Infrastructure Testing](../modules/infra_test.md)
-- [Goroutines](../modules/goroutine.md)
-- [Distributed Agents](../distributed-agents.md)
+            return true, "All clouds provisioned successfully"
+        end
+    }
+}
+```
+
+## 💾 State Management Module
+
+Persistent state management across task executions.
+
+### State Operations
+
+```lua
+group "state_management" {
+    task "save_deployment_info" {
+        module = "state",
+        action = "batch",
+
+        operations = function()
+            -- Set multiple values
+            state.set("deployment.version", "2.1.0")
+            state.set("deployment.timestamp", os.time())
+            state.set("deployment.commit", git.get_commit({path = "."}))
+
+            -- Set complex objects
+            state.set("deployment.servers", {
+                web = {"web-01", "web-02"},
+                app = {"app-01", "app-02"},
+                db = {"db-01"}
+            })
+
+            -- Increment counter
+            local deploy_count = state.get("deployment.count", 0)
+            state.set("deployment.count", deploy_count + 1)
+
+            -- Conditional state
+            if state.get("environment") == "production" then
+                state.set("deployment.approval_required", true)
+            end
+        end
+    }
+
+    task "load_previous_state" {
+        module = "state",
+        action = "load",
+
+        execute = function()
+            local last_version = state.get("deployment.version", "unknown")
+            local last_timestamp = state.get("deployment.timestamp", 0)
+
+            if last_timestamp > 0 then
+                local last_date = os.date("%Y-%m-%d %H:%M:%S", last_timestamp)
+                log.info("Last deployment: " .. last_version .. " at " .. last_date)
+            end
+
+            -- Get nested values
+            local servers = state.get("deployment.servers")
+            if servers then
+                for role, list in pairs(servers) do
+                    log.info(role .. " servers: " .. table.concat(list, ", "))
+                end
+            end
+        end
+    }
+}
+```
+
+## 🔔 Notifications Module
+
+Send notifications to various channels.
+
+### Multi-Channel Notifications
+
+```lua
+group "notifications" {
+    task "send_deployment_notifications" {
+        module = "notification",
+        action = "multi_send",
+
+        execute = function()
+            local version = state.get("deployment.version")
+            local environment = state.get("environment")
+
+            -- Slack notification
+            notification.send("slack", {
+                webhook_url = os.getenv("SLACK_WEBHOOK"),
+                channel = "#deployments",
+                username = "Deployment Bot",
+                icon_emoji = ":rocket:",
+                message = "Deployment started",
+                attachments = {
+                    {
+                        color = "good",
+                        title = "Deployment Details",
+                        fields = {
+                            {title = "Version", value = version, short = true},
+                            {title = "Environment", value = environment, short = true},
+                            {title = "Triggered by", value = os.getenv("USER"), short = true}
+                        }
+                    }
+                }
+            })
+
+            -- Email notification
+            notification.send("email", {
+                to = {"ops-team@example.com"},
+                subject = "Deployment: " .. version,
+                body = "Deployment of version " .. version .. " to " .. environment .. " has started.",
+                smtp_server = "smtp.example.com",
+                smtp_port = 587,
+                smtp_user = "notifications@example.com",
+                smtp_password = os.getenv("SMTP_PASSWORD")
+            })
+
+            -- Discord notification
+            notification.send("discord", {
+                webhook_url = os.getenv("DISCORD_WEBHOOK"),
+                content = "**Deployment Alert**",
+                embeds = {
+                    {
+                        title = "New Deployment",
+                        description = "Version " .. version .. " is being deployed",
+                        color = 5763719,  -- Green
+                        fields = {
+                            {name = "Environment", value = environment},
+                            {name = "Status", value = "In Progress"}
+                        }
+                    }
+                }
+            })
+        end
+    }
+}
+```
+
+## 🌐 Network Module
+
+Network operations and testing.
+
+### Network Configuration and Testing
+
+```lua
+group "network_setup" {
+    task "configure_firewall" {
+        module = "net",
+        action = "firewall",
+        rules = {
+            {action = "allow", port = 22, protocol = "tcp", source = "10.0.0.0/8"},
+            {action = "allow", port = 80, protocol = "tcp"},
+            {action = "allow", port = 443, protocol = "tcp"},
+            {action = "deny", port = 3306, protocol = "tcp", source = "0.0.0.0/0"}
+        }
+    }
+
+    task "test_connectivity" {
+        module = "net",
+        action = "test",
+        tests = {
+            {type = "ping", host = "8.8.8.8", count = 3},
+            {type = "tcp", host = "github.com", port = 443},
+            {type = "http", url = "https://api.github.com", status = 200},
+            {type = "dns", hostname = "example.com", expected = "93.184.216.34"}
+        }
+    }
+
+    task "download_artifacts" {
+        module = "net",
+        action = "download",
+        downloads = {
+            {
+                url = "https://releases.example.com/app-v2.tar.gz",
+                dest = "/tmp/app.tar.gz",
+                checksum = "sha256:abcdef123456...",
+                headers = {
+                    ["Authorization"] = "Bearer " .. os.getenv("GITHUB_TOKEN")
+                }
+            }
+        }
+    }
+}
+```
+
+## 📊 Complete Real-World Example
+
+A complete deployment pipeline using multiple modules:
+
+```lua
+name = "production-deployment"
+version = "1.0.0"
+description = "Complete production deployment pipeline"
+
+-- Configuration
+local config = {
+    app_name = "myapp",
+    environment = "production",
+    version = os.getenv("VERSION") or "latest",
+    servers = {
+        web = {"web-01", "web-02", "web-03"},
+        app = {"app-01", "app-02"},
+        db = {"db-01", "db-02"}
+    }
+}
+
+-- Pre-deployment checks
+group "pre_deployment" {
+    task "validate_environment" {
+        module = "infra_test",
+        action = "suite",
+        tests = {
+            -- Check all servers are accessible
+            {type = "ping", hosts = config.servers.web},
+            {type = "ping", hosts = config.servers.app},
+            {type = "ping", hosts = config.servers.db},
+
+            -- Check required services
+            {type = "service_running", name = "docker", hosts = config.servers.app},
+            {type = "port_listening", port = 5432, hosts = config.servers.db}
+        }
+    }
+
+    task "backup_database" {
+        module = "exec",
+        action = "command",
+        command = "pg_dump -h db-01 -U postgres myapp > /backups/myapp-$(date +%Y%m%d-%H%M%S).sql",
+        host = "backup-server"
+    }
+}
+
+-- Build and prepare
+group "build" {
+    task "build_application" {
+        module = "docker",
+        action = "build",
+        context = "./",
+        dockerfile = "./Dockerfile",
+        tag = config.app_name .. ":" .. config.version,
+        build_args = {
+            VERSION = config.version,
+            BUILD_DATE = os.date("%Y-%m-%d")
+        }
+    }
+
+    task "push_to_registry" {
+        module = "docker",
+        action = "push",
+        image = config.app_name .. ":" .. config.version,
+        registry = "registry.example.com"
+    }
+}
+
+-- Deploy to servers
+group "deployment" {
+    task "deploy_web_servers" {
+        module = "goroutine",
+        action = "parallel",
+
+        execute = function()
+            local tasks = {}
+
+            for _, server in ipairs(config.servers.web) do
+                tasks[server] = function()
+                    -- Update nginx config
+                    fs.template({
+                        source = "./templates/nginx.conf.j2",
+                        dest = "/etc/nginx/sites-available/" .. config.app_name,
+                        variables = {
+                            app_name = config.app_name,
+                            upstream_servers = config.servers.app
+                        },
+                        host = server
+                    })
+
+                    -- Reload nginx
+                    systemd.reload({
+                        service = "nginx",
+                        host = server
+                    })
+                end
+            end
+
+            return goroutine.RunParallel(tasks)
+        end
+    }
+
+    task "deploy_app_servers" {
+        module = "goroutine",
+        action = "parallel",
+
+        execute = function()
+            local tasks = {}
+
+            for _, server in ipairs(config.servers.app) do
+                tasks[server] = function()
+                    -- Pull new image
+                    docker.pull({
+                        image = config.app_name .. ":" .. config.version,
+                        host = server
+                    })
+
+                    -- Stop old container
+                    docker.stop({
+                        container = config.app_name,
+                        host = server
+                    })
+
+                    -- Start new container
+                    docker.run({
+                        name = config.app_name,
+                        image = config.app_name .. ":" .. config.version,
+                        ports = {"3000:3000"},
+                        environment = {
+                            NODE_ENV = config.environment,
+                            DATABASE_URL = "postgresql://db-01:5432/myapp"
+                        },
+                        restart = "always",
+                        host = server
+                    })
+                end
+            end
+
+            return goroutine.RunParallel(tasks)
+        end
+    }
+}
+
+-- Post-deployment
+group "post_deployment" {
+    task "verify_deployment" {
+        module = "infra_test",
+        action = "suite",
+        tests = {
+            -- Check application health
+            {type = "http_response", url = "https://example.com/health", status = 200},
+            {type = "http_contains", url = "https://example.com/version", content = config.version},
+
+            -- Check all app servers
+            {type = "docker_container_running", name = config.app_name, hosts = config.servers.app}
+        }
+    }
+
+    task "send_notifications" {
+        module = "notification",
+        action = "send",
+        channel = "slack",
+        message = "Deployment completed successfully!",
+        details = {
+            Version = config.version,
+            Environment = config.environment,
+            Servers = table.concat(config.servers.app, ", ")
+        }
+    }
+
+    task "update_monitoring" {
+        module = "exec",
+        action = "command",
+        command = "curl -X POST https://monitoring.example.com/api/deployments",
+        data = {
+            application = config.app_name,
+            version = config.version,
+            timestamp = os.time()
+        }
+    }
+}
+
+-- Rollback group (if needed)
+group "rollback" {
+    enabled = false,  -- Enable manually if rollback needed
+
+    task "rollback_to_previous" {
+        module = "state",
+        action = "execute",
+
+        execute = function()
+            local previous_version = state.get("previous_version")
+            if not previous_version then
+                return false, "No previous version found"
+            end
+
+            log.warning("Rolling back to version: " .. previous_version)
+
+            -- Re-deploy previous version
+            for _, server in ipairs(config.servers.app) do
+                docker.stop({
+                    container = config.app_name,
+                    host = server
+                })
+
+                docker.run({
+                    name = config.app_name,
+                    image = config.app_name .. ":" .. previous_version,
+                    ports = {"3000:3000"},
+                    restart = "always",
+                    host = server
+                })
+            end
+
+            return true, "Rolled back to " .. previous_version
+        end
+    }
+}
+```
+
+## 🎯 Best Practices
+
+1. **Use Functions for Reusability**: Create helper functions for common patterns
+2. **Leverage Parallel Execution**: Use goroutines for operations that can run concurrently
+3. **Implement Proper Error Handling**: Always check return values and handle failures
+4. **Use State Management**: Track deployment state for rollbacks and auditing
+5. **Test Infrastructure**: Use `infra_test` module to verify deployments
+6. **Send Notifications**: Keep team informed about deployment status
+7. **Version Everything**: Tag and version your deployments
+8. **Document Complex Logic**: Add comments to explain non-obvious code
+
+## 📖 Next Steps
+
+- [Best Practices Guide](best-practices.md)
+- [Reference Guide](reference-guide.md)
+- [Migration from YAML](migration-guide.md)
+- [Custom Module Development](custom-modules.md)
