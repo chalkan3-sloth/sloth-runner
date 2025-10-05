@@ -1,0 +1,210 @@
+-- Complete Stow Module Example
+-- Demonstrates all features of the improved stow module
+
+-- Task 1: Setup user and install dependencies
+local setup_task = task("setup")
+    :description("Install stow and create user")
+    :delegate_to("maria-guica")
+    :command(function(this, params)
+        -- Install stow
+        pkg.install({ packages = { "stow", "git" } })
+
+        -- Create user if doesn't exist
+        user.create({
+            username = "igor",
+            home = "/home/igor",
+            shell = "/bin/zsh",
+            create_home = true,
+        })
+
+        return true, "Setup complete"
+    end)
+    :build()
+
+-- Task 2: Clone dotfiles
+local clone_task = task("clone-dotfiles")
+    :description("Clone dotfiles repository")
+    :delegate_to("maria-guica")
+    :user("igor")
+    :command(function(this, params)
+        exec.run("rm -rf /home/igor/dotfiles")
+        local ok, msg = exec.run("git clone https://github.com/chalkan3/dotfiles.git /home/igor/dotfiles")
+
+        if not ok then
+            return false, msg
+        end
+
+        return true, "Dotfiles cloned"
+    end)
+    :build()
+
+-- Task 3: Stow with automatic directory creation
+local stow_with_auto_create = task("stow-auto-create")
+    :description("Stow package with automatic target directory creation")
+    :delegate_to("maria-guica")
+    :user("igor")
+    :command(function(this, params)
+        -- The create_target parameter (default: true) will:
+        -- 1. Create /home/igor/.zsh if it doesn't exist
+        -- 2. Set ownership to 'igor' (from task user)
+        -- 3. Set permissions to 0755
+
+        local ok, msg = stow.link({
+            package = ".",
+            source_dir = "/home/igor/dotfiles/zsh",
+            target_dir = "/home/igor/.zsh",
+            create_target = true,  -- This is the default
+            verbose = true
+        })
+
+        if not ok then
+            return false, msg
+        end
+
+        log.info("✅ " .. msg)
+        return true, "Zsh config stowed with auto-created directory"
+    end)
+    :build()
+
+-- Task 4: Manually ensure target directory first
+local stow_manual_ensure = task("stow-manual-ensure")
+    :description("Manually ensure target exists before stowing")
+    :delegate_to("maria-guica")
+    :user("igor")
+    :command(function(this, params)
+        -- Option 1: Explicitly create directory with stow.ensure_target
+        local ok_dir, msg_dir = stow.ensure_target({
+            path = "/home/igor/.config",
+            owner = "igor",  -- Optional, uses task user if not specified
+            mode = "0755"    -- Optional, defaults to 0755
+        })
+
+        if not ok_dir then
+            return false, "Failed to create directory: " .. msg_dir
+        end
+
+        log.info("📁 " .. msg_dir)
+
+        -- Option 2: Stow the package
+        local ok_stow, msg_stow = stow.link({
+            package = "config",
+            source_dir = "/home/igor/dotfiles",
+            target_dir = "/home/igor/.config",
+            create_target = false,  -- Directory already created above
+            verbose = true
+        })
+
+        if not ok_stow then
+            return false, msg_stow
+        end
+
+        log.info("✅ " .. msg_stow)
+        return true, "Config stowed successfully"
+    end)
+    :build()
+
+-- Task 5: Multiple packages with restow
+local stow_multiple = task("stow-multiple")
+    :description("Stow multiple packages")
+    :delegate_to("maria-guica")
+    :user("igor")
+    :command(function(this, params)
+        local packages = { "zshrc", "vim", "tmux" }
+
+        for _, pkg in ipairs(packages) do
+            -- Use restow to refresh existing links
+            local ok, msg = stow.restow({
+                package = pkg,
+                source_dir = "/home/igor/dotfiles",
+                target_dir = "/home/igor",
+                verbose = true
+            })
+
+            if ok then
+                log.info("✅ " .. pkg .. ": " .. msg)
+            else
+                log.warn("⚠️  " .. pkg .. ": " .. msg)
+            end
+        end
+
+        return true, "All packages processed"
+    end)
+    :build()
+
+-- Task 6: Advanced stow with options
+local stow_advanced = task("stow-advanced")
+    :description("Advanced stow with no-folding and verbosity")
+    :delegate_to("maria-guica")
+    :user("igor")
+    :command(function(this, params)
+        local ok, msg = stow.link({
+            package = ".",
+            source_dir = "/home/igor/dotfiles/scripts",
+            target_dir = "/home/igor/.local/bin",
+            create_target = true,
+            no_folding = true,    -- Don't fold directories
+            verbose = true
+        })
+
+        if not ok then
+            return false, msg
+        end
+
+        return true, msg
+    end)
+    :build()
+
+-- Task 7: Verify stowed links
+local verify_task = task("verify-stow")
+    :description("Verify stowed symlinks")
+    :delegate_to("maria-guica")
+    :user("igor")
+    :command(function(this, params)
+        -- Check if .zshrc is properly stowed
+        local zshrc_path = "/home/igor/.zshrc"
+        local info, err = os.lstat(zshrc_path)
+
+        if info and info.type == "link" then
+            local target, _ = os.readlink(zshrc_path)
+            log.info("✅ .zshrc is a symlink pointing to: " .. target)
+        else
+            log.warn("⚠️  .zshrc is not a symlink")
+        end
+
+        return true, "Verification complete"
+    end)
+    :build()
+
+-- Complete workflow
+workflow
+    .define("stow_complete_example")
+    :description("Complete demonstration of stow module capabilities")
+    :version("1.0.0")
+    :tasks({
+        setup_task,
+        clone_task,
+        stow_with_auto_create,
+        stow_manual_ensure,
+        stow_multiple,
+        stow_advanced,
+        verify_task
+    })
+    :config({
+        timeout = "20m",
+        max_parallel_tasks = 1,
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 Stow demonstration completed!")
+            log.info("")
+            log.info("📚 What was demonstrated:")
+            log.info("  ✓ Automatic target directory creation")
+            log.info("  ✓ Manual directory creation with stow.ensure_target()")
+            log.info("  ✓ Multiple package stowing")
+            log.info("  ✓ Restow operation")
+            log.info("  ✓ Advanced options (no-folding, verbose)")
+            log.info("  ✓ Task user integration (all run as 'igor')")
+        else
+            log.error("❌ Demonstration failed")
+        end
+    end)
