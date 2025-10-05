@@ -30,7 +30,6 @@ import (
 	agentInternal "github.com/chalkan3-sloth/sloth-runner/internal/agent"
 	"github.com/chalkan3-sloth/sloth-runner/internal/core"
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
-	"github.com/chalkan3-sloth/sloth-runner/internal/modules"
 	"github.com/chalkan3-sloth/sloth-runner/internal/output"
 	"github.com/chalkan3-sloth/sloth-runner/internal/scaffolding"
 	"github.com/chalkan3-sloth/sloth-runner/internal/stack"
@@ -2826,95 +2825,6 @@ func extractTar(reader io.Reader, dest string) error {
 	}
 }
 
-var modulesCmd = &cobra.Command{
-	Use:   "modules",
-	Short: "Module documentation and utilities",
-	Long:  `Commands for viewing and managing sloth-runner modules.`,
-}
-
-var modulesListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all available modules and their functions",
-	Long:  `Display comprehensive documentation for all built-in modules including function signatures and examples.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		moduleName, _ := cmd.Flags().GetString("module")
-		format, _ := cmd.Flags().GetString("format")
-		
-		moduleDocs := modules.GetAllModuleDocs()
-		
-		// Filter by module if specified
-		if moduleName != "" {
-			var filtered []modules.ModuleDoc
-			for _, mod := range moduleDocs {
-				if mod.Name == moduleName {
-					filtered = append(filtered, mod)
-					break
-				}
-			}
-			if len(filtered) == 0 {
-				return fmt.Errorf("module '%s' not found", moduleName)
-			}
-			moduleDocs = filtered
-		}
-		
-		if format == "json" {
-			encoder := json.NewEncoder(os.Stdout)
-			encoder.SetIndent("", "  ")
-			return encoder.Encode(moduleDocs)
-		}
-		
-		// Pretty print format
-		pterm.DefaultHeader.WithFullWidth().Println("Sloth Runner - Available Modules")
-		fmt.Println()
-		
-		for _, mod := range moduleDocs {
-			// Module header
-			pterm.DefaultSection.Printf("%s - %s\n", mod.Name, mod.Description)
-			fmt.Println()
-			
-			// Functions table
-			tableData := pterm.TableData{
-				{"Function", "Description"},
-			}
-			
-			for _, fn := range mod.Functions {
-				tableData = append(tableData, []string{
-					pterm.LightCyan(fn.Name),
-					fn.Description,
-				})
-			}
-			
-			pterm.DefaultTable.WithHasHeader().WithBoxed().WithData(tableData).Render()
-			fmt.Println()
-			
-			// Show examples for first few functions if not filtered
-			if moduleName != "" || len(moduleDocs) == 1 {
-				pterm.DefaultSection.Println("Examples")
-				for i, fn := range mod.Functions {
-					if i >= 3 && moduleName == "" {
-						pterm.Info.Printf("... and %d more functions\n", len(mod.Functions)-3)
-						break
-					}
-					pterm.Info.Printf("%s\n", fn.Name)
-					if fn.Parameters != "" {
-						pterm.Printf("  Parameters: %s\n", pterm.Gray(fn.Parameters))
-					}
-					if fn.Returns != "" {
-						pterm.Printf("  Returns: %s\n", pterm.LightYellow(fn.Returns))
-					}
-					pterm.Println(pterm.LightGreen("  " + strings.ReplaceAll(fn.Example, "\n", "\n  ")))
-					fmt.Println()
-				}
-			}
-		}
-		
-		pterm.Info.Printf("Use --module <name> to see detailed documentation for a specific module\n")
-		pterm.Info.Printf("Use --format json to get machine-readable output\n")
-		
-		return nil
-	},
-}
-
 var fmtCmd = &cobra.Command{
 	Use:   "fmt [files...]",
 	Short: "Format Lua workflow files",
@@ -3078,6 +2988,9 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 	listCmd.Flags().StringP("file", "f", "", "Path to the Lua workflow file")
 
+	// Modules command
+	rootCmd.AddCommand(modulesCmd)
+
 	// Workflow command and subcommands
 	rootCmd.AddCommand(workflowCmd)
 	workflowCmd.AddCommand(workflowInitCmd)
@@ -3104,12 +3017,6 @@ func init() {
 
 	// Version command
 	rootCmd.AddCommand(versionCmd)
-
-	// Modules command
-	rootCmd.AddCommand(modulesCmd)
-	modulesCmd.AddCommand(modulesListCmd)
-	modulesListCmd.Flags().StringP("module", "m", "", "Show details for a specific module")
-	modulesListCmd.Flags().StringP("format", "f", "pretty", "Output format: pretty or json")
 
 	// State command
 	rootCmd.AddCommand(stateCmd)

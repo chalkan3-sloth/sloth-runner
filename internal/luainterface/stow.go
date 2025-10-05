@@ -348,6 +348,9 @@ func (s *StowModule) unstowSingle(L *lua.LState, config *stowConfig, pkg string)
 		return result
 	}
 
+	// Build stow command with -D (delete/unlink) flag
+	args := s.buildStowArgs(config, "-D", pkg)
+
 	var cmd *exec.Cmd
 	if config.DelegatedTo != "" {
 		L.SetField(result, "error", lua.LString("remote execution not yet implemented"))
@@ -398,6 +401,9 @@ func (s *StowModule) restow(L *lua.LState) int {
 
 func (s *StowModule) restowSingle(L *lua.LState, config *stowConfig, pkg string) *lua.LTable {
 	result := L.NewTable()
+
+	// Build stow command with -R (restow) flag
+	args := s.buildStowArgs(config, "-R", pkg)
 
 	var cmd *exec.Cmd
 	if config.DelegatedTo != "" {
@@ -474,6 +480,13 @@ func (s *StowModule) adoptSingle(L *lua.LState, config *stowConfig, pkg string) 
 		L.SetField(result, "error", lua.LString(fmt.Sprintf("adopt failed: %v - %s", err, string(output))))
 		return result
 	}
+
+	L.SetField(result, "changed", lua.LBool(true))
+	L.SetField(result, "status", lua.LString("adopted"))
+	L.SetField(result, "package", lua.LString(pkg))
+	L.SetField(result, "output", lua.LString(string(output)))
+
+	return result
 }
 
 // check: Check stow operations without executing
