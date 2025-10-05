@@ -346,13 +346,12 @@ func (d *DataModule) luaDeepMerge(L *lua.LState) int {
 func (d *DataModule) luaFlatten(L *lua.LState) int {
 	table := L.CheckTable(1)
 	separator := L.OptString(2, ".")
-	
+
 	result := L.NewTable()
 	flattenTable(table, result, "", separator)
-	
-	L.Push(lua.LTrue)
+
 	L.Push(result)
-	return 2
+	return 1
 }
 
 func (d *DataModule) luaUnflatten(L *lua.LState) int {

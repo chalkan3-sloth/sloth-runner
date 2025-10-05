@@ -1136,19 +1136,17 @@ func (tr *TaskRunner) Run() error {
 		}
 		
 		pterm.Error.Println("\n════════════════════════════════════════════════════════════════════════════")
-		
+
 		// Build combined error message with all error details for remote propagation
 		var allErrors []string
-		for _, result := range tr.Results {
-			if result.Error != nil {
-				allErrors = append(allErrors, result.Error.Error())
-			}
+		for _, err := range allGroupErrors {
+			allErrors = append(allErrors, err.Error())
 		}
-		
+
 		if len(allErrors) > 0 {
 			return fmt.Errorf("✗ task execution failed:\n%s", strings.Join(allErrors, "\n"))
 		}
-		
+
 		return fmt.Errorf("✗ task execution failed")
 	}
 	
