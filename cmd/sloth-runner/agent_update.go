@@ -15,8 +15,11 @@ import (
 	"strings"
 	"time"
 
+	pb "github.com/chalkan3-sloth/sloth-runner/proto"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -359,80 +362,91 @@ func copyFile(src, dst string) error {
 	return os.Chmod(dst, sourceInfo.Mode())
 }
 
-// updateRemoteAgent updates the agent binary on a remote host via SSH
+// updateRemoteAgent updates the agent binary via gRPC
 func updateRemoteAgent(agentName, targetVersion string, force, skipRestart bool) error {
 	spinner, _ := pterm.DefaultSpinner.Start(fmt.Sprintf("Connecting to agent '%s'...", agentName))
 
-	// Remote update script
-	updateScript := fmt.Sprintf(`#!/bin/bash
-set -e
-
-# Download latest release
-echo "Fetching latest release info..."
-RELEASE_URL="https://api.github.com/repos/chalkan3-sloth/sloth-runner/releases/latest"
-RELEASE_INFO=$(curl -s "$RELEASE_URL")
-VERSION=$(echo "$RELEASE_INFO" | grep -o '"tag_name": "[^"]*' | cut -d'"' -f4)
-
-echo "Latest version: $VERSION"
-
-# Determine architecture
-ARCH=$(uname -m)
-case $ARCH in
-    x86_64) ARCH="amd64" ;;
-    aarch64) ARCH="arm64" ;;
-    armv7l) ARCH="arm" ;;
-esac
-
-# Download URL
-DOWNLOAD_URL="https://github.com/chalkan3-sloth/sloth-runner/releases/download/$VERSION/sloth-runner_${VERSION}_linux_${ARCH}.tar.gz"
-
-echo "Downloading from: $DOWNLOAD_URL"
-curl -L -o /tmp/sloth-runner.tar.gz "$DOWNLOAD_URL"
-
-# Extract
-echo "Extracting..."
-cd /tmp
-tar -xzf sloth-runner.tar.gz
-
-# Backup and replace
-echo "Installing..."
-sudo cp /usr/local/bin/sloth-runner /usr/local/bin/sloth-runner.backup 2>/dev/null || true
-sudo mv sloth-runner /usr/local/bin/sloth-runner
-sudo chmod +x /usr/local/bin/sloth-runner
-
-# Cleanup
-rm -f /tmp/sloth-runner.tar.gz
-
-echo "Update completed: $VERSION"
-
-# Restart service if exists
-if systemctl is-active --quiet sloth-runner-agent-%s; then
-    echo "Restarting service..."
-    sudo systemctl restart sloth-runner-agent-%s
-    echo "Service restarted successfully"
-fi
-`, agentName, agentName)
-
-	spinner.UpdateText(fmt.Sprintf("Executing update on '%s'...", agentName))
-
-	// Create a wrapper script that will be piped to SSH
-	wrapperScript := fmt.Sprintf("incus exec %s -- bash", agentName)
-
-	// Execute via SSH to incus host, piping the update script
-	cmd := exec.Command("ssh", "-p", "22", "chalkan3@192.168.1.16", wrapperScript)
-	cmd.Stdin = strings.NewReader(updateScript)
-
-	output, err := cmd.CombinedOutput()
+	// Get agent address from master
+	agentAddress, err := getAgentAddress(agentName)
 	if err != nil {
-		spinner.Fail(fmt.Sprintf("Failed to update agent: %v", err))
-		pterm.Error.Println(string(output))
+		spinner.Fail(fmt.Sprintf("Failed to get agent address: %v", err))
 		return err
 	}
 
+	spinner.UpdateText(fmt.Sprintf("Sending update command to agent at %s...", agentAddress))
+
+	// Connect to agent via gRPC
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	conn, err := grpc.DialContext(ctx, agentAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		spinner.Fail(fmt.Sprintf("Failed to connect to agent: %v", err))
+		return err
+	}
+	defer conn.Close()
+
+	client := pb.NewAgentClient(conn)
+
+	// Send update request
+	req := &pb.UpdateAgentRequest{
+		TargetVersion: targetVersion,
+		Force:         force,
+		SkipRestart:   skipRestart,
+	}
+
+	resp, err := client.UpdateAgent(ctx, req)
+	if err != nil {
+		spinner.Fail(fmt.Sprintf("Failed to update agent: %v", err))
+		return err
+	}
+
+	if !resp.Success {
+		spinner.Fail(fmt.Sprintf("Update failed: %s", resp.Message))
+		return fmt.Errorf("update failed: %s", resp.Message)
+	}
+
 	spinner.Success(fmt.Sprintf("Agent '%s' updated successfully", agentName))
-	pterm.Info.Println(string(output))
+	pterm.Info.Printf("Old version: %s\n", resp.OldVersion)
+	pterm.Info.Printf("New version: %s\n", resp.NewVersion)
+	pterm.Info.Println(resp.Message)
 
 	return nil
+}
+
+// getAgentAddress retrieves agent address from master
+func getAgentAddress(agentName string) (string, error) {
+	// Connect to master
+	masterAddr := "192.168.1.29:50053" // Default master address
+	if addr := os.Getenv("SLOTH_MASTER_ADDRESS"); addr != "" {
+		masterAddr = addr
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	conn, err := grpc.DialContext(ctx, masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return "", fmt.Errorf("failed to connect to master: %w", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewAgentRegistryClient(conn)
+
+	// List agents
+	resp, err := client.ListAgents(ctx, &pb.ListAgentsRequest{})
+	if err != nil {
+		return "", fmt.Errorf("failed to list agents: %w", err)
+	}
+
+	// Find the agent
+	for _, agent := range resp.Agents {
+		if agent.AgentName == agentName {
+			return agent.AgentAddress, nil
+		}
+	}
+
+	return "", fmt.Errorf("agent '%s' not found", agentName)
 }
 
 // isSystemdService checks if an agent is running as a systemd service
