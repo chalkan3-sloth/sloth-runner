@@ -206,6 +206,11 @@ nav:
     - '📊 Web Dashboard': 'en/monitoring'
     - '⏰ Advanced Scheduler': 'pt/scheduler'
     - '☁️ Multi-Cloud': 'en/enterprise-features'
+    - '📈 Telemetry & Observability 🔥':
+      - '📊 Overview': 'en/telemetry/index'
+      - '📈 Prometheus Metrics': 'en/telemetry/prometheus-metrics'
+      - '💻 Grafana Dashboard': 'en/telemetry/grafana-dashboard'
+      - '🚀 Deployment Guide': 'en/telemetry/deployment'
   - '🧪 Testing & Development':
     - '🧪 Testing': 'en/testing'
     - '💻 REPL': 'en/repl'
@@ -236,6 +241,7 @@ nav:
     - 'Distribuído': 'pt/distributed'
     - 'Agentes em Containers': 'pt/agente-em-containers'
     - 'Scheduler': 'pt/scheduler'
+    - 'Telemetria 🔥': 'pt/telemetria/index'
     - 'Testes': 'pt/testing'
     - 'Plugin Dev': 'pt/plugin-development'
     - 'Nvim Plugin': 'pt/nvim-plugin'
