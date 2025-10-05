@@ -1,0 +1,109 @@
+-- Multi-host execution test using Modern DSL
+-- Run with: sloth-runner run -f test_multi_host_modern.sloth --delegate-to lady-arch --delegate-to keite-guica
+
+print("🚀 Multi-Host Execution Test with Modern DSL")
+print("")
+
+-- Create a task that will run on multiple hosts when specified via CLI
+local system_info_task = task("system_info")
+    :description("Get system information from hosts")
+    :command(function(this, params, input)
+        local exec = require("exec")
+        local log = require("log")
+
+        log.info("=== Executing on host ===")
+
+        -- Get hostname
+        local hostname = exec.run("hostname")
+        if hostname.success then
+            log.info("📍 Hostname: " .. hostname.output:gsub("\n", ""))
+        end
+
+        -- Get system info
+        local uname = exec.run("uname -a")
+        if uname.success then
+            log.info("💻 System: " .. uname.output:gsub("\n", ""))
+        end
+
+        -- Get date
+        local date = exec.run("date")
+        if date.success then
+            log.info("📅 Date: " .. date.output:gsub("\n", ""))
+        end
+
+        -- Get uptime
+        local uptime = exec.run("uptime")
+        if uptime.success then
+            log.info("⏱️ Uptime: " .. uptime.output:gsub("\n", ""))
+        end
+
+        -- Get load average
+        local load = exec.run("cat /proc/loadavg")
+        if load.success then
+            log.info("📊 Load: " .. load.output:gsub("\n", ""))
+        end
+
+        log.info("✅ Test completed successfully")
+
+        return { success = true, message = "System info retrieved" }
+    end)
+    :build()
+
+-- Create a deployment task
+local deployment_task = task("deploy_app")
+    :description("Deploy application to hosts")
+    :depends_on({system_info_task})
+    :command(function(this, params, input)
+        local exec = require("exec")
+        local log = require("log")
+
+        log.info("🚀 Deploying application...")
+
+        -- Create deployment directory
+        exec.run("mkdir -p /tmp/sloth-test-deploy")
+
+        -- Simulate deployment
+        local timestamp = exec.run("date +%s")
+        if timestamp.success then
+            exec.run(string.format("echo 'Deployed at %s' > /tmp/sloth-test-deploy/deploy.log",
+                                 timestamp.output:gsub("\n", "")))
+        end
+
+        -- Verify deployment
+        local verify = exec.run("cat /tmp/sloth-test-deploy/deploy.log")
+        if verify.success then
+            log.info("📝 Deployment log: " .. verify.output:gsub("\n", ""))
+        end
+
+        log.info("✅ Deployment completed")
+
+        return { success = true, message = "Application deployed" }
+    end)
+    :build()
+
+-- Create a cleanup task
+local cleanup_task = task("cleanup")
+    :description("Clean up after deployment")
+    :depends_on({deployment_task})
+    :command(function(this, params, input)
+        local exec = require("exec")
+        local log = require("log")
+
+        log.info("🧹 Cleaning up...")
+
+        -- Clean test directory
+        exec.run("rm -rf /tmp/sloth-test-deploy")
+
+        log.info("✅ Cleanup completed")
+
+        return { success = true, message = "Cleanup done" }
+    end)
+    :build()
+
+-- Register tasks directly - workflows may not be needed
+-- The tasks are already built and registered
+
+print("📝 Usage:")
+print("  1. Test on single host: sloth-runner run -f test_multi_host_modern.sloth")
+print("  2. Test on multiple hosts: sloth-runner run -f test_multi_host_modern.sloth --delegate-to lady-arch --delegate-to keite-guica")
+print("")

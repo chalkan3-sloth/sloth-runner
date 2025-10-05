@@ -1,0 +1,26 @@
+local task_a = task("task-a")
+    :description("Task A")
+    :delegate_to("maria-guica")
+    :command(function()
+        print("Executing Task A")
+        return true, "Task A completed"
+    end)
+    :build()
+
+local task_b = task("task-b")
+    :description("Task B")
+    :delegate_to("maria-guica")
+    :depends_on({task_a})
+    :command(function()
+        print("Executing Task B")
+        return true, "Task B completed"
+    end)
+    :build()
+
+workflow.define("test-dependency-workflow")
+    :description("Test task dependency")
+    :tasks({task_a, task_b})
+    :config({
+        timeout = "5m",
+        max_parallel_tasks = 1
+    })

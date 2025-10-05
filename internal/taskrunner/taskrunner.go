@@ -316,49 +316,67 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 		"delegate_to_type", fmt.Sprintf("%T", t.DelegateTo),
 		"delegate_to_nil", t.DelegateTo == nil)
 
-	// Determine agent address from task's DelegateTo or group's DelegateTo
+	// Check for multi-host delegation first
+	var delegateSource interface{}
 	if t.DelegateTo != nil {
-		slog.Debug("Processing task delegate_to", "task_name", t.Name, "delegate_to", t.DelegateTo)
-		switch v := t.DelegateTo.(type) {
-		case string:
-			slog.Debug("Resolving agent name", "agent_name", v)
-			// Try to resolve agent name to address
-			resolvedAddress, err := resolveAgentAddress(v)
-			if err != nil {
-				slog.Error("Failed to resolve agent", "agent_name", v, "error", err)
-				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to resolve agent '%s': %w", v, err)}
-			}
-			slog.Debug("Agent resolved successfully", "agent_name", v, "address", resolvedAddress)
-			agentAddress = resolvedAddress
-		case map[string]interface{}:
-			if addr, ok := v["address"].(string); ok {
-				agentAddress = addr
-			} else {
-				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("invalid agent definition in task delegate_to: missing address")}
-			}
-		default:
-			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("invalid type for task delegate_to: %T", v)}
-		}
+		delegateSource = t.DelegateTo
 	} else if tr.TaskGroups[groupName].DelegateTo != nil {
-		slog.Debug("Processing group delegate_to", "group_name", groupName, "delegate_to", tr.TaskGroups[groupName].DelegateTo)
-		switch v := tr.TaskGroups[groupName].DelegateTo.(type) {
-		case string:
-			// Try to resolve agent name to address
-			resolvedAddress, err := resolveAgentAddress(v)
+		delegateSource = tr.TaskGroups[groupName].DelegateTo
+	}
+
+	// Handle multi-host execution
+	if delegateSource != nil {
+		hosts := getHostsList(delegateSource)
+
+		if len(hosts) > 1 {
+			// Execute on multiple hosts in parallel
+			slog.Info("Executing task on multiple hosts",
+				"task_name", t.Name,
+				"hosts", hosts,
+				"count", len(hosts))
+
+			results, err := tr.executeTaskOnMultipleHosts(ctx, t, hosts, session, groupName)
 			if err != nil {
-				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to resolve agent '%s': %w", v, err)}
+				// Log detailed results even on failure
+				for _, result := range results {
+					if result.Error != nil {
+						slog.Error("Host execution failed",
+							"host", result.Host,
+							"task", t.Name,
+							"error", result.Error)
+					}
+				}
+				return &TaskExecutionError{TaskName: t.Name, Err: err}
 			}
-			agentAddress = resolvedAddress
-		case map[string]interface{}:
-			if addr, ok := v["address"].(string); ok {
+
+			// If all successful, return
+			return nil
+		} else if len(hosts) == 1 {
+			// Single host execution - resolve the address
+			agentAddress = hosts[0]
+			if !strings.Contains(agentAddress, ":") {
+				resolvedAddress, err := resolveAgentAddress(agentAddress)
+				if err != nil {
+					return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("failed to resolve agent '%s': %w", agentAddress, err)}
+				}
+				agentAddress = resolvedAddress
+			}
+		}
+	}
+
+	// Original single-host logic continues below (for backward compatibility with map format)
+	if agentAddress == "" && delegateSource != nil {
+		// Handle map[string]interface{} format for backward compatibility
+		if m, ok := delegateSource.(map[string]interface{}); ok {
+			if addr, ok := m["address"].(string); ok {
 				agentAddress = addr
 			} else {
-				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("invalid agent definition in group delegate_to: missing address")}
+				return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("invalid agent definition in delegate_to: missing address")}
 			}
-		default:
-			return &TaskExecutionError{TaskName: t.Name, Err: fmt.Errorf("invalid type for group delegate_to: %T", v)}
 		}
-	} else {
+	}
+
+	if agentAddress == "" {
 		slog.Debug("No delegate_to found", "task_name", t.Name)
 	}
 
