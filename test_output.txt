@@ -1,0 +1,25 @@
+	github.com/chalkan3-sloth/sloth-runner/cmd/enhanced-demo		coverage: 0.0% of statements
+	github.com/chalkan3-sloth/sloth-runner/cmd/simple-demo		coverage: 0.0% of statements
+ok  	github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner	2.938s	coverage: 18.4% of statements
+	github.com/chalkan3-sloth/sloth-runner/cmd/standalone-demo		coverage: 0.0% of statements
+	github.com/chalkan3-sloth/sloth-runner/github.com/chalkan3-sloth/sloth-runner/proto		coverage: 0.0% of statements
+ok  	github.com/chalkan3-sloth/sloth-runner/internal/agent	(cached)	coverage: 69.0% of statements
+	github.com/chalkan3-sloth/sloth-runner/internal/ai		coverage: 0.0% of statements
+ok  	github.com/chalkan3-sloth/sloth-runner/internal/core	3.107s	coverage: 71.8% of statements
+	github.com/chalkan3-sloth/sloth-runner/internal/gitops		coverage: 0.0% of statements
+	github.com/chalkan3-sloth/sloth-runner/internal/lua/utils		coverage: 0.0% of statements
+ok  	github.com/chalkan3-sloth/sloth-runner/internal/luainterface	3.771s	coverage: 6.9% of statements
+ok  	github.com/chalkan3-sloth/sloth-runner/internal/modules	(cached)	coverage: 41.3% of statements
+ok  	github.com/chalkan3-sloth/sloth-runner/internal/modules/core	3.971s	coverage: 71.4% of statements
+ok  	github.com/chalkan3-sloth/sloth-runner/internal/output	(cached)	coverage: 85.4% of statements
+ok  	github.com/chalkan3-sloth/sloth-runner/internal/reliability	(cached)	coverage: 42.3% of statements
+	github.com/chalkan3-sloth/sloth-runner/internal/repl		coverage: 0.0% of statements
+ok  	github.com/chalkan3-sloth/sloth-runner/internal/runner	(cached)	coverage: 100.0% of statements
+ok  	github.com/chalkan3-sloth/sloth-runner/internal/scaffolding	(cached)	coverage: 0.0% of statements
+ok  	github.com/chalkan3-sloth/sloth-runner/internal/scheduler	(cached)	coverage: 82.7% of statements
+ok  	github.com/chalkan3-sloth/sloth-runner/internal/stack	(cached)	coverage: 52.0% of statements
+ok  	github.com/chalkan3-sloth/sloth-runner/internal/state	(cached)	coverage: 61.1% of statements
+ok  	github.com/chalkan3-sloth/sloth-runner/internal/taskrunner	0.969s	coverage: 45.4% of statements
+ok  	github.com/chalkan3-sloth/sloth-runner/internal/types	(cached)	coverage: 100.0% of statements
+ok  	github.com/chalkan3-sloth/sloth-runner/internal/ui	(cached)	coverage: 37.4% of statements
+	github.com/chalkan3-sloth/sloth-runner/proto		coverage: 0.0% of statements

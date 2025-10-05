@@ -650,6 +650,7 @@ var runCmd = &cobra.Command{
 		interactive, _ := cmd.Flags().GetBool("interactive")
 		outputStyle, _ := cmd.Flags().GetString("output")
 		debug, _ := cmd.Flags().GetBool("debug")
+		delegateToHosts, _ := cmd.Flags().GetStringArray("delegate-to")
 
 		// Configure log level based on debug flag
 		if debug {
@@ -737,6 +738,26 @@ var runCmd = &cobra.Command{
 				enhancedOutput.Error(fmt.Sprintf("Failed to parse Lua script: %v", err))
 			}
 			return fmt.Errorf("failed to parse Lua script: %w", err)
+		}
+
+		// Apply delegate-to hosts from command line to all task groups
+		if len(delegateToHosts) > 0 {
+			for groupName := range taskGroups {
+				group := taskGroups[groupName]
+				// If multiple hosts, set as array, otherwise as single string
+				if len(delegateToHosts) == 1 {
+					group.DelegateTo = delegateToHosts[0]
+				} else {
+					group.DelegateTo = delegateToHosts
+				}
+				taskGroups[groupName] = group
+
+				if debug {
+					slog.Debug("Applied delegate-to to group",
+						"group", groupName,
+						"hosts", delegateToHosts)
+				}
+			}
 		}
 
 		if len(taskGroups) == 0 {
@@ -3248,6 +3269,7 @@ func init() {
 	runCmd.Flags().Bool("interactive", false, "Run in interactive mode")
 	runCmd.Flags().StringP("output", "o", "basic", "Output style: basic, enhanced, rich, modern, json")
 	runCmd.Flags().Bool("debug", false, "Enable debug logging (shows technical details)")
+	runCmd.Flags().StringArrayP("delegate-to", "d", []string{}, "Execute tasks on specified agents (can be used multiple times)")
 
 	// Preview command
 	rootCmd.AddCommand(previewCmd)

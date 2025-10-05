@@ -1,0 +1,132 @@
+-- Multi-host execution test using Modern DSL with CLI override
+-- The tasks don't specify delegate_to, allowing CLI to override
+-- Run: sloth-runner run -f test_multi_host_cli.sloth --delegate-to lady-arch --delegate-to keite-guica
+
+print("🚀 Multi-Host CLI Override Test")
+print("")
+
+-- Task 1: System information (no delegate_to specified)
+local system_info = task("system_info")
+    :description("Get system information from hosts")
+    :command(function(this, params, input)
+        local exec = require("exec")
+        local log = require("log")
+
+        log.info("=== System Information ===")
+
+        -- Get hostname
+        local hostname = exec.run("hostname")
+        if hostname.success then
+            log.info("📍 Hostname: " .. hostname.output:gsub("\n", ""))
+        end
+
+        -- Get system info
+        local uname = exec.run("uname -a")
+        if uname.success then
+            log.info("💻 System: " .. uname.output:gsub("\n", ""))
+        end
+
+        -- Get CPU info
+        local cpu = exec.run("nproc")
+        if cpu.success then
+            log.info("🔧 CPU Cores: " .. cpu.output:gsub("\n", ""))
+        end
+
+        -- Get memory info
+        local mem = exec.run("free -h | grep Mem | awk '{print $2}'")
+        if mem.success then
+            log.info("💾 Total Memory: " .. mem.output:gsub("\n", ""))
+        end
+
+        log.info("✅ System info collected")
+
+        return { success = true }
+    end)
+    :build()
+
+-- Task 2: Network information
+local network_info = task("network_info")
+    :description("Get network configuration")
+    :depends_on({system_info})
+    :command(function(this, params, input)
+        local exec = require("exec")
+        local log = require("log")
+
+        log.info("=== Network Information ===")
+
+        -- Get IP addresses
+        local ip = exec.run("ip -4 addr show | grep inet | grep -v '127.0.0.1' | head -1 | awk '{print $2}'")
+        if ip.success then
+            log.info("🌐 IP Address: " .. ip.output:gsub("\n", ""))
+        end
+
+        -- Check connectivity
+        local ping = exec.run("ping -c 1 8.8.8.8 > /dev/null 2>&1 && echo 'Connected' || echo 'No internet'")
+        if ping.success then
+            log.info("📡 Internet: " .. ping.output:gsub("\n", ""))
+        end
+
+        log.info("✅ Network info collected")
+
+        return { success = true }
+    end)
+    :build()
+
+-- Task 3: Create test file
+local create_file = task("create_test_file")
+    :description("Create a test file on hosts")
+    :depends_on({network_info})
+    :command(function(this, params, input)
+        local exec = require("exec")
+        local log = require("log")
+
+        log.info("=== Creating Test File ===")
+
+        -- Create directory
+        exec.run("mkdir -p /tmp/sloth-multi-test")
+
+        -- Create file with timestamp
+        local timestamp = exec.run("date +%Y%m%d_%H%M%S")
+        if timestamp.success then
+            local ts = timestamp.output:gsub("\n", "")
+            local filename = string.format("/tmp/sloth-multi-test/test_%s.txt", ts)
+
+            exec.run(string.format("echo 'Test file created at %s' > %s", ts, filename))
+            exec.run(string.format("echo 'Host: $(hostname)' >> %s", filename))
+
+            log.info("📄 Created: " .. filename)
+
+            -- Verify file
+            local check = exec.run(string.format("cat %s", filename))
+            if check.success then
+                log.info("📝 Content:\n" .. check.output)
+            end
+        end
+
+        log.info("✅ Test file created")
+
+        return { success = true }
+    end)
+    :build()
+
+-- Task 4: Cleanup
+local cleanup = task("cleanup")
+    :description("Clean up test files")
+    :depends_on({create_file})
+    :command(function(this, params, input)
+        local exec = require("exec")
+        local log = require("log")
+
+        log.info("🧹 Cleaning up test files...")
+
+        exec.run("rm -rf /tmp/sloth-multi-test")
+
+        log.info("✅ Cleanup completed")
+
+        return { success = true }
+    end)
+    :build()
+
+print("📝 Ready to execute on multiple hosts via CLI")
+print("   Use: --delegate-to host1 --delegate-to host2")
+print("")

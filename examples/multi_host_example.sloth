@@ -1,0 +1,133 @@
+-- Multi-Host Deployment Example
+-- This example shows how to deploy to multiple hosts in parallel
+
+name = "multi-host-deployment"
+version = "1.0.0"
+description = "Deploy application to multiple hosts simultaneously"
+
+group "deploy_to_multiple_hosts" {
+    description = "Deploy to all web servers in parallel"
+
+    -- Option 1: Define multiple hosts in delegate_to
+    delegate_to = {"lady-arch", "keite-guica", "lady-guica"}
+
+    -- Alternative: Use IP addresses directly
+    -- delegate_to = {"192.168.1.16:50052", "192.168.1.17:50051", "192.168.1.16:50051"}
+
+    task "check_system_info" {
+        description = "Check system information on all hosts"
+        command = function(this, params, input)
+            -- This will run on each host in parallel
+            log.info("Checking system on host...")
+
+            local result = exec.run("uname -a")
+            if result.success then
+                log.info("System info: " .. result.output)
+            end
+
+            local hostname = exec.run("hostname")
+            if hostname.success then
+                log.info("Hostname: " .. hostname.output)
+            end
+
+            return true, "System check completed"
+        end
+    }
+
+    task "deploy_application" {
+        description = "Deploy the application to all hosts"
+        depends_on = {"check_system_info"}
+        command = function(this, params, input)
+            log.info("Deploying application...")
+
+            -- Create application directory
+            exec.run("mkdir -p /tmp/myapp")
+
+            -- Simulate application deployment
+            exec.run("echo 'Application deployed at ' $(date) > /tmp/myapp/deploy.log")
+
+            -- Check deployment
+            local check = exec.run("cat /tmp/myapp/deploy.log")
+            if check.success then
+                log.info("Deployment log: " .. check.output)
+                return true, "Deployment successful", {
+                    deployed = true,
+                    log = check.output
+                }
+            end
+
+            return false, "Deployment failed"
+        end
+    }
+
+    task "verify_deployment" {
+        description = "Verify the deployment on all hosts"
+        depends_on = {"deploy_application"}
+        command = function(this, params, input)
+            log.info("Verifying deployment...")
+
+            local verify = exec.run("ls -la /tmp/myapp/")
+            if verify.success then
+                log.info("Application files: " .. verify.output)
+                return true, "Verification successful"
+            end
+
+            return false, "Verification failed"
+        end
+    }
+}
+
+group "single_host_example" {
+    description = "Example of single host execution"
+
+    -- Single host can be specified as string
+    delegate_to = "lady-arch"
+
+    task "single_host_task" {
+        description = "This runs on a single host"
+        command = function(this, params, input)
+            log.info("Running on single host")
+
+            local hostname = exec.run("hostname")
+            if hostname.success then
+                log.info("Single host name: " .. hostname.output)
+            end
+
+            return true, "Single host task completed"
+        end
+    }
+}
+
+group "cli_override_example" {
+    description = "This group can be overridden from CLI"
+
+    -- No delegate_to specified here
+    -- Use: sloth-runner run -f multi_host_example.sloth --delegate-to host1 --delegate-to host2 --delegate-to host3
+
+    task "flexible_deployment" {
+        description = "Deploy to hosts specified via CLI"
+        command = function(this, params, input)
+            log.info("Flexible deployment task")
+
+            local info = exec.run("echo 'Deployed via CLI override at ' $(date)")
+            if info.success then
+                log.info(info.output)
+            end
+
+            return true, "Flexible deployment completed"
+        end
+    }
+}
+
+-- Usage examples:
+-- 1. Run with hosts defined in file:
+--    sloth-runner run -f multi_host_example.sloth
+--
+-- 2. Override hosts from command line:
+--    sloth-runner run -f multi_host_example.sloth --delegate-to lady-arch --delegate-to keite-guica
+--
+-- 3. Use with agent names:
+--    sloth-runner run -f multi_host_example.sloth --delegate-to agent1 --delegate-to agent2 --delegate-to agent3
+--
+-- 4. Use with IP addresses:
+--    sloth-runner run -f multi_host_example.sloth --delegate-to 192.168.1.16:50052 --delegate-to 192.168.1.17:50051
