@@ -244,6 +244,14 @@ var rootCmd = &cobra.Command{
 	tasks using Lua scripts. It supports pipelines, workflows, dynamic task generation,
 	and output manipulation.`,
 	Run: func(cmd *cobra.Command, args []string) {
+		// Check if --version flag is set
+		versionFlag, _ := cmd.Flags().GetBool("version")
+		if versionFlag {
+			fmt.Printf("sloth-runner version %s\n", version)
+			fmt.Printf("Git commit: %s\n", commit)
+			fmt.Printf("Build date: %s\n", date)
+			return
+		}
 		cmd.Help()
 	},
 }
@@ -2923,6 +2931,9 @@ func init() {
 	rootCmd.SetErr(os.Stderr)
 	rootCmd.SilenceErrors = true
 	rootCmd.SilenceUsage = false
+
+	// Global flags
+	rootCmd.Flags().BoolP("version", "V", false, "Show version information")
 
 	// Master command flags
 	rootCmd.AddCommand(masterCmd)
