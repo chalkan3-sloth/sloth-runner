@@ -181,7 +181,7 @@ func ParseLuaScript(ctx context.Context, filePath string, valuesTable *lua.LTabl
 		}
 
 		loadedTaskGroups[groupName] = types.TaskGroup{
-			ID:                       types.GenerateTaskGroupID(), // Generate unique ID for the task group
+			ID: types.GenerateTaskGroupID(), // Generate unique ID for the task group
 			Description:              description,
 			Tasks:                    tasks,
 			Workdir:                  workdir,
@@ -1477,15 +1477,15 @@ func luaWorkdirCleanup(L *lua.LState) int {
 		return 2
 	}
 	
-	// Remove the directory
-	if err := os.RemoveAll(workdirPath); err != nil {
-		L.Push(lua.LBool(false))
-		L.Push(lua.LString(err.Error()))
-		return 2
-	}
+	slog.Warn("Manual workdir cleanup is disabled. Workdir preserved.", "workdir", workdirPath)
+	// if err := os.RemoveAll(workdirPath); err != nil {
+	// 	L.Push(lua.LBool(false))
+	// 	L.Push(lua.LString(err.Error()))
+	// 	return 2
+	// }
 	
 	L.Push(lua.LBool(true))
-	L.Push(lua.LString("workdir cleaned up successfully"))
+	L.Push(lua.LString("workdir cleanup is disabled"))
 	return 2
 }
 
@@ -1633,10 +1633,11 @@ func createRuntimeWorkdirObjectWithColonSupport(L *lua.LState, workdirPath strin
 					return 1
 				}
 				
-				if err := os.RemoveAll(workdirPath); err != nil {
-					L.Push(lua.LBool(false))
-					return 1
-				}
+				slog.Warn("Manual workdir cleanup is disabled. Workdir preserved.", "workdir", workdirPath)
+				// if err := os.RemoveAll(workdirPath); err != nil {
+				// 	L.Push(lua.LBool(false))
+				// 	return 1
+				// }
 				
 				L.Push(lua.LBool(true))
 				return 1
@@ -1740,14 +1741,15 @@ func createRuntimeWorkdirObject(L *lua.LState, workdirPath string) *lua.LUserDat
 					return 2
 				}
 				
-				if err := os.RemoveAll(workdirPath); err != nil {
-					L.Push(lua.LBool(false))
-					L.Push(lua.LString(err.Error()))
-					return 2
-				}
+				slog.Warn("Manual workdir cleanup is disabled. Workdir preserved.", "workdir", workdirPath)
+				// if err := os.RemoveAll(workdirPath); err != nil {
+				// 	L.Push(lua.LBool(false))
+				// 	L.Push(lua.LString(err.Error()))
+				// 	return 2
+				// }
 				
 				L.Push(lua.LBool(true))
-				L.Push(lua.LString("workdir cleaned up successfully"))
+				L.Push(lua.LString("workdir cleanup is disabled"))
 				return 2
 			}))
 		case "recreate":

@@ -13,20 +13,20 @@ import (
 
 // ModernDSL provides a fluent, modern syntax for task definition
 type ModernDSL struct {
-core         *core.GlobalCore
-logger       *slog.Logger
-taskRegistry *TaskRegistry
-builders     map[string]*TaskBuilder
-mu           sync.RWMutex
+	core         *core.GlobalCore
+	logger       *slog.Logger
+	taskRegistry *TaskRegistry
+	builders     map[string]*TaskBuilder
+	mu           sync.RWMutex
 }
 
 // TaskRegistry maintains task definitions and metadata
 type TaskRegistry struct {
-tasks       map[string]*TaskDefinition
-groups      map[string]*TaskGroup
-templates   map[string]*TaskTemplate
-validators  map[string]TaskValidator
-mu          sync.RWMutex
+	tasks       map[string]*TaskDefinition
+	groups      map[string]*TaskGroup
+	templates   map[string]*TaskTemplate
+	validators  map[string]TaskValidator
+	mu          sync.RWMutex
 }
 
 // WorkflowBuilder provides fluent API for workflow construction
@@ -43,103 +43,103 @@ type WorkflowBuilder struct {
 
 // TaskBuilder provides fluent API for task construction
 type TaskBuilder struct {
-definition *TaskDefinition
-context    *BuildContext
-chain      []BuildStep
+	definition *TaskDefinition
+	context    *BuildContext
+	chain      []BuildStep
 }
 
 // TaskDefinition represents a complete task definition
 type TaskDefinition struct {
-Name            string                 `json:"name"`
-Description     string                 `json:"description"`
-Version         string                 `json:"version"`
-Tags            []string               `json:"tags"`
-Category        string                 `json:"category"`
-Workdir         string                 `json:"workdir"` // ✅ Added workdir field
-User            string                 `json:"user"`    // ✅ User to run the task as (default: root)
+	Name            string                 `json:"name"`
+	Description     string                 `json:"description"`
+	Version         string                 `json:"version"`
+	Tags            []string               `json:"tags"`
+	Category        string                 `json:"category"`
+	Workdir         string                 `json:"workdir"` // ✅ Added workdir field
+	User            string                 `json:"user"`    // ✅ User to run the task as (default: root)
 
-// Execution properties
-Command         interface{}            `json:"command"`
-Dependencies    []Dependency           `json:"dependencies"`
-Parameters      map[string]Parameter   `json:"parameters"`
-Environment     map[string]string      `json:"environment"`
+	// Execution properties
+	Command         interface{}            `json:"command"`
+	Dependencies    []Dependency           `json:"dependencies"`
+	Parameters      map[string]Parameter   `json:"parameters"`
+	Environment     map[string]string      `json:"environment"`
 
-// Behavior
-Async           bool                   `json:"async"`
-Timeout         time.Duration          `json:"timeout"`
-Retries         RetryConfig            `json:"retries"`
+	// Behavior
+	Async           bool                   `json:"async"`
+	Timeout         time.Duration          `json:"timeout"`
+	Retries         RetryConfig            `json:"retries"`
 
-// Hooks and lifecycle
-PreHooks        []Hook                 `json:"pre_hooks"`
-PostHooks       []Hook                 `json:"post_hooks"`
-OnSuccess       []Hook                 `json:"on_success"`
-OnFailure       []Hook                 `json:"on_failure"`
-Cleanup         []Hook                 `json:"cleanup"`
+	// Hooks and lifecycle
+	PreHooks        []Hook                 `json:"pre_hooks"`
+	PostHooks       []Hook                 `json:"post_hooks"`
+	OnSuccess       []Hook                 `json:"on_success"`
+	OnFailure       []Hook                 `json:"on_failure"`
+	Cleanup         []Hook                 `json:"cleanup"`
 
-// Advanced features
-Conditions      []Condition            `json:"conditions"`
-Outputs         []Output               `json:"outputs"`
-Artifacts       []Artifact             `json:"artifacts"`
-Resources       ResourceRequirements   `json:"resources"`
-Security        SecurityPolicy         `json:"security"`
+	// Advanced features
+	Conditions      []Condition            `json:"conditions"`
+	Outputs         []Output               `json:"outputs"`
+	Artifacts       []Artifact             `json:"artifacts"`
+	Resources       ResourceRequirements   `json:"resources"`
+	Security        SecurityPolicy         `json:"security"`
 
-// Orchestration
-Delegation      DelegationConfig       `json:"delegation"`
-Saga            SagaConfig            `json:"saga"`
-Circuit         CircuitConfig         `json:"circuit"`
+	// Orchestration
+	Delegation      DelegationConfig       `json:"delegation"`
+	Saga            SagaConfig             `json:"saga"`
+	Circuit         CircuitConfig          `json:"circuit"`
 
-// Metadata
-CreatedAt       time.Time             `json:"created_at"`
-UpdatedAt       time.Time             `json:"updated_at"`
-Author          string                `json:"author"`
-Metadata        map[string]interface{} `json:"metadata"`
+	// Metadata
+	CreatedAt       time.Time              `json:"created_at"`
+	UpdatedAt       time.Time              `json:"updated_at"`
+	Author          string                 `json:"author"`
+	Metadata        map[string]interface{} `json:"metadata"`
 }
 
 // Supporting types for modern DSL
 type Dependency struct {
-Name      string            `json:"name"`
-Type      DependencyType    `json:"type"`
-Optional  bool             `json:"optional"`
-Condition string           `json:"condition"`
-Timeout   time.Duration    `json:"timeout"`
+	Name      string           `json:"name"`
+	Type      DependencyType   `json:"type"`
+	Optional  bool             `json:"optional"`
+	Condition string           `json:"condition"`
+	Timeout   time.Duration    `json:"timeout"`
 }
 
 type Parameter struct {
-Type        ParameterType    `json:"type"`
-Required    bool            `json:"required"`
-Default     interface{}     `json:"default"`
-Validation  []Validator     `json:"validation"`
-Description string          `json:"description"`
+	Type        ParameterType    `json:"type"`
+	Required    bool             `json:"required"`
+	Default     interface{}      `json:"default"`
+	Validation  []Validator      `json:"validation"`
+	Description string           `json:"description"`
 }
 
 type Hook struct {
-Name      string           `json:"name"`
-Type      HookType         `json:"type"`
-Command   interface{}      `json:"command"`
-Condition string          `json:"condition"`
-Async     bool            `json:"async"`
+	Name      string      `json:"name"`
+	Type      HookType    `json:"type"`
+	Command   interface{} `json:"command"`
+	Condition string      `json:"condition"`
+	Async     bool        `json:"async"`
 }
 
 type Condition struct {
-Name       string          `json:"name"`
-Expression string          `json:"expression"`
-Type       ConditionType   `json:"type"`
+	Name       string        `json:"name"`
+	Expression string        `json:"expression"`
+	Type       ConditionType `json:"type"`
 }
 
 type Output struct {
-Name        string         `json:"name"`
-Type        OutputType     `json:"type"`
-Path        string         `json:"path"`
-Transform   string         `json:"transform"`
-Persistent  bool           `json:"persistent"`
+	Name       string     `json:"name"`
+	Type       OutputType `json:"type"`
+	Path       string     `json:"path"`
+	Transform  string     `json:"transform"`
+	Persistent bool       `json:"persistent"`
 }
 
 type Artifact struct {
-Name        string         `json:"name"`
-Path        string         `json:"path"`
-Type        ArtifactType   `json:"type"`
-Compression bool           `json:"compression"`
-Retention   time.Duration  `json:"retention"`
+	Name        string       `json:"name"`
+	Path        string       `json:"path"`
+	Type        ArtifactType `json:"type"`
+	Compression bool         `json:"compression"`
+	Retention   time.Duration  `json:"retention"`
 }
 
 // Enums
@@ -151,56 +151,56 @@ type OutputType int
 type ArtifactType int
 
 const (
-DependencyTask DependencyType = iota
-DependencyResource
-DependencyService
-DependencyData
+	DependencyTask DependencyType = iota
+	DependencyResource
+	DependencyService
+	DependencyData
 )
 
 const (
-ParamString ParameterType = iota
-ParamInt
-ParamFloat
-ParamBool
-ParamArray
-ParamObject
+	ParamString ParameterType = iota
+	ParamInt
+	ParamFloat
+	ParamBool
+	ParamArray
+	ParamObject
 )
 
 const (
-HookShell HookType = iota
-HookLua
-HookHTTP
-HookGRPC
+	HookShell HookType = iota
+	HookLua
+	HookHTTP
+	HookGRPC
 )
 
 const (
-ConditionShell ConditionType = iota
-ConditionLua
-ConditionExpression
+	ConditionShell ConditionType = iota
+	ConditionLua
+	ConditionExpression
 )
 
 const (
-OutputString OutputType = iota
-OutputJSON
-OutputFile
-OutputArtifact
+	OutputString OutputType = iota
+	OutputJSON
+	OutputFile
+	OutputArtifact
 )
 
 const (
-ArtifactFile ArtifactType = iota
-ArtifactDirectory
-ArtifactArchive
-ArtifactContainer
+	ArtifactFile ArtifactType = iota
+	ArtifactDirectory
+	ArtifactArchive
+	ArtifactContainer
 )
 
 // NewModernDSL creates a new modern DSL instance
 func NewModernDSL(globalCore *core.GlobalCore) *ModernDSL {
-return &ModernDSL{
-core:         globalCore,
-logger:       slog.Default(),
-taskRegistry: NewTaskRegistry(),
-builders:     make(map[string]*TaskBuilder),
-}
+	return &ModernDSL{
+		core:         globalCore,
+		logger:       slog.Default(),
+		taskRegistry: NewTaskRegistry(),
+		builders:     make(map[string]*TaskBuilder),
+	}
 }
 
 // RegisterModernDSL registers the modern DSL with a Lua state
@@ -1248,10 +1248,11 @@ func (m *ModernDSL) createWorkdirObjectWithColons(L *lua.LState, taskDef *TaskDe
 					return 1
 				}
 				
-				if err := os.RemoveAll(workdirPath); err != nil {
-					L.Push(lua.LBool(false))
-					return 1
-				}
+				slog.Warn("Manual workdir cleanup is disabled. Workdir preserved.", "workdir", workdirPath)
+				// if err := os.RemoveAll(workdirPath); err != nil {
+				// 	L.Push(lua.LBool(false))
+				// 	return 1
+				// }
 				
 				L.Push(lua.LBool(true))
 				return 1
@@ -1339,14 +1340,15 @@ func (m *ModernDSL) createWorkdirObject(L *lua.LState, taskDef *TaskDefinition) 
 					return 2
 				}
 				
-				if err := os.RemoveAll(workdirPath); err != nil {
-					L.Push(lua.LBool(false))
-					L.Push(lua.LString(err.Error()))
-					return 2
-				}
+				slog.Warn("Manual workdir cleanup is disabled. Workdir preserved.", "workdir", workdirPath)
+				// if err := os.RemoveAll(workdirPath); err != nil {
+				// 	L.Push(lua.LBool(false))
+				// 	L.Push(lua.LString(err.Error()))
+				// 	return 2
+				// }
 				
 				L.Push(lua.LBool(true))
-				L.Push(lua.LString("workdir cleaned up successfully"))
+				L.Push(lua.LString("workdir cleanup is disabled"))
 				return 2
 			}))
 		case "recreate":
@@ -1423,15 +1425,15 @@ func (m *ModernDSL) workdirCleanupFunc(L *lua.LState) int {
 		return 2
 	}
 	
-	// Remove the directory
-	if err := os.RemoveAll(workdirPath); err != nil {
-		L.Push(lua.LBool(false))
-		L.Push(lua.LString(err.Error()))
-		return 2
-	}
+	slog.Warn("Manual workdir cleanup is disabled. Workdir preserved.", "workdir", workdirPath)
+	// if err := os.RemoveAll(workdirPath); err != nil {
+	// 	L.Push(lua.LBool(false))
+	// 	L.Push(lua.LString(err.Error()))
+	// 	return 2
+	// }
 	
 	L.Push(lua.LBool(true))
-	L.Push(lua.LString("workdir cleaned up successfully"))
+	L.Push(lua.LString("workdir cleanup is disabled"))
 	return 2
 }
 

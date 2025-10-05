@@ -133,8 +133,6 @@ func (u *UserModule) createUser(L *lua.LState) int {
 	var username string
 	var options map[string]string
 	var result = L.NewTable() // Declare and initialize result here
-	var output []byte
-	var err error
 
 	// Check if first argument is a table or string
 	val := L.Get(1)
@@ -229,7 +227,7 @@ func (u *UserModule) createUser(L *lua.LState) int {
 	args = append(args, username)
 
 	cmd := exec.Command(args[0], args[1:]...)
-	output, err = cmd.CombinedOutput()
+	output, err = cmd.CombinedOutput() // Use = for assignment, not :=
 	if err != nil {
 		// Update resource state to failed
 		if currentStack != nil && currentStackManager != nil {
