@@ -6,6 +6,25 @@ if exists("b:did_ftplugin")
 endif
 let b:did_ftplugin = 1
 
+" Show welcome message on first .sloth file open
+if !exists("g:sloth_welcome_shown")
+  let g:sloth_welcome_shown = 1
+  lua << EOF
+    vim.defer_fn(function()
+      local ok, welcome = pcall(require, "sloth-runner.welcome")
+      if ok then
+        welcome.show()
+      else
+        -- Fallback if module not loaded
+        vim.notify("🦥 Sloth Runner DSL", vim.log.levels.INFO, {
+          title = "Welcome",
+          timeout = 2000,
+        })
+      end
+    end, 100)
+EOF
+endif
+
 " Use Lua settings as base
 runtime! ftplugin/lua.vim
 
