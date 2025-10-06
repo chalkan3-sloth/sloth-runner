@@ -1,0 +1,594 @@
+/* Sloth Runner Theme - Inspired by Sloths 🦥 */
+
+:root {
+    /* Sloth Colors - Earth tones and forest greens */
+    --sloth-brown: #8B7355;
+    --sloth-tan: #D4A574;
+    --sloth-dark-brown: #5C4A3A;
+    --sloth-light-brown: #C8B299;
+    --sloth-green: #7CB342;
+    --sloth-dark-green: #558B2F;
+    --sloth-leaf: #9CCC65;
+    --sloth-branch: #6B4423;
+
+    /* UI Colors */
+    --primary-color: #7CB342;
+    --primary-hover: #558B2F;
+    --secondary-color: #8B7355;
+    --accent-color: #D4A574;
+
+    /* Status colors */
+    --success-color: #7CB342;
+    --warning-color: #FFA726;
+    --danger-color: #EF5350;
+    --info-color: #29B6F6;
+
+    /* Backgrounds - Light Mode */
+    --bg-primary: #F5F1ED;
+    --bg-secondary: #FFFFFF;
+    --bg-tertiary: #E8E3DD;
+    --bg-card: #FAFAF8;
+
+    /* Text colors */
+    --text-primary: #2C1810;
+    --text-secondary: #5C4A3A;
+    --text-muted: #8B7355;
+
+    /* Borders and shadows */
+    --border-color: #D4C4B0;
+    --shadow-sm: 0 2px 4px rgba(92, 74, 58, 0.1);
+    --shadow-md: 0 4px 8px rgba(92, 74, 58, 0.15);
+    --shadow-lg: 0 8px 16px rgba(92, 74, 58, 0.2);
+}
+
+[data-theme="dark"] {
+    /* Dark mode - Night in the rainforest */
+    --bg-primary: #1C1510;
+    --bg-secondary: #2C2318;
+    --bg-tertiary: #3C3128;
+    --bg-card: #352B22;
+
+    --text-primary: #E8E3DD;
+    --text-secondary: #C8B299;
+    --text-muted: #8B7355;
+
+    --border-color: #4C4138;
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* Global styles */
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Sloth-themed scrollbar */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--sloth-brown);
+    border-radius: 10px;
+    border: 2px solid var(--bg-tertiary);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--sloth-dark-brown);
+}
+
+/* Navbar with sloth theme */
+.navbar {
+    background: linear-gradient(135deg, var(--sloth-dark-green) 0%, var(--sloth-green) 100%) !important;
+    box-shadow: var(--shadow-md);
+    border: none;
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: white !important;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.navbar-brand img {
+    height: 40px;
+    width: 40px;
+}
+
+.navbar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    margin: 0 2px;
+}
+
+.navbar-nav .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: white !important;
+    transform: translateY(-2px);
+}
+
+.navbar-nav .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: white !important;
+}
+
+/* Dropdown menus */
+.dropdown-menu {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+    border-radius: 12px;
+    padding: 0.5rem;
+}
+
+.dropdown-item {
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background-color: var(--sloth-leaf);
+    color: white;
+    transform: translateX(5px);
+}
+
+.dropdown-item i {
+    margin-right: 8px;
+    color: var(--sloth-green);
+}
+
+.dropdown-item:hover i {
+    color: white;
+}
+
+/* Cards with sloth theme */
+.card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+}
+
+.card-header {
+    background-color: var(--bg-secondary);
+    border-bottom: 2px solid var(--sloth-leaf);
+    border-radius: 16px 16px 0 0 !important;
+    padding: 1rem 1.5rem;
+    font-weight: 600;
+}
+
+/* Stat cards */
+.stat-card {
+    border: none;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, var(--sloth-green), var(--sloth-dark-green));
+}
+
+.stat-icon {
+    background: linear-gradient(135deg, var(--sloth-green), var(--sloth-dark-green));
+    width: 70px;
+    height: 70px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 28px;
+    box-shadow: var(--shadow-sm);
+}
+
+/* Buttons */
+.btn-primary {
+    background: linear-gradient(135deg, var(--sloth-green), var(--sloth-dark-green));
+    border: none;
+    border-radius: 12px;
+    padding: 0.6rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, var(--sloth-dark-green), var(--sloth-green));
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, var(--sloth-brown), var(--sloth-dark-brown));
+    border: none;
+    border-radius: 12px;
+    padding: 0.6rem 1.5rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.btn-success {
+    background: var(--success-color);
+    border: none;
+    border-radius: 12px;
+}
+
+.btn-warning {
+    background: var(--warning-color);
+    border: none;
+    border-radius: 12px;
+}
+
+.btn-danger {
+    background: var(--danger-color);
+    border: none;
+    border-radius: 12px;
+}
+
+/* Badges */
+.badge {
+    border-radius: 8px;
+    padding: 0.4em 0.8em;
+    font-weight: 600;
+    font-size: 0.85em;
+}
+
+.badge.bg-success {
+    background-color: var(--success-color) !important;
+}
+
+.badge.bg-warning {
+    background-color: var(--warning-color) !important;
+}
+
+.badge.bg-danger {
+    background-color: var(--danger-color) !important;
+}
+
+.badge.bg-info {
+    background-color: var(--info-color) !important;
+}
+
+.badge.bg-primary {
+    background: linear-gradient(135deg, var(--sloth-green), var(--sloth-dark-green)) !important;
+}
+
+/* Progress bars */
+.progress {
+    height: 12px;
+    border-radius: 10px;
+    background-color: var(--bg-tertiary);
+    overflow: hidden;
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, var(--sloth-green), var(--sloth-leaf));
+    border-radius: 10px;
+    transition: width 0.6s ease;
+}
+
+.progress-bar.bg-success {
+    background: linear-gradient(90deg, var(--success-color), var(--sloth-leaf));
+}
+
+.progress-bar.bg-primary {
+    background: linear-gradient(90deg, var(--sloth-green), var(--sloth-dark-green));
+}
+
+.progress-bar.bg-info {
+    background: linear-gradient(90deg, var(--info-color), #64B5F6);
+}
+
+/* Form controls */
+.form-control,
+.form-select {
+    background-color: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    color: var(--text-primary);
+    padding: 0.6rem 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--bg-card);
+    border-color: var(--sloth-green);
+    box-shadow: 0 0 0 0.2rem rgba(124, 179, 66, 0.25);
+    color: var(--text-primary);
+}
+
+/* Tables */
+.table {
+    color: var(--text-primary);
+}
+
+.table thead th {
+    background-color: var(--bg-secondary);
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--sloth-leaf);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+.table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--bg-tertiary);
+}
+
+/* Modal */
+.modal-content {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg);
+}
+
+.modal-header {
+    border-bottom: 2px solid var(--sloth-leaf);
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-color);
+}
+
+/* Alerts */
+.alert {
+    border: none;
+    border-radius: 12px;
+    border-left: 4px solid;
+}
+
+.alert-success {
+    background-color: rgba(124, 179, 66, 0.1);
+    border-left-color: var(--success-color);
+    color: var(--text-primary);
+}
+
+.alert-warning {
+    background-color: rgba(255, 167, 38, 0.1);
+    border-left-color: var(--warning-color);
+    color: var(--text-primary);
+}
+
+.alert-danger {
+    background-color: rgba(239, 83, 80, 0.1);
+    border-left-color: var(--danger-color);
+    color: var(--text-primary);
+}
+
+.alert-info {
+    background-color: rgba(41, 182, 246, 0.1);
+    border-left-color: var(--info-color);
+    color: var(--text-primary);
+}
+
+/* Theme toggle */
+.theme-toggle {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.theme-toggle:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1) rotate(20deg);
+}
+
+/* Status indicators */
+.status-pulse {
+    position: relative;
+    display: inline-block;
+}
+
+.status-pulse::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 2s infinite;
+    opacity: 0.5;
+}
+
+@keyframes pulse {
+    0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0.5;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(2);
+        opacity: 0;
+    }
+}
+
+/* Loading spinner with sloth theme */
+.spinner-border {
+    border-color: var(--sloth-green);
+    border-right-color: transparent;
+}
+
+/* Empty state */
+.empty-state {
+    padding: 80px 20px;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.empty-state i {
+    font-size: 64px;
+    color: var(--sloth-brown);
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.empty-state h5 {
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+}
+
+/* Sloth sleeping animation */
+@keyframes sloth-sleep {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-5px) rotate(2deg);
+    }
+}
+
+.sloth-logo {
+    animation: sloth-sleep 3s ease-in-out infinite;
+}
+
+/* Quick action cards */
+.quick-action-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.quick-action-card:hover {
+    border-color: var(--sloth-green);
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Chart container */
+.chart-container {
+    position: relative;
+    padding: 20px;
+    background-color: var(--bg-secondary);
+    border-radius: 12px;
+}
+
+/* Code editor container */
+.code-editor-container {
+    border: 2px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* Terminal styling */
+.terminal-container {
+    background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+    border: 2px solid var(--sloth-brown);
+    border-radius: 12px;
+    padding: 20px;
+    font-family: 'Fira Code', 'Monaco', 'Courier New', monospace;
+    color: var(--sloth-leaf);
+    box-shadow: inset var(--shadow-md);
+}
+
+.terminal-prompt {
+    color: var(--sloth-green);
+    font-weight: bold;
+}
+
+/* Tabs */
+.nav-tabs {
+    border-bottom: 2px solid var(--border-color);
+}
+
+.nav-tabs .nav-link {
+    color: var(--text-secondary);
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 0.8rem 1.5rem;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.nav-tabs .nav-link:hover {
+    border-color: var(--sloth-leaf);
+    color: var(--text-primary);
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--sloth-green);
+    border-color: var(--sloth-green);
+    background-color: transparent;
+    font-weight: 600;
+}
+
+/* Agent dashboard specific */
+.agent-card {
+    border-left: 4px solid var(--sloth-green);
+    transition: all 0.3s ease;
+}
+
+.agent-card:hover {
+    border-left-width: 6px;
+    box-shadow: var(--shadow-md);
+}
+
+.agent-card.offline {
+    border-left-color: #BDBDBD;
+    opacity: 0.6;
+}
+
+/* Tooltips */
+.tooltip-inner {
+    background-color: var(--sloth-dark-brown);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+}
+
+/* Custom sloth favicon */
+.sloth-favicon {
+    width: 32px;
+    height: 32px;
+}

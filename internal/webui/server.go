@@ -268,6 +268,7 @@ func (s *Server) setupRoutes(cfg *Config) {
 	s.router.GET("/secrets", s.servePage("secrets.html"))
 	s.router.GET("/ssh", s.servePage("ssh.html"))
 	s.router.GET("/executions", s.servePage("executions.html"))
+	s.router.GET("/agent-dashboard", s.servePage("agent-dashboard.html"))
 	s.router.GET("/metrics", s.servePage("metrics.html"))
 	s.router.GET("/logs", s.servePage("logs.html"))
 	s.router.GET("/scheduler", s.servePage("scheduler.html"))
