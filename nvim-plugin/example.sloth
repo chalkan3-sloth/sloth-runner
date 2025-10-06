@@ -1,0 +1,54 @@
+-- ═══════════════════════════════════════════════════════════════════════
+-- 🦥 Sloth Runner DSL - Example Workflow
+-- ═══════════════════════════════════════════════════════════════════════
+-- This is an example .sloth file to test the plugin features
+-- When you open this file, you'll see: 🦥 Sloth Runner DSL
+
+-- Simple task example
+local hello_task = task("hello")
+  :description("Say hello to the sloth")
+  :command(function(params, deps)
+    log.info("🦥 Hello from Sloth Runner!")
+    return true
+  end)
+  :timeout("30s")
+  :build()
+
+-- Task with dependencies
+local build_task = task("build")
+  :description("Build the project")
+  :depends_on({"hello"})
+  :command(function(params, deps)
+    log.info("Building project...")
+    local result = exec.run("echo 'Building... 🔨'")
+    return result.success
+  end)
+  :build()
+
+-- Workflow definition
+workflow.define("example-workflow", {
+  description = "Example workflow to demonstrate Sloth Runner DSL",
+  version = "1.0.0",
+
+  tasks = { hello_task, build_task },
+
+  on_success = function(results)
+    log.info("🎉 Workflow completed successfully!")
+  end,
+
+  on_failure = function(error, context)
+    log.error("❌ Workflow failed: " .. error.message)
+  end
+})
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- 💡 Try these commands:
+-- ═══════════════════════════════════════════════════════════════════════
+-- <leader>sr     - Run this workflow
+-- <leader>sl     - List all tasks
+-- <leader>st     - Dry run (test mode)
+-- :SlothInfo     - Show plugin information
+-- :SlothWelcome  - See the welcome message again
+-- :SlothAnimate  - Fun sloth animation! 🦥💤⚡✨
+-- vit            - Select a task block
+-- viw            - Select the workflow block
