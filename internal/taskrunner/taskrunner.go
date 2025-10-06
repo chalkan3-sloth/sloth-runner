@@ -18,6 +18,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 
 	"github.com/chalkan3-sloth/sloth-runner/internal/core"
+	"github.com/chalkan3-sloth/sloth-runner/internal/hooks"
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/workdir"
 	"github.com/chalkan3-sloth/sloth-runner/internal/types"
@@ -303,6 +304,26 @@ func (tr *TaskRunner) executeTaskWithRetries(t *types.Task, inputFromDependencie
 func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDependencies *lua.LTable, mu *sync.Mutex, completedTasks map[string]bool, taskOutputs map[string]*lua.LTable, runningTasks map[string]bool, session *types.SharedSession, groupName string) (taskErr error) {
 	startTime := time.Now()
 
+	// Dispatch task.started event
+	dispatcher := hooks.GetGlobalDispatcher()
+	if dispatcher != nil {
+		agentName := "local"
+		if t.DelegateTo != nil {
+			// Try to extract agent name from delegate_to
+			hosts := getHostsList(t.DelegateTo)
+			if len(hosts) > 0 {
+				agentName = hosts[0]
+			}
+		}
+
+		taskEvent := &hooks.TaskEvent{
+			TaskName:  t.Name,
+			AgentName: agentName,
+			Status:    "started",
+		}
+		dispatcher.DispatchTaskStarted(taskEvent)
+	}
+
 	var agentAddress string
 
 	// DEBUG: Log delegate_to information
@@ -391,8 +412,45 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 
 		duration := time.Since(startTime)
 		status := "Success"
+		exitCode := int32(0)
 		if taskErr != nil {
 			status = "Failed"
+			exitCode = 1
+		}
+
+		// Dispatch task.completed or task.failed event
+		dispatcher := hooks.GetGlobalDispatcher()
+		if dispatcher != nil {
+			agentName := "local"
+			if t.DelegateTo != nil {
+				hosts := getHostsList(t.DelegateTo)
+				if len(hosts) > 0 {
+					agentName = hosts[0]
+				}
+			}
+
+			if taskErr != nil {
+				// Task failed
+				taskEvent := &hooks.TaskEvent{
+					TaskName:  t.Name,
+					AgentName: agentName,
+					Status:    "failed",
+					Error:     taskErr.Error(),
+					ExitCode:  exitCode,
+					Duration:  duration.String(),
+				}
+				dispatcher.DispatchTaskFailed(taskEvent)
+			} else {
+				// Task completed successfully
+				taskEvent := &hooks.TaskEvent{
+					TaskName:  t.Name,
+					AgentName: agentName,
+					Status:    "completed",
+					ExitCode:  exitCode,
+					Duration:  duration.String(),
+				}
+				dispatcher.DispatchTaskCompleted(taskEvent)
+			}
 		}
 
 		mu.Lock()

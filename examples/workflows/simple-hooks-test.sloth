@@ -1,0 +1,58 @@
+-- Simple workflow to test hooks system with task events
+-- This workflow will trigger task.started, task.completed, and task.failed events
+
+-- Task 1: Successful task
+local success_task = task("test_success_task")
+    :description("A successful task to trigger task events")
+    :delegate_to("lady-guica")
+    :command(function(this, params)
+        log.info("🏁 Starting successful task...")
+        exec.run("echo 'Task 1 executing successfully'")
+        exec.run("sleep 2")
+        log.info("✅ Task 1 completed")
+        return true, "Task completed successfully"
+    end)
+    :build()
+
+-- Task 2: Another successful task on different agent
+local success_task_2 = task("test_success_task_2")
+    :description("Another successful task")
+    :delegate_to("keite-guica")
+    :command(function(this, params)
+        log.info("🏁 Starting task 2...")
+        exec.run("echo 'Task 2 executing'")
+        exec.run("sleep 1")
+        log.info("✅ Task 2 completed")
+        return true, "Task 2 completed successfully"
+    end)
+    :build()
+
+-- Task 3: Failing task to trigger task.failed event
+local failure_task = task("test_failure_task")
+    :description("A task that will fail intentionally")
+    :delegate_to("lady-guica")
+    :command(function(this, params)
+        log.info("🏁 Starting task 3...")
+        exec.run("echo 'Task 3 running but will fail'")
+        exec.run("sleep 1")
+        log.error("❌ Task 3 failing intentionally")
+        error("Intentional failure for testing hooks")
+    end)
+    :build()
+
+-- Define workflow
+workflow.define("simple_hooks_test")
+    :description("Simple workflow to test hooks and task events")
+    :version("1.0.0")
+    :tasks({
+        success_task,
+        success_task_2,
+        failure_task
+    })
+    :config({
+        timeout = "2m"
+    })
+    :on_complete(function(success, results)
+        log.info("📊 Workflow completed: " .. tostring(success))
+        return true
+    end)

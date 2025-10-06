@@ -1,0 +1,49 @@
+-- Basic workflow to test task events (started, completed, failed)
+-- This workflow doesn't use custom events, just basic task execution
+
+name = "task-events-test"
+version = "1.0.0"
+description = "Test workflow for task events"
+
+group "test_task_events" {
+    description = "Test group for basic task events"
+
+    task "test_task_success" {
+        description = "A successful task"
+        delegate_to = "lady-guica"
+        command = function(this, params, input)
+            log.info("🏁 Starting task 1...")
+            exec.run("echo 'Task 1 running'")
+            exec.run("sleep 2")
+            log.info("✅ Task 1 completed")
+
+            return true, "Task 1 completed successfully"
+        end
+    }
+
+    task "test_task_success_2" {
+        description = "Another successful task"
+        delegate_to = "keite-guica"
+        command = function(this, params, input)
+            log.info("🏁 Starting task 2...")
+            exec.run("echo 'Task 2 running'")
+            exec.run("sleep 1")
+            log.info("✅ Task 2 completed")
+
+            return true, "Task 2 completed successfully"
+        end
+    }
+
+    task "test_task_failure" {
+        description = "A task that will fail"
+        delegate_to = "lady-guica"
+        command = function(this, params, input)
+            log.info("🏁 Starting task 3...")
+            exec.run("echo 'Task 3 running but will fail'")
+            exec.run("sleep 1")
+            log.error("❌ Task 3 failing intentionally")
+
+            error("Intentional failure for testing")
+        end
+    }
+}

@@ -19,10 +19,21 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Agent_ExecuteTask_FullMethodName = "/agent.Agent/ExecuteTask"
-	Agent_RunCommand_FullMethodName  = "/agent.Agent/RunCommand"
-	Agent_Shutdown_FullMethodName    = "/agent.Agent/Shutdown"
-	Agent_UpdateAgent_FullMethodName = "/agent.Agent/UpdateAgent"
+	Agent_ExecuteTask_FullMethodName         = "/agent.Agent/ExecuteTask"
+	Agent_RunCommand_FullMethodName          = "/agent.Agent/RunCommand"
+	Agent_Shutdown_FullMethodName            = "/agent.Agent/Shutdown"
+	Agent_UpdateAgent_FullMethodName         = "/agent.Agent/UpdateAgent"
+	Agent_GetResourceUsage_FullMethodName    = "/agent.Agent/GetResourceUsage"
+	Agent_GetProcessList_FullMethodName      = "/agent.Agent/GetProcessList"
+	Agent_GetNetworkInfo_FullMethodName      = "/agent.Agent/GetNetworkInfo"
+	Agent_GetDiskInfo_FullMethodName         = "/agent.Agent/GetDiskInfo"
+	Agent_StreamLogs_FullMethodName          = "/agent.Agent/StreamLogs"
+	Agent_StreamMetrics_FullMethodName       = "/agent.Agent/StreamMetrics"
+	Agent_RestartService_FullMethodName      = "/agent.Agent/RestartService"
+	Agent_GetEnvironmentVars_FullMethodName  = "/agent.Agent/GetEnvironmentVars"
+	Agent_SetEnvironmentVar_FullMethodName   = "/agent.Agent/SetEnvironmentVar"
+	Agent_InstallModule_FullMethodName       = "/agent.Agent/InstallModule"
+	Agent_GetInstalledModules_FullMethodName = "/agent.Agent/GetInstalledModules"
 )
 
 // AgentClient is the client API for Agent service.
@@ -33,6 +44,18 @@ type AgentClient interface {
 	RunCommand(ctx context.Context, in *RunCommandRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamOutputResponse], error)
 	Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error)
 	UpdateAgent(ctx context.Context, in *UpdateAgentRequest, opts ...grpc.CallOption) (*UpdateAgentResponse, error)
+	// Advanced Management RPCs
+	GetResourceUsage(ctx context.Context, in *ResourceUsageRequest, opts ...grpc.CallOption) (*ResourceUsageResponse, error)
+	GetProcessList(ctx context.Context, in *ProcessListRequest, opts ...grpc.CallOption) (*ProcessListResponse, error)
+	GetNetworkInfo(ctx context.Context, in *NetworkInfoRequest, opts ...grpc.CallOption) (*NetworkInfoResponse, error)
+	GetDiskInfo(ctx context.Context, in *DiskInfoRequest, opts ...grpc.CallOption) (*DiskInfoResponse, error)
+	StreamLogs(ctx context.Context, in *StreamLogsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LogEntry], error)
+	StreamMetrics(ctx context.Context, in *StreamMetricsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[MetricsData], error)
+	RestartService(ctx context.Context, in *RestartServiceRequest, opts ...grpc.CallOption) (*RestartServiceResponse, error)
+	GetEnvironmentVars(ctx context.Context, in *EnvVarsRequest, opts ...grpc.CallOption) (*EnvVarsResponse, error)
+	SetEnvironmentVar(ctx context.Context, in *SetEnvVarRequest, opts ...grpc.CallOption) (*SetEnvVarResponse, error)
+	InstallModule(ctx context.Context, in *InstallModuleRequest, opts ...grpc.CallOption) (*InstallModuleResponse, error)
+	GetInstalledModules(ctx context.Context, in *ModulesRequest, opts ...grpc.CallOption) (*ModulesResponse, error)
 }
 
 type agentClient struct {
@@ -92,6 +115,134 @@ func (c *agentClient) UpdateAgent(ctx context.Context, in *UpdateAgentRequest, o
 	return out, nil
 }
 
+func (c *agentClient) GetResourceUsage(ctx context.Context, in *ResourceUsageRequest, opts ...grpc.CallOption) (*ResourceUsageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResourceUsageResponse)
+	err := c.cc.Invoke(ctx, Agent_GetResourceUsage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) GetProcessList(ctx context.Context, in *ProcessListRequest, opts ...grpc.CallOption) (*ProcessListResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ProcessListResponse)
+	err := c.cc.Invoke(ctx, Agent_GetProcessList_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) GetNetworkInfo(ctx context.Context, in *NetworkInfoRequest, opts ...grpc.CallOption) (*NetworkInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(NetworkInfoResponse)
+	err := c.cc.Invoke(ctx, Agent_GetNetworkInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) GetDiskInfo(ctx context.Context, in *DiskInfoRequest, opts ...grpc.CallOption) (*DiskInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DiskInfoResponse)
+	err := c.cc.Invoke(ctx, Agent_GetDiskInfo_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) StreamLogs(ctx context.Context, in *StreamLogsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[LogEntry], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Agent_ServiceDesc.Streams[1], Agent_StreamLogs_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[StreamLogsRequest, LogEntry]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Agent_StreamLogsClient = grpc.ServerStreamingClient[LogEntry]
+
+func (c *agentClient) StreamMetrics(ctx context.Context, in *StreamMetricsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[MetricsData], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Agent_ServiceDesc.Streams[2], Agent_StreamMetrics_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[StreamMetricsRequest, MetricsData]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Agent_StreamMetricsClient = grpc.ServerStreamingClient[MetricsData]
+
+func (c *agentClient) RestartService(ctx context.Context, in *RestartServiceRequest, opts ...grpc.CallOption) (*RestartServiceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RestartServiceResponse)
+	err := c.cc.Invoke(ctx, Agent_RestartService_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) GetEnvironmentVars(ctx context.Context, in *EnvVarsRequest, opts ...grpc.CallOption) (*EnvVarsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EnvVarsResponse)
+	err := c.cc.Invoke(ctx, Agent_GetEnvironmentVars_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) SetEnvironmentVar(ctx context.Context, in *SetEnvVarRequest, opts ...grpc.CallOption) (*SetEnvVarResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetEnvVarResponse)
+	err := c.cc.Invoke(ctx, Agent_SetEnvironmentVar_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) InstallModule(ctx context.Context, in *InstallModuleRequest, opts ...grpc.CallOption) (*InstallModuleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(InstallModuleResponse)
+	err := c.cc.Invoke(ctx, Agent_InstallModule_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) GetInstalledModules(ctx context.Context, in *ModulesRequest, opts ...grpc.CallOption) (*ModulesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ModulesResponse)
+	err := c.cc.Invoke(ctx, Agent_GetInstalledModules_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AgentServer is the server API for Agent service.
 // All implementations must embed UnimplementedAgentServer
 // for forward compatibility.
@@ -100,6 +251,18 @@ type AgentServer interface {
 	RunCommand(*RunCommandRequest, grpc.ServerStreamingServer[StreamOutputResponse]) error
 	Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error)
 	UpdateAgent(context.Context, *UpdateAgentRequest) (*UpdateAgentResponse, error)
+	// Advanced Management RPCs
+	GetResourceUsage(context.Context, *ResourceUsageRequest) (*ResourceUsageResponse, error)
+	GetProcessList(context.Context, *ProcessListRequest) (*ProcessListResponse, error)
+	GetNetworkInfo(context.Context, *NetworkInfoRequest) (*NetworkInfoResponse, error)
+	GetDiskInfo(context.Context, *DiskInfoRequest) (*DiskInfoResponse, error)
+	StreamLogs(*StreamLogsRequest, grpc.ServerStreamingServer[LogEntry]) error
+	StreamMetrics(*StreamMetricsRequest, grpc.ServerStreamingServer[MetricsData]) error
+	RestartService(context.Context, *RestartServiceRequest) (*RestartServiceResponse, error)
+	GetEnvironmentVars(context.Context, *EnvVarsRequest) (*EnvVarsResponse, error)
+	SetEnvironmentVar(context.Context, *SetEnvVarRequest) (*SetEnvVarResponse, error)
+	InstallModule(context.Context, *InstallModuleRequest) (*InstallModuleResponse, error)
+	GetInstalledModules(context.Context, *ModulesRequest) (*ModulesResponse, error)
 	mustEmbedUnimplementedAgentServer()
 }
 
@@ -121,6 +284,39 @@ func (UnimplementedAgentServer) Shutdown(context.Context, *ShutdownRequest) (*Sh
 }
 func (UnimplementedAgentServer) UpdateAgent(context.Context, *UpdateAgentRequest) (*UpdateAgentResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateAgent not implemented")
+}
+func (UnimplementedAgentServer) GetResourceUsage(context.Context, *ResourceUsageRequest) (*ResourceUsageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetResourceUsage not implemented")
+}
+func (UnimplementedAgentServer) GetProcessList(context.Context, *ProcessListRequest) (*ProcessListResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetProcessList not implemented")
+}
+func (UnimplementedAgentServer) GetNetworkInfo(context.Context, *NetworkInfoRequest) (*NetworkInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetNetworkInfo not implemented")
+}
+func (UnimplementedAgentServer) GetDiskInfo(context.Context, *DiskInfoRequest) (*DiskInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDiskInfo not implemented")
+}
+func (UnimplementedAgentServer) StreamLogs(*StreamLogsRequest, grpc.ServerStreamingServer[LogEntry]) error {
+	return status.Errorf(codes.Unimplemented, "method StreamLogs not implemented")
+}
+func (UnimplementedAgentServer) StreamMetrics(*StreamMetricsRequest, grpc.ServerStreamingServer[MetricsData]) error {
+	return status.Errorf(codes.Unimplemented, "method StreamMetrics not implemented")
+}
+func (UnimplementedAgentServer) RestartService(context.Context, *RestartServiceRequest) (*RestartServiceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RestartService not implemented")
+}
+func (UnimplementedAgentServer) GetEnvironmentVars(context.Context, *EnvVarsRequest) (*EnvVarsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetEnvironmentVars not implemented")
+}
+func (UnimplementedAgentServer) SetEnvironmentVar(context.Context, *SetEnvVarRequest) (*SetEnvVarResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetEnvironmentVar not implemented")
+}
+func (UnimplementedAgentServer) InstallModule(context.Context, *InstallModuleRequest) (*InstallModuleResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InstallModule not implemented")
+}
+func (UnimplementedAgentServer) GetInstalledModules(context.Context, *ModulesRequest) (*ModulesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetInstalledModules not implemented")
 }
 func (UnimplementedAgentServer) mustEmbedUnimplementedAgentServer() {}
 func (UnimplementedAgentServer) testEmbeddedByValue()               {}
@@ -208,6 +404,190 @@ func _Agent_UpdateAgent_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Agent_GetResourceUsage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResourceUsageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).GetResourceUsage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_GetResourceUsage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).GetResourceUsage(ctx, req.(*ResourceUsageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Agent_GetProcessList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProcessListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).GetProcessList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_GetProcessList_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).GetProcessList(ctx, req.(*ProcessListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Agent_GetNetworkInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NetworkInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).GetNetworkInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_GetNetworkInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).GetNetworkInfo(ctx, req.(*NetworkInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Agent_GetDiskInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DiskInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).GetDiskInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_GetDiskInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).GetDiskInfo(ctx, req.(*DiskInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Agent_StreamLogs_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(StreamLogsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(AgentServer).StreamLogs(m, &grpc.GenericServerStream[StreamLogsRequest, LogEntry]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Agent_StreamLogsServer = grpc.ServerStreamingServer[LogEntry]
+
+func _Agent_StreamMetrics_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(StreamMetricsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(AgentServer).StreamMetrics(m, &grpc.GenericServerStream[StreamMetricsRequest, MetricsData]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Agent_StreamMetricsServer = grpc.ServerStreamingServer[MetricsData]
+
+func _Agent_RestartService_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RestartServiceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).RestartService(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_RestartService_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).RestartService(ctx, req.(*RestartServiceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Agent_GetEnvironmentVars_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EnvVarsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).GetEnvironmentVars(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_GetEnvironmentVars_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).GetEnvironmentVars(ctx, req.(*EnvVarsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Agent_SetEnvironmentVar_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetEnvVarRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).SetEnvironmentVar(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_SetEnvironmentVar_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).SetEnvironmentVar(ctx, req.(*SetEnvVarRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Agent_InstallModule_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InstallModuleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).InstallModule(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_InstallModule_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).InstallModule(ctx, req.(*InstallModuleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Agent_GetInstalledModules_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ModulesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).GetInstalledModules(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_GetInstalledModules_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).GetInstalledModules(ctx, req.(*ModulesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Agent_ServiceDesc is the grpc.ServiceDesc for Agent service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -227,6 +607,42 @@ var Agent_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "UpdateAgent",
 			Handler:    _Agent_UpdateAgent_Handler,
 		},
+		{
+			MethodName: "GetResourceUsage",
+			Handler:    _Agent_GetResourceUsage_Handler,
+		},
+		{
+			MethodName: "GetProcessList",
+			Handler:    _Agent_GetProcessList_Handler,
+		},
+		{
+			MethodName: "GetNetworkInfo",
+			Handler:    _Agent_GetNetworkInfo_Handler,
+		},
+		{
+			MethodName: "GetDiskInfo",
+			Handler:    _Agent_GetDiskInfo_Handler,
+		},
+		{
+			MethodName: "RestartService",
+			Handler:    _Agent_RestartService_Handler,
+		},
+		{
+			MethodName: "GetEnvironmentVars",
+			Handler:    _Agent_GetEnvironmentVars_Handler,
+		},
+		{
+			MethodName: "SetEnvironmentVar",
+			Handler:    _Agent_SetEnvironmentVar_Handler,
+		},
+		{
+			MethodName: "InstallModule",
+			Handler:    _Agent_InstallModule_Handler,
+		},
+		{
+			MethodName: "GetInstalledModules",
+			Handler:    _Agent_GetInstalledModules_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -234,18 +650,37 @@ var Agent_ServiceDesc = grpc.ServiceDesc{
 			Handler:       _Agent_RunCommand_Handler,
 			ServerStreams: true,
 		},
+		{
+			StreamName:    "StreamLogs",
+			Handler:       _Agent_StreamLogs_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "StreamMetrics",
+			Handler:       _Agent_StreamMetrics_Handler,
+			ServerStreams: true,
+		},
 	},
 	Metadata: "proto/agent.proto",
 }
 
 const (
-	AgentRegistry_RegisterAgent_FullMethodName   = "/agent.AgentRegistry/RegisterAgent"
-	AgentRegistry_ListAgents_FullMethodName      = "/agent.AgentRegistry/ListAgents"
-	AgentRegistry_StopAgent_FullMethodName       = "/agent.AgentRegistry/StopAgent"
-	AgentRegistry_UnregisterAgent_FullMethodName = "/agent.AgentRegistry/UnregisterAgent"
-	AgentRegistry_ExecuteCommand_FullMethodName  = "/agent.AgentRegistry/ExecuteCommand"
-	AgentRegistry_Heartbeat_FullMethodName       = "/agent.AgentRegistry/Heartbeat"
-	AgentRegistry_GetAgentInfo_FullMethodName    = "/agent.AgentRegistry/GetAgentInfo"
+	AgentRegistry_RegisterAgent_FullMethodName           = "/agent.AgentRegistry/RegisterAgent"
+	AgentRegistry_ListAgents_FullMethodName              = "/agent.AgentRegistry/ListAgents"
+	AgentRegistry_StopAgent_FullMethodName               = "/agent.AgentRegistry/StopAgent"
+	AgentRegistry_UnregisterAgent_FullMethodName         = "/agent.AgentRegistry/UnregisterAgent"
+	AgentRegistry_ExecuteCommand_FullMethodName          = "/agent.AgentRegistry/ExecuteCommand"
+	AgentRegistry_Heartbeat_FullMethodName               = "/agent.AgentRegistry/Heartbeat"
+	AgentRegistry_GetAgentInfo_FullMethodName            = "/agent.AgentRegistry/GetAgentInfo"
+	AgentRegistry_CreateAgentGroup_FullMethodName        = "/agent.AgentRegistry/CreateAgentGroup"
+	AgentRegistry_AddAgentToGroup_FullMethodName         = "/agent.AgentRegistry/AddAgentToGroup"
+	AgentRegistry_RemoveAgentFromGroup_FullMethodName    = "/agent.AgentRegistry/RemoveAgentFromGroup"
+	AgentRegistry_ListAgentGroups_FullMethodName         = "/agent.AgentRegistry/ListAgentGroups"
+	AgentRegistry_DeleteAgentGroup_FullMethodName        = "/agent.AgentRegistry/DeleteAgentGroup"
+	AgentRegistry_ExecuteOnMultipleAgents_FullMethodName = "/agent.AgentRegistry/ExecuteOnMultipleAgents"
+	AgentRegistry_GetMultipleAgentStatus_FullMethodName  = "/agent.AgentRegistry/GetMultipleAgentStatus"
+	AgentRegistry_GetAggregatedMetrics_FullMethodName    = "/agent.AgentRegistry/GetAggregatedMetrics"
+	AgentRegistry_StreamAgentEvents_FullMethodName       = "/agent.AgentRegistry/StreamAgentEvents"
 )
 
 // AgentRegistryClient is the client API for AgentRegistry service.
@@ -259,6 +694,18 @@ type AgentRegistryClient interface {
 	ExecuteCommand(ctx context.Context, in *ExecuteCommandRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamOutputResponse], error)
 	Heartbeat(ctx context.Context, in *HeartbeatRequest, opts ...grpc.CallOption) (*HeartbeatResponse, error)
 	GetAgentInfo(ctx context.Context, in *GetAgentInfoRequest, opts ...grpc.CallOption) (*GetAgentInfoResponse, error)
+	// Group Management
+	CreateAgentGroup(ctx context.Context, in *CreateGroupRequest, opts ...grpc.CallOption) (*CreateGroupResponse, error)
+	AddAgentToGroup(ctx context.Context, in *AddToGroupRequest, opts ...grpc.CallOption) (*AddToGroupResponse, error)
+	RemoveAgentFromGroup(ctx context.Context, in *RemoveFromGroupRequest, opts ...grpc.CallOption) (*RemoveFromGroupResponse, error)
+	ListAgentGroups(ctx context.Context, in *ListGroupsRequest, opts ...grpc.CallOption) (*ListGroupsResponse, error)
+	DeleteAgentGroup(ctx context.Context, in *DeleteGroupRequest, opts ...grpc.CallOption) (*DeleteGroupResponse, error)
+	// Bulk Operations
+	ExecuteOnMultipleAgents(ctx context.Context, in *BulkExecuteRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[BulkExecuteResponse], error)
+	GetMultipleAgentStatus(ctx context.Context, in *MultipleAgentStatusRequest, opts ...grpc.CallOption) (*MultipleAgentStatusResponse, error)
+	// Health & Monitoring
+	GetAggregatedMetrics(ctx context.Context, in *AggregatedMetricsRequest, opts ...grpc.CallOption) (*AggregatedMetricsResponse, error)
+	StreamAgentEvents(ctx context.Context, in *StreamEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[AgentEvent], error)
 }
 
 type agentRegistryClient struct {
@@ -348,6 +795,114 @@ func (c *agentRegistryClient) GetAgentInfo(ctx context.Context, in *GetAgentInfo
 	return out, nil
 }
 
+func (c *agentRegistryClient) CreateAgentGroup(ctx context.Context, in *CreateGroupRequest, opts ...grpc.CallOption) (*CreateGroupResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateGroupResponse)
+	err := c.cc.Invoke(ctx, AgentRegistry_CreateAgentGroup_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentRegistryClient) AddAgentToGroup(ctx context.Context, in *AddToGroupRequest, opts ...grpc.CallOption) (*AddToGroupResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddToGroupResponse)
+	err := c.cc.Invoke(ctx, AgentRegistry_AddAgentToGroup_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentRegistryClient) RemoveAgentFromGroup(ctx context.Context, in *RemoveFromGroupRequest, opts ...grpc.CallOption) (*RemoveFromGroupResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveFromGroupResponse)
+	err := c.cc.Invoke(ctx, AgentRegistry_RemoveAgentFromGroup_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentRegistryClient) ListAgentGroups(ctx context.Context, in *ListGroupsRequest, opts ...grpc.CallOption) (*ListGroupsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListGroupsResponse)
+	err := c.cc.Invoke(ctx, AgentRegistry_ListAgentGroups_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentRegistryClient) DeleteAgentGroup(ctx context.Context, in *DeleteGroupRequest, opts ...grpc.CallOption) (*DeleteGroupResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteGroupResponse)
+	err := c.cc.Invoke(ctx, AgentRegistry_DeleteAgentGroup_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentRegistryClient) ExecuteOnMultipleAgents(ctx context.Context, in *BulkExecuteRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[BulkExecuteResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &AgentRegistry_ServiceDesc.Streams[1], AgentRegistry_ExecuteOnMultipleAgents_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[BulkExecuteRequest, BulkExecuteResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type AgentRegistry_ExecuteOnMultipleAgentsClient = grpc.ServerStreamingClient[BulkExecuteResponse]
+
+func (c *agentRegistryClient) GetMultipleAgentStatus(ctx context.Context, in *MultipleAgentStatusRequest, opts ...grpc.CallOption) (*MultipleAgentStatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MultipleAgentStatusResponse)
+	err := c.cc.Invoke(ctx, AgentRegistry_GetMultipleAgentStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentRegistryClient) GetAggregatedMetrics(ctx context.Context, in *AggregatedMetricsRequest, opts ...grpc.CallOption) (*AggregatedMetricsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AggregatedMetricsResponse)
+	err := c.cc.Invoke(ctx, AgentRegistry_GetAggregatedMetrics_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentRegistryClient) StreamAgentEvents(ctx context.Context, in *StreamEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[AgentEvent], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &AgentRegistry_ServiceDesc.Streams[2], AgentRegistry_StreamAgentEvents_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[StreamEventsRequest, AgentEvent]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type AgentRegistry_StreamAgentEventsClient = grpc.ServerStreamingClient[AgentEvent]
+
 // AgentRegistryServer is the server API for AgentRegistry service.
 // All implementations must embed UnimplementedAgentRegistryServer
 // for forward compatibility.
@@ -359,6 +914,18 @@ type AgentRegistryServer interface {
 	ExecuteCommand(*ExecuteCommandRequest, grpc.ServerStreamingServer[StreamOutputResponse]) error
 	Heartbeat(context.Context, *HeartbeatRequest) (*HeartbeatResponse, error)
 	GetAgentInfo(context.Context, *GetAgentInfoRequest) (*GetAgentInfoResponse, error)
+	// Group Management
+	CreateAgentGroup(context.Context, *CreateGroupRequest) (*CreateGroupResponse, error)
+	AddAgentToGroup(context.Context, *AddToGroupRequest) (*AddToGroupResponse, error)
+	RemoveAgentFromGroup(context.Context, *RemoveFromGroupRequest) (*RemoveFromGroupResponse, error)
+	ListAgentGroups(context.Context, *ListGroupsRequest) (*ListGroupsResponse, error)
+	DeleteAgentGroup(context.Context, *DeleteGroupRequest) (*DeleteGroupResponse, error)
+	// Bulk Operations
+	ExecuteOnMultipleAgents(*BulkExecuteRequest, grpc.ServerStreamingServer[BulkExecuteResponse]) error
+	GetMultipleAgentStatus(context.Context, *MultipleAgentStatusRequest) (*MultipleAgentStatusResponse, error)
+	// Health & Monitoring
+	GetAggregatedMetrics(context.Context, *AggregatedMetricsRequest) (*AggregatedMetricsResponse, error)
+	StreamAgentEvents(*StreamEventsRequest, grpc.ServerStreamingServer[AgentEvent]) error
 	mustEmbedUnimplementedAgentRegistryServer()
 }
 
@@ -389,6 +956,33 @@ func (UnimplementedAgentRegistryServer) Heartbeat(context.Context, *HeartbeatReq
 }
 func (UnimplementedAgentRegistryServer) GetAgentInfo(context.Context, *GetAgentInfoRequest) (*GetAgentInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAgentInfo not implemented")
+}
+func (UnimplementedAgentRegistryServer) CreateAgentGroup(context.Context, *CreateGroupRequest) (*CreateGroupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateAgentGroup not implemented")
+}
+func (UnimplementedAgentRegistryServer) AddAgentToGroup(context.Context, *AddToGroupRequest) (*AddToGroupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddAgentToGroup not implemented")
+}
+func (UnimplementedAgentRegistryServer) RemoveAgentFromGroup(context.Context, *RemoveFromGroupRequest) (*RemoveFromGroupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveAgentFromGroup not implemented")
+}
+func (UnimplementedAgentRegistryServer) ListAgentGroups(context.Context, *ListGroupsRequest) (*ListGroupsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListAgentGroups not implemented")
+}
+func (UnimplementedAgentRegistryServer) DeleteAgentGroup(context.Context, *DeleteGroupRequest) (*DeleteGroupResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteAgentGroup not implemented")
+}
+func (UnimplementedAgentRegistryServer) ExecuteOnMultipleAgents(*BulkExecuteRequest, grpc.ServerStreamingServer[BulkExecuteResponse]) error {
+	return status.Errorf(codes.Unimplemented, "method ExecuteOnMultipleAgents not implemented")
+}
+func (UnimplementedAgentRegistryServer) GetMultipleAgentStatus(context.Context, *MultipleAgentStatusRequest) (*MultipleAgentStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetMultipleAgentStatus not implemented")
+}
+func (UnimplementedAgentRegistryServer) GetAggregatedMetrics(context.Context, *AggregatedMetricsRequest) (*AggregatedMetricsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAggregatedMetrics not implemented")
+}
+func (UnimplementedAgentRegistryServer) StreamAgentEvents(*StreamEventsRequest, grpc.ServerStreamingServer[AgentEvent]) error {
+	return status.Errorf(codes.Unimplemented, "method StreamAgentEvents not implemented")
 }
 func (UnimplementedAgentRegistryServer) mustEmbedUnimplementedAgentRegistryServer() {}
 func (UnimplementedAgentRegistryServer) testEmbeddedByValue()                       {}
@@ -530,6 +1124,154 @@ func _AgentRegistry_GetAgentInfo_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentRegistry_CreateAgentGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentRegistryServer).CreateAgentGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentRegistry_CreateAgentGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentRegistryServer).CreateAgentGroup(ctx, req.(*CreateGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentRegistry_AddAgentToGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddToGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentRegistryServer).AddAgentToGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentRegistry_AddAgentToGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentRegistryServer).AddAgentToGroup(ctx, req.(*AddToGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentRegistry_RemoveAgentFromGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveFromGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentRegistryServer).RemoveAgentFromGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentRegistry_RemoveAgentFromGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentRegistryServer).RemoveAgentFromGroup(ctx, req.(*RemoveFromGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentRegistry_ListAgentGroups_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListGroupsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentRegistryServer).ListAgentGroups(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentRegistry_ListAgentGroups_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentRegistryServer).ListAgentGroups(ctx, req.(*ListGroupsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentRegistry_DeleteAgentGroup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteGroupRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentRegistryServer).DeleteAgentGroup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentRegistry_DeleteAgentGroup_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentRegistryServer).DeleteAgentGroup(ctx, req.(*DeleteGroupRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentRegistry_ExecuteOnMultipleAgents_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(BulkExecuteRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(AgentRegistryServer).ExecuteOnMultipleAgents(m, &grpc.GenericServerStream[BulkExecuteRequest, BulkExecuteResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type AgentRegistry_ExecuteOnMultipleAgentsServer = grpc.ServerStreamingServer[BulkExecuteResponse]
+
+func _AgentRegistry_GetMultipleAgentStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MultipleAgentStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentRegistryServer).GetMultipleAgentStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentRegistry_GetMultipleAgentStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentRegistryServer).GetMultipleAgentStatus(ctx, req.(*MultipleAgentStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentRegistry_GetAggregatedMetrics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AggregatedMetricsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentRegistryServer).GetAggregatedMetrics(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentRegistry_GetAggregatedMetrics_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentRegistryServer).GetAggregatedMetrics(ctx, req.(*AggregatedMetricsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentRegistry_StreamAgentEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(StreamEventsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(AgentRegistryServer).StreamAgentEvents(m, &grpc.GenericServerStream[StreamEventsRequest, AgentEvent]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type AgentRegistry_StreamAgentEventsServer = grpc.ServerStreamingServer[AgentEvent]
+
 // AgentRegistry_ServiceDesc is the grpc.ServiceDesc for AgentRegistry service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -561,11 +1303,49 @@ var AgentRegistry_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "GetAgentInfo",
 			Handler:    _AgentRegistry_GetAgentInfo_Handler,
 		},
+		{
+			MethodName: "CreateAgentGroup",
+			Handler:    _AgentRegistry_CreateAgentGroup_Handler,
+		},
+		{
+			MethodName: "AddAgentToGroup",
+			Handler:    _AgentRegistry_AddAgentToGroup_Handler,
+		},
+		{
+			MethodName: "RemoveAgentFromGroup",
+			Handler:    _AgentRegistry_RemoveAgentFromGroup_Handler,
+		},
+		{
+			MethodName: "ListAgentGroups",
+			Handler:    _AgentRegistry_ListAgentGroups_Handler,
+		},
+		{
+			MethodName: "DeleteAgentGroup",
+			Handler:    _AgentRegistry_DeleteAgentGroup_Handler,
+		},
+		{
+			MethodName: "GetMultipleAgentStatus",
+			Handler:    _AgentRegistry_GetMultipleAgentStatus_Handler,
+		},
+		{
+			MethodName: "GetAggregatedMetrics",
+			Handler:    _AgentRegistry_GetAggregatedMetrics_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "ExecuteCommand",
 			Handler:       _AgentRegistry_ExecuteCommand_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "ExecuteOnMultipleAgents",
+			Handler:       _AgentRegistry_ExecuteOnMultipleAgents_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "StreamAgentEvents",
+			Handler:       _AgentRegistry_StreamAgentEvents_Handler,
 			ServerStreams: true,
 		},
 	},

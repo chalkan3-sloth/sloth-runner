@@ -1,0 +1,154 @@
+-- Workflow to test hooks and events system
+-- This workflow runs tasks on multiple agents and dispatches custom events
+
+-- Task 1: Successful task on lady-guica
+local task_success = task("test_success_task")
+    :description("A successful task to trigger task.started and task.completed events")
+    :delegate_to("lady-guica")
+    :command(function()
+        local exec = require("exec")
+
+        print("🏁 Starting successful task on lady-guica")
+
+        -- Do some work
+        exec.run("echo 'Task executing successfully'")
+        exec.run("sleep 2")
+
+        print("✅ Task completed successfully")
+
+        return true, "Task completed successfully"
+    end)
+    :build()
+
+-- Task 2: Failing task on keite-guica
+local task_fail = task("test_failure_task")
+    :description("A failing task to trigger task.failed event")
+    :delegate_to("keite-guica")
+    :command(function()
+        local exec = require("exec")
+
+        print("🏁 Starting task that will fail on keite-guica")
+
+        -- Do some work then fail
+        exec.run("echo 'Task running but will fail'")
+        exec.run("sleep 1")
+
+        print("❌ Task intentionally failing")
+
+        error("Intentional failure for testing hooks")
+    end)
+    :build()
+
+-- Task 3: Task with custom events
+local task_custom_events = task("test_custom_events")
+    :description("Task that dispatches custom events")
+    :delegate_to("lady-guica")
+    :command(function()
+        local event = require("event")
+        local exec = require("exec")
+
+        print("🎯 Dispatching custom events")
+
+        -- Dispatch custom event 1
+        event.dispatch("custom", {
+            name = "deployment_started",
+            payload = {
+                environment = "testing",
+                version = "1.0.0",
+                timestamp = os.time()
+            },
+            source = "hooks-test-workflow"
+        })
+
+        exec.run("sleep 1")
+
+        -- Dispatch custom event 2
+        event.dispatch("custom", {
+            name = "health_check_passed",
+            payload = {
+                service = "test-service",
+                status = "healthy",
+                checks_passed = 5
+            },
+            source = "hooks-test-workflow"
+        })
+
+        print("✅ Custom events dispatched")
+
+        return true, "Custom events dispatched successfully"
+    end)
+    :build()
+
+-- Task 4: Multiple quick tasks to test concurrent event processing
+local task_concurrent_1 = task("concurrent_task_1")
+    :description("Concurrent task 1")
+    :delegate_to("lady-guica")
+    :command(function()
+        local exec = require("exec")
+        print("Task 1 executing")
+        exec.run("echo 'Concurrent task 1'")
+        return true
+    end)
+    :build()
+
+local task_concurrent_2 = task("concurrent_task_2")
+    :description("Concurrent task 2")
+    :delegate_to("keite-guica")
+    :command(function()
+        local exec = require("exec")
+        print("Task 2 executing")
+        exec.run("echo 'Concurrent task 2'")
+        return true
+    end)
+    :build()
+
+local task_concurrent_3 = task("concurrent_task_3")
+    :description("Concurrent task 3")
+    :delegate_to("lady-guica")
+    :command(function()
+        local exec = require("exec")
+        print("Task 3 executing")
+        exec.run("echo 'Concurrent task 3'")
+        return true
+    end)
+    :build()
+
+-- Task 5: Final task that dispatches workflow completion event
+local task_final = task("test_final_task")
+    :description("Final task to complete workflow")
+    :delegate_to("lady-guica")
+    :command(function()
+        local event = require("event")
+
+        print("🏁 Workflow completing")
+
+        -- Dispatch workflow completion event
+        event.dispatch("custom", {
+            name = "workflow_test_completed",
+            payload = {
+                workflow_name = "hooks-test-workflow",
+                tasks_executed = 7,
+                status = "success"
+            },
+            source = "hooks-test-workflow"
+        })
+
+        return true, "Workflow test completed"
+    end)
+    :build()
+
+-- Define workflow
+workflow
+    .define("hooks_test_workflow")
+    :description("Comprehensive hooks and events testing workflow")
+    :version("1.0.0")
+    :tasks({
+        task_success,
+        task_custom_events,
+        task_concurrent_1,
+        task_concurrent_2,
+        task_concurrent_3,
+        task_fail,  -- Put failing task later so we see other events first
+        task_final
+    })
+    :build()

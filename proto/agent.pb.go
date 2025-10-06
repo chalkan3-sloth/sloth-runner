@@ -1222,6 +1222,2814 @@ func (x *GetAgentInfoResponse) GetAgentInfo() *AgentInfo {
 	return nil
 }
 
+type ResourceUsageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResourceUsageRequest) Reset() {
+	*x = ResourceUsageRequest{}
+	mi := &file_proto_agent_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResourceUsageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResourceUsageRequest) ProtoMessage() {}
+
+func (x *ResourceUsageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResourceUsageRequest.ProtoReflect.Descriptor instead.
+func (*ResourceUsageRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{22}
+}
+
+type ResourceUsageResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	CpuPercent       float64                `protobuf:"fixed64,1,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
+	MemoryPercent    float64                `protobuf:"fixed64,2,opt,name=memory_percent,json=memoryPercent,proto3" json:"memory_percent,omitempty"`
+	MemoryUsedBytes  uint64                 `protobuf:"varint,3,opt,name=memory_used_bytes,json=memoryUsedBytes,proto3" json:"memory_used_bytes,omitempty"`
+	MemoryTotalBytes uint64                 `protobuf:"varint,4,opt,name=memory_total_bytes,json=memoryTotalBytes,proto3" json:"memory_total_bytes,omitempty"`
+	DiskPercent      float64                `protobuf:"fixed64,5,opt,name=disk_percent,json=diskPercent,proto3" json:"disk_percent,omitempty"`
+	DiskUsedBytes    uint64                 `protobuf:"varint,6,opt,name=disk_used_bytes,json=diskUsedBytes,proto3" json:"disk_used_bytes,omitempty"`
+	DiskTotalBytes   uint64                 `protobuf:"varint,7,opt,name=disk_total_bytes,json=diskTotalBytes,proto3" json:"disk_total_bytes,omitempty"`
+	ProcessCount     uint32                 `protobuf:"varint,8,opt,name=process_count,json=processCount,proto3" json:"process_count,omitempty"`
+	LoadAvg_1Min     float64                `protobuf:"fixed64,9,opt,name=load_avg_1min,json=loadAvg1min,proto3" json:"load_avg_1min,omitempty"`
+	LoadAvg_5Min     float64                `protobuf:"fixed64,10,opt,name=load_avg_5min,json=loadAvg5min,proto3" json:"load_avg_5min,omitempty"`
+	LoadAvg_15Min    float64                `protobuf:"fixed64,11,opt,name=load_avg_15min,json=loadAvg15min,proto3" json:"load_avg_15min,omitempty"`
+	UptimeSeconds    uint64                 `protobuf:"varint,12,opt,name=uptime_seconds,json=uptimeSeconds,proto3" json:"uptime_seconds,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ResourceUsageResponse) Reset() {
+	*x = ResourceUsageResponse{}
+	mi := &file_proto_agent_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResourceUsageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResourceUsageResponse) ProtoMessage() {}
+
+func (x *ResourceUsageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResourceUsageResponse.ProtoReflect.Descriptor instead.
+func (*ResourceUsageResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *ResourceUsageResponse) GetCpuPercent() float64 {
+	if x != nil {
+		return x.CpuPercent
+	}
+	return 0
+}
+
+func (x *ResourceUsageResponse) GetMemoryPercent() float64 {
+	if x != nil {
+		return x.MemoryPercent
+	}
+	return 0
+}
+
+func (x *ResourceUsageResponse) GetMemoryUsedBytes() uint64 {
+	if x != nil {
+		return x.MemoryUsedBytes
+	}
+	return 0
+}
+
+func (x *ResourceUsageResponse) GetMemoryTotalBytes() uint64 {
+	if x != nil {
+		return x.MemoryTotalBytes
+	}
+	return 0
+}
+
+func (x *ResourceUsageResponse) GetDiskPercent() float64 {
+	if x != nil {
+		return x.DiskPercent
+	}
+	return 0
+}
+
+func (x *ResourceUsageResponse) GetDiskUsedBytes() uint64 {
+	if x != nil {
+		return x.DiskUsedBytes
+	}
+	return 0
+}
+
+func (x *ResourceUsageResponse) GetDiskTotalBytes() uint64 {
+	if x != nil {
+		return x.DiskTotalBytes
+	}
+	return 0
+}
+
+func (x *ResourceUsageResponse) GetProcessCount() uint32 {
+	if x != nil {
+		return x.ProcessCount
+	}
+	return 0
+}
+
+func (x *ResourceUsageResponse) GetLoadAvg_1Min() float64 {
+	if x != nil {
+		return x.LoadAvg_1Min
+	}
+	return 0
+}
+
+func (x *ResourceUsageResponse) GetLoadAvg_5Min() float64 {
+	if x != nil {
+		return x.LoadAvg_5Min
+	}
+	return 0
+}
+
+func (x *ResourceUsageResponse) GetLoadAvg_15Min() float64 {
+	if x != nil {
+		return x.LoadAvg_15Min
+	}
+	return 0
+}
+
+func (x *ResourceUsageResponse) GetUptimeSeconds() uint64 {
+	if x != nil {
+		return x.UptimeSeconds
+	}
+	return 0
+}
+
+type ProcessListRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	IncludeChildren bool                   `protobuf:"varint,1,opt,name=include_children,json=includeChildren,proto3" json:"include_children,omitempty"`
+	FilterName      string                 `protobuf:"bytes,2,opt,name=filter_name,json=filterName,proto3" json:"filter_name,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ProcessListRequest) Reset() {
+	*x = ProcessListRequest{}
+	mi := &file_proto_agent_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProcessListRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProcessListRequest) ProtoMessage() {}
+
+func (x *ProcessListRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProcessListRequest.ProtoReflect.Descriptor instead.
+func (*ProcessListRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ProcessListRequest) GetIncludeChildren() bool {
+	if x != nil {
+		return x.IncludeChildren
+	}
+	return false
+}
+
+func (x *ProcessListRequest) GetFilterName() string {
+	if x != nil {
+		return x.FilterName
+	}
+	return ""
+}
+
+type ProcessInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Pid           int32                  `protobuf:"varint,1,opt,name=pid,proto3" json:"pid,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`
+	CpuPercent    float64                `protobuf:"fixed64,4,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
+	MemoryPercent float64                `protobuf:"fixed64,5,opt,name=memory_percent,json=memoryPercent,proto3" json:"memory_percent,omitempty"`
+	MemoryBytes   uint64                 `protobuf:"varint,6,opt,name=memory_bytes,json=memoryBytes,proto3" json:"memory_bytes,omitempty"`
+	User          string                 `protobuf:"bytes,7,opt,name=user,proto3" json:"user,omitempty"`
+	Command       string                 `protobuf:"bytes,8,opt,name=command,proto3" json:"command,omitempty"`
+	StartedAt     int64                  `protobuf:"varint,9,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProcessInfo) Reset() {
+	*x = ProcessInfo{}
+	mi := &file_proto_agent_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProcessInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProcessInfo) ProtoMessage() {}
+
+func (x *ProcessInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProcessInfo.ProtoReflect.Descriptor instead.
+func (*ProcessInfo) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ProcessInfo) GetPid() int32 {
+	if x != nil {
+		return x.Pid
+	}
+	return 0
+}
+
+func (x *ProcessInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ProcessInfo) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ProcessInfo) GetCpuPercent() float64 {
+	if x != nil {
+		return x.CpuPercent
+	}
+	return 0
+}
+
+func (x *ProcessInfo) GetMemoryPercent() float64 {
+	if x != nil {
+		return x.MemoryPercent
+	}
+	return 0
+}
+
+func (x *ProcessInfo) GetMemoryBytes() uint64 {
+	if x != nil {
+		return x.MemoryBytes
+	}
+	return 0
+}
+
+func (x *ProcessInfo) GetUser() string {
+	if x != nil {
+		return x.User
+	}
+	return ""
+}
+
+func (x *ProcessInfo) GetCommand() string {
+	if x != nil {
+		return x.Command
+	}
+	return ""
+}
+
+func (x *ProcessInfo) GetStartedAt() int64 {
+	if x != nil {
+		return x.StartedAt
+	}
+	return 0
+}
+
+type ProcessListResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Processes     []*ProcessInfo         `protobuf:"bytes,1,rep,name=processes,proto3" json:"processes,omitempty"`
+	TotalCount    uint32                 `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProcessListResponse) Reset() {
+	*x = ProcessListResponse{}
+	mi := &file_proto_agent_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProcessListResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProcessListResponse) ProtoMessage() {}
+
+func (x *ProcessListResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProcessListResponse.ProtoReflect.Descriptor instead.
+func (*ProcessListResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ProcessListResponse) GetProcesses() []*ProcessInfo {
+	if x != nil {
+		return x.Processes
+	}
+	return nil
+}
+
+func (x *ProcessListResponse) GetTotalCount() uint32 {
+	if x != nil {
+		return x.TotalCount
+	}
+	return 0
+}
+
+type NetworkInfoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NetworkInfoRequest) Reset() {
+	*x = NetworkInfoRequest{}
+	mi := &file_proto_agent_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NetworkInfoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NetworkInfoRequest) ProtoMessage() {}
+
+func (x *NetworkInfoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NetworkInfoRequest.ProtoReflect.Descriptor instead.
+func (*NetworkInfoRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{27}
+}
+
+type NetworkInterface struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	IpAddresses   []string               `protobuf:"bytes,2,rep,name=ip_addresses,json=ipAddresses,proto3" json:"ip_addresses,omitempty"`
+	MacAddress    string                 `protobuf:"bytes,3,opt,name=mac_address,json=macAddress,proto3" json:"mac_address,omitempty"`
+	BytesSent     uint64                 `protobuf:"varint,4,opt,name=bytes_sent,json=bytesSent,proto3" json:"bytes_sent,omitempty"`
+	BytesRecv     uint64                 `protobuf:"varint,5,opt,name=bytes_recv,json=bytesRecv,proto3" json:"bytes_recv,omitempty"`
+	PacketsSent   uint32                 `protobuf:"varint,6,opt,name=packets_sent,json=packetsSent,proto3" json:"packets_sent,omitempty"`
+	PacketsRecv   uint32                 `protobuf:"varint,7,opt,name=packets_recv,json=packetsRecv,proto3" json:"packets_recv,omitempty"`
+	IsUp          bool                   `protobuf:"varint,8,opt,name=is_up,json=isUp,proto3" json:"is_up,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NetworkInterface) Reset() {
+	*x = NetworkInterface{}
+	mi := &file_proto_agent_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NetworkInterface) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NetworkInterface) ProtoMessage() {}
+
+func (x *NetworkInterface) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NetworkInterface.ProtoReflect.Descriptor instead.
+func (*NetworkInterface) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *NetworkInterface) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *NetworkInterface) GetIpAddresses() []string {
+	if x != nil {
+		return x.IpAddresses
+	}
+	return nil
+}
+
+func (x *NetworkInterface) GetMacAddress() string {
+	if x != nil {
+		return x.MacAddress
+	}
+	return ""
+}
+
+func (x *NetworkInterface) GetBytesSent() uint64 {
+	if x != nil {
+		return x.BytesSent
+	}
+	return 0
+}
+
+func (x *NetworkInterface) GetBytesRecv() uint64 {
+	if x != nil {
+		return x.BytesRecv
+	}
+	return 0
+}
+
+func (x *NetworkInterface) GetPacketsSent() uint32 {
+	if x != nil {
+		return x.PacketsSent
+	}
+	return 0
+}
+
+func (x *NetworkInterface) GetPacketsRecv() uint32 {
+	if x != nil {
+		return x.PacketsRecv
+	}
+	return 0
+}
+
+func (x *NetworkInterface) GetIsUp() bool {
+	if x != nil {
+		return x.IsUp
+	}
+	return false
+}
+
+type NetworkInfoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Interfaces    []*NetworkInterface    `protobuf:"bytes,1,rep,name=interfaces,proto3" json:"interfaces,omitempty"`
+	Hostname      string                 `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NetworkInfoResponse) Reset() {
+	*x = NetworkInfoResponse{}
+	mi := &file_proto_agent_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NetworkInfoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NetworkInfoResponse) ProtoMessage() {}
+
+func (x *NetworkInfoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NetworkInfoResponse.ProtoReflect.Descriptor instead.
+func (*NetworkInfoResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *NetworkInfoResponse) GetInterfaces() []*NetworkInterface {
+	if x != nil {
+		return x.Interfaces
+	}
+	return nil
+}
+
+func (x *NetworkInfoResponse) GetHostname() string {
+	if x != nil {
+		return x.Hostname
+	}
+	return ""
+}
+
+type DiskInfoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DiskInfoRequest) Reset() {
+	*x = DiskInfoRequest{}
+	mi := &file_proto_agent_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DiskInfoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DiskInfoRequest) ProtoMessage() {}
+
+func (x *DiskInfoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DiskInfoRequest.ProtoReflect.Descriptor instead.
+func (*DiskInfoRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{30}
+}
+
+type DiskPartition struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Device        string                 `protobuf:"bytes,1,opt,name=device,proto3" json:"device,omitempty"`
+	Mountpoint    string                 `protobuf:"bytes,2,opt,name=mountpoint,proto3" json:"mountpoint,omitempty"`
+	Fstype        string                 `protobuf:"bytes,3,opt,name=fstype,proto3" json:"fstype,omitempty"`
+	TotalBytes    uint64                 `protobuf:"varint,4,opt,name=total_bytes,json=totalBytes,proto3" json:"total_bytes,omitempty"`
+	UsedBytes     uint64                 `protobuf:"varint,5,opt,name=used_bytes,json=usedBytes,proto3" json:"used_bytes,omitempty"`
+	FreeBytes     uint64                 `protobuf:"varint,6,opt,name=free_bytes,json=freeBytes,proto3" json:"free_bytes,omitempty"`
+	Percent       float64                `protobuf:"fixed64,7,opt,name=percent,proto3" json:"percent,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DiskPartition) Reset() {
+	*x = DiskPartition{}
+	mi := &file_proto_agent_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DiskPartition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DiskPartition) ProtoMessage() {}
+
+func (x *DiskPartition) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DiskPartition.ProtoReflect.Descriptor instead.
+func (*DiskPartition) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *DiskPartition) GetDevice() string {
+	if x != nil {
+		return x.Device
+	}
+	return ""
+}
+
+func (x *DiskPartition) GetMountpoint() string {
+	if x != nil {
+		return x.Mountpoint
+	}
+	return ""
+}
+
+func (x *DiskPartition) GetFstype() string {
+	if x != nil {
+		return x.Fstype
+	}
+	return ""
+}
+
+func (x *DiskPartition) GetTotalBytes() uint64 {
+	if x != nil {
+		return x.TotalBytes
+	}
+	return 0
+}
+
+func (x *DiskPartition) GetUsedBytes() uint64 {
+	if x != nil {
+		return x.UsedBytes
+	}
+	return 0
+}
+
+func (x *DiskPartition) GetFreeBytes() uint64 {
+	if x != nil {
+		return x.FreeBytes
+	}
+	return 0
+}
+
+func (x *DiskPartition) GetPercent() float64 {
+	if x != nil {
+		return x.Percent
+	}
+	return 0
+}
+
+type DiskInfoResponse struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Partitions        []*DiskPartition       `protobuf:"bytes,1,rep,name=partitions,proto3" json:"partitions,omitempty"`
+	TotalIoReadBytes  uint64                 `protobuf:"varint,2,opt,name=total_io_read_bytes,json=totalIoReadBytes,proto3" json:"total_io_read_bytes,omitempty"`
+	TotalIoWriteBytes uint64                 `protobuf:"varint,3,opt,name=total_io_write_bytes,json=totalIoWriteBytes,proto3" json:"total_io_write_bytes,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *DiskInfoResponse) Reset() {
+	*x = DiskInfoResponse{}
+	mi := &file_proto_agent_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DiskInfoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DiskInfoResponse) ProtoMessage() {}
+
+func (x *DiskInfoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DiskInfoResponse.ProtoReflect.Descriptor instead.
+func (*DiskInfoResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *DiskInfoResponse) GetPartitions() []*DiskPartition {
+	if x != nil {
+		return x.Partitions
+	}
+	return nil
+}
+
+func (x *DiskInfoResponse) GetTotalIoReadBytes() uint64 {
+	if x != nil {
+		return x.TotalIoReadBytes
+	}
+	return 0
+}
+
+func (x *DiskInfoResponse) GetTotalIoWriteBytes() uint64 {
+	if x != nil {
+		return x.TotalIoWriteBytes
+	}
+	return 0
+}
+
+type StreamLogsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	LogFile       string                 `protobuf:"bytes,1,opt,name=log_file,json=logFile,proto3" json:"log_file,omitempty"`        // Path to log file or service name
+	TailLines     int32                  `protobuf:"varint,2,opt,name=tail_lines,json=tailLines,proto3" json:"tail_lines,omitempty"` // Number of recent lines to stream
+	Follow        bool                   `protobuf:"varint,3,opt,name=follow,proto3" json:"follow,omitempty"`                        // Keep streaming new lines
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StreamLogsRequest) Reset() {
+	*x = StreamLogsRequest{}
+	mi := &file_proto_agent_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StreamLogsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StreamLogsRequest) ProtoMessage() {}
+
+func (x *StreamLogsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StreamLogsRequest.ProtoReflect.Descriptor instead.
+func (*StreamLogsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *StreamLogsRequest) GetLogFile() string {
+	if x != nil {
+		return x.LogFile
+	}
+	return ""
+}
+
+func (x *StreamLogsRequest) GetTailLines() int32 {
+	if x != nil {
+		return x.TailLines
+	}
+	return 0
+}
+
+func (x *StreamLogsRequest) GetFollow() bool {
+	if x != nil {
+		return x.Follow
+	}
+	return false
+}
+
+type LogEntry struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Timestamp     int64                  `protobuf:"varint,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Level         string                 `protobuf:"bytes,2,opt,name=level,proto3" json:"level,omitempty"`
+	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	Source        string                 `protobuf:"bytes,4,opt,name=source,proto3" json:"source,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LogEntry) Reset() {
+	*x = LogEntry{}
+	mi := &file_proto_agent_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LogEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LogEntry) ProtoMessage() {}
+
+func (x *LogEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LogEntry.ProtoReflect.Descriptor instead.
+func (*LogEntry) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *LogEntry) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+func (x *LogEntry) GetLevel() string {
+	if x != nil {
+		return x.Level
+	}
+	return ""
+}
+
+func (x *LogEntry) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *LogEntry) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+type StreamMetricsRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	IntervalSeconds int32                  `protobuf:"varint,1,opt,name=interval_seconds,json=intervalSeconds,proto3" json:"interval_seconds,omitempty"` // How often to send metrics
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *StreamMetricsRequest) Reset() {
+	*x = StreamMetricsRequest{}
+	mi := &file_proto_agent_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StreamMetricsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StreamMetricsRequest) ProtoMessage() {}
+
+func (x *StreamMetricsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StreamMetricsRequest.ProtoReflect.Descriptor instead.
+func (*StreamMetricsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *StreamMetricsRequest) GetIntervalSeconds() int32 {
+	if x != nil {
+		return x.IntervalSeconds
+	}
+	return 0
+}
+
+type MetricsData struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Timestamp     int64                  `protobuf:"varint,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	CpuPercent    float64                `protobuf:"fixed64,2,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
+	MemoryPercent float64                `protobuf:"fixed64,3,opt,name=memory_percent,json=memoryPercent,proto3" json:"memory_percent,omitempty"`
+	DiskPercent   float64                `protobuf:"fixed64,4,opt,name=disk_percent,json=diskPercent,proto3" json:"disk_percent,omitempty"`
+	CustomMetrics map[string]float64     `protobuf:"bytes,5,rep,name=custom_metrics,json=customMetrics,proto3" json:"custom_metrics,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MetricsData) Reset() {
+	*x = MetricsData{}
+	mi := &file_proto_agent_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MetricsData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MetricsData) ProtoMessage() {}
+
+func (x *MetricsData) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MetricsData.ProtoReflect.Descriptor instead.
+func (*MetricsData) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *MetricsData) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+func (x *MetricsData) GetCpuPercent() float64 {
+	if x != nil {
+		return x.CpuPercent
+	}
+	return 0
+}
+
+func (x *MetricsData) GetMemoryPercent() float64 {
+	if x != nil {
+		return x.MemoryPercent
+	}
+	return 0
+}
+
+func (x *MetricsData) GetDiskPercent() float64 {
+	if x != nil {
+		return x.DiskPercent
+	}
+	return 0
+}
+
+func (x *MetricsData) GetCustomMetrics() map[string]float64 {
+	if x != nil {
+		return x.CustomMetrics
+	}
+	return nil
+}
+
+type RestartServiceRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ServiceName   string                 `protobuf:"bytes,1,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`
+	Graceful      bool                   `protobuf:"varint,2,opt,name=graceful,proto3" json:"graceful,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RestartServiceRequest) Reset() {
+	*x = RestartServiceRequest{}
+	mi := &file_proto_agent_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RestartServiceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RestartServiceRequest) ProtoMessage() {}
+
+func (x *RestartServiceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RestartServiceRequest.ProtoReflect.Descriptor instead.
+func (*RestartServiceRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{37}
+}
+
+func (x *RestartServiceRequest) GetServiceName() string {
+	if x != nil {
+		return x.ServiceName
+	}
+	return ""
+}
+
+func (x *RestartServiceRequest) GetGraceful() bool {
+	if x != nil {
+		return x.Graceful
+	}
+	return false
+}
+
+type RestartServiceResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RestartServiceResponse) Reset() {
+	*x = RestartServiceResponse{}
+	mi := &file_proto_agent_proto_msgTypes[38]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RestartServiceResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RestartServiceResponse) ProtoMessage() {}
+
+func (x *RestartServiceResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[38]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RestartServiceResponse.ProtoReflect.Descriptor instead.
+func (*RestartServiceResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{38}
+}
+
+func (x *RestartServiceResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *RestartServiceResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type EnvVarsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	VarNames      []string               `protobuf:"bytes,1,rep,name=var_names,json=varNames,proto3" json:"var_names,omitempty"` // Empty for all vars
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnvVarsRequest) Reset() {
+	*x = EnvVarsRequest{}
+	mi := &file_proto_agent_proto_msgTypes[39]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnvVarsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnvVarsRequest) ProtoMessage() {}
+
+func (x *EnvVarsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[39]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnvVarsRequest.ProtoReflect.Descriptor instead.
+func (*EnvVarsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{39}
+}
+
+func (x *EnvVarsRequest) GetVarNames() []string {
+	if x != nil {
+		return x.VarNames
+	}
+	return nil
+}
+
+type EnvVarsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Variables     map[string]string      `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnvVarsResponse) Reset() {
+	*x = EnvVarsResponse{}
+	mi := &file_proto_agent_proto_msgTypes[40]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnvVarsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnvVarsResponse) ProtoMessage() {}
+
+func (x *EnvVarsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[40]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnvVarsResponse.ProtoReflect.Descriptor instead.
+func (*EnvVarsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{40}
+}
+
+func (x *EnvVarsResponse) GetVariables() map[string]string {
+	if x != nil {
+		return x.Variables
+	}
+	return nil
+}
+
+type SetEnvVarRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Persistent    bool                   `protobuf:"varint,3,opt,name=persistent,proto3" json:"persistent,omitempty"` // Save to profile
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetEnvVarRequest) Reset() {
+	*x = SetEnvVarRequest{}
+	mi := &file_proto_agent_proto_msgTypes[41]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetEnvVarRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetEnvVarRequest) ProtoMessage() {}
+
+func (x *SetEnvVarRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[41]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetEnvVarRequest.ProtoReflect.Descriptor instead.
+func (*SetEnvVarRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{41}
+}
+
+func (x *SetEnvVarRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *SetEnvVarRequest) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *SetEnvVarRequest) GetPersistent() bool {
+	if x != nil {
+		return x.Persistent
+	}
+	return false
+}
+
+type SetEnvVarResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetEnvVarResponse) Reset() {
+	*x = SetEnvVarResponse{}
+	mi := &file_proto_agent_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetEnvVarResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetEnvVarResponse) ProtoMessage() {}
+
+func (x *SetEnvVarResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetEnvVarResponse.ProtoReflect.Descriptor instead.
+func (*SetEnvVarResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{42}
+}
+
+func (x *SetEnvVarResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *SetEnvVarResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type InstallModuleRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ModuleName    string                 `protobuf:"bytes,1,opt,name=module_name,json=moduleName,proto3" json:"module_name,omitempty"`
+	Version       string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"` // Empty for latest
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InstallModuleRequest) Reset() {
+	*x = InstallModuleRequest{}
+	mi := &file_proto_agent_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InstallModuleRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstallModuleRequest) ProtoMessage() {}
+
+func (x *InstallModuleRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstallModuleRequest.ProtoReflect.Descriptor instead.
+func (*InstallModuleRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *InstallModuleRequest) GetModuleName() string {
+	if x != nil {
+		return x.ModuleName
+	}
+	return ""
+}
+
+func (x *InstallModuleRequest) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+type InstallModuleResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Success          bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message          string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	InstalledVersion string                 `protobuf:"bytes,3,opt,name=installed_version,json=installedVersion,proto3" json:"installed_version,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *InstallModuleResponse) Reset() {
+	*x = InstallModuleResponse{}
+	mi := &file_proto_agent_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InstallModuleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InstallModuleResponse) ProtoMessage() {}
+
+func (x *InstallModuleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InstallModuleResponse.ProtoReflect.Descriptor instead.
+func (*InstallModuleResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *InstallModuleResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *InstallModuleResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *InstallModuleResponse) GetInstalledVersion() string {
+	if x != nil {
+		return x.InstalledVersion
+	}
+	return ""
+}
+
+type ModulesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ModulesRequest) Reset() {
+	*x = ModulesRequest{}
+	mi := &file_proto_agent_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ModulesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ModulesRequest) ProtoMessage() {}
+
+func (x *ModulesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ModulesRequest.ProtoReflect.Descriptor instead.
+func (*ModulesRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{45}
+}
+
+type ModuleInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Version       string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`
+	Installed     bool                   `protobuf:"varint,3,opt,name=installed,proto3" json:"installed,omitempty"`
+	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ModuleInfo) Reset() {
+	*x = ModuleInfo{}
+	mi := &file_proto_agent_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ModuleInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ModuleInfo) ProtoMessage() {}
+
+func (x *ModuleInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ModuleInfo.ProtoReflect.Descriptor instead.
+func (*ModuleInfo) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *ModuleInfo) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ModuleInfo) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *ModuleInfo) GetInstalled() bool {
+	if x != nil {
+		return x.Installed
+	}
+	return false
+}
+
+func (x *ModuleInfo) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+type ModulesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Modules       []*ModuleInfo          `protobuf:"bytes,1,rep,name=modules,proto3" json:"modules,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ModulesResponse) Reset() {
+	*x = ModulesResponse{}
+	mi := &file_proto_agent_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ModulesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ModulesResponse) ProtoMessage() {}
+
+func (x *ModulesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ModulesResponse.ProtoReflect.Descriptor instead.
+func (*ModulesResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *ModulesResponse) GetModules() []*ModuleInfo {
+	if x != nil {
+		return x.Modules
+	}
+	return nil
+}
+
+type CreateGroupRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GroupName     string                 `protobuf:"bytes,1,opt,name=group_name,json=groupName,proto3" json:"group_name,omitempty"`
+	Description   string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	AgentNames    []string               `protobuf:"bytes,3,rep,name=agent_names,json=agentNames,proto3" json:"agent_names,omitempty"`
+	Tags          map[string]string      `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateGroupRequest) Reset() {
+	*x = CreateGroupRequest{}
+	mi := &file_proto_agent_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateGroupRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateGroupRequest) ProtoMessage() {}
+
+func (x *CreateGroupRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateGroupRequest.ProtoReflect.Descriptor instead.
+func (*CreateGroupRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *CreateGroupRequest) GetGroupName() string {
+	if x != nil {
+		return x.GroupName
+	}
+	return ""
+}
+
+func (x *CreateGroupRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *CreateGroupRequest) GetAgentNames() []string {
+	if x != nil {
+		return x.AgentNames
+	}
+	return nil
+}
+
+func (x *CreateGroupRequest) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+type CreateGroupResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	GroupId       string                 `protobuf:"bytes,3,opt,name=group_id,json=groupId,proto3" json:"group_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateGroupResponse) Reset() {
+	*x = CreateGroupResponse{}
+	mi := &file_proto_agent_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateGroupResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateGroupResponse) ProtoMessage() {}
+
+func (x *CreateGroupResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateGroupResponse.ProtoReflect.Descriptor instead.
+func (*CreateGroupResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *CreateGroupResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *CreateGroupResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *CreateGroupResponse) GetGroupId() string {
+	if x != nil {
+		return x.GroupId
+	}
+	return ""
+}
+
+type AddToGroupRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GroupName     string                 `protobuf:"bytes,1,opt,name=group_name,json=groupName,proto3" json:"group_name,omitempty"`
+	AgentNames    []string               `protobuf:"bytes,2,rep,name=agent_names,json=agentNames,proto3" json:"agent_names,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddToGroupRequest) Reset() {
+	*x = AddToGroupRequest{}
+	mi := &file_proto_agent_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddToGroupRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddToGroupRequest) ProtoMessage() {}
+
+func (x *AddToGroupRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddToGroupRequest.ProtoReflect.Descriptor instead.
+func (*AddToGroupRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *AddToGroupRequest) GetGroupName() string {
+	if x != nil {
+		return x.GroupName
+	}
+	return ""
+}
+
+func (x *AddToGroupRequest) GetAgentNames() []string {
+	if x != nil {
+		return x.AgentNames
+	}
+	return nil
+}
+
+type AddToGroupResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddToGroupResponse) Reset() {
+	*x = AddToGroupResponse{}
+	mi := &file_proto_agent_proto_msgTypes[51]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddToGroupResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddToGroupResponse) ProtoMessage() {}
+
+func (x *AddToGroupResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[51]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddToGroupResponse.ProtoReflect.Descriptor instead.
+func (*AddToGroupResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{51}
+}
+
+func (x *AddToGroupResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *AddToGroupResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type RemoveFromGroupRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GroupName     string                 `protobuf:"bytes,1,opt,name=group_name,json=groupName,proto3" json:"group_name,omitempty"`
+	AgentNames    []string               `protobuf:"bytes,2,rep,name=agent_names,json=agentNames,proto3" json:"agent_names,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveFromGroupRequest) Reset() {
+	*x = RemoveFromGroupRequest{}
+	mi := &file_proto_agent_proto_msgTypes[52]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveFromGroupRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveFromGroupRequest) ProtoMessage() {}
+
+func (x *RemoveFromGroupRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[52]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveFromGroupRequest.ProtoReflect.Descriptor instead.
+func (*RemoveFromGroupRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{52}
+}
+
+func (x *RemoveFromGroupRequest) GetGroupName() string {
+	if x != nil {
+		return x.GroupName
+	}
+	return ""
+}
+
+func (x *RemoveFromGroupRequest) GetAgentNames() []string {
+	if x != nil {
+		return x.AgentNames
+	}
+	return nil
+}
+
+type RemoveFromGroupResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveFromGroupResponse) Reset() {
+	*x = RemoveFromGroupResponse{}
+	mi := &file_proto_agent_proto_msgTypes[53]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveFromGroupResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveFromGroupResponse) ProtoMessage() {}
+
+func (x *RemoveFromGroupResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[53]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveFromGroupResponse.ProtoReflect.Descriptor instead.
+func (*RemoveFromGroupResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{53}
+}
+
+func (x *RemoveFromGroupResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *RemoveFromGroupResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type ListGroupsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListGroupsRequest) Reset() {
+	*x = ListGroupsRequest{}
+	mi := &file_proto_agent_proto_msgTypes[54]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListGroupsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListGroupsRequest) ProtoMessage() {}
+
+func (x *ListGroupsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[54]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListGroupsRequest.ProtoReflect.Descriptor instead.
+func (*ListGroupsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{54}
+}
+
+type AgentGroup struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	AgentNames    []string               `protobuf:"bytes,3,rep,name=agent_names,json=agentNames,proto3" json:"agent_names,omitempty"`
+	Tags          map[string]string      `protobuf:"bytes,4,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	CreatedAt     int64                  `protobuf:"varint,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	AgentCount    int32                  `protobuf:"varint,6,opt,name=agent_count,json=agentCount,proto3" json:"agent_count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AgentGroup) Reset() {
+	*x = AgentGroup{}
+	mi := &file_proto_agent_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AgentGroup) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgentGroup) ProtoMessage() {}
+
+func (x *AgentGroup) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AgentGroup.ProtoReflect.Descriptor instead.
+func (*AgentGroup) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *AgentGroup) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *AgentGroup) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *AgentGroup) GetAgentNames() []string {
+	if x != nil {
+		return x.AgentNames
+	}
+	return nil
+}
+
+func (x *AgentGroup) GetTags() map[string]string {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+func (x *AgentGroup) GetCreatedAt() int64 {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return 0
+}
+
+func (x *AgentGroup) GetAgentCount() int32 {
+	if x != nil {
+		return x.AgentCount
+	}
+	return 0
+}
+
+type ListGroupsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Groups        []*AgentGroup          `protobuf:"bytes,1,rep,name=groups,proto3" json:"groups,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListGroupsResponse) Reset() {
+	*x = ListGroupsResponse{}
+	mi := &file_proto_agent_proto_msgTypes[56]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListGroupsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListGroupsResponse) ProtoMessage() {}
+
+func (x *ListGroupsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[56]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListGroupsResponse.ProtoReflect.Descriptor instead.
+func (*ListGroupsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{56}
+}
+
+func (x *ListGroupsResponse) GetGroups() []*AgentGroup {
+	if x != nil {
+		return x.Groups
+	}
+	return nil
+}
+
+type DeleteGroupRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GroupName     string                 `protobuf:"bytes,1,opt,name=group_name,json=groupName,proto3" json:"group_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteGroupRequest) Reset() {
+	*x = DeleteGroupRequest{}
+	mi := &file_proto_agent_proto_msgTypes[57]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteGroupRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteGroupRequest) ProtoMessage() {}
+
+func (x *DeleteGroupRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[57]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteGroupRequest.ProtoReflect.Descriptor instead.
+func (*DeleteGroupRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{57}
+}
+
+func (x *DeleteGroupRequest) GetGroupName() string {
+	if x != nil {
+		return x.GroupName
+	}
+	return ""
+}
+
+type DeleteGroupResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteGroupResponse) Reset() {
+	*x = DeleteGroupResponse{}
+	mi := &file_proto_agent_proto_msgTypes[58]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteGroupResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteGroupResponse) ProtoMessage() {}
+
+func (x *DeleteGroupResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[58]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteGroupResponse.ProtoReflect.Descriptor instead.
+func (*DeleteGroupResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{58}
+}
+
+func (x *DeleteGroupResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *DeleteGroupResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type BulkExecuteRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	AgentNames     []string               `protobuf:"bytes,1,rep,name=agent_names,json=agentNames,proto3" json:"agent_names,omitempty"`
+	GroupName      string                 `protobuf:"bytes,2,opt,name=group_name,json=groupName,proto3" json:"group_name,omitempty"` // Alternative to agent_names
+	Command        string                 `protobuf:"bytes,3,opt,name=command,proto3" json:"command,omitempty"`
+	WorkflowName   string                 `protobuf:"bytes,4,opt,name=workflow_name,json=workflowName,proto3" json:"workflow_name,omitempty"` // Alternative to command
+	Parallel       bool                   `protobuf:"varint,5,opt,name=parallel,proto3" json:"parallel,omitempty"`
+	TimeoutSeconds int32                  `protobuf:"varint,6,opt,name=timeout_seconds,json=timeoutSeconds,proto3" json:"timeout_seconds,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *BulkExecuteRequest) Reset() {
+	*x = BulkExecuteRequest{}
+	mi := &file_proto_agent_proto_msgTypes[59]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BulkExecuteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BulkExecuteRequest) ProtoMessage() {}
+
+func (x *BulkExecuteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[59]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BulkExecuteRequest.ProtoReflect.Descriptor instead.
+func (*BulkExecuteRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{59}
+}
+
+func (x *BulkExecuteRequest) GetAgentNames() []string {
+	if x != nil {
+		return x.AgentNames
+	}
+	return nil
+}
+
+func (x *BulkExecuteRequest) GetGroupName() string {
+	if x != nil {
+		return x.GroupName
+	}
+	return ""
+}
+
+func (x *BulkExecuteRequest) GetCommand() string {
+	if x != nil {
+		return x.Command
+	}
+	return ""
+}
+
+func (x *BulkExecuteRequest) GetWorkflowName() string {
+	if x != nil {
+		return x.WorkflowName
+	}
+	return ""
+}
+
+func (x *BulkExecuteRequest) GetParallel() bool {
+	if x != nil {
+		return x.Parallel
+	}
+	return false
+}
+
+func (x *BulkExecuteRequest) GetTimeoutSeconds() int32 {
+	if x != nil {
+		return x.TimeoutSeconds
+	}
+	return 0
+}
+
+type BulkExecuteResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	AgentName       string                 `protobuf:"bytes,1,opt,name=agent_name,json=agentName,proto3" json:"agent_name,omitempty"`
+	Success         bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
+	Output          string                 `protobuf:"bytes,3,opt,name=output,proto3" json:"output,omitempty"`
+	Error           string                 `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
+	ExitCode        int32                  `protobuf:"varint,5,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
+	ExecutionTimeMs int64                  `protobuf:"varint,6,opt,name=execution_time_ms,json=executionTimeMs,proto3" json:"execution_time_ms,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *BulkExecuteResponse) Reset() {
+	*x = BulkExecuteResponse{}
+	mi := &file_proto_agent_proto_msgTypes[60]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BulkExecuteResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BulkExecuteResponse) ProtoMessage() {}
+
+func (x *BulkExecuteResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[60]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BulkExecuteResponse.ProtoReflect.Descriptor instead.
+func (*BulkExecuteResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{60}
+}
+
+func (x *BulkExecuteResponse) GetAgentName() string {
+	if x != nil {
+		return x.AgentName
+	}
+	return ""
+}
+
+func (x *BulkExecuteResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *BulkExecuteResponse) GetOutput() string {
+	if x != nil {
+		return x.Output
+	}
+	return ""
+}
+
+func (x *BulkExecuteResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+func (x *BulkExecuteResponse) GetExitCode() int32 {
+	if x != nil {
+		return x.ExitCode
+	}
+	return 0
+}
+
+func (x *BulkExecuteResponse) GetExecutionTimeMs() int64 {
+	if x != nil {
+		return x.ExecutionTimeMs
+	}
+	return 0
+}
+
+type MultipleAgentStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgentNames    []string               `protobuf:"bytes,1,rep,name=agent_names,json=agentNames,proto3" json:"agent_names,omitempty"`
+	GroupName     string                 `protobuf:"bytes,2,opt,name=group_name,json=groupName,proto3" json:"group_name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MultipleAgentStatusRequest) Reset() {
+	*x = MultipleAgentStatusRequest{}
+	mi := &file_proto_agent_proto_msgTypes[61]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MultipleAgentStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MultipleAgentStatusRequest) ProtoMessage() {}
+
+func (x *MultipleAgentStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[61]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MultipleAgentStatusRequest.ProtoReflect.Descriptor instead.
+func (*MultipleAgentStatusRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{61}
+}
+
+func (x *MultipleAgentStatusRequest) GetAgentNames() []string {
+	if x != nil {
+		return x.AgentNames
+	}
+	return nil
+}
+
+func (x *MultipleAgentStatusRequest) GetGroupName() string {
+	if x != nil {
+		return x.GroupName
+	}
+	return ""
+}
+
+type AgentStatusInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgentName     string                 `protobuf:"bytes,1,opt,name=agent_name,json=agentName,proto3" json:"agent_name,omitempty"`
+	Status        string                 `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	CpuPercent    float64                `protobuf:"fixed64,3,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
+	MemoryPercent float64                `protobuf:"fixed64,4,opt,name=memory_percent,json=memoryPercent,proto3" json:"memory_percent,omitempty"`
+	LastHeartbeat int64                  `protobuf:"varint,5,opt,name=last_heartbeat,json=lastHeartbeat,proto3" json:"last_heartbeat,omitempty"`
+	Healthy       bool                   `protobuf:"varint,6,opt,name=healthy,proto3" json:"healthy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AgentStatusInfo) Reset() {
+	*x = AgentStatusInfo{}
+	mi := &file_proto_agent_proto_msgTypes[62]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AgentStatusInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgentStatusInfo) ProtoMessage() {}
+
+func (x *AgentStatusInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[62]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AgentStatusInfo.ProtoReflect.Descriptor instead.
+func (*AgentStatusInfo) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{62}
+}
+
+func (x *AgentStatusInfo) GetAgentName() string {
+	if x != nil {
+		return x.AgentName
+	}
+	return ""
+}
+
+func (x *AgentStatusInfo) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *AgentStatusInfo) GetCpuPercent() float64 {
+	if x != nil {
+		return x.CpuPercent
+	}
+	return 0
+}
+
+func (x *AgentStatusInfo) GetMemoryPercent() float64 {
+	if x != nil {
+		return x.MemoryPercent
+	}
+	return 0
+}
+
+func (x *AgentStatusInfo) GetLastHeartbeat() int64 {
+	if x != nil {
+		return x.LastHeartbeat
+	}
+	return 0
+}
+
+func (x *AgentStatusInfo) GetHealthy() bool {
+	if x != nil {
+		return x.Healthy
+	}
+	return false
+}
+
+type MultipleAgentStatusResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Statuses      []*AgentStatusInfo     `protobuf:"bytes,1,rep,name=statuses,proto3" json:"statuses,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MultipleAgentStatusResponse) Reset() {
+	*x = MultipleAgentStatusResponse{}
+	mi := &file_proto_agent_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MultipleAgentStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MultipleAgentStatusResponse) ProtoMessage() {}
+
+func (x *MultipleAgentStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MultipleAgentStatusResponse.ProtoReflect.Descriptor instead.
+func (*MultipleAgentStatusResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *MultipleAgentStatusResponse) GetStatuses() []*AgentStatusInfo {
+	if x != nil {
+		return x.Statuses
+	}
+	return nil
+}
+
+type AggregatedMetricsRequest struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	AgentNames       []string               `protobuf:"bytes,1,rep,name=agent_names,json=agentNames,proto3" json:"agent_names,omitempty"`
+	GroupName        string                 `protobuf:"bytes,2,opt,name=group_name,json=groupName,proto3" json:"group_name,omitempty"`
+	TimeRangeMinutes int32                  `protobuf:"varint,3,opt,name=time_range_minutes,json=timeRangeMinutes,proto3" json:"time_range_minutes,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AggregatedMetricsRequest) Reset() {
+	*x = AggregatedMetricsRequest{}
+	mi := &file_proto_agent_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AggregatedMetricsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AggregatedMetricsRequest) ProtoMessage() {}
+
+func (x *AggregatedMetricsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AggregatedMetricsRequest.ProtoReflect.Descriptor instead.
+func (*AggregatedMetricsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *AggregatedMetricsRequest) GetAgentNames() []string {
+	if x != nil {
+		return x.AgentNames
+	}
+	return nil
+}
+
+func (x *AggregatedMetricsRequest) GetGroupName() string {
+	if x != nil {
+		return x.GroupName
+	}
+	return ""
+}
+
+func (x *AggregatedMetricsRequest) GetTimeRangeMinutes() int32 {
+	if x != nil {
+		return x.TimeRangeMinutes
+	}
+	return 0
+}
+
+type AggregatedMetricsResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	AvgCpuPercent    float64                `protobuf:"fixed64,1,opt,name=avg_cpu_percent,json=avgCpuPercent,proto3" json:"avg_cpu_percent,omitempty"`
+	AvgMemoryPercent float64                `protobuf:"fixed64,2,opt,name=avg_memory_percent,json=avgMemoryPercent,proto3" json:"avg_memory_percent,omitempty"`
+	AvgDiskPercent   float64                `protobuf:"fixed64,3,opt,name=avg_disk_percent,json=avgDiskPercent,proto3" json:"avg_disk_percent,omitempty"`
+	TotalAgents      int32                  `protobuf:"varint,4,opt,name=total_agents,json=totalAgents,proto3" json:"total_agents,omitempty"`
+	HealthyAgents    int32                  `protobuf:"varint,5,opt,name=healthy_agents,json=healthyAgents,proto3" json:"healthy_agents,omitempty"`
+	UnhealthyAgents  int32                  `protobuf:"varint,6,opt,name=unhealthy_agents,json=unhealthyAgents,proto3" json:"unhealthy_agents,omitempty"`
+	CustomMetrics    map[string]float64     `protobuf:"bytes,7,rep,name=custom_metrics,json=customMetrics,proto3" json:"custom_metrics,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"fixed64,2,opt,name=value"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AggregatedMetricsResponse) Reset() {
+	*x = AggregatedMetricsResponse{}
+	mi := &file_proto_agent_proto_msgTypes[65]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AggregatedMetricsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AggregatedMetricsResponse) ProtoMessage() {}
+
+func (x *AggregatedMetricsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[65]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AggregatedMetricsResponse.ProtoReflect.Descriptor instead.
+func (*AggregatedMetricsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{65}
+}
+
+func (x *AggregatedMetricsResponse) GetAvgCpuPercent() float64 {
+	if x != nil {
+		return x.AvgCpuPercent
+	}
+	return 0
+}
+
+func (x *AggregatedMetricsResponse) GetAvgMemoryPercent() float64 {
+	if x != nil {
+		return x.AvgMemoryPercent
+	}
+	return 0
+}
+
+func (x *AggregatedMetricsResponse) GetAvgDiskPercent() float64 {
+	if x != nil {
+		return x.AvgDiskPercent
+	}
+	return 0
+}
+
+func (x *AggregatedMetricsResponse) GetTotalAgents() int32 {
+	if x != nil {
+		return x.TotalAgents
+	}
+	return 0
+}
+
+func (x *AggregatedMetricsResponse) GetHealthyAgents() int32 {
+	if x != nil {
+		return x.HealthyAgents
+	}
+	return 0
+}
+
+func (x *AggregatedMetricsResponse) GetUnhealthyAgents() int32 {
+	if x != nil {
+		return x.UnhealthyAgents
+	}
+	return 0
+}
+
+func (x *AggregatedMetricsResponse) GetCustomMetrics() map[string]float64 {
+	if x != nil {
+		return x.CustomMetrics
+	}
+	return nil
+}
+
+type StreamEventsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgentNames    []string               `protobuf:"bytes,1,rep,name=agent_names,json=agentNames,proto3" json:"agent_names,omitempty"`
+	GroupName     string                 `protobuf:"bytes,2,opt,name=group_name,json=groupName,proto3" json:"group_name,omitempty"`
+	EventTypes    []string               `protobuf:"bytes,3,rep,name=event_types,json=eventTypes,proto3" json:"event_types,omitempty"` // connected, disconnected, error, etc
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StreamEventsRequest) Reset() {
+	*x = StreamEventsRequest{}
+	mi := &file_proto_agent_proto_msgTypes[66]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StreamEventsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StreamEventsRequest) ProtoMessage() {}
+
+func (x *StreamEventsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[66]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StreamEventsRequest.ProtoReflect.Descriptor instead.
+func (*StreamEventsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{66}
+}
+
+func (x *StreamEventsRequest) GetAgentNames() []string {
+	if x != nil {
+		return x.AgentNames
+	}
+	return nil
+}
+
+func (x *StreamEventsRequest) GetGroupName() string {
+	if x != nil {
+		return x.GroupName
+	}
+	return ""
+}
+
+func (x *StreamEventsRequest) GetEventTypes() []string {
+	if x != nil {
+		return x.EventTypes
+	}
+	return nil
+}
+
+type AgentEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AgentName     string                 `protobuf:"bytes,1,opt,name=agent_name,json=agentName,proto3" json:"agent_name,omitempty"`
+	EventType     string                 `protobuf:"bytes,2,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
+	Timestamp     int64                  `protobuf:"varint,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Message       string                 `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
+	Metadata      map[string]string      `protobuf:"bytes,5,rep,name=metadata,proto3" json:"metadata,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Severity      string                 `protobuf:"bytes,6,opt,name=severity,proto3" json:"severity,omitempty"` // info, warning, error, critical
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AgentEvent) Reset() {
+	*x = AgentEvent{}
+	mi := &file_proto_agent_proto_msgTypes[67]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AgentEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgentEvent) ProtoMessage() {}
+
+func (x *AgentEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[67]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AgentEvent.ProtoReflect.Descriptor instead.
+func (*AgentEvent) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{67}
+}
+
+func (x *AgentEvent) GetAgentName() string {
+	if x != nil {
+		return x.AgentName
+	}
+	return ""
+}
+
+func (x *AgentEvent) GetEventType() string {
+	if x != nil {
+		return x.EventType
+	}
+	return ""
+}
+
+func (x *AgentEvent) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+func (x *AgentEvent) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *AgentEvent) GetMetadata() map[string]string {
+	if x != nil {
+		return x.Metadata
+	}
+	return nil
+}
+
+func (x *AgentEvent) GetSeverity() string {
+	if x != nil {
+		return x.Severity
+	}
+	return ""
+}
+
 var File_proto_agent_proto protoreflect.FileDescriptor
 
 const file_proto_agent_proto_rawDesc = "" +
@@ -1311,13 +4119,283 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12/\n" +
 	"\n" +
-	"agent_info\x18\x03 \x01(\v2\x10.agent.AgentInfoR\tagentInfo2\x97\x02\n" +
+	"agent_info\x18\x03 \x01(\v2\x10.agent.AgentInfoR\tagentInfo\"\x16\n" +
+	"\x14ResourceUsageRequest\"\xe8\x03\n" +
+	"\x15ResourceUsageResponse\x12\x1f\n" +
+	"\vcpu_percent\x18\x01 \x01(\x01R\n" +
+	"cpuPercent\x12%\n" +
+	"\x0ememory_percent\x18\x02 \x01(\x01R\rmemoryPercent\x12*\n" +
+	"\x11memory_used_bytes\x18\x03 \x01(\x04R\x0fmemoryUsedBytes\x12,\n" +
+	"\x12memory_total_bytes\x18\x04 \x01(\x04R\x10memoryTotalBytes\x12!\n" +
+	"\fdisk_percent\x18\x05 \x01(\x01R\vdiskPercent\x12&\n" +
+	"\x0fdisk_used_bytes\x18\x06 \x01(\x04R\rdiskUsedBytes\x12(\n" +
+	"\x10disk_total_bytes\x18\a \x01(\x04R\x0ediskTotalBytes\x12#\n" +
+	"\rprocess_count\x18\b \x01(\rR\fprocessCount\x12\"\n" +
+	"\rload_avg_1min\x18\t \x01(\x01R\vloadAvg1min\x12\"\n" +
+	"\rload_avg_5min\x18\n" +
+	" \x01(\x01R\vloadAvg5min\x12$\n" +
+	"\x0eload_avg_15min\x18\v \x01(\x01R\floadAvg15min\x12%\n" +
+	"\x0euptime_seconds\x18\f \x01(\x04R\ruptimeSeconds\"`\n" +
+	"\x12ProcessListRequest\x12)\n" +
+	"\x10include_children\x18\x01 \x01(\bR\x0fincludeChildren\x12\x1f\n" +
+	"\vfilter_name\x18\x02 \x01(\tR\n" +
+	"filterName\"\x83\x02\n" +
+	"\vProcessInfo\x12\x10\n" +
+	"\x03pid\x18\x01 \x01(\x05R\x03pid\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12\x1f\n" +
+	"\vcpu_percent\x18\x04 \x01(\x01R\n" +
+	"cpuPercent\x12%\n" +
+	"\x0ememory_percent\x18\x05 \x01(\x01R\rmemoryPercent\x12!\n" +
+	"\fmemory_bytes\x18\x06 \x01(\x04R\vmemoryBytes\x12\x12\n" +
+	"\x04user\x18\a \x01(\tR\x04user\x12\x18\n" +
+	"\acommand\x18\b \x01(\tR\acommand\x12\x1d\n" +
+	"\n" +
+	"started_at\x18\t \x01(\x03R\tstartedAt\"h\n" +
+	"\x13ProcessListResponse\x120\n" +
+	"\tprocesses\x18\x01 \x03(\v2\x12.agent.ProcessInfoR\tprocesses\x12\x1f\n" +
+	"\vtotal_count\x18\x02 \x01(\rR\n" +
+	"totalCount\"\x14\n" +
+	"\x12NetworkInfoRequest\"\x83\x02\n" +
+	"\x10NetworkInterface\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12!\n" +
+	"\fip_addresses\x18\x02 \x03(\tR\vipAddresses\x12\x1f\n" +
+	"\vmac_address\x18\x03 \x01(\tR\n" +
+	"macAddress\x12\x1d\n" +
+	"\n" +
+	"bytes_sent\x18\x04 \x01(\x04R\tbytesSent\x12\x1d\n" +
+	"\n" +
+	"bytes_recv\x18\x05 \x01(\x04R\tbytesRecv\x12!\n" +
+	"\fpackets_sent\x18\x06 \x01(\rR\vpacketsSent\x12!\n" +
+	"\fpackets_recv\x18\a \x01(\rR\vpacketsRecv\x12\x13\n" +
+	"\x05is_up\x18\b \x01(\bR\x04isUp\"j\n" +
+	"\x13NetworkInfoResponse\x127\n" +
+	"\n" +
+	"interfaces\x18\x01 \x03(\v2\x17.agent.NetworkInterfaceR\n" +
+	"interfaces\x12\x1a\n" +
+	"\bhostname\x18\x02 \x01(\tR\bhostname\"\x11\n" +
+	"\x0fDiskInfoRequest\"\xd8\x01\n" +
+	"\rDiskPartition\x12\x16\n" +
+	"\x06device\x18\x01 \x01(\tR\x06device\x12\x1e\n" +
+	"\n" +
+	"mountpoint\x18\x02 \x01(\tR\n" +
+	"mountpoint\x12\x16\n" +
+	"\x06fstype\x18\x03 \x01(\tR\x06fstype\x12\x1f\n" +
+	"\vtotal_bytes\x18\x04 \x01(\x04R\n" +
+	"totalBytes\x12\x1d\n" +
+	"\n" +
+	"used_bytes\x18\x05 \x01(\x04R\tusedBytes\x12\x1d\n" +
+	"\n" +
+	"free_bytes\x18\x06 \x01(\x04R\tfreeBytes\x12\x18\n" +
+	"\apercent\x18\a \x01(\x01R\apercent\"\xa8\x01\n" +
+	"\x10DiskInfoResponse\x124\n" +
+	"\n" +
+	"partitions\x18\x01 \x03(\v2\x14.agent.DiskPartitionR\n" +
+	"partitions\x12-\n" +
+	"\x13total_io_read_bytes\x18\x02 \x01(\x04R\x10totalIoReadBytes\x12/\n" +
+	"\x14total_io_write_bytes\x18\x03 \x01(\x04R\x11totalIoWriteBytes\"e\n" +
+	"\x11StreamLogsRequest\x12\x19\n" +
+	"\blog_file\x18\x01 \x01(\tR\alogFile\x12\x1d\n" +
+	"\n" +
+	"tail_lines\x18\x02 \x01(\x05R\ttailLines\x12\x16\n" +
+	"\x06follow\x18\x03 \x01(\bR\x06follow\"p\n" +
+	"\bLogEntry\x12\x1c\n" +
+	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\x12\x14\n" +
+	"\x05level\x18\x02 \x01(\tR\x05level\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\x12\x16\n" +
+	"\x06source\x18\x04 \x01(\tR\x06source\"A\n" +
+	"\x14StreamMetricsRequest\x12)\n" +
+	"\x10interval_seconds\x18\x01 \x01(\x05R\x0fintervalSeconds\"\xa6\x02\n" +
+	"\vMetricsData\x12\x1c\n" +
+	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\x12\x1f\n" +
+	"\vcpu_percent\x18\x02 \x01(\x01R\n" +
+	"cpuPercent\x12%\n" +
+	"\x0ememory_percent\x18\x03 \x01(\x01R\rmemoryPercent\x12!\n" +
+	"\fdisk_percent\x18\x04 \x01(\x01R\vdiskPercent\x12L\n" +
+	"\x0ecustom_metrics\x18\x05 \x03(\v2%.agent.MetricsData.CustomMetricsEntryR\rcustomMetrics\x1a@\n" +
+	"\x12CustomMetricsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\"V\n" +
+	"\x15RestartServiceRequest\x12!\n" +
+	"\fservice_name\x18\x01 \x01(\tR\vserviceName\x12\x1a\n" +
+	"\bgraceful\x18\x02 \x01(\bR\bgraceful\"L\n" +
+	"\x16RestartServiceResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"-\n" +
+	"\x0eEnvVarsRequest\x12\x1b\n" +
+	"\tvar_names\x18\x01 \x03(\tR\bvarNames\"\x94\x01\n" +
+	"\x0fEnvVarsResponse\x12C\n" +
+	"\tvariables\x18\x01 \x03(\v2%.agent.EnvVarsResponse.VariablesEntryR\tvariables\x1a<\n" +
+	"\x0eVariablesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\\\n" +
+	"\x10SetEnvVarRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\x12\x1e\n" +
+	"\n" +
+	"persistent\x18\x03 \x01(\bR\n" +
+	"persistent\"G\n" +
+	"\x11SetEnvVarResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"Q\n" +
+	"\x14InstallModuleRequest\x12\x1f\n" +
+	"\vmodule_name\x18\x01 \x01(\tR\n" +
+	"moduleName\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\tR\aversion\"x\n" +
+	"\x15InstallModuleResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12+\n" +
+	"\x11installed_version\x18\x03 \x01(\tR\x10installedVersion\"\x10\n" +
+	"\x0eModulesRequest\"z\n" +
+	"\n" +
+	"ModuleInfo\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\tR\aversion\x12\x1c\n" +
+	"\tinstalled\x18\x03 \x01(\bR\tinstalled\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\">\n" +
+	"\x0fModulesResponse\x12+\n" +
+	"\amodules\x18\x01 \x03(\v2\x11.agent.ModuleInfoR\amodules\"\xe8\x01\n" +
+	"\x12CreateGroupRequest\x12\x1d\n" +
+	"\n" +
+	"group_name\x18\x01 \x01(\tR\tgroupName\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x1f\n" +
+	"\vagent_names\x18\x03 \x03(\tR\n" +
+	"agentNames\x127\n" +
+	"\x04tags\x18\x04 \x03(\v2#.agent.CreateGroupRequest.TagsEntryR\x04tags\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"d\n" +
+	"\x13CreateGroupResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12\x19\n" +
+	"\bgroup_id\x18\x03 \x01(\tR\agroupId\"S\n" +
+	"\x11AddToGroupRequest\x12\x1d\n" +
+	"\n" +
+	"group_name\x18\x01 \x01(\tR\tgroupName\x12\x1f\n" +
+	"\vagent_names\x18\x02 \x03(\tR\n" +
+	"agentNames\"H\n" +
+	"\x12AddToGroupResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"X\n" +
+	"\x16RemoveFromGroupRequest\x12\x1d\n" +
+	"\n" +
+	"group_name\x18\x01 \x01(\tR\tgroupName\x12\x1f\n" +
+	"\vagent_names\x18\x02 \x03(\tR\n" +
+	"agentNames\"M\n" +
+	"\x17RemoveFromGroupResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x13\n" +
+	"\x11ListGroupsRequest\"\x8d\x02\n" +
+	"\n" +
+	"AgentGroup\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x1f\n" +
+	"\vagent_names\x18\x03 \x03(\tR\n" +
+	"agentNames\x12/\n" +
+	"\x04tags\x18\x04 \x03(\v2\x1b.agent.AgentGroup.TagsEntryR\x04tags\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\x03R\tcreatedAt\x12\x1f\n" +
+	"\vagent_count\x18\x06 \x01(\x05R\n" +
+	"agentCount\x1a7\n" +
+	"\tTagsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"?\n" +
+	"\x12ListGroupsResponse\x12)\n" +
+	"\x06groups\x18\x01 \x03(\v2\x11.agent.AgentGroupR\x06groups\"3\n" +
+	"\x12DeleteGroupRequest\x12\x1d\n" +
+	"\n" +
+	"group_name\x18\x01 \x01(\tR\tgroupName\"I\n" +
+	"\x13DeleteGroupResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\xd8\x01\n" +
+	"\x12BulkExecuteRequest\x12\x1f\n" +
+	"\vagent_names\x18\x01 \x03(\tR\n" +
+	"agentNames\x12\x1d\n" +
+	"\n" +
+	"group_name\x18\x02 \x01(\tR\tgroupName\x12\x18\n" +
+	"\acommand\x18\x03 \x01(\tR\acommand\x12#\n" +
+	"\rworkflow_name\x18\x04 \x01(\tR\fworkflowName\x12\x1a\n" +
+	"\bparallel\x18\x05 \x01(\bR\bparallel\x12'\n" +
+	"\x0ftimeout_seconds\x18\x06 \x01(\x05R\x0etimeoutSeconds\"\xc5\x01\n" +
+	"\x13BulkExecuteResponse\x12\x1d\n" +
+	"\n" +
+	"agent_name\x18\x01 \x01(\tR\tagentName\x12\x18\n" +
+	"\asuccess\x18\x02 \x01(\bR\asuccess\x12\x16\n" +
+	"\x06output\x18\x03 \x01(\tR\x06output\x12\x14\n" +
+	"\x05error\x18\x04 \x01(\tR\x05error\x12\x1b\n" +
+	"\texit_code\x18\x05 \x01(\x05R\bexitCode\x12*\n" +
+	"\x11execution_time_ms\x18\x06 \x01(\x03R\x0fexecutionTimeMs\"\\\n" +
+	"\x1aMultipleAgentStatusRequest\x12\x1f\n" +
+	"\vagent_names\x18\x01 \x03(\tR\n" +
+	"agentNames\x12\x1d\n" +
+	"\n" +
+	"group_name\x18\x02 \x01(\tR\tgroupName\"\xd1\x01\n" +
+	"\x0fAgentStatusInfo\x12\x1d\n" +
+	"\n" +
+	"agent_name\x18\x01 \x01(\tR\tagentName\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12\x1f\n" +
+	"\vcpu_percent\x18\x03 \x01(\x01R\n" +
+	"cpuPercent\x12%\n" +
+	"\x0ememory_percent\x18\x04 \x01(\x01R\rmemoryPercent\x12%\n" +
+	"\x0elast_heartbeat\x18\x05 \x01(\x03R\rlastHeartbeat\x12\x18\n" +
+	"\ahealthy\x18\x06 \x01(\bR\ahealthy\"Q\n" +
+	"\x1bMultipleAgentStatusResponse\x122\n" +
+	"\bstatuses\x18\x01 \x03(\v2\x16.agent.AgentStatusInfoR\bstatuses\"\x88\x01\n" +
+	"\x18AggregatedMetricsRequest\x12\x1f\n" +
+	"\vagent_names\x18\x01 \x03(\tR\n" +
+	"agentNames\x12\x1d\n" +
+	"\n" +
+	"group_name\x18\x02 \x01(\tR\tgroupName\x12,\n" +
+	"\x12time_range_minutes\x18\x03 \x01(\x05R\x10timeRangeMinutes\"\xae\x03\n" +
+	"\x19AggregatedMetricsResponse\x12&\n" +
+	"\x0favg_cpu_percent\x18\x01 \x01(\x01R\ravgCpuPercent\x12,\n" +
+	"\x12avg_memory_percent\x18\x02 \x01(\x01R\x10avgMemoryPercent\x12(\n" +
+	"\x10avg_disk_percent\x18\x03 \x01(\x01R\x0eavgDiskPercent\x12!\n" +
+	"\ftotal_agents\x18\x04 \x01(\x05R\vtotalAgents\x12%\n" +
+	"\x0ehealthy_agents\x18\x05 \x01(\x05R\rhealthyAgents\x12)\n" +
+	"\x10unhealthy_agents\x18\x06 \x01(\x05R\x0funhealthyAgents\x12Z\n" +
+	"\x0ecustom_metrics\x18\a \x03(\v23.agent.AggregatedMetricsResponse.CustomMetricsEntryR\rcustomMetrics\x1a@\n" +
+	"\x12CustomMetricsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x01R\x05value:\x028\x01\"v\n" +
+	"\x13StreamEventsRequest\x12\x1f\n" +
+	"\vagent_names\x18\x01 \x03(\tR\n" +
+	"agentNames\x12\x1d\n" +
+	"\n" +
+	"group_name\x18\x02 \x01(\tR\tgroupName\x12\x1f\n" +
+	"\vevent_types\x18\x03 \x03(\tR\n" +
+	"eventTypes\"\x98\x02\n" +
+	"\n" +
+	"AgentEvent\x12\x1d\n" +
+	"\n" +
+	"agent_name\x18\x01 \x01(\tR\tagentName\x12\x1d\n" +
+	"\n" +
+	"event_type\x18\x02 \x01(\tR\teventType\x12\x1c\n" +
+	"\ttimestamp\x18\x03 \x01(\x03R\ttimestamp\x12\x18\n" +
+	"\amessage\x18\x04 \x01(\tR\amessage\x12;\n" +
+	"\bmetadata\x18\x05 \x03(\v2\x1f.agent.AgentEvent.MetadataEntryR\bmetadata\x12\x1a\n" +
+	"\bseverity\x18\x06 \x01(\tR\bseverity\x1a;\n" +
+	"\rMetadataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012\xa5\b\n" +
 	"\x05Agent\x12D\n" +
 	"\vExecuteTask\x12\x19.agent.ExecuteTaskRequest\x1a\x1a.agent.ExecuteTaskResponse\x12E\n" +
 	"\n" +
 	"RunCommand\x12\x18.agent.RunCommandRequest\x1a\x1b.agent.StreamOutputResponse0\x01\x12;\n" +
 	"\bShutdown\x12\x16.agent.ShutdownRequest\x1a\x17.agent.ShutdownResponse\x12D\n" +
-	"\vUpdateAgent\x12\x19.agent.UpdateAgentRequest\x1a\x1a.agent.UpdateAgentResponse2\x88\x04\n" +
+	"\vUpdateAgent\x12\x19.agent.UpdateAgentRequest\x1a\x1a.agent.UpdateAgentResponse\x12M\n" +
+	"\x10GetResourceUsage\x12\x1b.agent.ResourceUsageRequest\x1a\x1c.agent.ResourceUsageResponse\x12G\n" +
+	"\x0eGetProcessList\x12\x19.agent.ProcessListRequest\x1a\x1a.agent.ProcessListResponse\x12G\n" +
+	"\x0eGetNetworkInfo\x12\x19.agent.NetworkInfoRequest\x1a\x1a.agent.NetworkInfoResponse\x12>\n" +
+	"\vGetDiskInfo\x12\x16.agent.DiskInfoRequest\x1a\x17.agent.DiskInfoResponse\x129\n" +
+	"\n" +
+	"StreamLogs\x12\x18.agent.StreamLogsRequest\x1a\x0f.agent.LogEntry0\x01\x12B\n" +
+	"\rStreamMetrics\x12\x1b.agent.StreamMetricsRequest\x1a\x12.agent.MetricsData0\x01\x12M\n" +
+	"\x0eRestartService\x12\x1c.agent.RestartServiceRequest\x1a\x1d.agent.RestartServiceResponse\x12C\n" +
+	"\x12GetEnvironmentVars\x12\x15.agent.EnvVarsRequest\x1a\x16.agent.EnvVarsResponse\x12F\n" +
+	"\x11SetEnvironmentVar\x12\x17.agent.SetEnvVarRequest\x1a\x18.agent.SetEnvVarResponse\x12J\n" +
+	"\rInstallModule\x12\x1b.agent.InstallModuleRequest\x1a\x1c.agent.InstallModuleResponse\x12D\n" +
+	"\x13GetInstalledModules\x12\x15.agent.ModulesRequest\x1a\x16.agent.ModulesResponse2\xdb\t\n" +
 	"\rAgentRegistry\x12J\n" +
 	"\rRegisterAgent\x12\x1b.agent.RegisterAgentRequest\x1a\x1c.agent.RegisterAgentResponse\x12A\n" +
 	"\n" +
@@ -1326,7 +4404,16 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\x0fUnregisterAgent\x12\x1d.agent.UnregisterAgentRequest\x1a\x1e.agent.UnregisterAgentResponse\x12M\n" +
 	"\x0eExecuteCommand\x12\x1c.agent.ExecuteCommandRequest\x1a\x1b.agent.StreamOutputResponse0\x01\x12>\n" +
 	"\tHeartbeat\x12\x17.agent.HeartbeatRequest\x1a\x18.agent.HeartbeatResponse\x12G\n" +
-	"\fGetAgentInfo\x12\x1a.agent.GetAgentInfoRequest\x1a\x1b.agent.GetAgentInfoResponseB.Z,github.com/chalkan3-sloth/sloth-runner/protob\x06proto3"
+	"\fGetAgentInfo\x12\x1a.agent.GetAgentInfoRequest\x1a\x1b.agent.GetAgentInfoResponse\x12I\n" +
+	"\x10CreateAgentGroup\x12\x19.agent.CreateGroupRequest\x1a\x1a.agent.CreateGroupResponse\x12F\n" +
+	"\x0fAddAgentToGroup\x12\x18.agent.AddToGroupRequest\x1a\x19.agent.AddToGroupResponse\x12U\n" +
+	"\x14RemoveAgentFromGroup\x12\x1d.agent.RemoveFromGroupRequest\x1a\x1e.agent.RemoveFromGroupResponse\x12F\n" +
+	"\x0fListAgentGroups\x12\x18.agent.ListGroupsRequest\x1a\x19.agent.ListGroupsResponse\x12I\n" +
+	"\x10DeleteAgentGroup\x12\x19.agent.DeleteGroupRequest\x1a\x1a.agent.DeleteGroupResponse\x12R\n" +
+	"\x17ExecuteOnMultipleAgents\x12\x19.agent.BulkExecuteRequest\x1a\x1a.agent.BulkExecuteResponse0\x01\x12_\n" +
+	"\x16GetMultipleAgentStatus\x12!.agent.MultipleAgentStatusRequest\x1a\".agent.MultipleAgentStatusResponse\x12Y\n" +
+	"\x14GetAggregatedMetrics\x12\x1f.agent.AggregatedMetricsRequest\x1a .agent.AggregatedMetricsResponse\x12D\n" +
+	"\x11StreamAgentEvents\x12\x1a.agent.StreamEventsRequest\x1a\x11.agent.AgentEvent0\x01B.Z,github.com/chalkan3-sloth/sloth-runner/protob\x06proto3"
 
 var (
 	file_proto_agent_proto_rawDescOnce sync.Once
@@ -1340,61 +4427,165 @@ func file_proto_agent_proto_rawDescGZIP() []byte {
 	return file_proto_agent_proto_rawDescData
 }
 
-var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
+var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 74)
 var file_proto_agent_proto_goTypes = []any{
-	(*ShutdownRequest)(nil),         // 0: agent.ShutdownRequest
-	(*ShutdownResponse)(nil),        // 1: agent.ShutdownResponse
-	(*UpdateAgentRequest)(nil),      // 2: agent.UpdateAgentRequest
-	(*UpdateAgentResponse)(nil),     // 3: agent.UpdateAgentResponse
-	(*ExecuteTaskRequest)(nil),      // 4: agent.ExecuteTaskRequest
-	(*ExecuteTaskResponse)(nil),     // 5: agent.ExecuteTaskResponse
-	(*RegisterAgentRequest)(nil),    // 6: agent.RegisterAgentRequest
-	(*RegisterAgentResponse)(nil),   // 7: agent.RegisterAgentResponse
-	(*AgentInfo)(nil),               // 8: agent.AgentInfo
-	(*ListAgentsRequest)(nil),       // 9: agent.ListAgentsRequest
-	(*ListAgentsResponse)(nil),      // 10: agent.ListAgentsResponse
-	(*StopAgentRequest)(nil),        // 11: agent.StopAgentRequest
-	(*StopAgentResponse)(nil),       // 12: agent.StopAgentResponse
-	(*UnregisterAgentRequest)(nil),  // 13: agent.UnregisterAgentRequest
-	(*UnregisterAgentResponse)(nil), // 14: agent.UnregisterAgentResponse
-	(*ExecuteCommandRequest)(nil),   // 15: agent.ExecuteCommandRequest
-	(*RunCommandRequest)(nil),       // 16: agent.RunCommandRequest
-	(*StreamOutputResponse)(nil),    // 17: agent.StreamOutputResponse
-	(*HeartbeatRequest)(nil),        // 18: agent.HeartbeatRequest
-	(*HeartbeatResponse)(nil),       // 19: agent.HeartbeatResponse
-	(*GetAgentInfoRequest)(nil),     // 20: agent.GetAgentInfoRequest
-	(*GetAgentInfoResponse)(nil),    // 21: agent.GetAgentInfoResponse
+	(*ShutdownRequest)(nil),             // 0: agent.ShutdownRequest
+	(*ShutdownResponse)(nil),            // 1: agent.ShutdownResponse
+	(*UpdateAgentRequest)(nil),          // 2: agent.UpdateAgentRequest
+	(*UpdateAgentResponse)(nil),         // 3: agent.UpdateAgentResponse
+	(*ExecuteTaskRequest)(nil),          // 4: agent.ExecuteTaskRequest
+	(*ExecuteTaskResponse)(nil),         // 5: agent.ExecuteTaskResponse
+	(*RegisterAgentRequest)(nil),        // 6: agent.RegisterAgentRequest
+	(*RegisterAgentResponse)(nil),       // 7: agent.RegisterAgentResponse
+	(*AgentInfo)(nil),                   // 8: agent.AgentInfo
+	(*ListAgentsRequest)(nil),           // 9: agent.ListAgentsRequest
+	(*ListAgentsResponse)(nil),          // 10: agent.ListAgentsResponse
+	(*StopAgentRequest)(nil),            // 11: agent.StopAgentRequest
+	(*StopAgentResponse)(nil),           // 12: agent.StopAgentResponse
+	(*UnregisterAgentRequest)(nil),      // 13: agent.UnregisterAgentRequest
+	(*UnregisterAgentResponse)(nil),     // 14: agent.UnregisterAgentResponse
+	(*ExecuteCommandRequest)(nil),       // 15: agent.ExecuteCommandRequest
+	(*RunCommandRequest)(nil),           // 16: agent.RunCommandRequest
+	(*StreamOutputResponse)(nil),        // 17: agent.StreamOutputResponse
+	(*HeartbeatRequest)(nil),            // 18: agent.HeartbeatRequest
+	(*HeartbeatResponse)(nil),           // 19: agent.HeartbeatResponse
+	(*GetAgentInfoRequest)(nil),         // 20: agent.GetAgentInfoRequest
+	(*GetAgentInfoResponse)(nil),        // 21: agent.GetAgentInfoResponse
+	(*ResourceUsageRequest)(nil),        // 22: agent.ResourceUsageRequest
+	(*ResourceUsageResponse)(nil),       // 23: agent.ResourceUsageResponse
+	(*ProcessListRequest)(nil),          // 24: agent.ProcessListRequest
+	(*ProcessInfo)(nil),                 // 25: agent.ProcessInfo
+	(*ProcessListResponse)(nil),         // 26: agent.ProcessListResponse
+	(*NetworkInfoRequest)(nil),          // 27: agent.NetworkInfoRequest
+	(*NetworkInterface)(nil),            // 28: agent.NetworkInterface
+	(*NetworkInfoResponse)(nil),         // 29: agent.NetworkInfoResponse
+	(*DiskInfoRequest)(nil),             // 30: agent.DiskInfoRequest
+	(*DiskPartition)(nil),               // 31: agent.DiskPartition
+	(*DiskInfoResponse)(nil),            // 32: agent.DiskInfoResponse
+	(*StreamLogsRequest)(nil),           // 33: agent.StreamLogsRequest
+	(*LogEntry)(nil),                    // 34: agent.LogEntry
+	(*StreamMetricsRequest)(nil),        // 35: agent.StreamMetricsRequest
+	(*MetricsData)(nil),                 // 36: agent.MetricsData
+	(*RestartServiceRequest)(nil),       // 37: agent.RestartServiceRequest
+	(*RestartServiceResponse)(nil),      // 38: agent.RestartServiceResponse
+	(*EnvVarsRequest)(nil),              // 39: agent.EnvVarsRequest
+	(*EnvVarsResponse)(nil),             // 40: agent.EnvVarsResponse
+	(*SetEnvVarRequest)(nil),            // 41: agent.SetEnvVarRequest
+	(*SetEnvVarResponse)(nil),           // 42: agent.SetEnvVarResponse
+	(*InstallModuleRequest)(nil),        // 43: agent.InstallModuleRequest
+	(*InstallModuleResponse)(nil),       // 44: agent.InstallModuleResponse
+	(*ModulesRequest)(nil),              // 45: agent.ModulesRequest
+	(*ModuleInfo)(nil),                  // 46: agent.ModuleInfo
+	(*ModulesResponse)(nil),             // 47: agent.ModulesResponse
+	(*CreateGroupRequest)(nil),          // 48: agent.CreateGroupRequest
+	(*CreateGroupResponse)(nil),         // 49: agent.CreateGroupResponse
+	(*AddToGroupRequest)(nil),           // 50: agent.AddToGroupRequest
+	(*AddToGroupResponse)(nil),          // 51: agent.AddToGroupResponse
+	(*RemoveFromGroupRequest)(nil),      // 52: agent.RemoveFromGroupRequest
+	(*RemoveFromGroupResponse)(nil),     // 53: agent.RemoveFromGroupResponse
+	(*ListGroupsRequest)(nil),           // 54: agent.ListGroupsRequest
+	(*AgentGroup)(nil),                  // 55: agent.AgentGroup
+	(*ListGroupsResponse)(nil),          // 56: agent.ListGroupsResponse
+	(*DeleteGroupRequest)(nil),          // 57: agent.DeleteGroupRequest
+	(*DeleteGroupResponse)(nil),         // 58: agent.DeleteGroupResponse
+	(*BulkExecuteRequest)(nil),          // 59: agent.BulkExecuteRequest
+	(*BulkExecuteResponse)(nil),         // 60: agent.BulkExecuteResponse
+	(*MultipleAgentStatusRequest)(nil),  // 61: agent.MultipleAgentStatusRequest
+	(*AgentStatusInfo)(nil),             // 62: agent.AgentStatusInfo
+	(*MultipleAgentStatusResponse)(nil), // 63: agent.MultipleAgentStatusResponse
+	(*AggregatedMetricsRequest)(nil),    // 64: agent.AggregatedMetricsRequest
+	(*AggregatedMetricsResponse)(nil),   // 65: agent.AggregatedMetricsResponse
+	(*StreamEventsRequest)(nil),         // 66: agent.StreamEventsRequest
+	(*AgentEvent)(nil),                  // 67: agent.AgentEvent
+	nil,                                 // 68: agent.MetricsData.CustomMetricsEntry
+	nil,                                 // 69: agent.EnvVarsResponse.VariablesEntry
+	nil,                                 // 70: agent.CreateGroupRequest.TagsEntry
+	nil,                                 // 71: agent.AgentGroup.TagsEntry
+	nil,                                 // 72: agent.AggregatedMetricsResponse.CustomMetricsEntry
+	nil,                                 // 73: agent.AgentEvent.MetadataEntry
 }
 var file_proto_agent_proto_depIdxs = []int32{
 	8,  // 0: agent.ListAgentsResponse.agents:type_name -> agent.AgentInfo
 	8,  // 1: agent.GetAgentInfoResponse.agent_info:type_name -> agent.AgentInfo
-	4,  // 2: agent.Agent.ExecuteTask:input_type -> agent.ExecuteTaskRequest
-	16, // 3: agent.Agent.RunCommand:input_type -> agent.RunCommandRequest
-	0,  // 4: agent.Agent.Shutdown:input_type -> agent.ShutdownRequest
-	2,  // 5: agent.Agent.UpdateAgent:input_type -> agent.UpdateAgentRequest
-	6,  // 6: agent.AgentRegistry.RegisterAgent:input_type -> agent.RegisterAgentRequest
-	9,  // 7: agent.AgentRegistry.ListAgents:input_type -> agent.ListAgentsRequest
-	11, // 8: agent.AgentRegistry.StopAgent:input_type -> agent.StopAgentRequest
-	13, // 9: agent.AgentRegistry.UnregisterAgent:input_type -> agent.UnregisterAgentRequest
-	15, // 10: agent.AgentRegistry.ExecuteCommand:input_type -> agent.ExecuteCommandRequest
-	18, // 11: agent.AgentRegistry.Heartbeat:input_type -> agent.HeartbeatRequest
-	20, // 12: agent.AgentRegistry.GetAgentInfo:input_type -> agent.GetAgentInfoRequest
-	5,  // 13: agent.Agent.ExecuteTask:output_type -> agent.ExecuteTaskResponse
-	17, // 14: agent.Agent.RunCommand:output_type -> agent.StreamOutputResponse
-	1,  // 15: agent.Agent.Shutdown:output_type -> agent.ShutdownResponse
-	3,  // 16: agent.Agent.UpdateAgent:output_type -> agent.UpdateAgentResponse
-	7,  // 17: agent.AgentRegistry.RegisterAgent:output_type -> agent.RegisterAgentResponse
-	10, // 18: agent.AgentRegistry.ListAgents:output_type -> agent.ListAgentsResponse
-	12, // 19: agent.AgentRegistry.StopAgent:output_type -> agent.StopAgentResponse
-	14, // 20: agent.AgentRegistry.UnregisterAgent:output_type -> agent.UnregisterAgentResponse
-	17, // 21: agent.AgentRegistry.ExecuteCommand:output_type -> agent.StreamOutputResponse
-	19, // 22: agent.AgentRegistry.Heartbeat:output_type -> agent.HeartbeatResponse
-	21, // 23: agent.AgentRegistry.GetAgentInfo:output_type -> agent.GetAgentInfoResponse
-	13, // [13:24] is the sub-list for method output_type
-	2,  // [2:13] is the sub-list for method input_type
-	2,  // [2:2] is the sub-list for extension type_name
-	2,  // [2:2] is the sub-list for extension extendee
-	0,  // [0:2] is the sub-list for field type_name
+	25, // 2: agent.ProcessListResponse.processes:type_name -> agent.ProcessInfo
+	28, // 3: agent.NetworkInfoResponse.interfaces:type_name -> agent.NetworkInterface
+	31, // 4: agent.DiskInfoResponse.partitions:type_name -> agent.DiskPartition
+	68, // 5: agent.MetricsData.custom_metrics:type_name -> agent.MetricsData.CustomMetricsEntry
+	69, // 6: agent.EnvVarsResponse.variables:type_name -> agent.EnvVarsResponse.VariablesEntry
+	46, // 7: agent.ModulesResponse.modules:type_name -> agent.ModuleInfo
+	70, // 8: agent.CreateGroupRequest.tags:type_name -> agent.CreateGroupRequest.TagsEntry
+	71, // 9: agent.AgentGroup.tags:type_name -> agent.AgentGroup.TagsEntry
+	55, // 10: agent.ListGroupsResponse.groups:type_name -> agent.AgentGroup
+	62, // 11: agent.MultipleAgentStatusResponse.statuses:type_name -> agent.AgentStatusInfo
+	72, // 12: agent.AggregatedMetricsResponse.custom_metrics:type_name -> agent.AggregatedMetricsResponse.CustomMetricsEntry
+	73, // 13: agent.AgentEvent.metadata:type_name -> agent.AgentEvent.MetadataEntry
+	4,  // 14: agent.Agent.ExecuteTask:input_type -> agent.ExecuteTaskRequest
+	16, // 15: agent.Agent.RunCommand:input_type -> agent.RunCommandRequest
+	0,  // 16: agent.Agent.Shutdown:input_type -> agent.ShutdownRequest
+	2,  // 17: agent.Agent.UpdateAgent:input_type -> agent.UpdateAgentRequest
+	22, // 18: agent.Agent.GetResourceUsage:input_type -> agent.ResourceUsageRequest
+	24, // 19: agent.Agent.GetProcessList:input_type -> agent.ProcessListRequest
+	27, // 20: agent.Agent.GetNetworkInfo:input_type -> agent.NetworkInfoRequest
+	30, // 21: agent.Agent.GetDiskInfo:input_type -> agent.DiskInfoRequest
+	33, // 22: agent.Agent.StreamLogs:input_type -> agent.StreamLogsRequest
+	35, // 23: agent.Agent.StreamMetrics:input_type -> agent.StreamMetricsRequest
+	37, // 24: agent.Agent.RestartService:input_type -> agent.RestartServiceRequest
+	39, // 25: agent.Agent.GetEnvironmentVars:input_type -> agent.EnvVarsRequest
+	41, // 26: agent.Agent.SetEnvironmentVar:input_type -> agent.SetEnvVarRequest
+	43, // 27: agent.Agent.InstallModule:input_type -> agent.InstallModuleRequest
+	45, // 28: agent.Agent.GetInstalledModules:input_type -> agent.ModulesRequest
+	6,  // 29: agent.AgentRegistry.RegisterAgent:input_type -> agent.RegisterAgentRequest
+	9,  // 30: agent.AgentRegistry.ListAgents:input_type -> agent.ListAgentsRequest
+	11, // 31: agent.AgentRegistry.StopAgent:input_type -> agent.StopAgentRequest
+	13, // 32: agent.AgentRegistry.UnregisterAgent:input_type -> agent.UnregisterAgentRequest
+	15, // 33: agent.AgentRegistry.ExecuteCommand:input_type -> agent.ExecuteCommandRequest
+	18, // 34: agent.AgentRegistry.Heartbeat:input_type -> agent.HeartbeatRequest
+	20, // 35: agent.AgentRegistry.GetAgentInfo:input_type -> agent.GetAgentInfoRequest
+	48, // 36: agent.AgentRegistry.CreateAgentGroup:input_type -> agent.CreateGroupRequest
+	50, // 37: agent.AgentRegistry.AddAgentToGroup:input_type -> agent.AddToGroupRequest
+	52, // 38: agent.AgentRegistry.RemoveAgentFromGroup:input_type -> agent.RemoveFromGroupRequest
+	54, // 39: agent.AgentRegistry.ListAgentGroups:input_type -> agent.ListGroupsRequest
+	57, // 40: agent.AgentRegistry.DeleteAgentGroup:input_type -> agent.DeleteGroupRequest
+	59, // 41: agent.AgentRegistry.ExecuteOnMultipleAgents:input_type -> agent.BulkExecuteRequest
+	61, // 42: agent.AgentRegistry.GetMultipleAgentStatus:input_type -> agent.MultipleAgentStatusRequest
+	64, // 43: agent.AgentRegistry.GetAggregatedMetrics:input_type -> agent.AggregatedMetricsRequest
+	66, // 44: agent.AgentRegistry.StreamAgentEvents:input_type -> agent.StreamEventsRequest
+	5,  // 45: agent.Agent.ExecuteTask:output_type -> agent.ExecuteTaskResponse
+	17, // 46: agent.Agent.RunCommand:output_type -> agent.StreamOutputResponse
+	1,  // 47: agent.Agent.Shutdown:output_type -> agent.ShutdownResponse
+	3,  // 48: agent.Agent.UpdateAgent:output_type -> agent.UpdateAgentResponse
+	23, // 49: agent.Agent.GetResourceUsage:output_type -> agent.ResourceUsageResponse
+	26, // 50: agent.Agent.GetProcessList:output_type -> agent.ProcessListResponse
+	29, // 51: agent.Agent.GetNetworkInfo:output_type -> agent.NetworkInfoResponse
+	32, // 52: agent.Agent.GetDiskInfo:output_type -> agent.DiskInfoResponse
+	34, // 53: agent.Agent.StreamLogs:output_type -> agent.LogEntry
+	36, // 54: agent.Agent.StreamMetrics:output_type -> agent.MetricsData
+	38, // 55: agent.Agent.RestartService:output_type -> agent.RestartServiceResponse
+	40, // 56: agent.Agent.GetEnvironmentVars:output_type -> agent.EnvVarsResponse
+	42, // 57: agent.Agent.SetEnvironmentVar:output_type -> agent.SetEnvVarResponse
+	44, // 58: agent.Agent.InstallModule:output_type -> agent.InstallModuleResponse
+	47, // 59: agent.Agent.GetInstalledModules:output_type -> agent.ModulesResponse
+	7,  // 60: agent.AgentRegistry.RegisterAgent:output_type -> agent.RegisterAgentResponse
+	10, // 61: agent.AgentRegistry.ListAgents:output_type -> agent.ListAgentsResponse
+	12, // 62: agent.AgentRegistry.StopAgent:output_type -> agent.StopAgentResponse
+	14, // 63: agent.AgentRegistry.UnregisterAgent:output_type -> agent.UnregisterAgentResponse
+	17, // 64: agent.AgentRegistry.ExecuteCommand:output_type -> agent.StreamOutputResponse
+	19, // 65: agent.AgentRegistry.Heartbeat:output_type -> agent.HeartbeatResponse
+	21, // 66: agent.AgentRegistry.GetAgentInfo:output_type -> agent.GetAgentInfoResponse
+	49, // 67: agent.AgentRegistry.CreateAgentGroup:output_type -> agent.CreateGroupResponse
+	51, // 68: agent.AgentRegistry.AddAgentToGroup:output_type -> agent.AddToGroupResponse
+	53, // 69: agent.AgentRegistry.RemoveAgentFromGroup:output_type -> agent.RemoveFromGroupResponse
+	56, // 70: agent.AgentRegistry.ListAgentGroups:output_type -> agent.ListGroupsResponse
+	58, // 71: agent.AgentRegistry.DeleteAgentGroup:output_type -> agent.DeleteGroupResponse
+	60, // 72: agent.AgentRegistry.ExecuteOnMultipleAgents:output_type -> agent.BulkExecuteResponse
+	63, // 73: agent.AgentRegistry.GetMultipleAgentStatus:output_type -> agent.MultipleAgentStatusResponse
+	65, // 74: agent.AgentRegistry.GetAggregatedMetrics:output_type -> agent.AggregatedMetricsResponse
+	67, // 75: agent.AgentRegistry.StreamAgentEvents:output_type -> agent.AgentEvent
+	45, // [45:76] is the sub-list for method output_type
+	14, // [14:45] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_proto_agent_proto_init() }
@@ -1408,7 +4599,7 @@ func file_proto_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_agent_proto_rawDesc), len(file_proto_agent_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   22,
+			NumMessages:   74,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
