@@ -49,3 +49,12 @@ sloth-runner-*
 tmp/
 nil/
 tmp/user_environment_setup_values.yaml
+
+# Aider files
+.aider*
+
+# Sloth cache
+.sloth-cache/
+
+# MkDocs build
+site/

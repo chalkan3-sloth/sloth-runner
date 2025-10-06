@@ -1,11 +1,11 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands"
-	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/services"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 )
@@ -38,18 +38,20 @@ func NewDeleteCommand(ctx *commands.AppContext) *cobra.Command {
 				}
 			}
 
-			// Create agent service
-			agentService := services.NewAgentService(masterAddr)
-
-			// Delete agent
-			spinner, _ := pterm.DefaultSpinner.Start(fmt.Sprintf("Deleting agent '%s'...", agentName))
-			if err := agentService.DeleteAgent(agentName); err != nil {
-				spinner.Fail(fmt.Sprintf("Failed to delete agent: %v", err))
+			// Create connection factory and get client
+			factory := NewDefaultConnectionFactory()
+			client, cleanup, err := factory.CreateRegistryClient(masterAddr)
+			if err != nil {
 				return err
 			}
+			defer cleanup()
 
-			spinner.Success(fmt.Sprintf("Agent '%s' deleted successfully", agentName))
-			return nil
+			// Use refactored function with injected client
+			opts := DeleteAgentOptions{
+				AgentName: agentName,
+			}
+
+			return deleteAgentWithClient(context.Background(), client, opts)
 		},
 	}
 

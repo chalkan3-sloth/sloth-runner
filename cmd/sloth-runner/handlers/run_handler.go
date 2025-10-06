@@ -19,6 +19,7 @@ import (
 	sshpkg "github.com/chalkan3-sloth/sloth-runner/internal/ssh"
 	"github.com/chalkan3-sloth/sloth-runner/internal/stack"
 	"github.com/chalkan3-sloth/sloth-runner/internal/taskrunner"
+	"github.com/chalkan3-sloth/sloth-runner/internal/types"
 	"github.com/pterm/pterm"
 )
 
@@ -204,7 +205,7 @@ func (h *RunHandler) loadValues(enhancedOutput *output.PulumiStyleOutput) (*lua.
 }
 
 // parseLuaScript parses the Lua script
-func (h *RunHandler) parseLuaScript(valuesTable *lua.LTable, enhancedOutput *output.PulumiStyleOutput) (map[string]luainterface.TaskGroup, error) {
+func (h *RunHandler) parseLuaScript(valuesTable *lua.LTable, enhancedOutput *output.PulumiStyleOutput) (map[string]types.TaskGroup, error) {
 	taskGroups, err := luainterface.ParseLuaScript(h.config.Context, h.config.FilePath, valuesTable)
 	if err != nil {
 		if enhancedOutput != nil {
@@ -216,7 +217,7 @@ func (h *RunHandler) parseLuaScript(valuesTable *lua.LTable, enhancedOutput *out
 }
 
 // applyDelegateToHosts applies delegate-to hosts from command line
-func (h *RunHandler) applyDelegateToHosts(taskGroups map[string]luainterface.TaskGroup) {
+func (h *RunHandler) applyDelegateToHosts(taskGroups map[string]types.TaskGroup) {
 	if len(h.config.DelegateToHosts) == 0 {
 		return
 	}
@@ -248,7 +249,7 @@ func (h *RunHandler) handleEmptyTaskGroups(enhancedOutput *output.PulumiStyleOut
 }
 
 // getWorkflowName gets the workflow name from task groups or stack name
-func (h *RunHandler) getWorkflowName(taskGroups map[string]luainterface.TaskGroup) string {
+func (h *RunHandler) getWorkflowName(taskGroups map[string]types.TaskGroup) string {
 	var workflowName string
 	for name := range taskGroups {
 		workflowName = name
@@ -263,7 +264,7 @@ func (h *RunHandler) getWorkflowName(taskGroups map[string]luainterface.TaskGrou
 }
 
 // showPreviewAndConfirm shows execution plan preview and asks for confirmation
-func (h *RunHandler) showPreviewAndConfirm(workflowName string, taskGroups map[string]luainterface.TaskGroup) error {
+func (h *RunHandler) showPreviewAndConfirm(workflowName string, taskGroups map[string]types.TaskGroup) error {
 	if h.config.YesFlag || h.config.StackName == "" {
 		return nil
 	}
@@ -293,7 +294,7 @@ func (h *RunHandler) showPreviewAndConfirm(workflowName string, taskGroups map[s
 // executeTasks executes the tasks
 func (h *RunHandler) executeTasks(
 	stackID, workflowName string,
-	taskGroups map[string]luainterface.TaskGroup,
+	taskGroups map[string]types.TaskGroup,
 	enhancedOutput *output.PulumiStyleOutput,
 	sshExecutor *sshpkg.Executor,
 	sshPassword *string,
@@ -366,14 +367,18 @@ func (h *RunHandler) executeTasks(
 // configureAgentResolver configures the agent resolver
 func (h *RunHandler) configureAgentResolver(runner *taskrunner.TaskRunner) {
 	if h.config.AgentRegistry != nil {
-		taskrunner.SetAgentResolver(h.config.AgentRegistry)
-		return
+		if resolver, ok := h.config.AgentRegistry.(taskrunner.AgentResolver); ok {
+			taskrunner.SetAgentResolver(resolver)
+			return
+		}
 	}
 
 	masterAddr := "192.168.1.29:50053"
 	if remoteResolver, err := createRemoteAgentResolver(masterAddr); err == nil {
-		taskrunner.SetAgentResolver(remoteResolver)
-		slog.Info("Connected to remote master for agent resolution", "master", masterAddr)
+		if resolver, ok := remoteResolver.(taskrunner.AgentResolver); ok {
+			taskrunner.SetAgentResolver(resolver)
+			slog.Info("Connected to remote master for agent resolution", "master", masterAddr)
+		}
 	} else {
 		slog.Debug("No agent resolver available", "error", err)
 	}
@@ -570,7 +575,7 @@ func luaValueToInterface(lv lua.LValue) interface{} {
 	}
 }
 
-func showExecutionPlanPreview(stackName, filePath string, taskGroups map[string]luainterface.TaskGroup, stackManager *stack.StackManager) error {
+func showExecutionPlanPreview(stackName, filePath string, taskGroups map[string]types.TaskGroup, stackManager *stack.StackManager) error {
 	// This would be implemented with the preview logic from main.go
 	// For now, returning nil to allow compilation
 	return nil
