@@ -161,6 +161,7 @@ nav:
     - '🎯 Advanced Features': 'en/advanced-features'
   - '🏗️ Architecture':
     - '📐 System Architecture 🔥': 'architecture/sloth-runner-architecture'
+    - '⚡ Hooks & Events System 🔥': 'architecture/hooks-events-system'
     - '🔧 Modular Design': 'architecture/modular-design'
     - '♻️ Refactoring Guide': 'architecture/refactoring-guide'
   - '🎨 Modern DSL':
