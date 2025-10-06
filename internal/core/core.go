@@ -75,7 +75,7 @@ func DefaultCoreConfig() *CoreConfig {
 		CacheCompression:          true,
 		MaxErrors:                 100,
 		PanicRecovery:             true,
-		TimeoutDefault:            30 * time.Second,
+		TimeoutDefault:            10 * time.Minute,
 		CircuitBreakerMaxFailures: 5,
 		CircuitBreakerResetTime:   60 * time.Second,
 		MaxGoroutines:             1000,

@@ -288,6 +288,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/sloth-runner agent start \
+  --name %s \
   --bind-address %s \
   --port %d \
   --master %s \
@@ -301,7 +302,7 @@ SyslogIdentifier=sloth-runner-agent-%s
 
 [Install]
 WantedBy=multi-user.target
-`, agentName, opts.BindAddress, opts.Port, opts.MasterAddr, reportAddr, agentName)
+`, agentName, agentName, opts.BindAddress, opts.Port, opts.MasterAddr, reportAddr, agentName)
 
 	// Create service file
 	servicePath := fmt.Sprintf("/etc/systemd/system/sloth-runner-agent-%s.service", agentName)

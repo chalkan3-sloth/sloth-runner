@@ -123,7 +123,8 @@ func slothAgentInstall(L *lua.LState) int {
 		L.SetField(result, "message", lua.LString(fmt.Sprintf("Agent '%s' already exists", name)))
 		L.SetField(result, "name", lua.LString(name))
 		L.Push(result)
-		return 1
+		L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+		return 2
 	}
 
 	// Build install command
@@ -156,7 +157,8 @@ func slothAgentInstall(L *lua.LState) int {
 	L.SetField(result, "name", lua.LString(name))
 	L.SetField(result, "output", lua.LString(output))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothAgentUpdate updates an agent to the latest version
@@ -186,7 +188,8 @@ func slothAgentUpdate(L *lua.LState) int {
 		L.SetField(result, "changed", lua.LBool(false))
 		L.SetField(result, "message", lua.LString(fmt.Sprintf("Agent '%s' already on version %s", name, version)))
 		L.Push(result)
-		return 1
+		L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+		return 2
 	}
 
 	// Update agent
@@ -205,7 +208,8 @@ func slothAgentUpdate(L *lua.LState) int {
 	L.SetField(result, "message", lua.LString(fmt.Sprintf("Agent '%s' updated successfully", name)))
 	L.SetField(result, "output", lua.LString(output))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothAgentList lists all agents
@@ -225,7 +229,8 @@ func slothAgentList(L *lua.LState) int {
 	L.SetField(result, "message", lua.LString("Agents listed successfully"))
 	L.SetField(result, "output", lua.LString(output))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothAgentGet gets agent details
@@ -250,7 +255,8 @@ func slothAgentGet(L *lua.LState) int {
 	L.SetField(result, "message", lua.LString(fmt.Sprintf("Agent '%s' details retrieved", name)))
 	L.SetField(result, "output", lua.LString(output))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothAgentDelete deletes an agent
@@ -272,7 +278,8 @@ func slothAgentDelete(L *lua.LState) int {
 		L.SetField(result, "changed", lua.LBool(false))
 		L.SetField(result, "message", lua.LString(fmt.Sprintf("Agent '%s' does not exist", name)))
 		L.Push(result)
-		return 1
+		L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+		return 2
 	}
 
 	args := []string{"agent", "delete", name, "--master", master, "--yes"}
@@ -285,7 +292,8 @@ func slothAgentDelete(L *lua.LState) int {
 	L.SetField(result, "changed", lua.LBool(true))
 	L.SetField(result, "message", lua.LString(fmt.Sprintf("Agent '%s' deleted successfully", name)))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothAgentStart starts a local agent
@@ -325,7 +333,8 @@ func slothAgentStart(L *lua.LState) int {
 	L.SetField(result, "message", lua.LString("Agent started successfully"))
 	L.SetField(result, "output", lua.LString(output))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothAgentStop stops a local agent
@@ -344,7 +353,8 @@ func slothAgentStop(L *lua.LState) int {
 	L.SetField(result, "message", lua.LString("Agent stopped successfully"))
 	L.SetField(result, "output", lua.LString(output))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothWorkflowAdd adds a workflow to the database
@@ -380,7 +390,8 @@ func slothWorkflowAdd(L *lua.LState) int {
 		L.SetField(result, "changed", lua.LBool(false))
 		L.SetField(result, "message", lua.LString(fmt.Sprintf("Workflow '%s' already exists", name)))
 		L.Push(result)
-		return 1
+		L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+		return 2
 	}
 
 	// Build command
@@ -404,7 +415,8 @@ func slothWorkflowAdd(L *lua.LState) int {
 	L.SetField(result, "message", lua.LString(fmt.Sprintf("Workflow '%s' added successfully", name)))
 	L.SetField(result, "output", lua.LString(output))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothWorkflowList lists all workflows
@@ -428,7 +440,8 @@ func slothWorkflowList(L *lua.LState) int {
 	L.SetField(result, "message", lua.LString("Workflows listed successfully"))
 	L.SetField(result, "output", lua.LString(output))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothWorkflowGet gets workflow details
@@ -452,7 +465,8 @@ func slothWorkflowGet(L *lua.LState) int {
 	L.SetField(result, "message", lua.LString(fmt.Sprintf("Workflow '%s' details retrieved", name)))
 	L.SetField(result, "output", lua.LString(output))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothWorkflowRemove removes a workflow
@@ -481,7 +495,8 @@ func slothWorkflowRemove(L *lua.LState) int {
 		L.SetField(result, "changed", lua.LBool(false))
 		L.SetField(result, "message", lua.LString(fmt.Sprintf("Workflow '%s' does not exist", name)))
 		L.Push(result)
-		return 1
+		L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+		return 2
 	}
 
 	args := []string{"sloth", "remove", name, "--yes"}
@@ -494,7 +509,8 @@ func slothWorkflowRemove(L *lua.LState) int {
 	L.SetField(result, "changed", lua.LBool(true))
 	L.SetField(result, "message", lua.LString(fmt.Sprintf("Workflow '%s' removed successfully", name)))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothWorkflowActivate activates a workflow
@@ -527,7 +543,8 @@ func slothWorkflowActivate(L *lua.LState) int {
 		L.SetField(result, "changed", lua.LBool(false))
 		L.SetField(result, "message", lua.LString(fmt.Sprintf("Workflow '%s' is already active", name)))
 		L.Push(result)
-		return 1
+		L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+		return 2
 	}
 
 	args := []string{"sloth", "activate", name}
@@ -540,7 +557,8 @@ func slothWorkflowActivate(L *lua.LState) int {
 	L.SetField(result, "changed", lua.LBool(true))
 	L.SetField(result, "message", lua.LString(fmt.Sprintf("Workflow '%s' activated successfully", name)))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothWorkflowDeactivate deactivates a workflow
@@ -573,7 +591,8 @@ func slothWorkflowDeactivate(L *lua.LState) int {
 		L.SetField(result, "changed", lua.LBool(false))
 		L.SetField(result, "message", lua.LString(fmt.Sprintf("Workflow '%s' is already inactive", name)))
 		L.Push(result)
-		return 1
+		L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+		return 2
 	}
 
 	args := []string{"sloth", "deactivate", name}
@@ -586,7 +605,8 @@ func slothWorkflowDeactivate(L *lua.LState) int {
 	L.SetField(result, "changed", lua.LBool(true))
 	L.SetField(result, "message", lua.LString(fmt.Sprintf("Workflow '%s' deactivated successfully", name)))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothSSHAdd adds an SSH profile
@@ -620,7 +640,8 @@ func slothSSHAdd(L *lua.LState) int {
 			L.SetField(result, "changed", lua.LBool(false))
 			L.SetField(result, "message", lua.LString(fmt.Sprintf("SSH profile '%s' already exists", name)))
 			L.Push(result)
-			return 1
+			L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+			return 2
 		}
 		return luaError(L, fmt.Sprintf("failed to add SSH profile: %v", err))
 	}
@@ -630,7 +651,8 @@ func slothSSHAdd(L *lua.LState) int {
 	L.SetField(result, "message", lua.LString(fmt.Sprintf("SSH profile '%s' added successfully", name)))
 	L.SetField(result, "output", lua.LString(output))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothSSHList lists SSH profiles
@@ -649,7 +671,8 @@ func slothSSHList(L *lua.LState) int {
 	L.SetField(result, "message", lua.LString("SSH profiles listed successfully"))
 	L.SetField(result, "output", lua.LString(output))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothSSHRemove removes an SSH profile
@@ -671,7 +694,8 @@ func slothSSHRemove(L *lua.LState) int {
 			L.SetField(result, "changed", lua.LBool(false))
 			L.SetField(result, "message", lua.LString(fmt.Sprintf("SSH profile '%s' does not exist", name)))
 			L.Push(result)
-			return 1
+			L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+			return 2
 		}
 		return luaError(L, fmt.Sprintf("failed to remove SSH profile: %v", err))
 	}
@@ -680,7 +704,8 @@ func slothSSHRemove(L *lua.LState) int {
 	L.SetField(result, "changed", lua.LBool(true))
 	L.SetField(result, "message", lua.LString(fmt.Sprintf("SSH profile '%s' removed successfully", name)))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothStackList lists workflow stacks
@@ -699,7 +724,8 @@ func slothStackList(L *lua.LState) int {
 	L.SetField(result, "message", lua.LString("Stacks listed successfully"))
 	L.SetField(result, "output", lua.LString(output))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothStackGet gets stack details
@@ -723,7 +749,8 @@ func slothStackGet(L *lua.LState) int {
 	L.SetField(result, "message", lua.LString(fmt.Sprintf("Stack '%s' details retrieved", id)))
 	L.SetField(result, "output", lua.LString(output))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothStackDelete deletes a stack
@@ -746,7 +773,8 @@ func slothStackDelete(L *lua.LState) int {
 	L.SetField(result, "changed", lua.LBool(true))
 	L.SetField(result, "message", lua.LString(fmt.Sprintf("Stack '%s' deleted successfully", id)))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // slothRun executes a workflow
@@ -794,7 +822,8 @@ func slothRun(L *lua.LState) int {
 	L.SetField(result, "message", lua.LString("Workflow executed successfully"))
 	L.SetField(result, "output", lua.LString(output))
 	L.Push(result)
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // luaError returns an error to Lua

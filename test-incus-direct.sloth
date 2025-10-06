@@ -1,0 +1,34 @@
+-- Test direct incus command execution
+local config = {
+    delegate_to = "192.168.1.17:50051"
+}
+
+local test_incus = task("test-incus-cmd")
+    :description("Test incus command through agent")
+    :delegate_to(config.delegate_to)
+    :command(function(this, params)
+        log.info("Testing incus list command...")
+
+        local result, err = exec.run("incus list")
+
+        if err then
+            log.error("Error: " .. err)
+            return false, "incus list failed: " .. err
+        end
+
+        if not result.success then
+            log.error("Command failed with exit code: " .. result.exit_code)
+            log.error("stderr: " .. result.stderr)
+            return false, "incus list exit code " .. result.exit_code
+        end
+
+        log.info("stdout: " .. result.stdout)
+
+        return true, "incus command worked"
+    end)
+    :build()
+
+workflow
+    .define("test_incus")
+    :description("Test incus through agent")
+    :tasks({test_incus})
