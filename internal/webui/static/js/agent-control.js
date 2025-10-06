@@ -251,6 +251,8 @@ async function openAgentDetail(agentName) {
     await loadAgentOverview(agentName);
 }
 
+let resourceCharts = {};
+
 async function loadAgentOverview(agentName) {
     try {
         const response = await fetch(`/api/v1/agents/${agentName}/resources`);
@@ -302,10 +304,198 @@ async function loadAgentOverview(agentName) {
                     </table>
                 </div>
             </div>
+
+            <div class="row mt-4">
+                <div class="col-md-4">
+                    <h6 class="text-center">CPU Usage</h6>
+                    <canvas id="cpu-chart" style="max-height: 200px;"></canvas>
+                </div>
+                <div class="col-md-4">
+                    <h6 class="text-center">Memory Usage</h6>
+                    <canvas id="memory-chart" style="max-height: 200px;"></canvas>
+                </div>
+                <div class="col-md-4">
+                    <h6 class="text-center">Disk Usage</h6>
+                    <canvas id="disk-chart" style="max-height: 200px;"></canvas>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-12">
+                    <h6>Resource History (Last 5 minutes)</h6>
+                    <canvas id="history-chart" style="height: 250px;"></canvas>
+                </div>
+            </div>
         `;
+
+        // Destroy old charts if they exist
+        ['cpu-chart', 'memory-chart', 'disk-chart', 'history-chart'].forEach(id => {
+            if (resourceCharts[id]) {
+                resourceCharts[id].destroy();
+            }
+        });
+
+        // Create doughnut charts for resources
+        const cpuChart = new Chart(document.getElementById('cpu-chart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Used', 'Available'],
+                datasets: [{
+                    data: [data.cpu_percent, 100 - data.cpu_percent],
+                    backgroundColor: ['#4F46E5', '#E5E7EB'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.label}: ${context.parsed.toFixed(1)}%`
+                        }
+                    }
+                }
+            }
+        });
+
+        const memoryChart = new Chart(document.getElementById('memory-chart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Used', 'Available'],
+                datasets: [{
+                    data: [data.memory_percent, 100 - data.memory_percent],
+                    backgroundColor: ['#10B981', '#E5E7EB'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.label}: ${context.parsed.toFixed(1)}%`
+                        }
+                    }
+                }
+            }
+        });
+
+        const diskChart = new Chart(document.getElementById('disk-chart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Used', 'Available'],
+                datasets: [{
+                    data: [data.disk_percent, 100 - data.disk_percent],
+                    backgroundColor: ['#F59E0B', '#E5E7EB'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => `${context.label}: ${context.parsed.toFixed(1)}%`
+                        }
+                    }
+                }
+            }
+        });
+
+        // Generate mock history data for demonstration
+        const historyData = generateMockHistory(data);
+
+        const historyChart = new Chart(document.getElementById('history-chart'), {
+            type: 'line',
+            data: {
+                labels: historyData.labels,
+                datasets: [
+                    {
+                        label: 'CPU %',
+                        data: historyData.cpu,
+                        borderColor: '#4F46E5',
+                        backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Memory %',
+                        data: historyData.memory,
+                        borderColor: '#10B981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Disk %',
+                        data: historyData.disk,
+                        borderColor: '#F59E0B',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: (value) => value + '%'
+                        }
+                    }
+                }
+            }
+        });
+
+        resourceCharts = {
+            'cpu-chart': cpuChart,
+            'memory-chart': memoryChart,
+            'disk-chart': diskChart,
+            'history-chart': historyChart
+        };
+
     } catch (error) {
         console.error('Error loading agent overview:', error);
     }
+}
+
+function generateMockHistory(currentData) {
+    const labels = [];
+    const cpu = [];
+    const memory = [];
+    const disk = [];
+
+    const now = new Date();
+    for (let i = 30; i >= 0; i--) {
+        const time = new Date(now - i * 10000);
+        labels.push(time.toLocaleTimeString());
+
+        // Generate realistic fluctuating data around current values
+        cpu.push(Math.max(0, Math.min(100, currentData.cpu_percent + (Math.random() - 0.5) * 20)));
+        memory.push(Math.max(0, Math.min(100, currentData.memory_percent + (Math.random() - 0.5) * 10)));
+        disk.push(Math.max(0, Math.min(100, currentData.disk_percent + (Math.random() - 0.5) * 5)));
+    }
+
+    return { labels, cpu, memory, disk };
 }
 
 async function executeCommand() {
