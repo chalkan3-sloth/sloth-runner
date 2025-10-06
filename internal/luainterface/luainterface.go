@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/chalkan3-sloth/sloth-runner/internal/ai"
 	"github.com/chalkan3-sloth/sloth-runner/internal/core"
@@ -16,6 +15,7 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/data"
 	execmodule "github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/exec"
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/fs"
+	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/log"
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/net"
 	coremodules "github.com/chalkan3-sloth/sloth-runner/internal/modules/core"
 	"github.com/chalkan3-sloth/sloth-runner/internal/state"
@@ -438,7 +438,7 @@ func registerAllModulesInternal(L *lua.LState, agentClient interface{}) {
 	fs.Open(L)
 	net.Open(L)
 	execmodule.Open(L)
-	OpenLog(L)
+	log.Open(L)
 
 	// Register extended modules from other files
 	RegisterGitModule(L)  // Use new git module with table-based API
@@ -639,128 +639,7 @@ func RegisterModulesGlobally(L *lua.LState, agentClient interface{}) {
 // DEPRECATED: Moved to internal/luainterface/modules/exec/exec.go
 
 // --- Log Module ---
-func luaLogInfo(L *lua.LState) int {
-	message := L.CheckString(1)
-	slog.Info(message, "source", "lua")
-	return 0
-}
-
-func luaLogWarn(L *lua.LState) int {
-	message := L.CheckString(1)
-	slog.Warn(message, "source", "lua")
-	return 0
-}
-
-func luaLogError(L *lua.LState) int {
-	message := L.CheckString(1)
-	slog.Error(message, "source", "lua")
-	return 0
-}
-
-func luaLogDebug(L *lua.LState) int {
-	message := L.CheckString(1)
-	slog.Debug(message, "source", "lua")
-	return 0
-}
-
-func luaLogPrint(L *lua.LState) int {
-	message := L.CheckString(1)
-	// Print directly to stdout without formatting
-	fmt.Println(message)
-	return 0
-}
-
-// ✅ luaLogTable logs complex table/object data in a structured format
-func luaLogTable(L *lua.LState) int {
-	value := L.CheckAny(1)
-	title := L.OptString(2, "Table Contents")
-	
-	// Convert value to a formatted string representation
-	formatted := formatLuaValueForLog(value, 0)
-	
-	// Log with structured format
-	slog.Info(fmt.Sprintf("📊 %s:\n%s", title, formatted), "source", "lua")
-	return 0
-}
-
-// ✅ formatLuaValueForLog formats a Lua value for pretty logging
-func formatLuaValueForLog(value lua.LValue, indent int) string {
-	indentStr := strings.Repeat("  ", indent)
-	
-	switch v := value.(type) {
-	case lua.LString:
-		return fmt.Sprintf("\"%s\"", v.String())
-	case lua.LNumber:
-		return v.String()
-	case lua.LBool:
-		if bool(v) {
-			return "true"
-		}
-		return "false"
-	case *lua.LTable:
-		var parts []string
-		parts = append(parts, "{")
-		
-		// Check if it's an array-like table
-		isArray := true
-		maxIndex := 0
-		v.ForEach(func(key, _ lua.LValue) {
-			if key.Type() == lua.LTNumber {
-				if idx := int(lua.LVAsNumber(key)); idx > maxIndex {
-					maxIndex = idx
-				}
-			} else {
-				isArray = false
-			}
-		})
-		
-		if isArray && maxIndex > 0 {
-			// Format as array
-			for i := 1; i <= maxIndex; i++ {
-				val := v.RawGetInt(i)
-				if val != lua.LNil {
-					formatted := formatLuaValueForLog(val, indent+1)
-					parts = append(parts, fmt.Sprintf("%s  [%d] = %s", indentStr, i, formatted))
-				}
-			}
-		} else {
-			// Format as object
-			v.ForEach(func(key, val lua.LValue) {
-				keyStr := key.String()
-				formatted := formatLuaValueForLog(val, indent+1)
-				parts = append(parts, fmt.Sprintf("%s  %s = %s", indentStr, keyStr, formatted))
-			})
-		}
-		
-		parts = append(parts, indentStr+"}")
-		return strings.Join(parts, "\n")
-		
-	default:
-		if value == lua.LNil {
-			return "nil"
-		}
-		return fmt.Sprintf("<%s>", value.Type().String())
-	}
-}
-
-func LogLoader(L *lua.LState) int {
-	mod := L.SetFuncs(L.NewTable(), map[string]lua.LGFunction{
-		"info":  luaLogInfo,
-		"warn":  luaLogWarn,
-		"error": luaLogError,
-		"debug": luaLogDebug,
-		"print": luaLogPrint,
-		"table": luaLogTable, // ✅ Added table function
-	})
-	L.Push(mod)
-	return 1
-}
-func OpenLog(L *lua.LState) {
-	L.PreloadModule("log", LogLoader)
-	if err := L.DoString(`log = require("log")`); err != nil {
-		panic(err)
-	}
-}
+// DEPRECATED: Moved to internal/luainterface/modules/log/log.go
 
 // OpenAll preloads all available sloth-runner modules into the Lua state.
 func OpenAll(L *lua.LState) {
