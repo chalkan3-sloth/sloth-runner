@@ -38,11 +38,12 @@ Thumbs.db
 .classpath
 .settings/
 
-# Sloth Runner specific
-sloth-runner
-sloth-runner.exe
-sloth-runner-agent
-sloth-runner-agent.exe
+# Sloth Runner specific (binaries in root only)
+/sloth-runner
+/sloth-runner.exe
+/sloth-runner-agent
+/sloth-runner-agent.exe
+sloth-runner-*
 
 # Temporary files and directories
 tmp/
