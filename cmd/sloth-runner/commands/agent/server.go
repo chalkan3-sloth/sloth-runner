@@ -5,12 +5,15 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -100,6 +103,284 @@ func (s *agentServer) Shutdown(ctx context.Context, in *pb.ShutdownRequest) (*pb
 		s.grpcServer.GracefulStop()
 	}()
 	return &pb.ShutdownResponse{}, nil
+}
+
+// UpdateAgent updates the agent binary to a new version
+func (s *agentServer) UpdateAgent(ctx context.Context, in *pb.UpdateAgentRequest) (*pb.UpdateAgentResponse, error) {
+	slog.Info("Agent update requested", "version", in.TargetVersion, "force", in.Force, "skip_restart", in.SkipRestart)
+
+	// Get current version
+	currentVersion := getCurrentAgentVersion()
+	slog.Info("Current agent version", "version", currentVersion)
+
+	// Determine target version
+	targetVersion := in.TargetVersion
+	if targetVersion == "" || targetVersion == "latest" {
+		latest, err := getLatestReleaseVersion()
+		if err != nil {
+			return &pb.UpdateAgentResponse{
+				Success:    false,
+				Message:    fmt.Sprintf("Failed to fetch latest version: %v", err),
+				OldVersion: currentVersion,
+			}, nil
+		}
+		targetVersion = latest
+	}
+
+	slog.Info("Target version determined", "version", targetVersion)
+
+	// Check if already on target version
+	if !in.Force && currentVersion == targetVersion {
+		return &pb.UpdateAgentResponse{
+			Success:    true,
+			Message:    "Already on target version",
+			OldVersion: currentVersion,
+			NewVersion: targetVersion,
+		}, nil
+	}
+
+	// Download new binary
+	newBinaryPath, err := downloadAgentBinary(targetVersion)
+	if err != nil {
+		return &pb.UpdateAgentResponse{
+			Success:    false,
+			Message:    fmt.Sprintf("Failed to download new version: %v", err),
+			OldVersion: currentVersion,
+		}, nil
+	}
+	defer os.Remove(newBinaryPath)
+
+	// Get current executable path
+	currentExe, err := os.Executable()
+	if err != nil {
+		return &pb.UpdateAgentResponse{
+			Success:    false,
+			Message:    fmt.Sprintf("Failed to get current executable path: %v", err),
+			OldVersion: currentVersion,
+		}, nil
+	}
+
+	// Backup current binary
+	backupPath := currentExe + ".backup"
+	if err := os.Rename(currentExe, backupPath); err != nil {
+		return &pb.UpdateAgentResponse{
+			Success:    false,
+			Message:    fmt.Sprintf("Failed to backup current binary: %v", err),
+			OldVersion: currentVersion,
+		}, nil
+	}
+
+	// Copy new binary to current location
+	if err := copyFile(newBinaryPath, currentExe); err != nil {
+		// Restore backup on failure
+		os.Rename(backupPath, currentExe)
+		return &pb.UpdateAgentResponse{
+			Success:    false,
+			Message:    fmt.Sprintf("Failed to install new binary: %v", err),
+			OldVersion: currentVersion,
+		}, nil
+	}
+
+	// Make new binary executable
+	if err := os.Chmod(currentExe, 0755); err != nil {
+		// Restore backup on failure
+		os.Remove(currentExe)
+		os.Rename(backupPath, currentExe)
+		return &pb.UpdateAgentResponse{
+			Success:    false,
+			Message:    fmt.Sprintf("Failed to set executable permissions: %v", err),
+			OldVersion: currentVersion,
+		}, nil
+	}
+
+	// Remove backup on success
+	os.Remove(backupPath)
+
+	slog.Info("Agent binary updated successfully", "old", currentVersion, "new", targetVersion)
+
+	// Restart agent if requested
+	if !in.SkipRestart {
+		slog.Info("Restarting agent service...")
+		go func() {
+			time.Sleep(2 * time.Second)
+			restartAgent()
+		}()
+	}
+
+	return &pb.UpdateAgentResponse{
+		Success:    true,
+		Message:    "Agent updated successfully",
+		OldVersion: currentVersion,
+		NewVersion: targetVersion,
+	}, nil
+}
+
+// getCurrentAgentVersion returns the current agent version
+func getCurrentAgentVersion() string {
+	cmd := exec.Command("sloth-runner", "version")
+	output, err := cmd.Output()
+	if err != nil {
+		return "unknown"
+	}
+
+	// Parse version from output (format: "sloth-runner version vX.Y.Z")
+	parts := strings.Fields(string(output))
+	if len(parts) >= 3 {
+		return parts[2]
+	}
+	return "unknown"
+}
+
+// getLatestReleaseVersion fetches the latest release version from GitHub
+func getLatestReleaseVersion() (string, error) {
+	resp, err := http.Get("https://api.github.com/repos/chalkan3-sloth/sloth-runner/releases/latest")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("GitHub API returned status: %d", resp.StatusCode)
+	}
+
+	var release struct {
+		TagName string `json:"tag_name"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return "", err
+	}
+
+	return release.TagName, nil
+}
+
+// downloadAgentBinary downloads the agent binary for the current platform
+func downloadAgentBinary(version string) (string, error) {
+	// Determine platform and architecture
+	platform := runtime.GOOS
+	arch := runtime.GOARCH
+
+	// Map architectures
+	if arch == "amd64" {
+		arch = "amd64"
+	} else if arch == "arm64" {
+		arch = "arm64"
+	}
+
+	// Construct download URL
+	filename := fmt.Sprintf("sloth-runner_%s_%s_%s.tar.gz", version, platform, arch)
+	url := fmt.Sprintf("https://github.com/chalkan3-sloth/sloth-runner/releases/download/%s/%s", version, filename)
+
+	slog.Info("Downloading new agent binary", "url", url)
+
+	// Download the tarball
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to download: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("download failed with status: %d", resp.StatusCode)
+	}
+
+	// Create temporary directory
+	tmpDir, err := os.MkdirTemp("", "sloth-update-")
+	if err != nil {
+		return "", err
+	}
+
+	// Save tarball to temp file
+	tarPath := filepath.Join(tmpDir, filename)
+	tarFile, err := os.Create(tarPath)
+	if err != nil {
+		os.RemoveAll(tmpDir)
+		return "", err
+	}
+
+	if _, err := io.Copy(tarFile, resp.Body); err != nil {
+		tarFile.Close()
+		os.RemoveAll(tmpDir)
+		return "", err
+	}
+	tarFile.Close()
+
+	// Extract binary from tarball
+	extractDir := filepath.Join(tmpDir, "extract")
+	if err := os.MkdirAll(extractDir, 0755); err != nil {
+		os.RemoveAll(tmpDir)
+		return "", err
+	}
+
+	// Extract using tar command
+	cmd := exec.Command("tar", "-xzf", tarPath, "-C", extractDir)
+	if err := cmd.Run(); err != nil {
+		os.RemoveAll(tmpDir)
+		return "", fmt.Errorf("failed to extract tarball: %w", err)
+	}
+
+	// Find the binary (should be sloth-runner)
+	binaryPath := filepath.Join(extractDir, "sloth-runner")
+	if _, err := os.Stat(binaryPath); err != nil {
+		os.RemoveAll(tmpDir)
+		return "", fmt.Errorf("binary not found in tarball: %w", err)
+	}
+
+	return binaryPath, nil
+}
+
+// copyFile copies a file from src to dst
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	if _, err := io.Copy(destFile, sourceFile); err != nil {
+		return err
+	}
+
+	return destFile.Sync()
+}
+
+// restartAgent restarts the agent service
+func restartAgent() {
+	slog.Info("Restarting agent process...")
+
+	// Try systemctl restart first
+	if err := exec.Command("systemctl", "restart", "sloth-runner-agent").Run(); err == nil {
+		slog.Info("Agent restarted via systemctl")
+		return
+	}
+
+	// If systemctl fails, try to restart current process
+	currentExe, err := os.Executable()
+	if err != nil {
+		slog.Error("Failed to get executable path for restart", "error", err)
+		return
+	}
+
+	// Get current process arguments
+	args := os.Args[1:]
+
+	cmd := exec.Command(currentExe, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Start(); err != nil {
+		slog.Error("Failed to restart agent", "error", err)
+		return
+	}
+
+	slog.Info("Agent restart initiated, exiting current process...")
+	os.Exit(0)
 }
 
 // ExecuteTask executes a complete Lua task with workspace
