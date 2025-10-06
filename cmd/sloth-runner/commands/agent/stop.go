@@ -1,17 +1,15 @@
 package agent
 
 import (
-	"fmt"
+	"context"
 
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands"
-	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/services"
-	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 )
 
 // NewStopCommand creates the agent stop command
 func NewStopCommand(ctx *commands.AppContext) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "stop <agent-name>",
 		Short: "Stops a running agent",
 		Long:  `Stops a running agent by sending a shutdown request.`,
@@ -20,20 +18,26 @@ func NewStopCommand(ctx *commands.AppContext) *cobra.Command {
 			agentName := args[0]
 			masterAddr, _ := cmd.Flags().GetString("master")
 
-			// Create agent service
-			agentService := services.NewAgentService(masterAddr)
-
-			// Stop agent
-			spinner, _ := pterm.DefaultSpinner.Start(fmt.Sprintf("Stopping agent '%s'...", agentName))
-			if err := agentService.StopAgent(agentName); err != nil {
-				spinner.Fail(fmt.Sprintf("Failed to stop agent: %v", err))
+			// Create connection factory and get client
+			factory := NewDefaultConnectionFactory()
+			client, cleanup, err := factory.CreateRegistryClient(masterAddr)
+			if err != nil {
 				return err
 			}
+			defer cleanup()
 
-			spinner.Success(fmt.Sprintf("Agent '%s' stopped successfully", agentName))
-			return nil
+			// Use refactored function with injected client
+			opts := StopAgentOptions{
+				AgentName: agentName,
+			}
+
+			return stopAgentWithClient(context.Background(), client, opts)
 		},
 	}
+
+	cmd.Flags().String("master", "localhost:50051", "Master server address")
+
+	return cmd
 }
 
 func init() {
