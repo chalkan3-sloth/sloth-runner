@@ -135,34 +135,34 @@ func (s *Server) setupRoutes(cfg *Config) {
 			agents.GET("/:name/stats", agentHandler.GetStats)
 			agents.POST("/:name/update", agentHandler.Update)
 
-			// Advanced Agent Management - TODO: Implement handlers
-			// agents.GET("/:name/resources", agentHandler.GetResourceUsage)
-			// agents.GET("/:name/processes", agentHandler.GetProcessList)
-			// agents.GET("/:name/network", agentHandler.GetNetworkInfo)
-			// agents.GET("/:name/disk", agentHandler.GetDiskInfo)
-			// agents.POST("/:name/command", agentHandler.ExecuteCommand)
-			// agents.POST("/:name/restart", agentHandler.RestartAgent)
-			// agents.POST("/:name/shutdown", agentHandler.ShutdownAgent)
-			// agents.GET("/:name/logs/stream", agentHandler.StreamLogs)
-			// agents.GET("/:name/metrics/stream", agentHandler.StreamMetrics)
+			// Advanced Agent Management
+			agents.GET("/:name/resources", agentHandler.GetResourceUsage)
+			agents.GET("/:name/processes", agentHandler.GetProcessList)
+			agents.GET("/:name/network", agentHandler.GetNetworkInfo)
+			agents.GET("/:name/disk", agentHandler.GetDiskInfo)
+			agents.POST("/:name/command", agentHandler.ExecuteCommand)
+			agents.POST("/:name/restart", agentHandler.RestartAgent)
+			agents.POST("/:name/shutdown", agentHandler.ShutdownAgent)
+			agents.GET("/:name/logs/stream", agentHandler.StreamLogs)
+			agents.GET("/:name/metrics/stream", agentHandler.StreamMetrics)
 
-			// Bulk operations - TODO: Implement handlers
-			// agents.POST("/bulk/execute", agentHandler.BulkExecute)
-			// agents.POST("/bulk/status", agentHandler.GetMultipleStatus)
+			// Bulk operations
+			agents.POST("/bulk/execute", agentHandler.BulkExecute)
+			agents.POST("/bulk/status", agentHandler.GetMultipleStatus)
 		}
 
-		// Agent Groups - TODO: Implement group handler
-		// groupHandler := handlers.NewAgentGroupHandler(s.agentDB)
-		// groups := api.Group("/agent-groups")
-		// {
-		// 	groups.GET("", groupHandler.List)
-		// 	groups.GET("/:name", groupHandler.Get)
-		// 	groups.POST("", groupHandler.Create)
-		// 	groups.DELETE("/:name", groupHandler.Delete)
-		// 	groups.POST("/:name/agents", groupHandler.AddAgents)
-		// 	groups.DELETE("/:name/agents", groupHandler.RemoveAgents)
-		// 	groups.GET("/:name/metrics", groupHandler.GetAggregatedMetrics)
-		// }
+		// Agent Groups
+		groupHandler := handlers.NewAgentGroupHandler(s.agentDB)
+		groups := api.Group("/agent-groups")
+		{
+			groups.GET("", groupHandler.List)
+			groups.GET("/:name", groupHandler.Get)
+			groups.POST("", groupHandler.Create)
+			groups.DELETE("/:name", groupHandler.Delete)
+			groups.POST("/:name/agents", groupHandler.AddAgents)
+			groups.DELETE("/:name/agents", groupHandler.RemoveAgents)
+			groups.GET("/:name/metrics", groupHandler.GetAggregatedMetrics)
+		}
 
 		// Workflows (Sloths)
 		slothHandler := handlers.NewSlothHandler(s.slothRepo)
