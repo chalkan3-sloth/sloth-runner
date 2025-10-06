@@ -46,7 +46,7 @@ func (c *CoreModuleAdapter) Loader(L *lua.LState) int {
 func InitializeCoreModules(registry *ModuleRegistry) error {
 	coreModules := []ModuleLoader{
 		NewCoreModuleAdapter(core.NewHTTPModule()),
-		NewCoreModuleAdapter(core.NewHelpModule()), 
+		NewCoreModuleAdapter(core.NewHelpModule()),
 		NewCoreModuleAdapter(core.NewValidateModule()),
 		NewCoreModuleAdapter(core.NewSystemModule()),
 		NewCoreModuleAdapter(core.NewCryptoModule()),
@@ -54,6 +54,7 @@ func InitializeCoreModules(registry *ModuleRegistry) error {
 		NewCoreModuleAdapter(core.NewDatabaseModule()),
 		NewCoreModuleAdapter(core.NewMonitoringModule()),
 		NewCoreModuleAdapter(core.NewGoroutineModule()),
+		NewCoreModuleAdapter(core.NewEventModule()),
 	}
 	
 	for _, module := range coreModules {
