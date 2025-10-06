@@ -51,23 +51,22 @@ sloth-runner run -f examples/test_multi_host.sloth --delegate-to lady-arch --del
 Define multiple hosts in your `.sloth` file:
 
 ```lua
-TaskDefinitions = {
-    deployment = {
-        description = "Deploy to multiple servers",
-        delegate_to = {"web-server-1", "web-server-2", "web-server-3"},
-        tasks = {
-            {
-                name = "deploy_app",
-                description = "Deploy application",
-                command = function()
-                    log.info("Deploying on " .. exec.run("hostname").output)
-                    -- Your deployment logic here
-                    return true, "Deployment successful"
-                end
-            }
+workflow({
+    name = "deployment",
+    description = "Deploy to multiple servers",
+    delegate_to = {"web-server-1", "web-server-2", "web-server-3"},
+    tasks = {
+        {
+            name = "deploy_app",
+            description = "Deploy application",
+            run = function()
+                log.info("Deploying on " .. exec.run("hostname").output)
+                -- Your deployment logic here
+                return {changed = true, message = "Deployment successful"}
+            end
         }
     }
-}
+})
 ```
 
 ### Method 3: Mixed Approach
@@ -89,52 +88,51 @@ sloth-runner run -f deploy.sloth --delegate-to staging-1 --delegate-to staging-2
 
 ```lua
 -- file: system_check.sloth
-TaskDefinitions = {
-    system_check = {
-        description = "Collect system info from all hosts",
-        tasks = {
-            {
-                name = "collect_info",
-                description = "Get system information",
-                command = function()
-                    log.info("=== System Information ===")
+workflow({
+    name = "system_check",
+    description = "Collect system info from all hosts",
+    tasks = {
+        {
+            name = "collect_info",
+            description = "Get system information",
+            run = function()
+                log.info("=== System Information ===")
 
-                    -- Hostname
-                    local hostname = exec.run("hostname")
-                    if hostname.success then
-                        log.info("Host: " .. hostname.output)
-                    end
-
-                    -- System info
-                    local uname = exec.run("uname -a")
-                    if uname.success then
-                        log.info("System: " .. uname.output)
-                    end
-
-                    -- CPU info
-                    local cpu = exec.run("nproc")
-                    if cpu.success then
-                        log.info("CPUs: " .. cpu.output)
-                    end
-
-                    -- Memory info
-                    local mem = exec.run("free -h | grep Mem")
-                    if mem.success then
-                        log.info("Memory: " .. mem.output)
-                    end
-
-                    -- Disk usage
-                    local disk = exec.run("df -h /")
-                    if disk.success then
-                        log.info("Disk: " .. disk.output)
-                    end
-
-                    return true, "System info collected"
+                -- Hostname
+                local hostname = exec.run("hostname")
+                if hostname.success then
+                    log.info("Host: " .. hostname.output)
                 end
-            }
+
+                -- System info
+                local uname = exec.run("uname -a")
+                if uname.success then
+                    log.info("System: " .. uname.output)
+                end
+
+                -- CPU info
+                local cpu = exec.run("nproc")
+                if cpu.success then
+                    log.info("CPUs: " .. cpu.output)
+                end
+
+                -- Memory info
+                local mem = exec.run("free -h | grep Mem")
+                if mem.success then
+                    log.info("Memory: " .. mem.output)
+                end
+
+                -- Disk usage
+                local disk = exec.run("df -h /")
+                if disk.success then
+                    log.info("Disk: " .. disk.output)
+                end
+
+                return {changed = false, message = "System info collected"}
+            end
         }
     }
-}
+})
 ```
 
 Run on multiple hosts:
@@ -146,51 +144,50 @@ sloth-runner run -f system_check.sloth --delegate-to server1 --delegate-to serve
 
 ```lua
 -- file: deploy_app.sloth
-TaskDefinitions = {
-    deploy_application = {
-        description = "Deploy application to multiple servers",
-        tasks = {
-            {
-                name = "stop_service",
-                description = "Stop the application service",
-                command = function()
-                    log.info("Stopping service...")
-                    exec.run("systemctl stop myapp")
-                    return true, "Service stopped"
-                end
-            },
-            {
-                name = "update_code",
-                description = "Update application code",
-                depends_on = {"stop_service"},
-                command = function()
-                    log.info("Updating application...")
-                    exec.run("cd /opt/myapp && git pull")
-                    exec.run("cd /opt/myapp && npm install")
-                    return true, "Code updated"
-                end
-            },
-            {
-                name = "start_service",
-                description = "Start the application service",
-                depends_on = {"update_code"},
-                command = function()
-                    log.info("Starting service...")
-                    exec.run("systemctl start myapp")
+workflow({
+    name = "deploy_application",
+    description = "Deploy application to multiple servers",
+    tasks = {
+        {
+            name = "stop_service",
+            description = "Stop the application service",
+            run = function()
+                log.info("Stopping service...")
+                exec.run("systemctl stop myapp")
+                return {changed = true, message = "Service stopped"}
+            end
+        },
+        {
+            name = "update_code",
+            description = "Update application code",
+            depends_on = {"stop_service"},
+            run = function()
+                log.info("Updating application...")
+                exec.run("cd /opt/myapp && git pull")
+                exec.run("cd /opt/myapp && npm install")
+                return {changed = true, message = "Code updated"}
+            end
+        },
+        {
+            name = "start_service",
+            description = "Start the application service",
+            depends_on = {"update_code"},
+            run = function()
+                log.info("Starting service...")
+                exec.run("systemctl start myapp")
 
-                    -- Verify service is running
-                    local status = exec.run("systemctl is-active myapp")
-                    if status.output:match("active") then
-                        log.info("Service started successfully")
-                        return true, "Service running"
-                    else
-                        return false, "Service failed to start"
-                    end
+                -- Verify service is running
+                local status = exec.run("systemctl is-active myapp")
+                if status.output:match("active") then
+                    log.info("Service started successfully")
+                    return {changed = true, message = "Service running"}
+                else
+                    return {failed = true, message = "Service failed to start"}
                 end
-            }
+            end
         }
     }
-}
+})
 ```
 
 Deploy to production servers:
@@ -205,46 +202,49 @@ sloth-runner run -f deploy_app.sloth \
 
 ```lua
 -- file: health_check.sloth
-TaskDefinitions = {
-    health_check = {
-        description = "Run health checks on all nodes",
-        tasks = {
-            {
-                name = "check_services",
-                description = "Check critical services",
-                command = function()
-                    local all_ok = true
-                    local services = {"nginx", "postgresql", "redis", "myapp"}
+workflow({
+    name = "health_check",
+    description = "Run health checks on all nodes",
+    tasks = {
+        {
+            name = "check_services",
+            description = "Check critical services",
+            run = function()
+                local all_ok = true
+                local services = {"nginx", "postgresql", "redis", "myapp"}
 
-                    for _, service in ipairs(services) do
-                        local status = exec.run("systemctl is-active " .. service)
-                        if status.output:match("active") then
-                            log.info("✅ " .. service .. " is running")
-                        else
-                            log.error("❌ " .. service .. " is not running")
-                            all_ok = false
-                        end
-                    end
-
-                    -- Check disk space
-                    local disk = exec.run("df -h / | awk 'NR==2 {print $5}' | sed 's/%//'")
-                    local usage = tonumber(disk.output)
-                    if usage > 80 then
-                        log.warn("⚠️ Disk usage is high: " .. usage .. "%")
+                for _, service in ipairs(services) do
+                    local status = exec.run("systemctl is-active " .. service)
+                    if status.output:match("active") then
+                        log.info("✅ " .. service .. " is running")
                     else
-                        log.info("✅ Disk usage is normal: " .. usage .. "%")
+                        log.error("❌ " .. service .. " is not running")
+                        all_ok = false
                     end
-
-                    -- Check load average
-                    local load = exec.run("uptime | awk -F'load average:' '{print $2}'")
-                    log.info("Load average: " .. load.output)
-
-                    return all_ok, all_ok and "All checks passed" or "Some checks failed"
                 end
-            }
+
+                -- Check disk space
+                local disk = exec.run("df -h / | awk 'NR==2 {print $5}' | sed 's/%//'")
+                local usage = tonumber(disk.output)
+                if usage > 80 then
+                    log.warn("⚠️ Disk usage is high: " .. usage .. "%")
+                else
+                    log.info("✅ Disk usage is normal: " .. usage .. "%")
+                end
+
+                -- Check load average
+                local load = exec.run("uptime | awk -F'load average:' '{print $2}'")
+                log.info("Load average: " .. load.output)
+
+                if all_ok then
+                    return {changed = false, message = "All checks passed"}
+                else
+                    return {failed = true, message = "Some checks failed"}
+                end
+            end
         }
     }
-}
+})
 ```
 
 ## Execution Output
@@ -330,32 +330,31 @@ sloth-runner run -f task.sloth --delegate-to 192.168.1.16:50052 --delegate-to 19
 Execute on different hosts based on conditions:
 
 ```lua
-TaskDefinitions = {
-    conditional_deploy = {
-        description = "Conditional deployment",
-        tasks = {
-            {
-                name = "deploy",
-                command = function()
-                    local hostname = exec.run("hostname").output:gsub("\n", "")
+workflow({
+    name = "conditional_deploy",
+    description = "Conditional deployment",
+    tasks = {
+        {
+            name = "deploy",
+            run = function()
+                local hostname = exec.run("hostname").output:gsub("\n", "")
 
-                    if hostname:match("prod") then
-                        log.info("Production deployment")
-                        -- Production specific logic
-                    elseif hostname:match("staging") then
-                        log.info("Staging deployment")
-                        -- Staging specific logic
-                    else
-                        log.info("Development deployment")
-                        -- Development specific logic
-                    end
-
-                    return true, "Deployment completed for " .. hostname
+                if hostname:match("prod") then
+                    log.info("Production deployment")
+                    -- Production specific logic
+                elseif hostname:match("staging") then
+                    log.info("Staging deployment")
+                    -- Staging specific logic
+                else
+                    log.info("Development deployment")
+                    -- Development specific logic
                 end
-            }
+
+                return {changed = true, message = "Deployment completed for " .. hostname}
+            end
         }
     }
-}
+})
 ```
 
 ### Rolling Updates
@@ -363,39 +362,38 @@ TaskDefinitions = {
 Combine with dependencies for rolling updates:
 
 ```lua
-TaskDefinitions = {
-    rolling_update = {
-        description = "Rolling update across hosts",
-        tasks = {
-            {
-                name = "update_batch_1",
-                delegate_to = {"server1", "server2"},
-                command = function()
-                    -- Update first batch
-                    return true, "Batch 1 updated"
-                end
-            },
-            {
-                name = "verify_batch_1",
-                depends_on = {"update_batch_1"},
-                delegate_to = {"server1", "server2"},
-                command = function()
-                    -- Verify first batch
-                    return true, "Batch 1 verified"
-                end
-            },
-            {
-                name = "update_batch_2",
-                depends_on = {"verify_batch_1"},
-                delegate_to = {"server3", "server4"},
-                command = function()
-                    -- Update second batch
-                    return true, "Batch 2 updated"
-                end
-            }
+workflow({
+    name = "rolling_update",
+    description = "Rolling update across hosts",
+    tasks = {
+        {
+            name = "update_batch_1",
+            delegate_to = {"server1", "server2"},
+            run = function()
+                -- Update first batch
+                return {changed = true, message = "Batch 1 updated"}
+            end
+        },
+        {
+            name = "verify_batch_1",
+            depends_on = {"update_batch_1"},
+            delegate_to = {"server1", "server2"},
+            run = function()
+                -- Verify first batch
+                return {changed = false, message = "Batch 1 verified"}
+            end
+        },
+        {
+            name = "update_batch_2",
+            depends_on = {"verify_batch_1"},
+            delegate_to = {"server3", "server4"},
+            run = function()
+                -- Update second batch
+                return {changed = true, message = "Batch 2 updated"}
+            end
         }
     }
-}
+})
 ```
 
 ## Best Practices
@@ -427,13 +425,13 @@ cache_servers = {"redis-1", "redis-2"}
 
 Always check for host-specific failures:
 ```lua
-command = function()
+run = function()
     local result = exec.run("critical-command")
     if not result.success then
         log.error("Failed on " .. exec.run("hostname").output)
-        return false, result.stderr
+        return {failed = true, message = result.stderr}
     end
-    return true, "Success"
+    return {changed = true, message = "Success"}
 end
 ```
 
@@ -441,19 +439,19 @@ end
 
 Ensure tasks are idempotent for safe re-execution:
 ```lua
-command = function()
+run = function()
     -- Check if already done
     local check = exec.run("test -f /opt/myapp/.deployed")
     if check.success then
         log.info("Already deployed, skipping")
-        return true, "Already deployed"
+        return {changed = false, message = "Already deployed"}
     end
 
     -- Perform deployment
     exec.run("deploy-application")
     exec.run("touch /opt/myapp/.deployed")
 
-    return true, "Newly deployed"
+    return {changed = true, message = "Newly deployed"}
 end
 ```
 

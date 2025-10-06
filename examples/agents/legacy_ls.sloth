@@ -1,16 +1,15 @@
 -- Exemplo usando sistema legado de TaskDefinitions para delegate_to
 
-TaskDefinitions = {}
-
-TaskDefinitions["remote_ls_test"] = {
+workflow({
+    name = "remote_ls_test",
     description = "Executar LS remoto usando legacy syntax",
     tasks = {
         {
             name = "remote_ls",
             description = "Lista arquivos no agent remoto",
-            command = "hostname && ls -la $HOME | head -10",
+            run = "hostname && ls -la $HOME | head -10",
             delegate_to = "ladyguica",
             timeout = "30s"
         }
     }
-}
+})
