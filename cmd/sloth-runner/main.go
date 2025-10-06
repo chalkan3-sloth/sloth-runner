@@ -43,6 +43,12 @@ func main() {
 }
 
 func Execute() error {
+	// Initialize master server starter function
+	commands.MasterServerStarter = func(port int) error {
+		server := newAgentRegistryServer()
+		return server.Start(port)
+	}
+
 	// Create application context with build info
 	ctx := commands.NewAppContext(version, commit, date)
 
