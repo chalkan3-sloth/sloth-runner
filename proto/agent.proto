@@ -59,6 +59,7 @@ message AgentInfo {
   string status = 4;
   int64 last_info_collected = 5; // Unix timestamp of the last system info collection
   string system_info_json = 6; // JSON string with system information
+  string version = 7; // Agent version
 }
 
 message ListAgentsRequest {
@@ -119,6 +120,7 @@ service AgentRegistry {
 message HeartbeatRequest {
   string agent_name = 1;
   string system_info_json = 2; // Optional: agent can send system info with heartbeat
+  string version = 3; // Agent version
 }
 
 message HeartbeatResponse {

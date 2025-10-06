@@ -12,6 +12,7 @@ import (
 	slothcmd "github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sloth"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/stack"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/state"
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/workflow"
 	"github.com/pterm/pterm"
 )
 
@@ -77,7 +78,11 @@ func Execute() error {
 	stateCmd := state.NewStateCommand(ctx)
 	rootCmd.AddCommand(stateCmd)
 
-	// Add other root commands
+	// Add workflow command and subcommands
+	workflowCmd := workflow.NewWorkflowCommand(ctx)
+	rootCmd.AddCommand(workflowCmd)
+
+	// Add other root commands (kept for backward compatibility)
 	listCmd := commands.NewListCommand(ctx)
 	rootCmd.AddCommand(listCmd)
 

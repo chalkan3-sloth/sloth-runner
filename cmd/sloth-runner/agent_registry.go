@@ -88,6 +88,7 @@ func (s *agentRegistryServer) ListAgents(ctx context.Context, req *pb.ListAgents
 				Status:            agent.Status,
 				LastInfoCollected: agent.LastInfoCollected,
 				SystemInfoJson:    agent.SystemInfo,
+				Version:           agent.Version,
 			})
 		}
 	}
@@ -106,14 +107,21 @@ func (s *agentRegistryServer) Heartbeat(ctx context.Context, req *pb.HeartbeatRe
 			pterm.Debug.Printf("Failed to update heartbeat for agent %s: %v\n", req.AgentName, err)
 			return &pb.HeartbeatResponse{Success: false, Message: "Agent not found"}, nil
 		}
-		
+
 		// If system info is provided, update it
 		if req.SystemInfoJson != "" {
 			if err := s.db.UpdateSystemInfo(req.AgentName, req.SystemInfoJson); err != nil {
 				pterm.Debug.Printf("Failed to update system info for agent %s: %v\n", req.AgentName, err)
 			}
 		}
-		
+
+		// If version is provided, update it
+		if req.Version != "" {
+			if err := s.db.UpdateVersion(req.AgentName, req.Version); err != nil {
+				pterm.Debug.Printf("Failed to update version for agent %s: %v\n", req.AgentName, err)
+			}
+		}
+
 		pterm.Debug.Printf("Heartbeat received from agent: %s\n", req.AgentName)
 		return &pb.HeartbeatResponse{Success: true, Message: "Heartbeat received"}, nil
 	}
@@ -256,6 +264,7 @@ func (s *agentRegistryServer) GetAgentInfo(ctx context.Context, req *pb.GetAgent
 			Status:            agent.Status,
 			LastInfoCollected: agent.LastInfoCollected,
 			SystemInfoJson:    agent.SystemInfo,
+			Version:           agent.Version,
 		},
 	}, nil
 }

@@ -22,6 +22,7 @@ const (
 	Agent_ExecuteTask_FullMethodName = "/agent.Agent/ExecuteTask"
 	Agent_RunCommand_FullMethodName  = "/agent.Agent/RunCommand"
 	Agent_Shutdown_FullMethodName    = "/agent.Agent/Shutdown"
+	Agent_UpdateAgent_FullMethodName = "/agent.Agent/UpdateAgent"
 )
 
 // AgentClient is the client API for Agent service.
@@ -31,6 +32,7 @@ type AgentClient interface {
 	ExecuteTask(ctx context.Context, in *ExecuteTaskRequest, opts ...grpc.CallOption) (*ExecuteTaskResponse, error)
 	RunCommand(ctx context.Context, in *RunCommandRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamOutputResponse], error)
 	Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error)
+	UpdateAgent(ctx context.Context, in *UpdateAgentRequest, opts ...grpc.CallOption) (*UpdateAgentResponse, error)
 }
 
 type agentClient struct {
@@ -80,6 +82,16 @@ func (c *agentClient) Shutdown(ctx context.Context, in *ShutdownRequest, opts ..
 	return out, nil
 }
 
+func (c *agentClient) UpdateAgent(ctx context.Context, in *UpdateAgentRequest, opts ...grpc.CallOption) (*UpdateAgentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateAgentResponse)
+	err := c.cc.Invoke(ctx, Agent_UpdateAgent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AgentServer is the server API for Agent service.
 // All implementations must embed UnimplementedAgentServer
 // for forward compatibility.
@@ -87,6 +99,7 @@ type AgentServer interface {
 	ExecuteTask(context.Context, *ExecuteTaskRequest) (*ExecuteTaskResponse, error)
 	RunCommand(*RunCommandRequest, grpc.ServerStreamingServer[StreamOutputResponse]) error
 	Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error)
+	UpdateAgent(context.Context, *UpdateAgentRequest) (*UpdateAgentResponse, error)
 	mustEmbedUnimplementedAgentServer()
 }
 
@@ -105,6 +118,9 @@ func (UnimplementedAgentServer) RunCommand(*RunCommandRequest, grpc.ServerStream
 }
 func (UnimplementedAgentServer) Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Shutdown not implemented")
+}
+func (UnimplementedAgentServer) UpdateAgent(context.Context, *UpdateAgentRequest) (*UpdateAgentResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateAgent not implemented")
 }
 func (UnimplementedAgentServer) mustEmbedUnimplementedAgentServer() {}
 func (UnimplementedAgentServer) testEmbeddedByValue()               {}
@@ -174,6 +190,24 @@ func _Agent_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(inte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Agent_UpdateAgent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateAgentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).UpdateAgent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_UpdateAgent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).UpdateAgent(ctx, req.(*UpdateAgentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Agent_ServiceDesc is the grpc.ServiceDesc for Agent service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -188,6 +222,10 @@ var Agent_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Shutdown",
 			Handler:    _Agent_Shutdown_Handler,
+		},
+		{
+			MethodName: "UpdateAgent",
+			Handler:    _Agent_UpdateAgent_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

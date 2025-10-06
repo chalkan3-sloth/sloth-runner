@@ -469,6 +469,7 @@ type AgentInfo struct {
 	Status            string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
 	LastInfoCollected int64                  `protobuf:"varint,5,opt,name=last_info_collected,json=lastInfoCollected,proto3" json:"last_info_collected,omitempty"` // Unix timestamp of the last system info collection
 	SystemInfoJson    string                 `protobuf:"bytes,6,opt,name=system_info_json,json=systemInfoJson,proto3" json:"system_info_json,omitempty"`           // JSON string with system information
+	Version           string                 `protobuf:"bytes,7,opt,name=version,proto3" json:"version,omitempty"`                                                 // Agent version
 	unknownFields     protoimpl.UnknownFields
 	sizeCache         protoimpl.SizeCache
 }
@@ -541,6 +542,13 @@ func (x *AgentInfo) GetLastInfoCollected() int64 {
 func (x *AgentInfo) GetSystemInfoJson() string {
 	if x != nil {
 		return x.SystemInfoJson
+	}
+	return ""
+}
+
+func (x *AgentInfo) GetVersion() string {
+	if x != nil {
+		return x.Version
 	}
 	return ""
 }
@@ -1002,6 +1010,7 @@ type HeartbeatRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	AgentName      string                 `protobuf:"bytes,1,opt,name=agent_name,json=agentName,proto3" json:"agent_name,omitempty"`
 	SystemInfoJson string                 `protobuf:"bytes,2,opt,name=system_info_json,json=systemInfoJson,proto3" json:"system_info_json,omitempty"` // Optional: agent can send system info with heartbeat
+	Version        string                 `protobuf:"bytes,3,opt,name=version,proto3" json:"version,omitempty"`                                       // Agent version
 	unknownFields  protoimpl.UnknownFields
 	sizeCache      protoimpl.SizeCache
 }
@@ -1046,6 +1055,13 @@ func (x *HeartbeatRequest) GetAgentName() string {
 func (x *HeartbeatRequest) GetSystemInfoJson() string {
 	if x != nil {
 		return x.SystemInfoJson
+	}
+	return ""
+}
+
+func (x *HeartbeatRequest) GetVersion() string {
+	if x != nil {
+		return x.Version
 	}
 	return ""
 }
@@ -1242,7 +1258,7 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\ragent_address\x18\x02 \x01(\tR\fagentAddress\"K\n" +
 	"\x15RegisterAgentResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\"\xe8\x01\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\"\x82\x02\n" +
 	"\tAgentInfo\x12\x1d\n" +
 	"\n" +
 	"agent_name\x18\x01 \x01(\tR\tagentName\x12#\n" +
@@ -1250,7 +1266,8 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\x0elast_heartbeat\x18\x03 \x01(\x03R\rlastHeartbeat\x12\x16\n" +
 	"\x06status\x18\x04 \x01(\tR\x06status\x12.\n" +
 	"\x13last_info_collected\x18\x05 \x01(\x03R\x11lastInfoCollected\x12(\n" +
-	"\x10system_info_json\x18\x06 \x01(\tR\x0esystemInfoJson\"\x13\n" +
+	"\x10system_info_json\x18\x06 \x01(\tR\x0esystemInfoJson\x12\x18\n" +
+	"\aversion\x18\a \x01(\tR\aversion\"\x13\n" +
 	"\x11ListAgentsRequest\">\n" +
 	"\x12ListAgentsResponse\x12(\n" +
 	"\x06agents\x18\x01 \x03(\v2\x10.agent.AgentInfoR\x06agents\"1\n" +
@@ -1278,11 +1295,12 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\fstderr_chunk\x18\x02 \x01(\tR\vstderrChunk\x12\x1a\n" +
 	"\bfinished\x18\x03 \x01(\bR\bfinished\x12\x1b\n" +
 	"\texit_code\x18\x04 \x01(\x05R\bexitCode\x12\x14\n" +
-	"\x05error\x18\x05 \x01(\tR\x05error\"[\n" +
+	"\x05error\x18\x05 \x01(\tR\x05error\"u\n" +
 	"\x10HeartbeatRequest\x12\x1d\n" +
 	"\n" +
 	"agent_name\x18\x01 \x01(\tR\tagentName\x12(\n" +
-	"\x10system_info_json\x18\x02 \x01(\tR\x0esystemInfoJson\"G\n" +
+	"\x10system_info_json\x18\x02 \x01(\tR\x0esystemInfoJson\x12\x18\n" +
+	"\aversion\x18\x03 \x01(\tR\aversion\"G\n" +
 	"\x11HeartbeatResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\"4\n" +

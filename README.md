@@ -518,11 +518,14 @@ workflow:
 
 ```bash
 # Execute the complete workflow
-sloth-runner run -f deploy.sloth -v values.yaml gitops_deploy
+sloth-runner workflow run gitops_deploy -f deploy.sloth -v values.yaml
+
+# Or using the legacy command (still supported for backward compatibility)
+sloth-runner run gitops_deploy -f deploy.sloth -v values.yaml
 
 # Watch the magic happen:
 # ✅ Repository cloned
-# ✅ Terraform initialized  
+# ✅ Terraform initialized
 # ✅ Infrastructure planned
 # ✅ Infrastructure deployed
 ```
@@ -536,8 +539,11 @@ We provide a working example that you can run immediately:
 git clone https://github.com/chalkan3-sloth/sloth-runner.git
 cd sloth-runner
 
-# Run the GitOps example
-sloth-runner run -f examples/deploy_git_terraform.sloth -v examples/values.yaml deploy_git_terraform
+# Run the GitOps example (new workflow command)
+sloth-runner workflow run deploy_git_terraform -f examples/deploy_git_terraform.sloth -v examples/values.yaml
+
+# Or using legacy command (backward compatible)
+sloth-runner run deploy_git_terraform -f examples/deploy_git_terraform.sloth -v examples/values.yaml
 ```
 
 This example demonstrates:
@@ -710,7 +716,11 @@ workflow.define("parallel_deployment")
 
 **Run the example:**
 ```bash
-sloth-runner run -f parallel_deployment.sloth
+# New workflow command
+sloth-runner workflow run parallel_deployment -f parallel_deployment.sloth
+
+# Or legacy command (backward compatible)
+sloth-runner run parallel_deployment -f parallel_deployment.sloth
 ```
 
 **Expected Output:**
@@ -1049,8 +1059,11 @@ workflow("quick-test")
   end)
 EOF
 
-# Run it!
-sloth-runner run -f test-deployment.sloth
+# Run it! (new workflow command)
+sloth-runner workflow run quick-test -f test-deployment.sloth
+
+# Or using legacy command
+sloth-runner run quick-test -f test-deployment.sloth
 ```
 
 #### 📖 **Learn More**
@@ -1363,8 +1376,11 @@ workflow.define("hello_world_workflow", {
 ```
 
 ```bash
-# Run the workflow
-./sloth-runner run -f hello-world.sloth
+# Run the workflow (new command structure)
+./sloth-runner workflow run hello_world_workflow -f hello-world.sloth
+
+# Or using legacy command
+./sloth-runner run hello_world_workflow -f hello-world.sloth
 ```
 
 ### Basic Pipeline Example
@@ -1440,18 +1456,21 @@ workflow.define("data_pipeline", {
 *Comprehensive command-line interface for all operations*
 
 ```bash
-# Core commands
-sloth-runner run -f workflow.sloth        # Execute workflows
-sloth-runner run --interactive          # Interactive task selection
-sloth-runner ui                         # Start web dashboard
+# Workflow commands (NEW organized structure!)
+sloth-runner workflow run <stack> -f workflow.sloth     # Execute workflows
+sloth-runner workflow list                              # List available workflows
+sloth-runner workflow preview -f workflow.sloth         # Preview workflow structure
 
-# 🆔 NEW: Stack Management (Pulumi-style)
+# Legacy commands (backward compatible)
+sloth-runner run <stack> -f workflow.sloth              # Execute workflows (legacy)
+sloth-runner list -f workflow.sloth                     # List tasks (legacy)
+
+# Stack Management (Pulumi-style)
 sloth-runner stack new my-app --description "My application stack"  # Create stack
-sloth-runner run my-stack -f workflow.sloth --output enhanced  # Run with stack
-sloth-runner run my-stack -f workflow.sloth --output json     # JSON output
-sloth-runner stack list                                      # List all stacks  
+sloth-runner workflow run my-stack -f workflow.sloth --output enhanced  # Run with stack
+sloth-runner workflow run my-stack -f workflow.sloth --output json     # JSON output
+sloth-runner stack list                                      # List all stacks
 sloth-runner stack show my-stack                            # Show stack details
-sloth-runner list -f workflow.sloth                          # List tasks with IDs
 
 # Distributed execution
 sloth-runner master                     # Start master server
@@ -1462,6 +1481,7 @@ sloth-runner agent run agent1 "command" # Execute on specific agent
 # Utilities
 sloth-runner scheduler enable           # Enable task scheduler
 sloth-runner scheduler list             # List scheduled tasks
+sloth-runner ui                         # Start web dashboard
 sloth-runner version                    # Show version information
 ```
 
@@ -1936,10 +1956,13 @@ workflow.define("ci_pipeline", {
 *   **🔐 Security:** RBAC, secrets management, and audit logging
 
 ### 💻 **Modern CLI Interface**
-*   `run`: Execute workflows with Modern DSL support and multiple output formats
-*   `run --output json`: JSON structured output for automation and integration
+*   `workflow run`: Execute workflows with Modern DSL support and multiple output formats
+*   `workflow run --output json`: JSON structured output for automation and integration
+*   `workflow list`: List available workflows with metadata
+*   `workflow preview`: Preview workflow structure before execution (NEW!)
 *   `stack`: Complete stack management (list, show, delete)
-*   `list`: Display workflows with enhanced metadata and unique IDs
+*   `run`: Legacy execute workflows (backward compatible)
+*   `list`: Legacy list workflows (backward compatible)
 *   `workflow init`: Project scaffolding with templates
 *   `validate`: Enhanced validation for both DSL formats
 *   `agent`: Enhanced distributed agent management
@@ -1982,7 +2005,11 @@ workflow.define("hello_world", {
 
 ### 3. **Run Your Workflow**
 ```bash
-./sloth-runner run -f hello-world-modern.sloth
+# New workflow command
+./sloth-runner workflow run hello_world -f hello-world-modern.sloth
+
+# Or using legacy command (backward compatible)
+./sloth-runner run hello_world -f hello-world-modern.sloth
 ```
 
 ---
@@ -2034,49 +2061,49 @@ workflow.define("hello_world", {
 ### 🟢 **Beginner Examples**
 ```bash
 # Hello World with Modern DSL
-./sloth-runner run -f examples/beginner/hello-world.sloth
+./sloth-runner workflow run hello_world -f examples/beginner/hello-world.sloth
 
 # Simple state management
-./sloth-runner run -f examples/simple_state_test.sloth
+./sloth-runner workflow run simple_state_test -f examples/simple_state_test.sloth
 
 # Basic exec module testing
-./sloth-runner run -f examples/exec_test.sloth
+./sloth-runner workflow run exec_test -f examples/exec_test.sloth
 
 # Simple pipeline processing
-./sloth-runner run -f examples/basic_pipeline.sloth
+./sloth-runner workflow run basic_pipeline -f examples/basic_pipeline.sloth
 ```
 
-### 🟡 **Intermediate Examples**  
+### 🟡 **Intermediate Examples**
 ```bash
 # Parallel execution with modern async
-./sloth-runner run -f examples/parallel_execution.sloth
+./sloth-runner workflow run parallel_execution -f examples/parallel_execution.sloth
 
 # Conditional execution and logic
-./sloth-runner run -f examples/conditional_execution.sloth
+./sloth-runner workflow run conditional_execution -f examples/conditional_execution.sloth
 
 # Enhanced pipeline with modern features
-./sloth-runner run -f examples/basic_pipeline_modern.sloth
+./sloth-runner workflow run basic_pipeline_modern -f examples/basic_pipeline_modern.sloth
 
 # Terraform infrastructure management
-./sloth-runner run -f examples/terraform_example.sloth
+./sloth-runner workflow run terraform_example -f examples/terraform_example.sloth
 ```
 
 ### 🔴 **Advanced Examples**
 ```bash
 # Advanced state management
-./sloth-runner run -f examples/state_management_demo.sloth
+./sloth-runner workflow run state_management_demo -f examples/state_management_demo.sloth
 
 # Enterprise reliability patterns
-./sloth-runner run -f examples/reliability_demo.sloth
+./sloth-runner workflow run reliability_demo -f examples/reliability_demo.sloth
 ```
 
 ### 🌍 **Real-World Examples**
 ```bash
 # Complete CI/CD pipeline
-./sloth-runner run -f examples/real-world/nodejs-cicd.sloth
+./sloth-runner workflow run nodejs_cicd -f examples/real-world/nodejs-cicd.sloth
 
 # Microservices deployment
-./sloth-runner run -f examples/real-world/microservices-deploy.sloth
+./sloth-runner workflow run microservices_deploy -f examples/real-world/microservices-deploy.sloth
 ```
 
 ---
