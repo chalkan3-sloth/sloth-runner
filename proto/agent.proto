@@ -6,9 +6,22 @@ option go_package = "github.com/chalkan3-sloth/sloth-runner/proto";
 
 service Agent {
   rpc ExecuteTask(ExecuteTaskRequest) returns (ExecuteTaskResponse);
-  rpc RunCommand(RunCommandRequest) returns (stream StreamOutputResponse); // Changed to stream
+  rpc RunCommand(RunCommandRequest) returns (stream StreamOutputResponse);
   rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
   rpc UpdateAgent(UpdateAgentRequest) returns (UpdateAgentResponse);
+
+  // Advanced Management RPCs
+  rpc GetResourceUsage(ResourceUsageRequest) returns (ResourceUsageResponse);
+  rpc GetProcessList(ProcessListRequest) returns (ProcessListResponse);
+  rpc GetNetworkInfo(NetworkInfoRequest) returns (NetworkInfoResponse);
+  rpc GetDiskInfo(DiskInfoRequest) returns (DiskInfoResponse);
+  rpc StreamLogs(StreamLogsRequest) returns (stream LogEntry);
+  rpc StreamMetrics(StreamMetricsRequest) returns (stream MetricsData);
+  rpc RestartService(RestartServiceRequest) returns (RestartServiceResponse);
+  rpc GetEnvironmentVars(EnvVarsRequest) returns (EnvVarsResponse);
+  rpc SetEnvironmentVar(SetEnvVarRequest) returns (SetEnvVarResponse);
+  rpc InstallModule(InstallModuleRequest) returns (InstallModuleResponse);
+  rpc GetInstalledModules(ModulesRequest) returns (ModulesResponse);
 }
 
 message ShutdownRequest {}
@@ -112,9 +125,24 @@ service AgentRegistry {
   rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
   rpc StopAgent(StopAgentRequest) returns (StopAgentResponse);
   rpc UnregisterAgent(UnregisterAgentRequest) returns (UnregisterAgentResponse);
-  rpc ExecuteCommand(ExecuteCommandRequest) returns (stream StreamOutputResponse); // Changed to stream
+  rpc ExecuteCommand(ExecuteCommandRequest) returns (stream StreamOutputResponse);
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
   rpc GetAgentInfo(GetAgentInfoRequest) returns (GetAgentInfoResponse);
+
+  // Group Management
+  rpc CreateAgentGroup(CreateGroupRequest) returns (CreateGroupResponse);
+  rpc AddAgentToGroup(AddToGroupRequest) returns (AddToGroupResponse);
+  rpc RemoveAgentFromGroup(RemoveFromGroupRequest) returns (RemoveFromGroupResponse);
+  rpc ListAgentGroups(ListGroupsRequest) returns (ListGroupsResponse);
+  rpc DeleteAgentGroup(DeleteGroupRequest) returns (DeleteGroupResponse);
+
+  // Bulk Operations
+  rpc ExecuteOnMultipleAgents(BulkExecuteRequest) returns (stream BulkExecuteResponse);
+  rpc GetMultipleAgentStatus(MultipleAgentStatusRequest) returns (MultipleAgentStatusResponse);
+
+  // Health & Monitoring
+  rpc GetAggregatedMetrics(AggregatedMetricsRequest) returns (AggregatedMetricsResponse);
+  rpc StreamAgentEvents(StreamEventsRequest) returns (stream AgentEvent);
 }
 
 message HeartbeatRequest {
@@ -136,4 +164,289 @@ message GetAgentInfoResponse {
   bool success = 1;
   string message = 2;
   AgentInfo agent_info = 3;
+}
+
+// Advanced Management Messages
+
+message ResourceUsageRequest {}
+
+message ResourceUsageResponse {
+  double cpu_percent = 1;
+  double memory_percent = 2;
+  uint64 memory_used_bytes = 3;
+  uint64 memory_total_bytes = 4;
+  double disk_percent = 5;
+  uint64 disk_used_bytes = 6;
+  uint64 disk_total_bytes = 7;
+  uint32 process_count = 8;
+  double load_avg_1min = 9;
+  double load_avg_5min = 10;
+  double load_avg_15min = 11;
+  uint64 uptime_seconds = 12;
+}
+
+message ProcessListRequest {
+  bool include_children = 1;
+  string filter_name = 2;
+}
+
+message ProcessInfo {
+  int32 pid = 1;
+  string name = 2;
+  string status = 3;
+  double cpu_percent = 4;
+  double memory_percent = 5;
+  uint64 memory_bytes = 6;
+  string user = 7;
+  string command = 8;
+  int64 started_at = 9;
+}
+
+message ProcessListResponse {
+  repeated ProcessInfo processes = 1;
+  uint32 total_count = 2;
+}
+
+message NetworkInfoRequest {}
+
+message NetworkInterface {
+  string name = 1;
+  repeated string ip_addresses = 2;
+  string mac_address = 3;
+  uint64 bytes_sent = 4;
+  uint64 bytes_recv = 5;
+  uint32 packets_sent = 6;
+  uint32 packets_recv = 7;
+  bool is_up = 8;
+}
+
+message NetworkInfoResponse {
+  repeated NetworkInterface interfaces = 1;
+  string hostname = 2;
+}
+
+message DiskInfoRequest {}
+
+message DiskPartition {
+  string device = 1;
+  string mountpoint = 2;
+  string fstype = 3;
+  uint64 total_bytes = 4;
+  uint64 used_bytes = 5;
+  uint64 free_bytes = 6;
+  double percent = 7;
+}
+
+message DiskInfoResponse {
+  repeated DiskPartition partitions = 1;
+  uint64 total_io_read_bytes = 2;
+  uint64 total_io_write_bytes = 3;
+}
+
+message StreamLogsRequest {
+  string log_file = 1; // Path to log file or service name
+  int32 tail_lines = 2; // Number of recent lines to stream
+  bool follow = 3; // Keep streaming new lines
+}
+
+message LogEntry {
+  int64 timestamp = 1;
+  string level = 2;
+  string message = 3;
+  string source = 4;
+}
+
+message StreamMetricsRequest {
+  int32 interval_seconds = 1; // How often to send metrics
+}
+
+message MetricsData {
+  int64 timestamp = 1;
+  double cpu_percent = 2;
+  double memory_percent = 3;
+  double disk_percent = 4;
+  map<string, double> custom_metrics = 5;
+}
+
+message RestartServiceRequest {
+  string service_name = 1;
+  bool graceful = 2;
+}
+
+message RestartServiceResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message EnvVarsRequest {
+  repeated string var_names = 1; // Empty for all vars
+}
+
+message EnvVarsResponse {
+  map<string, string> variables = 1;
+}
+
+message SetEnvVarRequest {
+  string name = 1;
+  string value = 2;
+  bool persistent = 3; // Save to profile
+}
+
+message SetEnvVarResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message InstallModuleRequest {
+  string module_name = 1;
+  string version = 2; // Empty for latest
+}
+
+message InstallModuleResponse {
+  bool success = 1;
+  string message = 2;
+  string installed_version = 3;
+}
+
+message ModulesRequest {}
+
+message ModuleInfo {
+  string name = 1;
+  string version = 2;
+  bool installed = 3;
+  string description = 4;
+}
+
+message ModulesResponse {
+  repeated ModuleInfo modules = 1;
+}
+
+// Group Management Messages
+
+message CreateGroupRequest {
+  string group_name = 1;
+  string description = 2;
+  repeated string agent_names = 3;
+  map<string, string> tags = 4;
+}
+
+message CreateGroupResponse {
+  bool success = 1;
+  string message = 2;
+  string group_id = 3;
+}
+
+message AddToGroupRequest {
+  string group_name = 1;
+  repeated string agent_names = 2;
+}
+
+message AddToGroupResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message RemoveFromGroupRequest {
+  string group_name = 1;
+  repeated string agent_names = 2;
+}
+
+message RemoveFromGroupResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ListGroupsRequest {}
+
+message AgentGroup {
+  string name = 1;
+  string description = 2;
+  repeated string agent_names = 3;
+  map<string, string> tags = 4;
+  int64 created_at = 5;
+  int32 agent_count = 6;
+}
+
+message ListGroupsResponse {
+  repeated AgentGroup groups = 1;
+}
+
+message DeleteGroupRequest {
+  string group_name = 1;
+}
+
+message DeleteGroupResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// Bulk Operations Messages
+
+message BulkExecuteRequest {
+  repeated string agent_names = 1;
+  string group_name = 2; // Alternative to agent_names
+  string command = 3;
+  string workflow_name = 4; // Alternative to command
+  bool parallel = 5;
+  int32 timeout_seconds = 6;
+}
+
+message BulkExecuteResponse {
+  string agent_name = 1;
+  bool success = 2;
+  string output = 3;
+  string error = 4;
+  int32 exit_code = 5;
+  int64 execution_time_ms = 6;
+}
+
+message MultipleAgentStatusRequest {
+  repeated string agent_names = 1;
+  string group_name = 2;
+}
+
+message AgentStatusInfo {
+  string agent_name = 1;
+  string status = 2;
+  double cpu_percent = 3;
+  double memory_percent = 4;
+  int64 last_heartbeat = 5;
+  bool healthy = 6;
+}
+
+message MultipleAgentStatusResponse {
+  repeated AgentStatusInfo statuses = 1;
+}
+
+// Monitoring Messages
+
+message AggregatedMetricsRequest {
+  repeated string agent_names = 1;
+  string group_name = 2;
+  int32 time_range_minutes = 3;
+}
+
+message AggregatedMetricsResponse {
+  double avg_cpu_percent = 1;
+  double avg_memory_percent = 2;
+  double avg_disk_percent = 3;
+  int32 total_agents = 4;
+  int32 healthy_agents = 5;
+  int32 unhealthy_agents = 6;
+  map<string, double> custom_metrics = 7;
+}
+
+message StreamEventsRequest {
+  repeated string agent_names = 1;
+  string group_name = 2;
+  repeated string event_types = 3; // connected, disconnected, error, etc
+}
+
+message AgentEvent {
+  string agent_name = 1;
+  string event_type = 2;
+  int64 timestamp = 3;
+  string message = 4;
+  map<string, string> metadata = 5;
+  string severity = 6; // info, warning, error, critical
 }

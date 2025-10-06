@@ -19,6 +19,7 @@ func NewEventsCommand(ctx *commands.AppContext) *cobra.Command {
 	cmd.AddCommand(NewShowCommand(ctx))
 	cmd.AddCommand(NewDeleteCommand(ctx))
 	cmd.AddCommand(NewCleanupCommand(ctx))
+	cmd.AddCommand(NewDocsCommand(ctx))
 
 	return cmd
 }

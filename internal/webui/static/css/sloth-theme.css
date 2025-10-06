@@ -1,61 +1,60 @@
 /* Sloth Runner Theme - Inspired by Sloths 🦥 */
 
 :root {
-    /* Sloth Colors - Earth tones and forest greens */
-    --sloth-brown: #8B7355;
-    --sloth-tan: #D4A574;
-    --sloth-dark-brown: #5C4A3A;
-    --sloth-light-brown: #C8B299;
-    --sloth-green: #7CB342;
-    --sloth-dark-green: #558B2F;
-    --sloth-leaf: #9CCC65;
-    --sloth-branch: #6B4423;
+    /* Modern Professional Color Palette */
+    --primary-color: #4F46E5;
+    --primary-hover: #4338CA;
+    --primary-light: #818CF8;
+    --primary-dark: #3730A3;
 
-    /* UI Colors */
-    --primary-color: #7CB342;
-    --primary-hover: #558B2F;
-    --secondary-color: #8B7355;
-    --accent-color: #D4A574;
+    --secondary-color: #10B981;
+    --secondary-hover: #059669;
+    --secondary-light: #34D399;
+
+    --accent-color: #F59E0B;
+    --accent-hover: #D97706;
 
     /* Status colors */
-    --success-color: #7CB342;
-    --warning-color: #FFA726;
-    --danger-color: #EF5350;
-    --info-color: #29B6F6;
+    --success-color: #10B981;
+    --warning-color: #F59E0B;
+    --danger-color: #EF4444;
+    --info-color: #3B82F6;
 
     /* Backgrounds - Light Mode */
-    --bg-primary: #F5F1ED;
+    --bg-primary: #F9FAFB;
     --bg-secondary: #FFFFFF;
-    --bg-tertiary: #E8E3DD;
-    --bg-card: #FAFAF8;
+    --bg-tertiary: #F3F4F6;
+    --bg-card: #FFFFFF;
 
     /* Text colors */
-    --text-primary: #2C1810;
-    --text-secondary: #5C4A3A;
-    --text-muted: #8B7355;
+    --text-primary: #111827;
+    --text-secondary: #4B5563;
+    --text-muted: #9CA3AF;
 
     /* Borders and shadows */
-    --border-color: #D4C4B0;
-    --shadow-sm: 0 2px 4px rgba(92, 74, 58, 0.1);
-    --shadow-md: 0 4px 8px rgba(92, 74, 58, 0.15);
-    --shadow-lg: 0 8px 16px rgba(92, 74, 58, 0.2);
+    --border-color: #E5E7EB;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 [data-theme="dark"] {
-    /* Dark mode - Night in the rainforest */
-    --bg-primary: #1C1510;
-    --bg-secondary: #2C2318;
-    --bg-tertiary: #3C3128;
-    --bg-card: #352B22;
+    /* Dark mode - Professional */
+    --bg-primary: #0F172A;
+    --bg-secondary: #1E293B;
+    --bg-tertiary: #334155;
+    --bg-card: #1E293B;
 
-    --text-primary: #E8E3DD;
-    --text-secondary: #C8B299;
-    --text-muted: #8B7355;
+    --text-primary: #F1F5F9;
+    --text-secondary: #CBD5E1;
+    --text-muted: #64748B;
 
-    --border-color: #4C4138;
-    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
-    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.5);
+    --border-color: #334155;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
 }
 
 /* Global styles */
@@ -78,18 +77,18 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--sloth-brown);
+    background: var(--secondary-color);
     border-radius: 10px;
     border: 2px solid var(--bg-tertiary);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--sloth-dark-brown);
+    background: var(--secondary-hover);
 }
 
-/* Navbar with sloth theme */
+/* Navbar with modern theme */
 .navbar {
-    background: linear-gradient(135deg, var(--sloth-dark-green) 0%, var(--sloth-green) 100%) !important;
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%) !important;
     box-shadow: var(--shadow-md);
     border: none;
 }
@@ -152,7 +151,7 @@ body {
 
 .dropdown-item i {
     margin-right: 8px;
-    color: var(--sloth-green);
+    color: var(--primary-color);
 }
 
 .dropdown-item:hover i {
@@ -175,7 +174,7 @@ body {
 
 .card-header {
     background-color: var(--bg-secondary);
-    border-bottom: 2px solid var(--sloth-leaf);
+    border-bottom: 2px solid var(--primary-light);
     border-radius: 16px 16px 0 0 !important;
     padding: 1rem 1.5rem;
     font-weight: 600;
@@ -197,11 +196,11 @@ body {
     left: 0;
     width: 4px;
     height: 100%;
-    background: linear-gradient(180deg, var(--sloth-green), var(--sloth-dark-green));
+    background: linear-gradient(180deg, var(--primary-color), var(--primary-dark));
 }
 
 .stat-icon {
-    background: linear-gradient(135deg, var(--sloth-green), var(--sloth-dark-green));
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     width: 70px;
     height: 70px;
     border-radius: 20px;
@@ -215,7 +214,7 @@ body {
 
 /* Buttons */
 .btn-primary {
-    background: linear-gradient(135deg, var(--sloth-green), var(--sloth-dark-green));
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     border: none;
     border-radius: 12px;
     padding: 0.6rem 1.5rem;
@@ -227,11 +226,11 @@ body {
 .btn-primary:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
-    background: linear-gradient(135deg, var(--sloth-dark-green), var(--sloth-green));
+    background: linear-gradient(135deg, var(--primary-hover), var(--primary-dark));
 }
 
 .btn-secondary {
-    background: linear-gradient(135deg, var(--sloth-brown), var(--sloth-dark-brown));
+    background: linear-gradient(135deg, var(--secondary-color), var(--secondary-hover));
     border: none;
     border-radius: 12px;
     padding: 0.6rem 1.5rem;
@@ -288,7 +287,7 @@ body {
 }
 
 .badge.bg-primary {
-    background: linear-gradient(135deg, var(--sloth-green), var(--sloth-dark-green)) !important;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)) !important;
 }
 
 /* Progress bars */
@@ -300,17 +299,17 @@ body {
 }
 
 .progress-bar {
-    background: linear-gradient(90deg, var(--sloth-green), var(--sloth-leaf));
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
     border-radius: 10px;
     transition: width 0.6s ease;
 }
 
 .progress-bar.bg-success {
-    background: linear-gradient(90deg, var(--success-color), var(--sloth-leaf));
+    background: linear-gradient(90deg, var(--success-color), var(--secondary-light));
 }
 
 .progress-bar.bg-primary {
-    background: linear-gradient(90deg, var(--sloth-green), var(--sloth-dark-green));
+    background: linear-gradient(90deg, var(--primary-color), var(--primary-dark));
 }
 
 .progress-bar.bg-info {
@@ -331,8 +330,8 @@ body {
 .form-control:focus,
 .form-select:focus {
     background-color: var(--bg-card);
-    border-color: var(--sloth-green);
-    box-shadow: 0 0 0 0.2rem rgba(124, 179, 66, 0.25);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(79, 70, 229, 0.25);
     color: var(--text-primary);
 }
 
@@ -344,7 +343,7 @@ body {
 .table thead th {
     background-color: var(--bg-secondary);
     color: var(--text-secondary);
-    border-bottom: 2px solid var(--sloth-leaf);
+    border-bottom: 2px solid var(--primary-light);
     font-weight: 600;
     text-transform: uppercase;
     font-size: 0.85rem;
@@ -368,7 +367,7 @@ body {
 }
 
 .modal-header {
-    border-bottom: 2px solid var(--sloth-leaf);
+    border-bottom: 2px solid var(--primary-light);
     padding: 1.5rem;
 }
 
@@ -455,9 +454,9 @@ body {
     }
 }
 
-/* Loading spinner with sloth theme */
+/* Loading spinner */
 .spinner-border {
-    border-color: var(--sloth-green);
+    border-color: var(--primary-color);
     border-right-color: transparent;
 }
 
@@ -470,7 +469,7 @@ body {
 
 .empty-state i {
     font-size: 64px;
-    color: var(--sloth-brown);
+    color: var(--text-muted);
     margin-bottom: 20px;
     opacity: 0.5;
 }
@@ -502,7 +501,7 @@ body {
 }
 
 .quick-action-card:hover {
-    border-color: var(--sloth-green);
+    border-color: var(--primary-color);
     transform: translateY(-5px);
     box-shadow: var(--shadow-lg);
 }
@@ -525,16 +524,16 @@ body {
 /* Terminal styling */
 .terminal-container {
     background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
-    border: 2px solid var(--sloth-brown);
+    border: 2px solid var(--border-color);
     border-radius: 12px;
     padding: 20px;
     font-family: 'Fira Code', 'Monaco', 'Courier New', monospace;
-    color: var(--sloth-leaf);
+    color: var(--secondary-light);
     box-shadow: inset var(--shadow-md);
 }
 
 .terminal-prompt {
-    color: var(--sloth-green);
+    color: var(--success-color);
     font-weight: bold;
 }
 
@@ -553,20 +552,20 @@ body {
 }
 
 .nav-tabs .nav-link:hover {
-    border-color: var(--sloth-leaf);
+    border-color: var(--primary-light);
     color: var(--text-primary);
 }
 
 .nav-tabs .nav-link.active {
-    color: var(--sloth-green);
-    border-color: var(--sloth-green);
+    color: var(--primary-color);
+    border-color: var(--primary-color);
     background-color: transparent;
     font-weight: 600;
 }
 
 /* Agent dashboard specific */
 .agent-card {
-    border-left: 4px solid var(--sloth-green);
+    border-left: 4px solid var(--primary-color);
     transition: all 0.3s ease;
 }
 
@@ -582,9 +581,10 @@ body {
 
 /* Tooltips */
 .tooltip-inner {
-    background-color: var(--sloth-dark-brown);
+    background-color: var(--bg-tertiary);
     border-radius: 8px;
     padding: 0.5rem 1rem;
+    color: var(--text-primary);
 }
 
 /* Custom sloth favicon */

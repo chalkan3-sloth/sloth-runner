@@ -51,16 +51,108 @@ Example:
 
 			// Validate event type
 			validEvents := []string{
+				// Agent events
 				"agent.registered",
 				"agent.disconnected",
 				"agent.heartbeat_failed",
 				"agent.updated",
+				"agent.connected",
+				"agent.version_mismatch",
+				"agent.resource_high",
+				// Task events
 				"task.started",
 				"task.completed",
 				"task.failed",
+				"task.timeout",
+				"task.retrying",
+				"task.cancelled",
+				// Workflow events
 				"workflow.started",
 				"workflow.completed",
 				"workflow.failed",
+				"workflow.paused",
+				"workflow.resumed",
+				"workflow.cancelled",
+				// System events
+				"system.startup",
+				"system.shutdown",
+				"system.error",
+				"system.warning",
+				"system.resource_high",
+				"system.disk_full",
+				"system.memory_low",
+				"system.cpu_high",
+				// Scheduler events
+				"schedule.triggered",
+				"schedule.missed",
+				"schedule.created",
+				"schedule.deleted",
+				"schedule.updated",
+				"schedule.enabled",
+				"schedule.disabled",
+				// State events
+				"state.created",
+				"state.updated",
+				"state.deleted",
+				"state.corrupted",
+				"state.locked",
+				"state.unlocked",
+				// Secret events
+				"secret.created",
+				"secret.accessed",
+				"secret.deleted",
+				"secret.updated",
+				"secret.rotation_needed",
+				"secret.expired",
+				// Stack events
+				"stack.deployed",
+				"stack.destroyed",
+				"stack.updated",
+				"stack.drift_detected",
+				"stack.failed",
+				// Backup events
+				"backup.started",
+				"backup.completed",
+				"backup.failed",
+				"restore.started",
+				"restore.completed",
+				"restore.failed",
+				// Database events
+				"db.connected",
+				"db.disconnected",
+				"db.query_slow",
+				"db.error",
+				"db.migration",
+				// Network events
+				"network.down",
+				"network.up",
+				"network.slow",
+				"network.latency_high",
+				// Security events
+				"security.breach",
+				"security.unauthorized",
+				"security.login_failed",
+				"security.login_success",
+				"security.permission_denied",
+				// File system events
+				"file.created",
+				"file.modified",
+				"file.deleted",
+				"file.renamed",
+				"dir.created",
+				"dir.deleted",
+				// Deploy events
+				"deploy.started",
+				"deploy.completed",
+				"deploy.failed",
+				"deploy.rollback",
+				// Health check events
+				"health.check_passed",
+				"health.check_failed",
+				"health.degraded",
+				"health.recovered",
+				// Custom events
+				"custom",
 			}
 
 			validEvent := false
