@@ -1476,7 +1476,7 @@ sloth-runner stack show my-stack                            # Show stack details
 sloth-runner master                     # Start master server
 sloth-runner agent start --name agent1  # Start agent
 sloth-runner agent list                 # List all agents
-sloth-runner agent run agent1 "command" # Execute on specific agent
+sloth-runner agent exec agent1 "command" # Execute on specific agent
 
 # Utilities
 sloth-runner scheduler enable           # Enable task scheduler

@@ -36,7 +36,7 @@ Complete implementation of sloth-runner agent management commands.
   - Services: running services (first 10)
 - Output: formatted text or JSON
 
-#### `agent run <agent_name> <command>`
+#### `agent exec <agent_name> <command>`
 **File**: `run.go` (158 linhas)
 - Executes shell commands on remote agents
 - **Features**:
@@ -44,6 +44,7 @@ Complete implementation of sloth-runner agent management commands.
   - Exit code handling
   - Error reporting
   - Output: streaming text or JSON
+  - Supports SLOTH_RUNNER_MASTER_ADDR environment variable
 
 #### `agent modules <agent_name>`
 **File**: `modules.go` (169 linhas)
@@ -307,8 +308,8 @@ go build -o sloth-runner ./cmd/sloth-runner
 # Test get
 ./sloth-runner agent get my-agent
 
-# Test run
-./sloth-runner agent run my-agent "uname -a"
+# Test exec
+./sloth-runner agent exec my-agent "uname -a"
 
 # Test modules
 ./sloth-runner agent modules my-agent

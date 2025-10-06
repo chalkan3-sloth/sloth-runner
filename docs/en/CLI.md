@@ -124,24 +124,25 @@ sloth-runner agent list [flags]
 sloth-runner agent list --master master.example.com:50053
 ```
 
-#### `agent run`
+#### `agent exec`
 
 Execute a command on a remote agent.
 
 ```bash
-sloth-runner agent run [flags]
+sloth-runner agent exec <agent_name> <command> [flags]
 ```
 
 **Flags:**
-- `--agent string`: Target agent name
-- `--command string`: Command to execute
-- `--master string`: Master server address
+- `--master string`: Master server address (or use SLOTH_RUNNER_MASTER_ADDR env var)
+- `-o, --output string`: Output format: text or json (default: text)
 
 **Example:**
 ```bash
-sloth-runner agent run --agent prod-agent-1 \
-  --command "docker ps" \
-  --master master.example.com:50053
+# Using --master flag
+sloth-runner agent exec prod-agent-1 "docker ps" --master master.example.com:50053
+
+# Using environment variable
+SLOTH_RUNNER_MASTER_ADDR=master.example.com:50053 sloth-runner agent exec prod-agent-1 "docker ps"
 ```
 
 #### `agent stop`
@@ -603,7 +604,7 @@ sloth-runner agent start --master master:50053 --name web-1 --tags web,nginx
 sloth-runner agent start --master master:50053 --name db-1 --tags database,postgres
 
 # Execute on specific agent
-sloth-runner agent run --agent web-1 --command "systemctl status nginx"
+sloth-runner agent exec web-1 "systemctl status nginx" --master master:50053
 
 # Start UI for monitoring
 sloth-runner ui --port 8080
