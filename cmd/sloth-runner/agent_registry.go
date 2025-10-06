@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/chalkan3-sloth/sloth-runner/internal/hooks"
 	pb "github.com/chalkan3-sloth/sloth-runner/proto"
 	"github.com/pterm/pterm"
 	"google.golang.org/grpc"
@@ -20,6 +21,7 @@ type agentRegistryServer struct {
 	mu         sync.RWMutex
 	db         *AgentDB
 	grpcServer *grpc.Server
+	dispatcher *hooks.Dispatcher
 }
 
 // newAgentRegistryServer creates a new agentRegistryServer.
@@ -39,9 +41,21 @@ func newAgentRegistryServer() *agentRegistryServer {
 			pterm.Info.Printf("Cleaned up %d inactive agents\n", removed)
 		}
 	}
-	
+
+	// Initialize hook dispatcher
+	var dispatcher *hooks.Dispatcher
+	hookRepo, err := hooks.NewRepository()
+	if err != nil {
+		pterm.Error.Printf("Failed to initialize hook repository: %v\n", err)
+		pterm.Info.Println("Hooks will be disabled")
+	} else {
+		dispatcher = hooks.NewDispatcher(hookRepo)
+		pterm.Success.Println("Hook dispatcher initialized")
+	}
+
 	return &agentRegistryServer{
-		db: db,
+		db:         db,
+		dispatcher: dispatcher,
 	}
 }
 
@@ -51,7 +65,7 @@ func (s *agentRegistryServer) RegisterAgent(ctx context.Context, req *pb.Registe
 	defer s.mu.Unlock()
 
 	pterm.Success.Printf("Agent registered: %s at %s\n", req.AgentName, req.AgentAddress)
-	
+
 	// Save to SQLite database
 	if s.db != nil {
 		if err := s.db.RegisterAgent(req.AgentName, req.AgentAddress); err != nil {
@@ -59,6 +73,17 @@ func (s *agentRegistryServer) RegisterAgent(ctx context.Context, req *pb.Registe
 			return &pb.RegisterAgentResponse{Success: false, Message: fmt.Sprintf("Failed to save agent: %v", err)}, nil
 		}
 		pterm.Debug.Printf("Agent %s saved to database\n", req.AgentName)
+	}
+
+	// Dispatch agent registered event
+	if s.dispatcher != nil {
+		agent := &hooks.AgentEvent{
+			Name:    req.AgentName,
+			Address: req.AgentAddress,
+		}
+		if err := s.dispatcher.DispatchAgentRegistered(agent); err != nil {
+			pterm.Debug.Printf("Failed to dispatch agent registered event: %v\n", err)
+		}
 	}
 
 	return &pb.RegisterAgentResponse{Success: true, Message: "Agent registered successfully"}, nil
@@ -229,10 +254,25 @@ func (s *agentRegistryServer) UnregisterAgent(ctx context.Context, req *pb.Unreg
 		return &pb.UnregisterAgentResponse{Success: false, Message: fmt.Sprintf("Agent not found: %s", req.AgentName)}, nil
 	}
 
+	// Get agent info before removing (for event dispatch)
+	agentInfo, _ := s.db.GetAgent(req.AgentName)
+
 	// Remove agent from database
 	if err := s.db.UnregisterAgent(req.AgentName); err != nil {
 		pterm.Error.Printf("Failed to unregister agent %s: %v\n", req.AgentName, err)
 		return &pb.UnregisterAgentResponse{Success: false, Message: fmt.Sprintf("Failed to unregister agent: %v", err)}, nil
+	}
+
+	// Dispatch agent disconnected event
+	if s.dispatcher != nil && agentInfo != nil {
+		agent := &hooks.AgentEvent{
+			Name:    agentInfo.Name,
+			Address: agentInfo.Address,
+			Version: agentInfo.Version,
+		}
+		if err := s.dispatcher.DispatchAgentDisconnected(agent); err != nil {
+			pterm.Debug.Printf("Failed to dispatch agent disconnected event: %v\n", err)
+		}
 	}
 
 	pterm.Success.Printf("Agent unregistered: %s\n", req.AgentName)

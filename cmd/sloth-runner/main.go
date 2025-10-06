@@ -8,12 +8,16 @@ import (
 
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/agent"
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/events"
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/hook"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/scheduler"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/secrets"
 	slothcmd "github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sloth"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/stack"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/state"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/workflow"
+	"github.com/chalkan3-sloth/sloth-runner/internal/hooks"
+	coremodules "github.com/chalkan3-sloth/sloth-runner/internal/modules/core"
 	"github.com/pterm/pterm"
 )
 
@@ -27,6 +31,18 @@ var (
 func main() {
 	// Set up structured logging with pterm
 	slog.SetDefault(slog.New(pterm.NewSlogHandler(&pterm.DefaultLogger)))
+
+	// Initialize global hook dispatcher system
+	if err := hooks.InitializeGlobalDispatcher(); err != nil {
+		slog.Warn("failed to initialize hook system", "error", err)
+	} else {
+		// Wire up the dispatcher to the event module
+		dispatcher := hooks.GetGlobalDispatcher()
+		if dispatcher != nil {
+			dispatcherFunc := dispatcher.CreateEventDispatcherFunc()
+			coremodules.SetGlobalEventDispatcher(dispatcherFunc)
+		}
+	}
 
 	// Execute the CLI
 	if err := Execute(); err != nil {
@@ -92,6 +108,14 @@ func Execute() error {
 	// Add secrets command and subcommands
 	secretsCmd := secrets.NewSecretsCommand(ctx)
 	rootCmd.AddCommand(secretsCmd)
+
+	// Add hook command and subcommands
+	hookCmd := hook.NewHookCommand(ctx)
+	rootCmd.AddCommand(hookCmd)
+
+	// Add events command and subcommands
+	eventsCmd := events.NewEventsCommand(ctx)
+	rootCmd.AddCommand(eventsCmd)
 
 	// Add other root commands (kept for backward compatibility)
 	listCmd := commands.NewListCommand(ctx)

@@ -1,0 +1,268 @@
+-- Deployment Workflow with Event Integration
+-- Demonstrates how to use the event system in workflows
+
+workflow.define("deploy_app", {
+    description = "Deploy application with comprehensive event tracking",
+
+    tasks = {
+        {
+            name = "pre_deploy_checks",
+            description = "Run pre-deployment validation",
+            run = function()
+                log.info("Running pre-deployment checks...")
+
+                -- Dispatch event: deployment started
+                event.dispatch("deploy.started", {
+                    deploy_id = "deploy-" .. os.time(),
+                    service = "myapp",
+                    version = "v2.5.0",
+                    environment = "production"
+                })
+
+                -- Run checks
+                local health_ok = http.get("https://api.myapp.com/health")
+                if not health_ok then
+                    event.dispatch("deploy.failed", {
+                        deploy_id = "deploy-" .. os.time(),
+                        service = "myapp",
+                        error = "Pre-deployment health check failed",
+                        rollback_needed = false
+                    })
+                    error("Health check failed")
+                end
+
+                return true
+            end
+        },
+
+        {
+            name = "backup_current_version",
+            description = "Backup current version before deployment",
+            run = function()
+                log.info("Creating backup...")
+
+                event.dispatch("backup.started", {
+                    backup_id = "backup-" .. os.time(),
+                    backup_type = "pre_deploy",
+                    source = "/app/current"
+                })
+
+                -- Simulate backup
+                exec.run("tar -czf /backups/myapp-backup.tar.gz /app/current")
+
+                event.dispatch("backup.completed", {
+                    backup_id = "backup-" .. os.time(),
+                    size = 1024 * 1024 * 50, -- 50MB
+                    duration = "30s",
+                    destination = "/backups/myapp-backup.tar.gz"
+                })
+
+                return true
+            end
+        },
+
+        {
+            name = "deploy_new_version",
+            description = "Deploy the new version",
+            run = function()
+                log.info("Deploying new version...")
+
+                local start_time = os.time()
+
+                -- Simulate deployment
+                local success = exec.run("kubectl apply -f deployment.yaml")
+
+                local duration = os.time() - start_time
+
+                if success then
+                    event.dispatch("deploy.completed", {
+                        deploy_id = "deploy-" .. start_time,
+                        service = "myapp",
+                        version = "v2.5.0",
+                        duration = duration .. "s"
+                    })
+                else
+                    event.dispatch("deploy.failed", {
+                        deploy_id = "deploy-" .. start_time,
+                        service = "myapp",
+                        error = "Deployment command failed",
+                        rollback_needed = true,
+                        prev_version = "v2.4.0"
+                    })
+                    error("Deployment failed")
+                end
+
+                return true
+            end
+        },
+
+        {
+            name = "run_smoke_tests",
+            description = "Execute smoke tests",
+            run = function()
+                log.info("Running smoke tests...")
+
+                event.dispatch("health.check_started", {
+                    service = "myapp",
+                    check_name = "smoke_tests"
+                })
+
+                -- Run smoke tests
+                local tests_passed = true
+                local response_time = 120 -- ms
+
+                for i = 1, 5 do
+                    local result = http.get("https://api.myapp.com/health")
+                    if not result then
+                        tests_passed = false
+                        break
+                    end
+                end
+
+                if tests_passed then
+                    event.dispatch("health.check_passed", {
+                        service = "myapp",
+                        check_name = "smoke_tests",
+                        response_time = response_time
+                    })
+                else
+                    event.dispatch("health.check_failed", {
+                        service = "myapp",
+                        check_name = "smoke_tests",
+                        error = "Smoke tests failed",
+                        consecutive_failures = 1
+                    })
+                    error("Smoke tests failed")
+                end
+
+                return true
+            end
+        },
+
+        {
+            name = "update_monitoring",
+            description = "Update monitoring dashboards",
+            run = function()
+                log.info("Updating monitoring...")
+
+                -- Send custom event for monitoring update
+                event.dispatch_custom("monitoring_update", "Deployment completed - update dashboards")
+
+                -- Update service registry
+                event.dispatch("service.updated", {
+                    service = "myapp",
+                    version = "v2.5.0",
+                    status = "healthy"
+                })
+
+                return true
+            end
+        },
+
+        {
+            name = "notify_completion",
+            description = "Send completion notifications",
+            run = function()
+                log.info("Sending notifications...")
+
+                -- Dispatch notification event
+                event.dispatch_custom("deployment_complete",
+                    "myapp v2.5.0 deployed successfully to production")
+
+                return true
+            end
+        }
+    }
+})
+
+-- Example workflow with failure handling
+workflow.define("deploy_with_rollback", {
+    description = "Deploy with automatic rollback on failure",
+
+    tasks = {
+        {
+            name = "deploy",
+            run = function()
+                local deploy_id = "deploy-" .. os.time()
+
+                event.dispatch("deploy.started", {
+                    deploy_id = deploy_id,
+                    service = "api",
+                    version = "v3.0.0",
+                    environment = "production"
+                })
+
+                -- Simulate deployment failure
+                local success = false
+
+                if not success then
+                    event.dispatch("deploy.failed", {
+                        deploy_id = deploy_id,
+                        service = "api",
+                        error = "Database migration failed",
+                        rollback_needed = true,
+                        prev_version = "v2.9.5"
+                    })
+
+                    -- Trigger rollback
+                    event.dispatch("deploy.rollback", {
+                        deploy_id = deploy_id,
+                        service = "api",
+                        prev_version = "v2.9.5",
+                        reason = "migration_failure"
+                    })
+
+                    error("Deployment failed - rollback triggered")
+                end
+
+                return true
+            end
+        }
+    }
+})
+
+-- Example workflow with resource monitoring
+workflow.define("monitor_resources", {
+    description = "Monitor system resources and trigger events",
+
+    tasks = {
+        {
+            name = "check_system_resources",
+            run = function()
+                -- Get system metrics (this would use actual system calls)
+                local cpu_usage = 85.5
+                local memory_usage = 78.2
+                local disk_usage = 92.0
+
+                -- Check CPU
+                if cpu_usage > 80 then
+                    event.dispatch("system.cpu_high", {
+                        usage_percent = cpu_usage,
+                        load_average = 3.5,
+                        threshold = 80
+                    })
+                end
+
+                -- Check Memory
+                if memory_usage > 75 then
+                    event.dispatch("system.memory_low", {
+                        total = 16 * 1024 * 1024 * 1024, -- 16GB
+                        available = (100 - memory_usage) / 100 * 16 * 1024 * 1024 * 1024,
+                        usage_percent = memory_usage
+                    })
+                end
+
+                -- Check Disk
+                if disk_usage > 90 then
+                    event.dispatch("system.disk_full", {
+                        mount_point = "/",
+                        usage_percent = disk_usage,
+                        available_bytes = (100 - disk_usage) / 100 * 500 * 1024 * 1024 * 1024
+                    })
+                end
+
+                return true
+            end
+        }
+    }
+})
