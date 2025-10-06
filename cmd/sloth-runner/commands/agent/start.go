@@ -137,7 +137,7 @@ func startAgent(ctx *commands.AppContext, port int, masterAddr, agentName string
 
 	if masterAddr != "" {
 		// Start connection manager with reconnection logic
-		go startMasterConnection(masterAddr, agentName, agentReportAddress)
+		go startMasterConnection(ctx, masterAddr, agentName, agentReportAddress)
 	}
 
 	// Initialize telemetry server
@@ -161,7 +161,7 @@ func startAgent(ctx *commands.AppContext, port int, masterAddr, agentName string
 	return nil
 }
 
-func startMasterConnection(masterAddr, agentName, agentReportAddress string) {
+func startMasterConnection(ctx *commands.AppContext, masterAddr, agentName, agentReportAddress string) {
 	reconnectDelay := 5 * time.Second
 	maxReconnectDelay := 60 * time.Second
 	heartbeatInterval := 5 * time.Second
@@ -236,6 +236,7 @@ func startMasterConnection(masterAddr, agentName, agentReportAddress string) {
 			_, err := registryClient.Heartbeat(hbCtx, &pb.HeartbeatRequest{
 				AgentName:      agentName,
 				SystemInfoJson: sysInfoJSON,
+				Version:        ctx.Version,
 			})
 			hbCancel()
 

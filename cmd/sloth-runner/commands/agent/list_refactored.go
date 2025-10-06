@@ -39,8 +39,8 @@ func formatAgentsTable(agents []*pb.AgentInfo, w io.Writer) error {
 	tw := tabwriter.NewWriter(w, 0, 0, 3, ' ', 0)
 
 	// Write header
-	fmt.Fprintln(tw, "AGENT NAME\tADDRESS\tSTATUS\tLAST HEARTBEAT\tLAST INFO COLLECTED")
-	fmt.Fprintln(tw, "------------\t----------\t------\t--------------\t-------------------")
+	fmt.Fprintln(tw, "AGENT NAME\tADDRESS\tSTATUS\tVERSION\tUPDATE STATUS\tLAST HEARTBEAT\tLAST INFO COLLECTED")
+	fmt.Fprintln(tw, "------------\t----------\t------\t-------\t-------------\t--------------\t-------------------")
 
 	// Write agent rows
 	for _, agent := range agents {
@@ -50,10 +50,20 @@ func formatAgentsTable(agents []*pb.AgentInfo, w io.Writer) error {
 		lastHeartbeat := formatTimestamp(agent.GetLastHeartbeat(), "N/A")
 		lastInfoCollected := formatTimestamp(agent.GetLastInfoCollected(), "Never")
 
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
+		version := agent.GetVersion()
+		if version == "" {
+			version = "unknown"
+		}
+
+		// TODO: Implement version comparison logic
+		updateStatus := "-"
+
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			agent.GetAgentName(),
 			agent.GetAgentAddress(),
 			coloredStatus,
+			version,
+			updateStatus,
 			lastHeartbeat,
 			lastInfoCollected)
 	}
