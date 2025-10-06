@@ -21,6 +21,7 @@ import (
 
 	"github.com/chalkan3-sloth/sloth-runner/internal/core"
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
+	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/workdir"
 	"github.com/chalkan3-sloth/sloth-runner/internal/types"
 	pb "github.com/chalkan3-sloth/sloth-runner/proto"
 	"github.com/pterm/pterm"
@@ -1548,7 +1549,7 @@ func (tr *TaskRunner) createThisObjectForHandler(L *lua.LState, t *types.Task) *
 			if wd, exists := data["workdir_path"]; exists && wd != nil {
 				workdirPath = wd.(string)
 			}
-			workdirObj := luainterface.CreateRuntimeWorkdirObjectWithColonSupport(L, workdirPath)
+			workdirObj := workdir.CreateRuntimeWorkdirObjectWithColonSupport(L, workdirPath)
 			L.Push(workdirObj)
 		default:
 			L.Push(lua.LNil)
