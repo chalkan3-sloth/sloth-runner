@@ -39,6 +39,7 @@ If --sloth is specified, --file will be ignored.`,
 			delegateToHosts, _ := cmd.Flags().GetStringArray("delegate-to")
 			sshProfile, _ := cmd.Flags().GetString("ssh")
 			sshPasswordStdin, _ := cmd.Flags().GetBool("ssh-password-stdin")
+			passwordStdin, _ := cmd.Flags().GetBool("password-stdin")
 
 			// Configure log level based on debug flag
 			if debug {
@@ -105,6 +106,7 @@ If --sloth is specified, --file will be ignored.`,
 				DelegateToHosts:  delegateToHosts,
 				SSHProfile:       sshProfile,
 				SSHPasswordStdin: sshPasswordStdin,
+				PasswordStdin:    passwordStdin,
 				YesFlag:          yesFlag,
 				Context:          cmd.Context(),
 				Writer:           writer,
@@ -128,6 +130,7 @@ If --sloth is specified, --file will be ignored.`,
 	cmd.Flags().StringArrayP("delegate-to", "d", []string{}, "Execute tasks on specified agents (can be used multiple times)")
 	cmd.Flags().String("ssh", "", "SSH profile name for remote execution")
 	cmd.Flags().Bool("ssh-password-stdin", false, "Read SSH password from stdin (must be followed by -)")
+	cmd.Flags().Bool("password-stdin", false, "Read secrets encryption password from stdin (echo 'pass' | sloth-runner workflow run)")
 
 	return cmd
 }
