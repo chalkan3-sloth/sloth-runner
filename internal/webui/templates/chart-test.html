@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chart.js Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        canvas {
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        #status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            background: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Chart.js Test Page</h1>
+        <div id="status">Checking Chart.js...</div>
+
+        <h3>CPU Usage Chart</h3>
+        <canvas id="testChart" width="400" height="200"></canvas>
+    </div>
+
+    <script>
+        // Check if Chart is available
+        const statusDiv = document.getElementById('status');
+
+        if (typeof Chart === 'undefined') {
+            statusDiv.innerHTML = '❌ Chart.js NOT loaded! Chart is undefined.';
+            statusDiv.style.background = '#ff0000';
+        } else {
+            statusDiv.innerHTML = '✅ Chart.js loaded successfully! Version: ' + Chart.version;
+            statusDiv.style.background = '#00aa00';
+
+            // Try to create a chart
+            try {
+                const ctx = document.getElementById('testChart').getContext('2d');
+                const myChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Used', 'Available'],
+                        datasets: [{
+                            data: [65, 35],
+                            backgroundColor: ['#4F46E5', '#E5E7EB'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+                console.log('Chart created successfully:', myChart);
+            } catch (error) {
+                statusDiv.innerHTML += '<br>❌ Error creating chart: ' + error.message;
+                console.error('Chart creation error:', error);
+            }
+        }
+    </script>
+</body>
+</html>
