@@ -1,0 +1,324 @@
+-- Example: Automating sloth-runner with the sloth module
+-- This workflow demonstrates how to use the sloth module to automate
+-- sloth-runner operations like agent management, workflow management, etc.
+
+local master_addr = "192.168.1.29:50053"
+
+-- Task 1: List all agents
+local list_agents = task("list-agents")
+    :description("List all available agents")
+    :command(function(this, params)
+        local result = sloth.agent.list({
+            master = master_addr
+        })
+
+        log.info("Agents list:")
+        log.info(result.output)
+
+        return true, "Agents listed successfully"
+    end)
+    :build()
+
+-- Task 2: Get specific agent details
+local get_agent = task("get-agent")
+    :description("Get details for lady-arch agent")
+    :command(function(this, params)
+        local result = sloth.agent.get({
+            name = "lady-arch",
+            master = master_addr
+        })
+
+        if result then
+            log.info("Agent details:")
+            log.info(result.output)
+            return true, "Agent details retrieved"
+        end
+
+        return false, "Failed to get agent"
+    end)
+    :build()
+
+-- Task 3: Update agent to latest version (idempotent)
+local update_agent = task("update-agent")
+    :description("Update lady-arch to latest version")
+    :command(function(this, params)
+        local result = sloth.agent.update({
+            name = "lady-arch",
+            master = master_addr,
+            version = "latest"
+        })
+
+        if result.changed then
+            log.info("✅ Agent updated: " .. result.message)
+        else
+            log.info("ℹ️  No change: " .. result.message)
+        end
+
+        return true, result.message
+    end)
+    :build()
+
+-- Task 4: Add a workflow to the database (idempotent)
+local add_workflow = task("add-workflow")
+    :description("Add example workflow to database")
+    :command(function(this, params)
+        local result = sloth.workflow.add({
+            name = "example-backup",
+            file = "examples/agent_test.sloth",
+            description = "Example backup workflow for testing",
+            active = true
+        })
+
+        if result.changed then
+            log.info("✅ Workflow added: " .. result.message)
+        else
+            log.info("ℹ️  Already exists: " .. result.message)
+        end
+
+        return true, result.message
+    end)
+    :build()
+
+-- Task 5: List all saved workflows
+local list_workflows = task("list-workflows")
+    :description("List all saved workflows")
+    :command(function(this, params)
+        local result = sloth.workflow.list({
+            active_only = false
+        })
+
+        log.info("Saved workflows:")
+        log.info(result.output)
+
+        return true, "Workflows listed"
+    end)
+    :build()
+
+-- Task 6: Conditional agent installation (idempotent)
+local install_new_agent = task("install-new-agent")
+    :description("Install new agent if it doesn't exist")
+    :command(function(this, params)
+        -- Check if agent exists
+        local check = sloth.agent.list({master = master_addr})
+
+        if check.output and string.find(check.output, "new-test-agent") then
+            log.info("ℹ️  Agent 'new-test-agent' already exists")
+            return true, "Agent already exists", {changed = false}
+        end
+
+        -- Install new agent (this would fail without proper SSH access)
+        -- Commented out for safety - uncomment when you have a real host
+        --[[
+        local result = sloth.agent.install({
+            name = "new-test-agent",
+            ssh_host = "192.168.1.100",
+            ssh_user = "root",
+            ssh_port = 22,
+            master = master_addr,
+            port = 50055
+        })
+
+        if result.changed then
+            log.info("✅ New agent installed!")
+            return true, "Agent installed successfully", {changed = true}
+        end
+        ]]--
+
+        log.info("ℹ️  Agent installation skipped (no SSH host)")
+        return true, "Installation skipped", {changed = false}
+    end)
+    :build()
+
+-- Task 7: Run another workflow using sloth.run
+local run_workflow = task("run-another-workflow")
+    :description("Execute a saved workflow")
+    :command(function(this, params)
+        -- First ensure the workflow exists
+        local add_result = sloth.workflow.add({
+            name = "agent-test-workflow",
+            file = "examples/agent_test.sloth",
+            description = "Agent test workflow",
+            active = true
+        })
+
+        log.info("Workflow status: " .. add_result.message)
+
+        -- Now run it on a remote agent
+        local result = sloth.run({
+            task = "check_agent_hostname",
+            sloth = "agent-test-workflow",
+            delegate_to = "lady-arch"
+        })
+
+        if result.changed then
+            log.info("✅ Workflow executed successfully")
+            return true, "Workflow executed"
+        end
+
+        return false, "Workflow execution failed"
+    end)
+    :build()
+
+-- Task 8: SSH profile management (idempotent)
+local manage_ssh = task("manage-ssh-profiles")
+    :description("Manage SSH profiles")
+    :command(function(this, params)
+        -- Add SSH profile (idempotent)
+        local result = sloth.ssh.add({
+            name = "test-server",
+            host = "192.168.1.100",
+            user = "admin",
+            port = 22
+        })
+
+        log.info("SSH profile: " .. result.message)
+
+        -- List all SSH profiles
+        local list_result = sloth.ssh.list({})
+        log.info("SSH Profiles:")
+        log.info(list_result.output)
+
+        return true, "SSH profiles managed"
+    end)
+    :build()
+
+-- Task 9: Workflow activation control (idempotent)
+local manage_workflow_state = task("manage-workflow-state")
+    :description("Activate/deactivate workflows")
+    :command(function(this, params)
+        -- Ensure workflow exists
+        sloth.workflow.add({
+            name = "maintenance-workflow",
+            file = "examples/agent_test.sloth",
+            description = "Maintenance workflow",
+            active = false
+        })
+
+        -- Activate it
+        local activate_result = sloth.workflow.activate({
+            name = "maintenance-workflow"
+        })
+
+        log.info("Activation: " .. activate_result.message)
+        log.info("Changed: " .. tostring(activate_result.changed))
+
+        -- Deactivate it
+        local deactivate_result = sloth.workflow.deactivate({
+            name = "maintenance-workflow"
+        })
+
+        log.info("Deactivation: " .. deactivate_result.message)
+        log.info("Changed: " .. tostring(deactivate_result.changed))
+
+        return true, "Workflow state managed"
+    end)
+    :build()
+
+-- Task 10: Complete automation workflow
+local complete_automation = task("complete-automation")
+    :description("Full automation example with conditional logic")
+    :command(function(this, params)
+        -- 1. Check agents
+        local agents = sloth.agent.list({master = master_addr})
+        local agent_count = 0
+
+        -- Count active agents (simple parsing)
+        for line in agents.output:gmatch("[^\r\n]+") do
+            if line:match("Active") then
+                agent_count = agent_count + 1
+            end
+        end
+
+        log.info(string.format("📊 Found %d active agents", agent_count))
+
+        -- 2. Ensure minimum agents
+        if agent_count < 2 then
+            log.warn("⚠️  Less than 2 agents active - consider adding more")
+        end
+
+        -- 3. Update all agents to latest version
+        local agents_to_update = {"lady-arch", "lady-guica", "keite-guica"}
+        local updated_count = 0
+
+        for _, agent_name in ipairs(agents_to_update) do
+            local update_result = sloth.agent.update({
+                name = agent_name,
+                master = master_addr
+            })
+
+            if update_result.changed then
+                updated_count = updated_count + 1
+                log.info(string.format("✅ Updated %s", agent_name))
+            else
+                log.info(string.format("ℹ️  %s already up-to-date", agent_name))
+            end
+        end
+
+        log.info(string.format("📈 Updated %d/%d agents", updated_count, #agents_to_update))
+
+        -- 4. Manage workflows
+        local workflows = {
+            {name = "backup", file = "examples/agent_test.sloth", active = true},
+            {name = "deploy", file = "examples/agent_test.sloth", active = true},
+            {name = "cleanup", file = "examples/agent_test.sloth", active = false}
+        }
+
+        for _, wf in ipairs(workflows) do
+            sloth.workflow.add({
+                name = wf.name,
+                file = wf.file,
+                active = wf.active,
+                description = string.format("Auto-managed %s workflow", wf.name)
+            })
+        end
+
+        log.info("✅ Workflows synchronized")
+
+        return true, string.format(
+            "Automation complete: %d agents active, %d updated",
+            agent_count,
+            updated_count
+        )
+    end)
+    :build()
+
+-- Define the workflow
+workflow
+    .define("sloth_automation_example")
+    :description("Complete example of using sloth module for automation")
+    :version("1.0.0")
+    :tasks({
+        list_agents,
+        get_agent,
+        update_agent,
+        add_workflow,
+        list_workflows,
+        install_new_agent,
+        run_workflow,
+        manage_ssh,
+        manage_workflow_state,
+        complete_automation
+    })
+    :config({
+        timeout = "15m",
+        max_parallel_tasks = 1
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 Sloth automation workflow completed successfully!")
+            log.info("")
+            log.info("📋 Summary:")
+            log.info("  ✅ All agents managed")
+            log.info("  ✅ Workflows synchronized")
+            log.info("  ✅ SSH profiles configured")
+            log.info("")
+            log.info("The sloth module allows you to:")
+            log.info("  • Manage agents remotely (install, update, list)")
+            log.info("  • Manage saved workflows (add, list, activate/deactivate)")
+            log.info("  • Manage SSH profiles")
+            log.info("  • Run workflows programmatically")
+            log.info("  • Everything is idempotent!")
+        else
+            log.error("❌ Automation workflow failed")
+        end
+    end)
