@@ -242,7 +242,10 @@ func Loader(L *lua.LState) int {
 	return 1
 }
 
-// Open registers the fs module
+// Open registers the fs module and loads it globally
 func Open(L *lua.LState) {
 	L.PreloadModule("fs", Loader)
+	if err := L.DoString(`fs = require("fs")`); err != nil {
+		panic(err)
+	}
 }

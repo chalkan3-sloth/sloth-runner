@@ -1,14 +1,10 @@
 package luainterface
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,11 +13,14 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/internal/ai"
 	"github.com/chalkan3-sloth/sloth-runner/internal/core"
 	"github.com/chalkan3-sloth/sloth-runner/internal/gitops"
+	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/data"
+	execmodule "github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/exec"
+	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/fs"
+	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/net"
 	coremodules "github.com/chalkan3-sloth/sloth-runner/internal/modules/core"
 	"github.com/chalkan3-sloth/sloth-runner/internal/state"
 	"github.com/chalkan3-sloth/sloth-runner/internal/types"
 	lua "github.com/yuin/gopher-lua"
-	"gopkg.in/yaml.v2"
 )
 
 // LuaInterface provides AI-enhanced Lua scripting capabilities
@@ -429,11 +428,16 @@ func RegisterAllModules(L *lua.LState, agentClient ...interface{}) {
 
 // registerAllModulesInternal is the actual implementation
 func registerAllModulesInternal(L *lua.LState, agentClient interface{}) {
-	// Register core modules
-	OpenData(L)
-	OpenFs(L)
-	OpenNet(L)
-	OpenExec(L)
+	// Configure SSH helpers for exec module
+	execmodule.IsSSHExecutionEnabled = IsSSHExecutionEnabled
+	execmodule.GetSSHProfile = GetSSHProfile
+	execmodule.ExecuteCommandWithSSH = ExecuteCommandWithSSH
+
+	// Register core modules using new modular structure
+	data.Open(L)
+	fs.Open(L)
+	net.Open(L)
+	execmodule.Open(L)
 	OpenLog(L)
 
 	// Register extended modules from other files
@@ -623,507 +627,16 @@ func RegisterModulesGlobally(L *lua.LState, agentClient interface{}) {
 }
 
 // --- Data Module ---
-func luaDataParseJson(L *lua.LState) int {
-	jsonString := L.CheckString(1)
-	var goValue interface{}
-	err := json.Unmarshal([]byte(jsonString), &goValue)
-	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString(err.Error()))
-		return 2
-	}
-	L.Push(GoValueToLua(L, goValue))
-	L.Push(lua.LNil)
-	return 2
-}
-
-func luaDataToJson(L *lua.LState) int {
-	luaTable := L.CheckTable(1)
-	goValue := LuaToGoValue(L, luaTable)
-	jsonBytes, err := json.Marshal(goValue)
-	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString(err.Error()))
-		return 2
-	}
-	L.Push(lua.LString(string(jsonBytes)))
-	L.Push(lua.LNil)
-	return 2
-}
-
-func luaDataParseYaml(L *lua.LState) int {
-	yamlString := L.CheckString(1)
-	var goValue interface{}
-	var mapValue map[string]interface{}
-	err := yaml.Unmarshal([]byte(yamlString), &mapValue)
-	if err == nil {
-		goValue = mapValue
-	} else {
-		err = yaml.Unmarshal([]byte(yamlString), &goValue)
-		if err != nil {
-			L.Push(lua.LNil)
-			L.Push(lua.LString(err.Error()))
-			return 2
-		}
-	}
-	L.Push(GoValueToLua(L, goValue))
-	L.Push(lua.LNil)
-	return 2
-}
-
-func luaDataToYaml(L *lua.LState) int {
-	luaTable := L.CheckTable(1)
-	goValue := LuaToGoValue(L, luaTable)
-	yamlBytes, err := yaml.Marshal(goValue)
-	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString(err.Error()))
-		return 2
-	}
-	L.Push(lua.LString(string(yamlBytes)))
-	L.Push(lua.LNil)
-	return 2
-}
-
-func DataLoader(L *lua.LState) int {
-	mod := L.SetFuncs(L.NewTable(), map[string]lua.LGFunction{
-		"parse_json": luaDataParseJson,
-		"to_json":    luaDataToJson,
-		"parse_yaml": luaDataParseYaml,
-		"to_yaml":    luaDataToYaml,
-	})
-	L.Push(mod)
-	return 1
-}
-func OpenData(L *lua.LState) {
-	L.PreloadModule("data", DataLoader)
-	if err := L.DoString(`data = require("data")`); err != nil {
-		panic(err)
-	}
-}
+// DEPRECATED: Moved to internal/luainterface/modules/data/data.go
 
 // --- FS Module ---
-func luaFsRead(L *lua.LState) int {
-	path := L.CheckString(1)
-	content, err := os.ReadFile(path)
-	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString(err.Error()))
-		return 2
-	}
-	L.Push(lua.LString(string(content)))
-	L.Push(lua.LNil)
-	return 2
-}
-
-func luaFsWrite(L *lua.LState) int {
-	path := L.CheckString(1)
-	content := L.CheckString(2)
-	err := os.WriteFile(path, []byte(content), 0644)
-	if err != nil {
-		L.Push(lua.LString(err.Error()))
-		return 1
-	}
-	L.Push(lua.LNil)
-	return 1
-}
-
-func luaFsAppend(L *lua.LState) int {
-	path := L.CheckString(1)
-	content := L.CheckString(2)
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		L.Push(lua.LString(err.Error()))
-		return 1
-	}
-	defer f.Close()
-
-	if _, err = f.WriteString(content); err != nil {
-		L.Push(lua.LString(err.Error()))
-		return 1
-	}
-
-	L.Push(lua.LNil)
-	return 1
-}
-
-func luaFsExists(L *lua.LState) int {
-	path := L.CheckString(1)
-	_, err := os.Stat(path)
-	if err == nil {
-		L.Push(lua.LBool(true))
-		return 1
-	}
-	if os.IsNotExist(err) {
-		L.Push(lua.LBool(false))
-		return 1
-	}
-	L.Push(lua.LBool(false))
-	return 1
-}
-
-func luaFsMkdir(L *lua.LState) int {
-	path := L.CheckString(1)
-	err := os.MkdirAll(path, 0755)
-	if err != nil {
-		L.Push(lua.LString(err.Error()))
-		return 1
-	}
-	L.Push(lua.LNil)
-	return 1
-}
-
-func luaFsRm(L *lua.LState) int {
-	path := L.CheckString(1)
-	err := os.Remove(path)
-	if err != nil {
-		L.Push(lua.LString(err.Error()))
-		return 1
-	}
-	L.Push(lua.LNil)
-	return 1
-}
-
-func luaFsRmR(L *lua.LState) int {
-	path := L.CheckString(1)
-	err := os.RemoveAll(path)
-	if err != nil {
-		L.Push(lua.LString(err.Error()))
-		return 1
-	}
-	L.Push(lua.LNil)
-	return 1
-}
-
-func luaFsLs(L *lua.LState) int {
-	path := L.CheckString(1)
-	files, err := ioutil.ReadDir(path)
-	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString(err.Error()))
-		return 2
-	}
-	luaTable := L.NewTable()
-	for i, file := range files {
-		luaTable.RawSetInt(i+1, lua.LString(file.Name()))
-	}
-	L.Push(luaTable)
-	L.Push(lua.LNil)
-	return 2
-}
-
-func luaFsTmpName(L *lua.LState) int {
-	dir, err := ioutil.TempDir("", "sloth-runner-*")
-	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LString(err.Error()))
-		return 2
-	}
-	os.Remove(dir) // We only want the name
-	L.Push(lua.LString(dir))
-	L.Push(lua.LNil)
-	return 2
-}
-
-func luaFsSize(L *lua.LState) int {
-	path := L.CheckString(1)
-	info, err := os.Stat(path)
-	if err != nil {
-		L.Push(lua.LNumber(0))
-		L.Push(lua.LString(err.Error()))
-		return 2
-	}
-	L.Push(lua.LNumber(info.Size()))
-	L.Push(lua.LNil)
-	return 2
-}
-
-func FsLoader(L *lua.LState) int {
-	mod := L.SetFuncs(L.NewTable(), map[string]lua.LGFunction{
-		"read":    luaFsRead,
-		"write":   luaFsWrite,
-		"append":  luaFsAppend,
-		"exists":  luaFsExists,
-		"mkdir":   luaFsMkdir,
-		"rm":      luaFsRm,
-		"rm_r":    luaFsRmR,
-		"ls":      luaFsLs,
-		"tmpname": luaFsTmpName,
-		"size":    luaFsSize,
-	})
-	L.Push(mod)
-	return 1
-}
-func OpenFs(L *lua.LState) {
-	L.PreloadModule("fs", FsLoader)
-	if err := L.DoString(`fs = require("fs")`); err != nil {
-		panic(err)
-	}
-}
+// DEPRECATED: Moved to internal/luainterface/modules/fs/fs.go
 
 // --- Net Module ---
-func luaNetHttpGet(L *lua.LState) int {
-	url := L.CheckString(1)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LNumber(0))
-		L.Push(lua.LNil)
-		L.Push(lua.LString(err.Error()))
-		return 4
-	}
-	defer resp.Body.Close()
-
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LNumber(resp.StatusCode))
-		L.Push(lua.LNil)
-		L.Push(lua.LString(err.Error()))
-		return 4
-	}
-
-	headersTable := L.NewTable()
-	for name, values := range resp.Header {
-		headerValues := L.NewTable()
-		for i, val := range values {
-			headerValues.RawSetInt(i+1, lua.LString(val))
-		}
-		headersTable.RawSetString(name, headerValues)
-	}
-
-	L.Push(lua.LString(string(bodyBytes)))
-	L.Push(lua.LNumber(resp.StatusCode))
-	L.Push(headersTable)
-	L.Push(lua.LNil) // No error
-	return 4
-}
-
-func luaNetHttpPost(L *lua.LState) int {
-	url := L.CheckString(1)
-	body := L.CheckString(2)
-	headersTable := L.OptTable(3, L.NewTable()) // Optional headers table
-
-	req, err := http.NewRequest("POST", url, strings.NewReader(body))
-	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LNumber(0))
-		L.Push(lua.LNil)
-		L.Push(lua.LString(err.Error()))
-		return 4
-	}
-
-	headersTable.ForEach(func(key, value lua.LValue) {
-		req.Header.Set(key.String(), value.String())
-	})
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LNumber(0))
-		L.Push(lua.LNil)
-		L.Push(lua.LString(err.Error()))
-		return 4
-	}
-	defer resp.Body.Close()
-
-	respBodyBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		L.Push(lua.LNil)
-		L.Push(lua.LNumber(resp.StatusCode))
-		L.Push(lua.LNil)
-		L.Push(lua.LString(err.Error()))
-		return 4
-	}
-
-	respHeadersTable := L.NewTable()
-	for name, values := range resp.Header {
-		headerValues := L.NewTable()
-		for i, val := range values {
-			headerValues.RawSetInt(i+1, lua.LString(val))
-		}
-		respHeadersTable.RawSetString(name, headerValues)
-	}
-
-	L.Push(lua.LString(string(respBodyBytes)))
-	L.Push(lua.LNumber(resp.StatusCode))
-	L.Push(respHeadersTable)
-	L.Push(lua.LNil) // No error
-	return 4
-}
-
-func luaNetDownload(L *lua.LState) int {
-	url := L.CheckString(1)
-	destinationPath := L.CheckString(2)
-
-	resp, err := http.Get(url)
-	if err != nil {
-		L.Push(lua.LString(err.Error()))
-		return 1
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		L.Push(lua.LString(fmt.Sprintf("failed to download file: status code %d", resp.StatusCode)))
-		return 1
-	}
-
-	out, err := os.Create(destinationPath)
-	if err != nil {
-		L.Push(lua.LString(err.Error()))
-		return 1
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, resp.Body)
-	if err != nil {
-		L.Push(lua.LString(err.Error()))
-		return 1
-	}
-
-	L.Push(lua.LNil)
-	return 1
-}
-
-func NetLoader(L *lua.LState) int {
-	mod := L.SetFuncs(L.NewTable(), map[string]lua.LGFunction{
-		"http_get":  luaNetHttpGet,
-		"http_post": luaNetHttpPost,
-		"download":  luaNetDownload,
-	})
-	L.Push(mod)
-	return 1
-}
-func OpenNet(L *lua.LState) {
-	L.PreloadModule("net", NetLoader)
-	if err := L.DoString(`net = require("net")`); err != nil {
-		panic(err)
-	}
-}
+// DEPRECATED: Moved to internal/luainterface/modules/net/net.go
 
 // --- Exec Module ---
-func luaExecRun(L *lua.LState) int {
-	commandStr := L.CheckString(1)
-	opts := L.OptTable(2, L.NewTable())
-
-	ctx := L.Context()
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	// Check if SSH execution is enabled
-	if IsSSHExecutionEnabled() {
-		slog.Debug("executing command via SSH", "source", "lua", "command", commandStr, "profile", GetSSHProfile())
-
-		// For SSH execution, we need to handle workdir by prepending cd command
-		if workdir := opts.RawGetString("workdir"); workdir.Type() == lua.LTString {
-			commandStr = fmt.Sprintf("cd %s && %s", workdir.String(), commandStr)
-		}
-
-		// For SSH, environment variables need to be exported in the command
-		if envTbl := opts.RawGetString("env"); envTbl.Type() == lua.LTTable {
-			var envExports []string
-			envTbl.(*lua.LTable).ForEach(func(key, value lua.LValue) {
-				envExports = append(envExports, fmt.Sprintf("export %s='%s'", key.String(), value.String()))
-			})
-			if len(envExports) > 0 {
-				commandStr = strings.Join(envExports, "; ") + "; " + commandStr
-			}
-		}
-
-		// Execute via SSH
-		output, err := ExecuteCommandWithSSH(commandStr)
-
-		// SSH combines stdout and stderr
-		stdoutStr := output
-		stderrStr := ""
-		if err != nil {
-			stderrStr = err.Error()
-		}
-
-		if stdoutStr != "" {
-			slog.Info(stdoutStr, "source", "lua-ssh", "stream", "stdout", "profile", GetSSHProfile())
-		}
-		if stderrStr != "" {
-			slog.Warn(stderrStr, "source", "lua-ssh", "stream", "stderr", "profile", GetSSHProfile())
-		}
-
-		L.Push(lua.LString(stdoutStr))
-		L.Push(lua.LString(stderrStr))
-		L.Push(lua.LBool(err != nil))
-		return 3
-	}
-
-	// Local execution
-	slog.Debug("executing command locally", "source", "lua", "command", commandStr)
-
-	cmd := ExecCommand("bash", "-c", commandStr)
-
-	// Start with a minimal, controlled environment
-	cmd.Env = []string{
-		"PATH=/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin", // Set a default PATH
-		"HOME=" + os.Getenv("HOME"), // Keep HOME if it exists
-	}
-
-	// Set workdir from options
-	if workdir := opts.RawGetString("workdir"); workdir.Type() == lua.LTString {
-		cmd.Dir = workdir.String()
-	}
-
-	// Add environment variables from options
-	if envTbl := opts.RawGetString("env"); envTbl.Type() == lua.LTTable {
-		envMap := make(map[string]string)
-		for _, envVar := range cmd.Env {
-			parts := strings.SplitN(envVar, "=", 2)
-			if len(parts) == 2 {
-				envMap[parts[0]] = parts[1]
-			}
-		}
-		envTbl.(*lua.LTable).ForEach(func(key, value lua.LValue) {
-			envMap[key.String()] = value.String()
-		})
-		cmd.Env = []string{}
-		for k, v := range envMap {
-			cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
-		}
-	}
-
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
-
-	stdoutStr := stdout.String()
-	stderrStr := stderr.String()
-
-	if stdoutStr != "" {
-		slog.Info(stdoutStr, "source", "lua", "stream", "stdout")
-	}
-	if stderrStr != "" {
-		slog.Warn(stderrStr, "source", "lua", "stream", "stderr")
-	}
-
-	L.Push(lua.LString(stdoutStr))
-	L.Push(lua.LString(stderrStr))
-	L.Push(lua.LBool(err != nil))
-	return 3
-}
-
-func ExecLoader(L *lua.LState) int {
-	mod := L.SetFuncs(L.NewTable(), map[string]lua.LGFunction{
-		"run": luaExecRun,
-	})
-	L.Push(mod)
-	return 1
-}
-func OpenExec(L *lua.LState) {
-	L.PreloadModule("exec", ExecLoader)
-	if err := L.DoString(`exec = require("exec")`); err != nil {
-		panic(err)
-	}
-}
+// DEPRECATED: Moved to internal/luainterface/modules/exec/exec.go
 
 // --- Log Module ---
 func luaLogInfo(L *lua.LState) int {

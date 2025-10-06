@@ -4,10 +4,10 @@
 
 **Objetivo**: Transformar codebase monolítico de 3.462 linhas em arquitetura modular enterprise-grade
 
-**Status**: **45% Completo** 🚀🚀
+**Status**: **50% Completo** 🚀🚀🚀
 
 **Data Início**: 2025-10-06
-**Última Atualização**: 2025-10-06 07:15 UTC
+**Última Atualização**: 2025-10-06 08:00 UTC
 
 ---
 
@@ -89,12 +89,15 @@ cmd/sloth-runner/
 | list | 📝 Stub criado | list.go | 18 |
 | master | 📝 Stub criado | master.go | 31 |
 
-### 8. Módulos Lua Internos (Início da Modularização) 🆕
+### 8. Módulos Lua Internos (Modularização em Progresso) 🆕
 
 | Módulo | Status | Arquivo | Linhas | Redução |
 |--------|--------|---------|--------|---------|
-| data (JSON/YAML) | ✅ Completo | modules/data/data.go | 180 | ~200 linhas do main |
-| fs (Filesystem) | ✅ Completo | modules/fs/fs.go | 240 | ~250 linhas do main |
+| data (JSON/YAML) | ✅ Completo | modules/data/data.go | 180 | ~70 linhas do luainterface |
+| fs (Filesystem) | ✅ Completo | modules/fs/fs.go | 240 | ~160 linhas do luainterface |
+| net (HTTP) | ✅ Completo | modules/net/net.go | 158 | ~140 linhas do luainterface |
+| exec (Commands) | ✅ Completo | modules/exec/exec.go | 150 | ~113 linhas do luainterface |
+| **Total Extraído** | **4 módulos** | | **728 linhas** | **~483 linhas (27%)** |
 
 ### 4. Documentação
 
@@ -114,14 +117,16 @@ cmd/sloth-runner/
 
 ### Redução de Linhas
 
-| Arquivo Original | Antes | Depois (Estimado) | Redução |
-|-----------------|-------|-------------------|---------|
-| main.go | 3.462 | ~100 | **97%** |
-| Comandos extraídos | 0 | 30+ arquivos | N/A |
+| Arquivo Original | Antes | Depois | Redução |
+|-----------------|-------|--------|---------|
+| main.go | 3.462 | ~100 (estimado) | **97%** |
+| luainterface.go | 1.794 | 1.311 | **27% (483 linhas)** ✅ |
+| Comandos extraídos | 0 | 34+ arquivos | N/A |
+| Módulos Lua extraídos | 0 | 4 arquivos | **728 linhas** ✅ |
 
 ### Arquivos Criados
 
-- **50+ novos arquivos** de comandos e módulos
+- **54+ novos arquivos** de comandos e módulos
   - 10 comandos agent (4 funcionais, 6 stubs)
   - 6 comandos stack (todos funcionais!)
   - 5 comandos scheduler (stubs)
@@ -130,13 +135,24 @@ cmd/sloth-runner/
   - 4 comandos base (run, version, root, context)
 - **2 serviços** reutilizáveis (Stack, Agent)
 - **1 handler** para lógica complexa (Run)
-- **2 módulos Lua** extraídos (data, fs) 🆕
+- **4 módulos Lua** extraídos (data, fs, net, exec) 🆕
 - **5 documentos** arquiteturais
 - **1 script** de automação
 
 ---
 
 ## ⏳ Em Progresso
+
+### Modularização Lua Internos (Continuação) 🔄
+
+**Próximos Módulos a Extrair** do luainterface.go (1.311 linhas restantes):
+
+1. **log module** - Funções de logging (~100 linhas) - PRIORIDADE
+2. **env module** - Variáveis de ambiente (~80 linhas)
+3. **template module** - Sistema de templates (~150 linhas)
+4. **workdir module** - Gestão de workdir (~200 linhas)
+
+**Meta**: Reduzir luainterface.go para < 800 linhas
 
 ### Comandos Agent (Restantes)
 
@@ -155,7 +171,15 @@ Stubs criados, implementação pendente:
 
 ## 🎯 Próximos Passos
 
-### Fase 1: Completar Comandos Agent (3-4 horas)
+### Fase 1: Completar Modularização Lua (2-3 horas) 🔥 PRIORIDADE
+
+1. **Extrair log module** (100 linhas) - logging functions
+2. **Extrair workdir module** (200 linhas) - workdir management
+3. **Extrair env module** (80 linhas) - environment variables
+4. **Extrair template module** (150 linhas) - templating system
+5. **Meta**: luainterface.go < 800 linhas
+
+### Fase 2: Completar Comandos Agent (3-4 horas)
 
 1. Implementar agent get com handler para formatação
 2. Implementar agent start (complexo - daemon, systemd)
@@ -163,26 +187,13 @@ Stubs criados, implementação pendente:
 4. Implementar agent modules/metrics
 5. Testar todos os comandos agent
 
-### Fase 2: Comandos Stack (2-3 horas)
-
-```
-commands/stack/
-├── stack.go (parent)
-├── new.go
-├── list.go
-├── show.go
-├── delete.go
-└── history.go
-```
-
 ### Fase 3: Comandos Scheduler & State (1-2 horas)
 
 - Scheduler: enable, disable, list, delete
-- State: list, get, set, delete
+- State: show, delete, clear, stats
 
-### Fase 4: Refatorar Internal (4-6 horas)
+### Fase 4: Refatorar Internal Restante (3-4 horas)
 
-- `luainterface.go` (1793 linhas) → Múltiplos módulos
 - `taskrunner.go` (1573 linhas) → Executores modulares
 - `user.go` (1669 linhas) → Módulo user separado
 
@@ -356,6 +367,6 @@ commands/stack/
 
 ---
 
-**Última Atualização**: 2025-10-06 06:45 UTC
+**Última Atualização**: 2025-10-06 08:00 UTC
 **Autor**: Claude Code
-**Revisão**: v1.0
+**Revisão**: v1.1 - 4 módulos Lua extraídos (50% completo)
