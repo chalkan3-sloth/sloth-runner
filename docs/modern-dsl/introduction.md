@@ -2,164 +2,157 @@
 
 ## Overview
 
-The **Modern DSL** is Sloth Runner's Lua-based workflow definition language. Workflows are defined in `.sloth` files using simple, readable Lua syntax with access to powerful built-in modules.
+The **Modern DSL** is Sloth Runner's Lua-based workflow definition language using a **Builder Pattern** with method chaining. Workflows are defined in `.sloth` files with clean, expressive syntax.
 
 ## Why Modern DSL?
 
-- **🚀 Simple & Readable**: Clean Lua syntax, easy to understand
+- **🎯 Fluent & Expressive**: Builder pattern with method chaining
 - **📦 Global Modules**: All modules available without imports
 - **🔄 Dynamic**: Use Lua's full power - loops, conditionals, functions
-- **⚡ Fast**: Direct Lua execution, no YAML parsing
-- **🧩 Reusable**: Create functions for common patterns
+- **⚡ Fast**: Direct Lua execution
+- **🧩 Composable**: Build complex workflows from reusable tasks
 
-## Basic Workflow Structure
+## Basic Structure
 
-Every `.sloth` file defines a workflow using the `workflow()` function:
+Every `.sloth` file defines tasks using the `task()` builder, then composes them into a workflow with `workflow.define()`:
 
 ```lua
-workflow({
-    name = "my_workflow",
-    description = "What this workflow does",
-    tasks = {
-        {
-            name = "task_name",
-            description = "What this task does",
-            run = function()
-                -- Your task code here
-                return {changed = true, message = "Task completed"}
-            end
-        }
-    }
-})
+-- Define a task using the builder pattern
+local my_task = task("task-name")
+    :description("What this task does")
+    :command(function(this, params)
+        -- Your task code here
+        return true, "Task completed successfully"
+    end)
+    :build()
+
+-- Compose tasks into a workflow
+workflow
+    .define("workflow_name")
+    :description("What this workflow does")
+    :version("1.0.0")
+    :tasks({my_task})
+    :on_complete(function(success, results)
+        if success then
+            log.info("✅ Workflow completed!")
+        end
+    end)
 ```
 
 ## Complete Example
 
 ```lua
--- Simple web server setup workflow
-workflow({
-    name = "web_server_setup",
-    description = "Install and configure nginx",
-    tasks = {
-        {
-            name = "update_packages",
-            description = "Update package list",
-            run = function()
-                log.info("📦 Updating packages...")
-                local success, output = pkg.update()
+-- Install and configure nginx on a remote server
+local install_nginx = task("install-nginx")
+    :description("Install nginx package")
+    :delegate_to("web-server")
+    :command(function(this, params)
+        local success, msg = pkg.install({
+            packages = {"nginx", "certbot"}
+        })
 
-                if success then
-                    return {changed = true, message = "Packages updated"}
-                else
-                    return {failed = true, message = "Update failed"}
-                end
-            end
-        },
-        {
-            name = "install_nginx",
-            description = "Install nginx web server",
-            depends_on = {"update_packages"},
-            run = function()
-                log.info("📦 Installing nginx...")
-                local success, output = pkg.install({"nginx", "certbot"})
+        if not success then
+            return false, "Failed to install: " .. tostring(msg)
+        end
 
-                if success then
-                    return {changed = true, message = "Nginx installed"}
-                else
-                    return {changed = false, message = "Already installed"}
-                end
-            end
-        },
-        {
-            name = "start_nginx",
-            description = "Start nginx service",
-            depends_on = {"install_nginx"},
-            run = function()
-                log.info("▶️  Starting nginx...")
+        return true, "Nginx installed successfully"
+    end)
+    :build()
 
-                -- Use systemd module
-                local systemd = require("systemd")
-                local success, output = systemd.start("nginx")
+local start_nginx = task("start-nginx")
+    :description("Start and enable nginx service")
+    :delegate_to("web-server")
+    :command(function(this, params)
+        local systemd = require("systemd")
 
-                if success then
-                    systemd.enable("nginx")
-                    return {changed = true, message = "Nginx started and enabled"}
-                else
-                    return {failed = true, message = "Failed to start nginx"}
-                end
-            end
-        }
-    }
-})
+        local success, msg = systemd.start("nginx")
+        if not success then
+            return false, "Failed to start nginx"
+        end
+
+        systemd.enable("nginx")
+        return true, "Nginx started and enabled"
+    end)
+    :build()
+
+workflow
+    .define("nginx_deployment")
+    :description("Deploy nginx web server")
+    :version("1.0.0")
+    :tasks({install_nginx, start_nginx})
+    :config({
+        timeout = "10m",
+        max_parallel_tasks = 1
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 Nginx deployment completed!")
+        else
+            log.error("❌ Deployment failed")
+        end
+    end)
 ```
 
-## Task Structure
+## Task Builder API
 
-Each task in the `tasks` array has these fields:
+The `task()` builder provides these methods:
 
 ```lua
-{
-    name = "task_name",              -- Required: unique task identifier
-    description = "What it does",    -- Optional: task description
-    timeout = "5m",                   -- Optional: task timeout (default: no limit)
-    retries = 3,                      -- Optional: retry count on failure
-    depends_on = {"other_task"},      -- Optional: task dependencies
-    run = function()                  -- Required: task function
-        -- Task code here
-        return {changed = true, message = "Done"}
-    end
-}
+local my_task = task("unique-task-name")
+    :description("Human-readable description")
+    :delegate_to("agent-name")         -- Execute on remote agent
+    :user("username")                   -- Run as specific user
+    :workdir("/path/to/directory")      -- Set working directory
+    :timeout("5m")                      -- Task timeout
+    :retries(3)                         -- Retry count on failure
+    :command(function(this, params)     -- Task function
+        -- Task implementation
+        return true, "Success message"
+        -- or
+        -- return false, "Error message"
+    end)
+    :build()  -- MUST call .build() to finalize the task
 ```
 
-## Task Return Values
+### Task Return Values
 
-Tasks must return a table with one of these formats:
+Tasks return two values: `(success, message)`
 
 ```lua
--- Success with changes
-return {changed = true, message = "Task completed successfully"}
+:command(function(this, params)
+    -- Success
+    return true, "Operation completed successfully"
 
--- Success without changes (idempotent)
-return {changed = false, message = "Already in desired state"}
+    -- Failure
+    return false, "Error: operation failed"
 
--- Failure
-return {failed = true, message = "Error: something went wrong"}
+    -- Optional third return value for data
+    return true, "Data fetched", {count = 42, items = {...}}
+end)
 ```
 
-## Task Dependencies
+## Workflow Builder API
 
-Use `depends_on` to control execution order:
+The `workflow.define()` builder provides these methods:
 
 ```lua
-workflow({
-    name = "deployment",
-    description = "Deploy application",
-    tasks = {
-        {
-            name = "build",
-            run = function()
-                -- Build code
-                return {changed = true, message = "Built"}
-            end
-        },
-        {
-            name = "test",
-            depends_on = {"build"},  -- Runs after build
-            run = function()
-                -- Run tests
-                return {changed = false, message = "Tests passed"}
-            end
-        },
-        {
-            name = "deploy",
-            depends_on = {"build", "test"},  -- Runs after both
-            run = function()
-                -- Deploy application
-                return {changed = true, message = "Deployed"}
-            end
-        }
-    }
-})
+workflow
+    .define("workflow_name")
+    :description("What this workflow does")
+    :version("1.0.0")
+    :tasks({task1, task2, task3})  -- Array of built tasks
+    :config({
+        timeout = "30m",
+        max_parallel_tasks = 2
+    })
+    :on_complete(function(success, results)
+        -- Called after workflow completes
+        if success then
+            log.info("All tasks completed")
+        else
+            log.error("Workflow failed")
+        end
+    end)
 ```
 
 ## Global Modules (No require!)
@@ -167,29 +160,39 @@ workflow({
 Most modules are **globally available** - just use them:
 
 ```lua
-run = function()
+:command(function(this, params)
     -- Package management
-    pkg.install({"nginx", "postgresql"})
+    pkg.install({packages = {"nginx", "postgresql"}})
     pkg.update()
-    pkg.remove("oldpackage")
-
-    -- File operations
-    file_ops.copy({src = "/source", dest = "/dest"})
-    file_ops.delete({path = "/tmp/file"})
-    file_ops.mkdir({path = "/opt/app", mode = "0755"})
+    pkg.remove({package = "oldpackage"})
 
     -- User management
     user.create({
-        name = "appuser",
+        username = "webuser",
+        password = "changeme123",
+        home = "/home/webuser",
         shell = "/bin/bash",
-        home = "/home/appuser",
+        groups = {"wheel", "docker"},
         create_home = true
     })
 
     -- Git operations
     git.clone({
-        repo = "https://github.com/user/repo",
-        dest = "/opt/repo"
+        url = "https://github.com/user/repo",
+        local_path = "/opt/repo",
+        clean = false
+    })
+
+    -- File operations
+    file_ops.copy({src = "/source", dest = "/dest"})
+    file_ops.mkdir({path = "/opt/app", mode = "0755"})
+
+    -- Stow (dotfiles management)
+    stow.link({
+        package = "zsh",
+        source_dir = "/home/user/dotfiles",
+        target_dir = "/home/user",
+        create_target = true
     })
 
     -- System facts
@@ -203,10 +206,9 @@ run = function()
 
     -- Shell commands
     local result = exec.run("hostname")
-    print("Hostname: " .. result)
 
-    return {changed = true, message = "Done"}
-end
+    return true, "All operations completed"
+end)
 ```
 
 ## Modules That Need require()
@@ -214,7 +216,7 @@ end
 Only a few modules need `require()`:
 
 ```lua
-run = function()
+:command(function(this, params)
     -- Systemd module
     local systemd = require("systemd")
     systemd.start("nginx")
@@ -227,96 +229,103 @@ run = function()
     end)
     local results = goroutine.await_all({handle})
 
-    return {changed = true, message = "Done"}
+    return true, "Done"
+end)
+```
+
+## Task Dependencies
+
+Tasks are executed in the order they appear in the `tasks` array. For complex dependencies, use multiple workflows or order tasks explicitly:
+
+```lua
+-- Tasks execute in order: build → test → deploy
+workflow
+    .define("deployment")
+    :tasks({
+        build_task,    -- Runs first
+        test_task,     -- Runs after build
+        deploy_task    -- Runs after test
+    })
+```
+
+## Remote Execution
+
+Use `:delegate_to()` to execute tasks on remote agents:
+
+```lua
+local setup_server = task("setup-server")
+    :description("Setup remote server")
+    :delegate_to("production-server")  -- Execute on agent
+    :user("deployer")                   -- Run as deployer user
+    :workdir("/opt/app")                -- Set working directory
+    :command(function(this, params)
+        pkg.install({packages = {"nginx"}})
+        return true, "Server configured"
+    end)
+    :build()
+```
+
+## Dynamic Workflows
+
+Use Lua to generate tasks programmatically:
+
+```lua
+-- Generate tasks for multiple servers
+local servers = {"web-01", "web-02", "web-03"}
+local tasks = {}
+
+for _, server in ipairs(servers) do
+    local t = task("setup-" .. server)
+        :description("Setup " .. server)
+        :delegate_to(server)
+        :command(function(this, params)
+            pkg.install({packages = {"nginx"}})
+            log.info("✓ " .. server .. " configured")
+            return true, server .. " ready"
+        end)
+        :build()
+
+    table.insert(tasks, t)
 end
-```
 
-## Timeouts and Retries
-
-Add resilience to your tasks:
-
-```lua
-{
-    name = "flaky_network_call",
-    timeout = "30s",      -- Task will timeout after 30 seconds
-    retries = 3,          -- Retry up to 3 times on failure
-    run = function()
-        -- Make network call
-        local response = http.get("https://api.example.com/data")
-        return {changed = false, message = "Data fetched"}
-    end
-}
-```
-
-## Dynamic Workflows with Lua
-
-Leverage Lua's programming capabilities:
-
-```lua
-workflow({
-    name = "multi_server_setup",
-    description = "Setup multiple servers",
-    tasks = (function()
-        local servers = {"web-01", "web-02", "web-03"}
-        local tasks = {}
-
-        -- Generate a task for each server
-        for _, server in ipairs(servers) do
-            table.insert(tasks, {
-                name = "setup_" .. server,
-                description = "Setup " .. server,
-                run = function()
-                    log.info("Setting up " .. server)
-                    -- Setup code
-                    return {changed = true, message = server .. " configured"}
-                end
-            })
-        end
-
-        return tasks
-    end)()
-})
+workflow
+    .define("multi_server_setup")
+    :description("Setup multiple servers")
+    :tasks(tasks)
 ```
 
 ## Conditional Logic
 
+Use Lua conditionals inside task commands:
+
 ```lua
-workflow({
-    name = "os_specific_setup",
-    description = "Setup based on OS",
-    tasks = {
-        {
-            name = "install_packages",
-            run = function()
-                local os_info = facts.os()
+local os_specific_setup = task("os-setup")
+    :description("Install OS-specific packages")
+    :command(function(this, params)
+        local os_info = facts.os()
 
-                if os_info.family == "debian" then
-                    pkg.install({"apt-transport-https", "ca-certificates"})
-                    log.info("Installed Debian packages")
-                elseif os_info.family == "redhat" then
-                    pkg.install({"yum-utils", "device-mapper-persistent-data"})
-                    log.info("Installed RedHat packages")
-                else
-                    log.warn("Unknown OS family: " .. os_info.family)
-                end
+        if os_info.family == "debian" then
+            pkg.install({packages = {"apt-transport-https"}})
+        elseif os_info.family == "redhat" then
+            pkg.install({packages = {"yum-utils"}})
+        else
+            log.warn("Unknown OS: " .. os_info.family)
+        end
 
-                return {changed = true, message = "OS-specific packages installed"}
-            end
-        }
-    }
-})
+        return true, "OS-specific setup completed"
+    end)
+    :build()
 ```
 
 ## Error Handling
 
-Use Lua's `pcall` for error handling:
+Use Lua's `pcall` for safe error handling:
 
 ```lua
-{
-    name = "safe_operation",
-    run = function()
+local safe_operation = task("safe-op")
+    :description("Operation with error handling")
+    :command(function(this, params)
         local success, err = pcall(function()
-            -- Risky operation
             file_ops.copy({
                 src = "/important/file",
                 dest = "/backup/file"
@@ -324,168 +333,183 @@ Use Lua's `pcall` for error handling:
         end)
 
         if success then
-            return {changed = true, message = "File backed up"}
+            return true, "File backed up successfully"
         else
             log.error("Backup failed: " .. tostring(err))
-            return {failed = true, message = "Backup failed"}
+            return false, "Backup failed: " .. tostring(err)
         end
-    end
-}
+    end)
+    :build()
 ```
 
 ## Parallel Execution
 
-Execute tasks in parallel using the goroutine module:
+Execute operations in parallel using the goroutine module:
 
 ```lua
-workflow({
-    name = "parallel_deployment",
-    description = "Deploy to multiple servers in parallel",
-    tasks = {
-        {
-            name = "deploy_all",
-            run = function()
-                local goroutine = require("goroutine")
+local parallel_deploy = task("parallel-deploy")
+    :description("Deploy to multiple servers in parallel")
+    :command(function(this, params)
+        local goroutine = require("goroutine")
 
-                local servers = {"web-01", "web-02", "web-03"}
-                local handles = {}
+        local servers = {"web-01", "web-02", "web-03"}
+        local handles = {}
 
-                -- Start parallel deployments
-                for _, server in ipairs(servers) do
-                    local handle = goroutine.async(function()
-                        log.info("Deploying to " .. server)
-                        -- Deployment logic here
-                        goroutine.sleep(1000) -- simulate work
-                        return server, "success"
-                    end)
-                    table.insert(handles, handle)
-                end
+        -- Start parallel deployments
+        for _, server in ipairs(servers) do
+            local handle = goroutine.async(function()
+                log.info("Deploying to " .. server)
+                -- Deployment logic
+                goroutine.sleep(1000)
+                return server, "success"
+            end)
+            table.insert(handles, handle)
+        end
 
-                -- Wait for all to complete
-                local results = goroutine.await_all(handles)
+        -- Wait for all to complete
+        local results = goroutine.await_all(handles)
 
-                -- Check results
-                for _, result in ipairs(results) do
-                    if result.success then
-                        local server = result.values[1]
-                        log.info("✅ " .. server .. " deployed")
-                    else
-                        log.error("❌ Deployment failed: " .. result.error)
-                    end
-                end
-
-                return {changed = true, message = "All deployments completed"}
+        -- Process results
+        for _, result in ipairs(results) do
+            if result.success then
+                local server_name = result.values[1]
+                log.info("✅ " .. server_name .. " deployed")
+            else
+                log.error("❌ Failed: " .. result.error)
             end
-        }
-    }
-})
+        end
+
+        return true, "All deployments completed"
+    end)
+    :build()
 ```
 
 ## Complete Real-World Example
 
 ```lua
--- Production web server deployment
-workflow({
-    name = "production_deployment",
-    description = "Deploy web application to production",
-    tasks = {
-        {
-            name = "update_system",
-            description = "Update system packages",
-            timeout = "5m",
-            run = function()
-                pkg.update()
-                pkg.install({"curl", "git", "build-essential"})
-                return {changed = true, message = "System updated"}
-            end
-        },
-        {
-            name = "create_app_user",
-            description = "Create application user",
-            depends_on = {"update_system"},
-            run = function()
-                user.create({
-                    name = "webapp",
-                    shell = "/bin/bash",
-                    home = "/opt/webapp",
-                    create_home = true,
-                    comment = "Web Application User"
-                })
-                return {changed = true, message = "User created"}
-            end
-        },
-        {
-            name = "clone_repository",
-            description = "Clone application repository",
-            depends_on = {"create_app_user"},
-            timeout = "10m",
-            retries = 3,
-            run = function()
-                git.clone({
-                    repo = "https://github.com/company/webapp.git",
-                    dest = "/opt/webapp/app",
-                    branch = "main"
-                })
-                return {changed = true, message = "Repository cloned"}
-            end
-        },
-        {
-            name = "install_dependencies",
-            description = "Install application dependencies",
-            depends_on = {"clone_repository"},
-            timeout = "15m",
-            run = function()
-                exec.run("cd /opt/webapp/app && npm install")
-                return {changed = true, message = "Dependencies installed"}
-            end
-        },
-        {
-            name = "configure_nginx",
-            description = "Configure nginx reverse proxy",
-            depends_on = {"install_dependencies"},
-            run = function()
-                pkg.install({"nginx"})
+-- User environment setup with dotfiles
+local install_packages = task("install-packages")
+    :description("Install default packages")
+    :delegate_to("lady-arch")
+    :command(function(this, params)
+        local success, msg = pkg.install({
+            packages = {"kitty-terminfo", "stow", "git", "zsh", "lsd", "fzf"}
+        })
 
-                file_ops.template({
-                    src = "/templates/nginx.conf.j2",
-                    dest = "/etc/nginx/sites-available/webapp",
-                    mode = "0644"
-                })
+        if not success then
+            return false, "Failed to install packages: " .. tostring(msg)
+        end
 
-                file_ops.link({
-                    src = "/etc/nginx/sites-available/webapp",
-                    dest = "/etc/nginx/sites-enabled/webapp"
-                })
+        return true, "Packages installed successfully"
+    end)
+    :build()
 
-                local systemd = require("systemd")
-                systemd.restart("nginx")
-                systemd.enable("nginx")
+local create_user = task("create-user")
+    :description("Create and configure user")
+    :delegate_to("lady-arch")
+    :command(function(this, params)
+        local success, msg = user.create({
+            username = "igor",
+            password = "changeme123",
+            home = "/home/igor",
+            shell = "/bin/zsh",
+            groups = {"wheel"},
+            create_home = true
+        })
 
-                return {changed = true, message = "Nginx configured"}
-            end
-        },
-        {
-            name = "start_application",
-            description = "Start web application",
-            depends_on = {"configure_nginx"},
-            run = function()
-                local systemd = require("systemd")
+        if not success then
+            return false, "Failed to create user: " .. tostring(msg)
+        end
 
-                systemd.start("webapp")
-                systemd.enable("webapp")
+        return true, "User created successfully"
+    end)
+    :build()
 
-                -- Verify it's running
-                local active, state = systemd.is_active("webapp")
-                if active then
-                    log.info("✅ Application is running!")
-                    return {changed = true, message = "Application started"}
-                else
-                    return {failed = true, message = "Application failed to start: " .. state}
-                end
-            end
-        }
-    }
-})
+local clone_dotfiles = task("clone-dotfiles")
+    :description("Clone dotfiles repository")
+    :delegate_to("lady-arch")
+    :user("igor")
+    :workdir("/home/igor")
+    :command(function(this, params)
+        local repo, err = git.clone({
+            url = "https://github.com/chalkan3/dotfiles.git",
+            local_path = "/home/igor/dotfiles",
+            clean = false
+        })
+
+        if err then
+            return false, "Failed to clone dotfiles: " .. err
+        end
+
+        if repo.exists then
+            log.info("✓ Dotfiles repository already exists")
+        else
+            log.info("✓ Dotfiles cloned successfully")
+        end
+
+        return true, "Dotfiles ready"
+    end)
+    :build()
+
+local stow_config = task("stow-zsh-config")
+    :description("Stow zsh configuration files")
+    :delegate_to("lady-arch")
+    :user("igor")
+    :command(function(this, params)
+        -- Ensure target directory exists
+        local ok_dir, msg_dir = stow.ensure_target({
+            path = "/home/igor/.zsh",
+            owner = "igor",
+            mode = "0755"
+        })
+
+        if not ok_dir then
+            return false, "Failed to create directory: " .. msg_dir
+        end
+
+        -- Stow configuration
+        local ok_stow, msg_stow = stow.link({
+            package = ".",
+            source_dir = "/home/igor/dotfiles/zsh",
+            target_dir = "/home/igor/.zsh",
+            create_target = true,
+            verbose = true
+        })
+
+        if not ok_stow then
+            return false, "Failed to stow config: " .. msg_stow
+        end
+
+        return true, "Configuration stowed successfully"
+    end)
+    :build()
+
+workflow
+    .define("user_environment_setup")
+    :description("Complete user environment setup with dotfiles")
+    :version("2.0.0")
+    :tasks({
+        install_packages,
+        create_user,
+        clone_dotfiles,
+        stow_config
+    })
+    :config({
+        timeout = "30m",
+        max_parallel_tasks = 1
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 User environment setup completed successfully!")
+            log.info("📋 Summary:")
+            log.info("  ✓ Packages installed")
+            log.info("  ✓ User created")
+            log.info("  ✓ Dotfiles cloned")
+            log.info("  ✓ Configuration stowed")
+        else
+            log.error("❌ Setup failed")
+        end
+    end)
 ```
 
 ## Available Modules
@@ -493,12 +517,12 @@ workflow({
 Run `sloth-runner modules list` to see all available modules:
 
 - `pkg` - Package management (apt, yum, dnf, pacman)
-- `file_ops` - File operations
 - `user` - User and group management
+- `file_ops` - File operations
 - `git` - Git operations
+- `stow` - Dotfiles management with GNU Stow
 - `systemd` - Service management (requires `require()`)
 - `incus` - LXC/VM container management
-- `stow` - Dotfiles management
 - `facts` - System information
 - `goroutine` - Parallel execution (requires `require()`)
 - `exec` - Shell command execution
@@ -507,44 +531,53 @@ Run `sloth-runner modules list` to see all available modules:
 
 ## Best Practices
 
-1. **Use descriptive names** for workflows and tasks
-2. **Add descriptions** to document what each task does
-3. **Handle errors** with `pcall` for critical operations
-4. **Use dependencies** to control execution order
-5. **Set timeouts** for network operations
-6. **Add retries** for flaky operations
-7. **Log appropriately** with `log.info`, `log.warn`, `log.error`
-8. **Keep tasks focused** - one responsibility per task
-9. **Test incrementally** - start small, add complexity
+1. **Always call `:build()`** - Tasks must end with `:build()`
+2. **Use descriptive names** - Make task and workflow names self-documenting
+3. **Add descriptions** - Document what each task does
+4. **Handle errors** - Use `pcall` for critical operations
+5. **Log appropriately** - Use `log.info`, `log.warn`, `log.error`
+6. **Delegate wisely** - Use `:delegate_to()` for remote execution
+7. **Set timeouts** - Prevent hanging tasks with `:timeout()`
+8. **Keep focused** - One responsibility per task
+9. **Test incrementally** - Build and test tasks individually
 
 ## Quick Reference Template
 
 ```lua
-workflow({
-    name = "workflow_name",
-    description = "What this workflow does",
-    tasks = {
-        {
-            name = "task_name",
-            description = "What this task does",
-            timeout = "5m",
-            retries = 3,
-            depends_on = {"previous_task"},
-            run = function()
-                -- Your code here
+-- Define tasks
+local my_task = task("task-name")
+    :description("What this task does")
+    :delegate_to("agent-name")  -- Optional: remote execution
+    :user("username")            -- Optional: run as user
+    :workdir("/path")            -- Optional: working directory
+    :timeout("5m")               -- Optional: timeout
+    :retries(3)                  -- Optional: retry count
+    :command(function(this, params)
+        -- Your code here
 
-                -- Return success with changes
-                return {changed = true, message = "Task completed"}
+        -- Return success
+        return true, "Success message"
 
-                -- Or return success without changes
-                -- return {changed = false, message = "Already in desired state"}
+        -- Or return failure
+        -- return false, "Error message"
+    end)
+    :build()  -- Required!
 
-                -- Or return failure
-                -- return {failed = true, message = "Error occurred"}
-            end
-        }
-    }
-})
+-- Compose workflow
+workflow
+    .define("workflow_name")
+    :description("What this workflow does")
+    :version("1.0.0")
+    :tasks({my_task})  -- Array of tasks
+    :config({
+        timeout = "30m",
+        max_parallel_tasks = 1
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("✅ Workflow completed!")
+        end
+    end)
 ```
 
 ## Next Steps
@@ -554,4 +587,4 @@ workflow({
 - [📖 Reference Guide](reference-guide.md) - Complete API reference
 - [🔧 Modules List](../../modules-list-command.md) - All available modules
 
-Start building your workflows with this simple, powerful DSL!
+Start building powerful, composable workflows with the Modern DSL Builder Pattern!
