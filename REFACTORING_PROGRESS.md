@@ -4,10 +4,10 @@
 
 **Objetivo**: Transformar codebase monolítico de 3.462 linhas em arquitetura modular enterprise-grade
 
-**Status**: **50% Completo** 🚀🚀🚀
+**Status**: **52% Completo** 🚀🚀🚀
 
 **Data Início**: 2025-10-06
-**Última Atualização**: 2025-10-06 08:00 UTC
+**Última Atualização**: 2025-10-06 08:15 UTC
 
 ---
 
@@ -93,11 +93,12 @@ cmd/sloth-runner/
 
 | Módulo | Status | Arquivo | Linhas | Redução |
 |--------|--------|---------|--------|---------|
-| data (JSON/YAML) | ✅ Completo | modules/data/data.go | 180 | ~70 linhas do luainterface |
-| fs (Filesystem) | ✅ Completo | modules/fs/fs.go | 240 | ~160 linhas do luainterface |
-| net (HTTP) | ✅ Completo | modules/net/net.go | 158 | ~140 linhas do luainterface |
-| exec (Commands) | ✅ Completo | modules/exec/exec.go | 150 | ~113 linhas do luainterface |
-| **Total Extraído** | **4 módulos** | | **728 linhas** | **~483 linhas (27%)** |
+| data (JSON/YAML) | ✅ Completo | modules/data/data.go | 180 | ~70 linhas |
+| fs (Filesystem) | ✅ Completo | modules/fs/fs.go | 240 | ~160 linhas |
+| net (HTTP) | ✅ Completo | modules/net/net.go | 158 | ~140 linhas |
+| exec (Commands) | ✅ Completo | modules/exec/exec.go | 150 | ~113 linhas |
+| log (Logging) | ✅ Completo | modules/log/log.go | 145 | ~125 linhas |
+| **Total Extraído** | **5 módulos** | | **873 linhas** | **~608 linhas (34%)** |
 
 ### 4. Documentação
 
@@ -120,13 +121,13 @@ cmd/sloth-runner/
 | Arquivo Original | Antes | Depois | Redução |
 |-----------------|-------|--------|---------|
 | main.go | 3.462 | ~100 (estimado) | **97%** |
-| luainterface.go | 1.794 | 1.311 | **27% (483 linhas)** ✅ |
+| luainterface.go | 1.794 | 1.186 | **34% (608 linhas)** ✅ |
 | Comandos extraídos | 0 | 34+ arquivos | N/A |
-| Módulos Lua extraídos | 0 | 4 arquivos | **728 linhas** ✅ |
+| Módulos Lua extraídos | 0 | 5 arquivos | **873 linhas** ✅ |
 
 ### Arquivos Criados
 
-- **54+ novos arquivos** de comandos e módulos
+- **55+ novos arquivos** de comandos e módulos
   - 10 comandos agent (4 funcionais, 6 stubs)
   - 6 comandos stack (todos funcionais!)
   - 5 comandos scheduler (stubs)
@@ -135,7 +136,7 @@ cmd/sloth-runner/
   - 4 comandos base (run, version, root, context)
 - **2 serviços** reutilizáveis (Stack, Agent)
 - **1 handler** para lógica complexa (Run)
-- **4 módulos Lua** extraídos (data, fs, net, exec) 🆕
+- **5 módulos Lua** extraídos (data, fs, net, exec, log) 🆕
 - **5 documentos** arquiteturais
 - **1 script** de automação
 
@@ -145,14 +146,13 @@ cmd/sloth-runner/
 
 ### Modularização Lua Internos (Continuação) 🔄
 
-**Próximos Módulos a Extrair** do luainterface.go (1.311 linhas restantes):
+**Próximos Módulos a Extrair** do luainterface.go (1.186 linhas restantes):
 
-1. **log module** - Funções de logging (~100 linhas) - PRIORIDADE
+1. **workdir module** - Gestão de workdir (~250 linhas) - PRIORIDADE
 2. **env module** - Variáveis de ambiente (~80 linhas)
 3. **template module** - Sistema de templates (~150 linhas)
-4. **workdir module** - Gestão de workdir (~200 linhas)
 
-**Meta**: Reduzir luainterface.go para < 800 linhas
+**Meta**: Reduzir luainterface.go para < 700 linhas (61% de redução)
 
 ### Comandos Agent (Restantes)
 
@@ -367,6 +367,6 @@ Stubs criados, implementação pendente:
 
 ---
 
-**Última Atualização**: 2025-10-06 08:00 UTC
+**Última Atualização**: 2025-10-06 08:15 UTC
 **Autor**: Claude Code
-**Revisão**: v1.1 - 4 módulos Lua extraídos (50% completo)
+**Revisão**: v1.2 - 5 módulos Lua extraídos (52% completo)
