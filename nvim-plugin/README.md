@@ -1,333 +1,536 @@
-# Sloth Runner DSL - Neovim Plugin
+# Sloth Runner DSL - Modern Neovim Plugin
 
-🦥 **Syntax highlighting and IDE features for Sloth Runner DSL in Neovim**
+🦥 **Complete IDE experience for Sloth Runner DSL in Neovim**
 
-> **📝 Important Note:** Starting with the current version, Sloth Runner workflow files use the `.sloth` extension instead of `.lua`. The plugin automatically recognizes both extensions for backward compatibility.
+> **📝 Important Note:** This plugin provides first-class support for `.sloth` files with modern Neovim features including LSP-style completion, Telescope integration, and health checks.
 
-## 📚 Documentation
+## ✨ Features
 
-**📖 Complete documentation available at:** 
-- [English Documentation](../docs/en/nvim-plugin.md)
-- [Documentação em Português](../docs/pt/nvim-plugin.md)  
-- [中文文档](../docs/zh/nvim-plugin.md)
-- [Main Documentation](../docs/nvim-plugin.md)
+- 🦥 **Welcome Banner** - Friendly sloth emoji greets you when opening `.sloth` files
+- 🎨 **Rich Syntax Highlighting** - Enhanced colors for DSL keywords, methods, and modules
+- 📁 **Smart File Detection** - Auto-detects `.sloth` files and workflow patterns
+- ⚡ **Intelligent Completion** - nvim-cmp integration with context-aware suggestions
+- 🔭 **Telescope Integration** - Interactive task and workflow pickers
+- 🔧 **Integrated Runner** - Execute workflows directly from Neovim with floating output
+- 📋 **Quick Templates** - Snippets for rapid task and workflow creation
+- 🎯 **Text Objects** - Navigate and manipulate DSL constructs easily
+- 🔍 **Code Formatting** - Auto-format with stylua or built-in formatter
+- 🏥 **Health Checks** - Comprehensive `:checkhealth` integration
+- 🔌 **Modular Architecture** - Clean, maintainable Lua codebase
 
-## ✨ Quick Overview
+## 📋 Requirements
 
-- **🎨 Rich Syntax Highlighting** - Custom colors for DSL keywords, methods, and modules (uses traditional syntax, not treesitter to avoid conflicts)
-- **📁 Smart File Detection** - Auto-detects Sloth DSL files 
-- **⚡ Code Completion** - Intelligent completion for DSL methods and modules
-- **🔧 Integrated Runner** - Run workflows directly from Neovim
-- **📋 Code Snippets** - Quick templates for tasks and workflows
-- **🎯 Text Objects** - Navigate and select DSL constructs easily
-- **🐛 Conflict-Free** - Automatically handles treesitter conflicts
+- **Neovim** >= 0.9.0
+- **sloth-runner** executable in PATH
+- **Optional**: [nvim-cmp](https://github.com/hrsh7th/nvim-cmp) for completion
+- **Optional**: [telescope.nvim](https://github.com/nvim-telescope/telescope.nvim) for pickers
+- **Optional**: [which-key.nvim](https://github.com/folke/which-key.nvim) for keymap hints
 
 ## 🚀 Installation
 
-### Using [lazy.nvim](https://github.com/folke/lazy.nvim)
+### Using [lazy.nvim](https://github.com/folke/lazy.nvim) (Recommended)
 
 ```lua
 {
-  dir = "/path/to/sloth-runner/nvim-plugin", -- Local plugin path
+  dir = "/path/to/sloth-runner/nvim-plugin", -- Or use git URL when published
   name = "sloth-runner",
-  ft = { "sloth" },
+  ft = "sloth",
+  dependencies = {
+    "hrsh7th/nvim-cmp",              -- Optional: for completion
+    "nvim-telescope/telescope.nvim", -- Optional: for pickers
+    "folke/which-key.nvim",          -- Optional: for keymap hints
+  },
   config = function()
     require("sloth-runner").setup({
-      runner = {
-        command = "sloth-runner", -- Path to your sloth-runner binary
-        keymaps = {
-          run_file = "<leader>sr",
-          list_tasks = "<leader>sl",
-          dry_run = "<leader>st",
-          debug = "<leader>sd",
-        }
-      },
-      completion = {
-        enable = true,
-        snippets = true,
-      }
+      -- Your configuration here (see Configuration section)
     })
-  end
+  end,
+}
+```
+
+### Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
+
+```lua
+use {
+  "/path/to/sloth-runner/nvim-plugin",
+  ft = "sloth",
+  requires = {
+    "hrsh7th/nvim-cmp",
+    "nvim-telescope/telescope.nvim",
+  },
+  config = function()
+    require("sloth-runner").setup()
+  end,
 }
 ```
 
 ### Manual Installation
 
-1. **Copy plugin files to your Neovim config:**
-
 ```bash
-# Copy to your Neovim configuration directory
+# Copy to your Neovim configuration
 cp -r nvim-plugin/* ~/.config/nvim/
+
+# Add to your init.lua
+lua require("sloth-runner").setup()
 ```
 
-2. **Add to your init.lua:**
+## ⚙️ Configuration
+
+### Default Configuration
 
 ```lua
+require("sloth-runner").setup({
+  -- Runner configuration
+  runner = {
+    cmd = "sloth-runner",           -- Runner executable
+    default_args = {},              -- Default CLI arguments
+    use_float = true,               -- Use floating window for output
+    auto_close_on_success = false,  -- Auto-close window on success
+    notify = true,                  -- Show notifications
+  },
+
+  -- Formatter configuration
+  formatter = {
+    format_on_save = false,         -- Auto-format on save
+    cmd = "stylua",                 -- External formatter (stylua, etc.)
+    args = {                        -- Formatter arguments
+      "--indent-type", "Spaces",
+      "--indent-width", "2"
+    },
+    use_builtin = true,             -- Fallback to built-in formatter
+  },
+
+  -- Completion configuration
+  completion = {
+    enabled = true,                 -- Enable nvim-cmp integration
+    priority = 100,                 -- Completion source priority
+    show_docs = true,               -- Show documentation in completion
+  },
+
+  -- Keymap configuration
+  keymaps = {
+    enabled = true,                 -- Enable default keymaps
+    prefix = "<leader>s",           -- Keymap prefix
+    run = "r",                      -- Run workflow
+    list = "l",                     -- List tasks
+    test = "t",                     -- Dry run
+    validate = "v",                 -- Validate file
+    format = "f",                   -- Format file
+    task_textobj = "it",            -- Task text object
+    workflow_textobj = "iw",        -- Workflow text object
+  },
+
+  -- Telescope integration
+  telescope = {
+    enabled = true,                 -- Enable telescope integration
+    theme = "dropdown",             -- Picker theme
+    layout_config = {
+      width = 0.8,
+      height = 0.6,
+    },
+  },
+
+  -- UI configuration
+  ui = {
+    icons = {
+      task = "📋",
+      workflow = "🔄",
+      running = "⚡",
+      success = "✓",
+      error = "✗",
+      warning = "⚠",
+    },
+    float = {
+      border = "rounded",           -- Border style
+      title_pos = "center",         -- Title position
+      width = 0.8,
+      height = 0.8,
+    },
+    -- Welcome banner
+    show_welcome = true,            -- Show 🦥 when opening .sloth files
+    welcome_style = "notification", -- "notification", "banner", "large", "float"
+  },
+
+  -- Debug configuration
+  debug = {
+    enabled = false,                -- Enable debug logging
+    log_file = vim.fn.stdpath("cache") .. "/sloth-runner.log",
+  },
+})
+```
+
+### Minimal Configuration
+
+```lua
+-- Plugin works out of the box with defaults
 require("sloth-runner").setup()
 ```
 
-## 📁 File Detection
-
-The plugin automatically detects Sloth DSL files based on:
-
-- **File extensions**: `*.sloth` (primary), `*.lua` (legacy support)
-- **File patterns**: `*task*.sloth`, `*workflow*.sloth`
-- **Content detection**: Files containing `task(` or `workflow.define`
-
-## 🎨 Syntax Highlighting
-
-### Highlighted Elements
-
-- **Keywords**: `task`, `workflow`, `local`, `function`, etc.
-- **DSL Chain Methods** 🌟: `:command()`, `:description()`, `:build()`, `:timeout()`, etc. (bright golden color)
-- **Modules**: `exec`, `fs`, `state`, `aws`, `kubernetes`, etc.
-- **Strings**: With special handling for templates and paths
-- **Comments**: Including TODO/FIXME highlighting
-- **Environment Variables**: `${VAR}` and `$VAR` patterns
-
-### Color Scheme
-
-The plugin provides optimized colors for modern terminals:
+### Custom Configuration Example
 
 ```lua
--- Modern terminal colors (256-color and GUI)
-DSL Keywords      → Bright Blue (#569cd6)
-Modules           → Purple (#c586c0) 
-Chain Methods (:) → Bright Golden (#f9e79f) - Enhanced visibility!
-Methods           → Teal (#4ec9b0)
-Functions         → Yellow (#dcdcaa)
-Env Variables     → Red (#ff6b6b)
-File Paths        → Cyan (#98d8c8)
+require("sloth-runner").setup({
+  runner = {
+    use_float = false,              -- Use terminal split instead
+    notify = false,                 -- Disable notifications
+  },
+  formatter = {
+    format_on_save = true,          -- Auto-format on save
+  },
+  keymaps = {
+    prefix = "<leader>r",           -- Use different prefix
+  },
+})
 ```
 
-**✨ New in this version:** Chain methods (`:description`, `:command`, `:timeout`, etc.) now have enhanced golden highlighting for better visibility!
+## ⌨️ Default Keymaps
 
-## ⌨️ Key Mappings
+All keymaps use `<leader>s` prefix by default (configurable):
 
-| Key | Action | Description |
-|-----|--------|-------------|
-| `<leader>sr` | Run File | Execute current workflow file |
-| `<leader>sl` | List Tasks | Show tasks in current file |
-| `<leader>st` | Dry Run | Test workflow without execution |
-| `<leader>sd` | Debug | Run with verbose debugging |
+| Keymap | Command | Description |
+|--------|---------|-------------|
+| `<leader>sr` | `:SlothRun` | Run workflow in current file |
+| `<leader>sl` | `:SlothList` | List all tasks and workflows |
+| `<leader>st` | `:SlothTest` | Dry run (test without execution) |
+| `<leader>sv` | `:SlothValidate` | Validate file syntax |
+| `<leader>sf` | `:SlothFormat` | Format current file |
+
+### Text Objects
+
+| Text Object | Description |
+|-------------|-------------|
+| `it` | Inner task block |
+| `iw` | Inner workflow block |
+
+**Examples:**
+- `vit` - Visually select task block
+- `dit` - Delete task block
+- `yiw` - Yank workflow block
+- `ciw` - Change workflow block
 
 ## 🔧 Commands
 
 | Command | Description |
 |---------|-------------|
-| `:SlothRun` | Run current file |
-| `:SlothList` | List tasks in file |
-| `:SlothDryRun` | Dry run current file |
-| `:SlothDebug` | Debug current workflow |
-| `:SlothTaskSnippet` | Insert task template |
-| `:SlothWorkflowSnippet` | Insert workflow template |
+| `:SlothRun [task]` | Run workflow or specific task |
+| `:SlothList` | List all tasks/workflows |
+| `:SlothTest [task]` | Dry run workflow or task |
+| `:SlothValidate` | Validate current file |
+| `:SlothFormat` | Format current file |
+| `:SlothInfo` | Show plugin information |
+| `:SlothWelcome` | Show welcome message with 🦥 |
+| `:SlothAnimate` | Show sloth animation (easter egg) |
+| `:SlothTasks` | Open Telescope task picker |
+| `:SlothWorkflows` | Open Telescope workflow picker |
 
-## 📋 Code Snippets
+## 🔭 Telescope Integration
+
+When telescope.nvim is installed, you get interactive pickers:
+
+### Task Picker
+
+```vim
+:SlothTasks
+" or
+:Telescope sloth tasks
+```
+
+**Keymaps in picker:**
+- `<CR>` - Run selected task
+- `<C-g>` - Go to task definition
+
+### Workflow Picker
+
+```vim
+:SlothWorkflows
+" or
+:Telescope sloth workflows
+```
+
+**Keymaps in picker:**
+- `<CR>` - Run selected workflow
+- `<C-g>` - Go to workflow definition
+
+### Combined Picker
+
+```vim
+:Telescope sloth
+```
+
+Shows both tasks and workflows in one picker.
+
+## ⚡ Completion
+
+When nvim-cmp is installed, the plugin provides intelligent completion:
+
+- **DSL Keywords**: `task`, `workflow`, `define`
+- **Method Chaining**: `:command`, `:description`, `:timeout`, `:build`
+- **Modules**: `exec`, `fs`, `net`, `aws`, `docker`, `kubernetes`
+- **Context-Aware**: Suggests appropriate completions based on cursor position
+
+The completion source is automatically registered with nvim-cmp when both are installed.
+
+## 📋 Snippets & Templates
 
 ### Task Template
 
-Type `_task` and expand:
+Type `_task` in insert mode and expand:
 
 ```lua
-local task_name = task("task_name")
-    :description("Task description")
-    :command(function(params, deps)
-        -- TODO: implement task logic
-        return true
-    end)
-    :build()
+local task_name = task("task-name")
+  :description("Task description")
+  :command(function(params, deps)
+    -- TODO: implement
+    return true
+  end)
+  :build()
 ```
 
-### Workflow Template  
+### Workflow Template
 
-Type `_workflow` and expand:
+Type `_workflow` in insert mode and expand:
 
 ```lua
-workflow.define("workflow_name", {
-    description = "Workflow description",
-    version = "1.0.0",
-    
-    tasks = {
-        -- Add tasks here
-    },
-    
-    on_success = function(results)
-        -- Success handler
-    end,
-    
-    on_failure = function(error, context)
-        -- Error handler  
-    end
+workflow.define("workflow-name", {
+  description = "Workflow description",
+  version = "1.0.0",
+  tasks = {
+    -- tasks here
+  }
 })
 ```
 
-## 🎯 Text Objects
+## 🎨 Syntax Highlighting
 
-- **`vit`** - Select task block (visual in task)
-- **`viw`** - Select workflow block (visual in workflow)
-- **`dit`** - Delete task block
-- **`diw`** - Delete workflow block
+The plugin provides rich syntax highlighting for:
+
+- **Keywords**: `task`, `workflow`, `local`, `function`
+- **DSL Methods**: `:command()`, `:description()`, `:build()` (golden highlight)
+- **Modules**: `exec`, `fs`, `aws`, `kubernetes` (purple)
+- **Strings**: With template interpolation support
+- **Environment Variables**: `${VAR}` and `$VAR` patterns
+- **Comments**: With TODO/FIXME highlighting
+
+### Color Scheme
+
+```
+DSL Keywords      → Bright Blue (#569cd6)
+Modules           → Purple (#c586c0)
+Chain Methods (:) → Bright Golden (#f9e79f)
+Functions         → Yellow (#dcdcaa)
+Env Variables     → Red (#ff6b6b)
+File Paths        → Cyan (#98d8c8)
+```
 
 ## 🔄 Folding
 
-The plugin provides intelligent folding for:
+Intelligent folding for:
 
-- **Task definitions** - From `task(` to `:build()`
-- **Workflow definitions** - From `workflow.define(` to closing brace
-- **Function blocks** - Standard Lua functions
+- Task definitions (from `task(` to `:build()`)
+- Workflow definitions (from `workflow.define(` to closing brace)
+- Function blocks
 
-### Fold Display
-
+**Fold display:**
 ```
-📋 Task: deploy_application (15 lines) ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
-🔄 Workflow: ci_pipeline (42 lines) ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
-⚡ Function: deploy_to_env (8 lines) ⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯
+📋 Task: deploy_application (15 lines) ⋯⋯⋯⋯⋯⋯⋯
+🔄 Workflow: ci_pipeline (42 lines) ⋯⋯⋯⋯⋯⋯⋯⋯
+⚡ Function: deploy_to_env (8 lines) ⋯⋯⋯⋯⋯⋯⋯
 ```
 
-## ⚙️ Configuration
+## 🏥 Health Check
 
-### Full Configuration Example
+Check plugin status and dependencies:
+
+```vim
+:checkhealth sloth-runner
+```
+
+The health check verifies:
+- ✅ Plugin initialization
+- ✅ sloth-runner executable availability
+- ✅ Optional dependencies (nvim-cmp, telescope)
+- ✅ Configuration validity
+- ✅ Formatter availability
+
+## 🔌 API
+
+### Lua API
 
 ```lua
-require("sloth-runner").setup({
-  -- Syntax highlighting
-  highlights = {
-    enable = true,
-    use_treesitter = true, -- Use tree-sitter if available
-  },
-  
-  -- Code completion
-  completion = {
-    enable = true,
-    snippets = true,
-  },
-  
-  -- Runner integration
-  runner = {
-    command = "sloth-runner", -- Path to binary
-    auto_run_on_save = false, -- Auto-run on file save
-    keymaps = {
-      run_file = "<leader>sr",
-      list_tasks = "<leader>sl", 
-      dry_run = "<leader>st",
-      debug = "<leader>sd",
-    }
-  },
-  
-  -- Code folding
-  folding = {
-    enable = true,
-    auto_close = false, -- Auto-close folds
-  }
-})
+local sloth = require("sloth-runner")
+
+-- Initialize plugin
+sloth.setup({ ... })
+
+-- Run workflow
+sloth.run({ file = "path/to/file.sloth", task = "build" })
+
+-- List tasks
+sloth.list({ file = "path/to/file.sloth" })
+
+-- Validate file
+local success, err = sloth.validate()
+
+-- Format file
+sloth.format()
+
+-- Get configuration
+local config = sloth.get_config()
 ```
 
-### Disable Features
-
-```lua
-require("sloth-runner").setup({
-  completion = { enable = false },
-  folding = { enable = false },
-  runner = { keymaps = false }
-})
-```
-
-## 🔌 Integration
-
-### LSP Integration
-
-The plugin works alongside Lua LSP for enhanced features:
-
-```lua
--- If using nvim-lspconfig
-require('lspconfig').sloth_ls.setup({
-  filetypes = { 'lua', 'sloth' }, -- Add sloth filetype
-  settings = {
-    Lua = {
-      workspace = {
-        library = {
-          -- Add sloth-runner modules to workspace
-          "/path/to/sloth-runner/lua-modules"
-        }
-      }
-    }
-  }
-})
-```
-
-### Completion Integration (nvim-cmp)
-
-```lua
-require('cmp').setup.filetype('sloth', {
-  sources = {
-    { name = 'sloth' },      -- DSL-specific completion
-    { name = 'lua_ls' },     -- Lua language server
-    { name = 'luasnip' },    -- Snippets
-    { name = 'buffer' },     -- Buffer words
-  }
-})
-```
-
-## 🎨 Color Customization
-
-Override highlight groups in your config:
-
-```lua
-vim.api.nvim_set_hl(0, 'SlothKeyword', { fg = '#your-color', bold = true })
-vim.api.nvim_set_hl(0, 'SlothModule', { fg = '#your-color', italic = true })
-vim.api.nvim_set_hl(0, 'SlothMethod', { fg = '#your-color' })
-```
-
-## 📚 Example Usage
+## 📚 Example Workflow
 
 Create a file `deploy.sloth`:
 
 ```lua
--- This file will be auto-detected as Sloth DSL
+-- This file is auto-detected as Sloth DSL
 
 local build_task = task("build")
-    :description("Build the application")
-    :command(function(params, deps)
-        local result = exec.run("go build -o app ./cmd/main.go")
-        return result.success, result.stdout, { artifact = "app" }
-    end)
-    :timeout("5m")
-    :build()
+  :description("Build the application")
+  :command(function(params, deps)
+    local result = exec.run("go build -o app ./cmd/main.go")
+    return result.success, result.stdout, { artifact = "app" }
+  end)
+  :timeout("5m")
+  :build()
+
+local test_task = task("test")
+  :description("Run tests")
+  :depends_on({"build"})
+  :command(function(params, deps)
+    local result = exec.run("go test ./...")
+    return result.success
+  end)
+  :build()
 
 local deploy_task = task("deploy")
-    :description("Deploy to production")
-    :depends_on({"build"})
-    :command(function(params, deps)
-        local app_artifact = deps.build.artifact
-        log.info("Deploying " .. app_artifact)
-        
-        local result = exec.run("kubectl apply -f deployment.yaml")
-        return result.success
-    end)
-    :build()
+  :description("Deploy to production")
+  :depends_on({"build", "test"})
+  :command(function(params, deps)
+    local app = deps.build.artifact
+    log.info("Deploying " .. app)
+
+    local result = exec.run("kubectl apply -f deployment.yaml")
+    return result.success
+  end)
+  :build()
 
 workflow.define("production_deploy", {
-    description = "Complete production deployment pipeline",
-    version = "1.0.0",
-    
-    tasks = { build_task, deploy_task },
-    
-    on_success = function(results)
-        log.info("🚀 Deployment completed successfully!")
-    end,
-    
-    on_failure = function(error, context)
-        log.error("❌ Deployment failed: " .. error.message)
-    end
+  description = "Complete production deployment pipeline",
+  version = "1.0.0",
+
+  tasks = { build_task, test_task, deploy_task },
+
+  on_success = function(results)
+    log.info("🚀 Deployment completed successfully!")
+    notification.send({
+      title = "Deployment Success",
+      message = "Production deployment completed"
+    })
+  end,
+
+  on_failure = function(error, context)
+    log.error("❌ Deployment failed: " .. error.message)
+    notification.send({
+      title = "Deployment Failed",
+      message = error.message,
+      urgency = "critical"
+    })
+  end
 })
 ```
 
-Now you can:
-- **`<leader>sr`** - Run the entire workflow
-- **`<leader>sl`** - See all tasks with their IDs
-- **`<leader>st`** - Test without actually deploying
-- Use **`vit`** to select the build task
-- Use **`viw`** to select the entire workflow
+**Now you can:**
+- `<leader>sr` - Run the entire workflow
+- `<leader>sl` - List all tasks
+- `<leader>st` - Dry run to test
+- `:SlothTasks` - Pick and run individual tasks
+- `vit` - Select a task block
+- `viw` - Select the workflow
+
+## 🦥 Welcome Banner
+
+When you open a `.sloth` file for the first time, you'll see a friendly sloth emoji! You can customize the welcome style:
+
+**Notification Style** (default):
+```lua
+ui = { welcome_style = "notification" }
+-- Shows: 🦥 Sloth Runner DSL
+```
+
+**Banner Style**:
+```lua
+ui = { welcome_style = "banner" }
+-- Shows:
+--     🦥 Sloth Runner DSL
+--   ⚡ Ready to automate workflows!
+```
+
+**Large Banner Style**:
+```lua
+ui = { welcome_style = "large" }
+-- Shows:
+--  ╔══════════════════════════════════╗
+--  ║     🦥  SLOTH RUNNER DSL  🦥     ║
+--  ╚══════════════════════════════════╝
+--   ⚡ Workflow automation made easy
+--   💡 Tip: Use <leader>sr to run workflow
+```
+
+**Float Window Style**:
+```lua
+ui = { welcome_style = "float" }
+-- Shows banner in a floating window (auto-closes after 3s)
+```
+
+**Disable Welcome**:
+```lua
+ui = { show_welcome = false }
+```
+
+**Easter Egg**: Try `:SlothAnimate` for a fun sloth animation! 🦥💤⚡✨
+
+## 📖 Documentation
+
+Full documentation available in:
+- `:help sloth-runner` - Complete help documentation
+- `:checkhealth sloth-runner` - Health check and diagnostics
+- `:SlothInfo` - Quick reference
+- `:SlothWelcome` - See the welcome banner again
+
+## 🤝 Contributing
+
+Contributions are welcome! The plugin uses a modern modular architecture:
+
+```
+nvim-plugin/
+├── lua/sloth-runner/
+│   ├── init.lua          # Main entry point
+│   ├── config.lua        # Configuration management
+│   ├── commands.lua      # Command definitions
+│   ├── keymaps.lua       # Keymap setup
+│   ├── runner.lua        # Workflow execution
+│   ├── formatter.lua     # Code formatting
+│   ├── completion.lua    # nvim-cmp integration
+│   ├── telescope.lua     # Telescope integration
+│   ├── health.lua        # Health check
+│   ├── welcome.lua       # Welcome banner (🦥)
+│   └── utils.lua         # Utility functions
+├── plugin/
+│   └── sloth-runner.vim  # Plugin initialization
+├── ftdetect/
+│   └── sloth.vim         # Filetype detection
+├── ftplugin/
+│   └── sloth.vim         # Filetype plugin
+├── syntax/
+│   └── sloth.vim         # Syntax highlighting
+└── doc/
+    └── sloth-runner.txt  # Help documentation
+```
+
+## 📝 License
+
+MIT License - See LICENSE file for details
 
 ---
 
