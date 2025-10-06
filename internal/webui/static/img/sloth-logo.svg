@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Sloth body -->
+  <ellipse cx="100" cy="120" rx="60" ry="45" fill="#8B7355"/>
+
+  <!-- Sloth head -->
+  <circle cx="100" cy="70" r="40" fill="#8B7355"/>
+
+  <!-- Face details -->
+  <ellipse cx="100" cy="80" rx="28" ry="22" fill="#D4A574"/>
+
+  <!-- Eyes (sleepy) -->
+  <ellipse cx="85" cy="70" rx="8" ry="4" fill="#2C1810"/>
+  <ellipse cx="115" cy="70" rx="8" ry="4" fill="#2C1810"/>
+
+  <!-- Nose -->
+  <circle cx="100" cy="80" r="4" fill="#2C1810"/>
+
+  <!-- Smile -->
+  <path d="M 90 85 Q 100 90 110 85" stroke="#2C1810" stroke-width="2" fill="none"/>
+
+  <!-- Arms -->
+  <ellipse cx="65" cy="100" rx="10" ry="35" fill="#8B7355" transform="rotate(-20 65 100)"/>
+  <ellipse cx="135" cy="100" rx="10" ry="35" fill="#8B7355" transform="rotate(20 135 100)"/>
+
+  <!-- Claws -->
+  <g fill="#2C1810">
+    <!-- Left claws -->
+    <ellipse cx="60" cy="125" rx="2" ry="6"/>
+    <ellipse cx="65" cy="127" rx="2" ry="6"/>
+    <ellipse cx="70" cy="125" rx="2" ry="6"/>
+
+    <!-- Right claws -->
+    <ellipse cx="130" cy="125" rx="2" ry="6"/>
+    <ellipse cx="135" cy="127" rx="2" ry="6"/>
+    <ellipse cx="140" cy="125" rx="2" ry="6"/>
+  </g>
+
+  <!-- Branch -->
+  <rect x="20" y="55" width="160" height="8" rx="4" fill="#6B4423"/>
+
+  <!-- Leaves -->
+  <ellipse cx="30" cy="50" rx="10" ry="15" fill="#7CB342" transform="rotate(-30 30 50)"/>
+  <ellipse cx="170" cy="50" rx="10" ry="15" fill="#7CB342" transform="rotate(30 170 50)"/>
+  <ellipse cx="100" cy="45" rx="12" ry="18" fill="#7CB342"/>
+</svg>
