@@ -4,10 +4,10 @@
 
 **Objetivo**: Transformar codebase monolítico de 3.462 linhas em arquitetura modular enterprise-grade
 
-**Status**: **35% Completo** 🚀
+**Status**: **45% Completo** 🚀🚀
 
 **Data Início**: 2025-10-06
-**Última Atualização**: 2025-10-06 07:00 UTC
+**Última Atualização**: 2025-10-06 07:15 UTC
 
 ---
 
@@ -70,6 +70,32 @@ cmd/sloth-runner/
 | scheduler list | 📝 Stub criado | list.go | 17 |
 | scheduler delete | 📝 Stub criado | delete.go | 17 |
 
+### 6. Comandos State (100% Estrutura Completa) 🎉
+
+| Comando | Status | Arquivo | Linhas |
+|---------|--------|---------|--------|
+| state (parent) | ✅ Completo | state.go | 30 |
+| state list | ✅ Completo | list.go | 92 |
+| state show | 📝 Stub criado | show.go | 17 |
+| state delete | 📝 Stub criado | delete.go | 17 |
+| state clear | 📝 Stub criado | clear.go | 17 |
+| state stats | 📝 Stub criado | stats.go | 17 |
+
+### 7. Comandos Root (100% Estrutura Completa) 🎉
+
+| Comando | Status | Arquivo | Linhas |
+|---------|--------|---------|--------|
+| ui | 📝 Stub criado | ui.go | 29 |
+| list | 📝 Stub criado | list.go | 18 |
+| master | 📝 Stub criado | master.go | 31 |
+
+### 8. Módulos Lua Internos (Início da Modularização) 🆕
+
+| Módulo | Status | Arquivo | Linhas | Redução |
+|--------|--------|---------|--------|---------|
+| data (JSON/YAML) | ✅ Completo | modules/data/data.go | 180 | ~200 linhas do main |
+| fs (Filesystem) | ✅ Completo | modules/fs/fs.go | 240 | ~250 linhas do main |
+
 ### 4. Documentação
 
 - ✅ **Architecture README** - Guia completo da arquitetura
@@ -95,13 +121,16 @@ cmd/sloth-runner/
 
 ### Arquivos Criados
 
-- **30+ novos arquivos** de comandos modulares
-  - 10 comandos agent
+- **50+ novos arquivos** de comandos e módulos
+  - 10 comandos agent (4 funcionais, 6 stubs)
   - 6 comandos stack (todos funcionais!)
-  - 5 comandos scheduler
-  - Comandos: run, version, root
+  - 5 comandos scheduler (stubs)
+  - 6 comandos state (1 funcional, 5 stubs)
+  - 3 comandos root (ui, list, master - stubs)
+  - 4 comandos base (run, version, root, context)
 - **2 serviços** reutilizáveis (Stack, Agent)
 - **1 handler** para lógica complexa (Run)
+- **2 módulos Lua** extraídos (data, fs) 🆕
 - **5 documentos** arquiteturais
 - **1 script** de automação
 
