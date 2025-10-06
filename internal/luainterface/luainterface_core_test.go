@@ -20,19 +20,18 @@ func TestParseLuaScript(t *testing.T) {
 		{
 			name: "valid task definition",
 			script: `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group",
-		workdir = "/tmp",
-		tasks = {
-			{
-				name = "test_task",
-				description = "Test task",
-				cmd = "echo hello"
-			}
+workflow({
+	name = "test_group",
+	description = "Test group",
+	workdir = "/tmp",
+	tasks = {
+		{
+			name = "test_task",
+			description = "Test task",
+			command = "echo hello"
 		}
 	}
-}
+})
 `,
 			wantErr:    false,
 			wantGroups: 1,
@@ -40,17 +39,17 @@ TaskDefinitions = {
 		{
 			name: "empty task definitions",
 			script: `
-TaskDefinitions = {}
+-- No workflows defined
 `,
-			wantErr:    false,
+			wantErr:    true,
 			wantGroups: 0,
 		},
 		{
 			name: "invalid lua syntax",
 			script: `
-TaskDefinitions = {
+workflow({
 	invalid syntax here
-}
+})
 `,
 			wantErr: true,
 		},
@@ -95,19 +94,18 @@ local x = 1
 func TestParseLuaScriptWithValues(t *testing.T) {
 	script := `
 local env = values.environment or "dev"
-TaskDefinitions = {
-	test_group = {
-		description = "Test with values: " .. env,
-		workdir = "/tmp",
-		tasks = {
-			{
-				name = "test_task",
-				description = "Test task",
-				cmd = "echo " .. env
-			}
+workflow({
+	name = "test_group",
+	description = "Test with values: " .. env,
+	workdir = "/tmp",
+	tasks = {
+		{
+			name = "test_task",
+			description = "Test task",
+			command = "echo " .. env
 		}
 	}
-}
+})
 `
 
 	tmpfile, err := os.CreateTemp("", "test-*.lua")
@@ -194,21 +192,20 @@ func TestLuaInterfaceCreation(t *testing.T) {
 
 func TestTaskGroupFields(t *testing.T) {
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test description",
-		workdir = "/test/workdir",
-		create_workdir_before_run = true,
-		tasks = {
-			{
-				name = "task1",
-				description = "Task 1",
-				cmd = "echo test",
-				delegate_to = "agent1"
-			}
+workflow({
+	name = "test_group",
+	description = "Test description",
+	workdir = "/test/workdir",
+	create_workdir_before_run = true,
+	tasks = {
+		{
+			name = "task1",
+			description = "Task 1",
+			command = "echo test",
+			delegate_to = "agent1"
 		}
 	}
-}
+})
 `
 
 	tmpfile, err := os.CreateTemp("", "test-*.lua")
@@ -260,21 +257,20 @@ t.Skip("Module not yet registered globally - needs refactoring")
 local base_task = {
 	name = "base",
 	description = "Base task",
-	cmd = "echo base"
+	command = "echo base"
 }
 
-TaskDefinitions = {
-	test_group = {
-		description = "Test",
-		tasks = {
-			{
-				uses = base_task,
-				name = "derived",
-				description = "Derived task"
-			}
+workflow({
+	name = "test_group",
+	description = "Test",
+	tasks = {
+		{
+			uses = base_task,
+			name = "derived",
+			description = "Derived task"
 		}
 	}
-}
+})
 `
 
 	tmpfile, err := os.CreateTemp("", "test-*.lua")
@@ -357,26 +353,27 @@ result = module.greeting("World")
 
 func TestMultipleTaskGroupsParsing(t *testing.T) {
 	script := `
-TaskDefinitions = {
-	group1 = {
-		description = "Group 1",
-		tasks = {
-			{
-				name = "task1",
-				cmd = "echo 1"
-			}
-		}
-	},
-	group2 = {
-		description = "Group 2",
-		tasks = {
-			{
-				name = "task2",
-				cmd = "echo 2"
-			}
+workflow({
+	name = "group1",
+	description = "Group 1",
+	tasks = {
+		{
+			name = "task1",
+			command = "echo 1"
 		}
 	}
-}
+})
+
+workflow({
+	name = "group2",
+	description = "Group 2",
+	tasks = {
+		{
+			name = "task2",
+			command = "echo 2"
+		}
+	}
+})
 `
 
 	tmpfile, err := os.CreateTemp("", "test-*.lua")
@@ -410,17 +407,16 @@ TaskDefinitions = {
 
 func TestTaskEnvironmentVariables(t *testing.T) {
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test",
-		tasks = {
-			{
-				name = "task1",
-				cmd = "echo test"
-			}
+workflow({
+	name = "test_group",
+	description = "Test",
+	tasks = {
+		{
+			name = "task1",
+			command = "echo test"
 		}
 	}
-}
+})
 `
 
 	tmpfile, err := os.CreateTemp("", "test-*.lua")
