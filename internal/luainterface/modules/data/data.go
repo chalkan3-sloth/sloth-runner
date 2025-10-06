@@ -84,9 +84,12 @@ func Loader(L *lua.LState) int {
 	return 1
 }
 
-// Open registers the data module
+// Open registers the data module and loads it globally
 func Open(L *lua.LState) {
 	L.PreloadModule("data", Loader)
+	if err := L.DoString(`data = require("data")`); err != nil {
+		panic(err)
+	}
 }
 
 // Helper functions
