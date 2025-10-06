@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log/slog"
-	"os"
 	"os/exec"
 	"path/filepath"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/fs"
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/log"
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/net"
+	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/workdir"
 	coremodules "github.com/chalkan3-sloth/sloth-runner/internal/modules/core"
 	"github.com/chalkan3-sloth/sloth-runner/internal/state"
 	"github.com/chalkan3-sloth/sloth-runner/internal/types"
@@ -439,6 +439,7 @@ func registerAllModulesInternal(L *lua.LState, agentClient interface{}) {
 	net.Open(L)
 	execmodule.Open(L)
 	log.Open(L)
+	workdir.Open(L)
 
 	// Register extended modules from other files
 	RegisterGitModule(L)  // Use new git module with table-based API
@@ -494,10 +495,7 @@ func registerAllModulesInternal(L *lua.LState, agentClient interface{}) {
 	// Register pulumi module (duplicate registration - keeping for compatibility)
 	L.PreloadModule("pulumi", PulumiLoader)
 	OpenMetrics(L)
-	
-	// ✅ Register workdir functions
-	OpenWorkdir(L)
-	
+
 	// Register new enhanced modules
 	RegisterHTTPModule(L)
 	RegisterStringModule(L)
@@ -728,7 +726,7 @@ func ExecuteLuaFunction(L *lua.LState, fn *lua.LFunction, params map[string]stri
 					if wd, exists := data["workdir_path"]; exists && wd != nil {
 						workdirPath = wd.(string)
 					}
-					workdirObj := createRuntimeWorkdirObjectWithColonSupport(L, workdirPath)
+					workdirObj := workdir.CreateRuntimeWorkdirObjectWithColonSupport(L, workdirPath)
 					L.Push(workdirObj)
 				default:
 					L.Push(lua.LNil)
@@ -832,352 +830,7 @@ func CopyValue(value lua.LValue, destL *lua.LState) lua.LValue {
 }
 
 // ✅ Workdir Module Functions
-func luaWorkdirGet(L *lua.LState) int {
-	// Get current workdir from task context
-	taskContext := L.GetGlobal("__task_context")
-	if taskContext.Type() == lua.LTTable {
-		workdir := taskContext.(*lua.LTable).RawGetString("workdir")
-		if workdir.Type() == lua.LTString {
-			L.Push(workdir)
-			return 1
-		}
-	}
-	
-	// Fallback to current working directory
-	if cwd, err := os.Getwd(); err == nil {
-		L.Push(lua.LString(cwd))
-	} else {
-		L.Push(lua.LString("/tmp"))
-	}
-	return 1
-}
-
-func luaWorkdirCleanup(L *lua.LState) int {
-	// Get workdir path (optional argument)
-	var workdirPath string
-	if L.GetTop() >= 1 {
-		workdirPath = L.CheckString(1)
-	} else {
-		// Get from context
-		taskContext := L.GetGlobal("__task_context")
-		if taskContext.Type() == lua.LTTable {
-			workdir := taskContext.(*lua.LTable).RawGetString("workdir")
-			if workdir.Type() == lua.LTString {
-				workdirPath = workdir.String()
-			}
-		}
-	}
-	
-	if workdirPath == "" {
-		L.Push(lua.LBool(false))
-		L.Push(lua.LString("no workdir specified"))
-		return 2
-	}
-	
-	slog.Warn("Manual workdir cleanup is disabled. Workdir preserved.", "workdir", workdirPath)
-	// if err := os.RemoveAll(workdirPath); err != nil {
-	// 	L.Push(lua.LBool(false))
-	// 	L.Push(lua.LString(err.Error()))
-	// 	return 2
-	// }
-	
-	L.Push(lua.LBool(true))
-	L.Push(lua.LString("workdir cleanup is disabled"))
-	return 2
-}
-
-func luaWorkdirExists(L *lua.LState) int {
-	// Get workdir path (optional argument)
-	var workdirPath string
-	if L.GetTop() >= 1 {
-		workdirPath = L.CheckString(1)
-	} else {
-		// Get from context
-		taskContext := L.GetGlobal("__task_context")
-		if taskContext.Type() == lua.LTTable {
-			workdir := taskContext.(*lua.LTable).RawGetString("workdir")
-			if workdir.Type() == lua.LTString {
-				workdirPath = workdir.String()
-			}
-		}
-	}
-	
-	if workdirPath == "" {
-		L.Push(lua.LBool(false))
-		return 1
-	}
-	
-	// Check if directory exists
-	if _, err := os.Stat(workdirPath); err == nil {
-		L.Push(lua.LBool(true))
-	} else {
-		L.Push(lua.LBool(false))
-	}
-	return 1
-}
-
-func luaWorkdirCreate(L *lua.LState) int {
-	// Get workdir path (required argument)
-	workdirPath := L.CheckString(1)
-	
-	// Create directory with all parent directories
-	if err := os.MkdirAll(workdirPath, 0755); err != nil {
-		L.Push(lua.LBool(false))
-		L.Push(lua.LString(err.Error()))
-		return 2
-	}
-	
-	L.Push(lua.LBool(true))
-	L.Push(lua.LString("workdir created successfully"))
-	return 2
-}
-
-func WorkdirLoader(L *lua.LState) int {
-	mod := L.SetFuncs(L.NewTable(), map[string]lua.LGFunction{
-		"get":     luaWorkdirGet,
-		"cleanup": luaWorkdirCleanup,
-		"exists":  luaWorkdirExists,
-		"create":  luaWorkdirCreate,
-	})
-	L.Push(mod)
-	return 1
-}
-
-func OpenWorkdir(L *lua.LState) {
-	// Register as global module (like exec, fs, etc.)
-	workdirMt := L.SetFuncs(L.NewTable(), map[string]lua.LGFunction{
-		"get":     luaWorkdirGet,
-		"cleanup": luaWorkdirCleanup,
-		"exists":  luaWorkdirExists,
-		"create":  luaWorkdirCreate,
-	})
-	L.SetGlobal("workdir", workdirMt)
-}
-
-// ✅ CreateRuntimeWorkdirObjectWithColonSupport creates workdir object supporting this.workdir.method() syntax (exported)
-func CreateRuntimeWorkdirObjectWithColonSupport(L *lua.LState, workdirPath string) *lua.LUserData {
-	return createRuntimeWorkdirObjectWithColonSupport(L, workdirPath)
-}
-
-// ✅ createRuntimeWorkdirObjectWithColonSupport creates workdir object supporting this:workdir:method() syntax
-func createRuntimeWorkdirObjectWithColonSupport(L *lua.LState, workdirPath string) *lua.LUserData {
-	workdirUD := L.NewUserData()
-	workdirUD.Value = workdirPath
-	
-	// Create metatable for workdir object with colon syntax support
-	workdirMt := L.NewTypeMetatable("RuntimeWorkdirColonSupport")
-	L.SetField(workdirMt, "__index", L.NewFunction(func(L *lua.LState) int {
-		ud := L.CheckUserData(1)
-		key := L.CheckString(2)
-		
-		workdirPath, ok := ud.Value.(string)
-		if !ok {
-			L.ArgError(1, "RuntimeWorkdirColonSupport expected")
-			return 0
-		}
-		
-		switch key {
-		case "get":
-			L.Push(L.NewFunction(func(L *lua.LState) int {
-				if workdirPath != "" {
-					L.Push(lua.LString(workdirPath))
-				} else {
-					if cwd, err := os.Getwd(); err == nil {
-						L.Push(lua.LString(cwd))
-					} else {
-						L.Push(lua.LString("/tmp"))
-					}
-				}
-				return 1
-			}))
-		case "ensure":
-			L.Push(L.NewFunction(func(L *lua.LState) int {
-				if workdirPath == "" {
-					L.Push(lua.LBool(false))
-					return 1
-				}
-				
-				// Remove existing directory
-				os.RemoveAll(workdirPath)
-				
-				// Create new directory
-				if err := os.MkdirAll(workdirPath, 0755); err != nil {
-					L.Push(lua.LBool(false))
-					return 1
-				}
-				
-				L.Push(lua.LBool(true))
-				return 1
-			}))
-		case "exists":
-			L.Push(L.NewFunction(func(L *lua.LState) int {
-				if workdirPath == "" {
-					L.Push(lua.LBool(false))
-					return 1
-				}
-				
-				if _, err := os.Stat(workdirPath); err == nil {
-					L.Push(lua.LBool(true))
-				} else {
-					L.Push(lua.LBool(false))
-				}
-				return 1
-			}))
-		case "cleanup":
-			L.Push(L.NewFunction(func(L *lua.LState) int {
-				if workdirPath == "" {
-					L.Push(lua.LBool(false))
-					return 1
-				}
-				
-				slog.Warn("Manual workdir cleanup is disabled. Workdir preserved.", "workdir", workdirPath)
-				// if err := os.RemoveAll(workdirPath); err != nil {
-				// 	L.Push(lua.LBool(false))
-				// 	return 1
-				// }
-				
-				L.Push(lua.LBool(true))
-				return 1
-			}))
-		case "recreate":
-			L.Push(L.NewFunction(func(L *lua.LState) int {
-				if workdirPath == "" {
-					L.Push(lua.LBool(false))
-					return 1
-				}
-				
-				// Remove and recreate
-				os.RemoveAll(workdirPath)
-				if err := os.MkdirAll(workdirPath, 0755); err != nil {
-					L.Push(lua.LBool(false))
-					return 1
-				}
-				
-				L.Push(lua.LBool(true))
-				return 1
-			}))
-		default:
-			L.Push(lua.LNil)
-		}
-		return 1
-	}))
-	
-	L.SetMetatable(workdirUD, workdirMt)
-	return workdirUD
-}
-
-// ✅ createRuntimeWorkdirObject creates workdir object for runtime execution
-func createRuntimeWorkdirObject(L *lua.LState, workdirPath string) *lua.LUserData {
-	workdirUD := L.NewUserData()
-	workdirUD.Value = workdirPath
-	
-	// Create metatable for workdir object
-	workdirMt := L.NewTypeMetatable("RuntimeWorkdir")
-	L.SetField(workdirMt, "__index", L.NewFunction(func(L *lua.LState) int {
-		ud := L.CheckUserData(1)
-		key := L.CheckString(2)
-		
-		workdirPath, ok := ud.Value.(string)
-		if !ok {
-			L.ArgError(1, "RuntimeWorkdir expected")
-			return 0
-		}
-		
-		switch key {
-		case "get":
-			L.Push(L.NewFunction(func(L *lua.LState) int {
-				if workdirPath != "" {
-					L.Push(lua.LString(workdirPath))
-				} else {
-					if cwd, err := os.Getwd(); err == nil {
-						L.Push(lua.LString(cwd))
-					} else {
-						L.Push(lua.LString("/tmp"))
-					}
-				}
-				return 1
-			}))
-		case "exists":
-			L.Push(L.NewFunction(func(L *lua.LState) int {
-				if workdirPath == "" {
-					L.Push(lua.LBool(false))
-					return 1
-				}
-				
-				if _, err := os.Stat(workdirPath); err == nil {
-					L.Push(lua.LBool(true))
-				} else {
-					L.Push(lua.LBool(false))
-				}
-				return 1
-			}))
-		case "ensure":
-			L.Push(L.NewFunction(func(L *lua.LState) int {
-				if workdirPath == "" {
-					L.Push(lua.LBool(false))
-					return 1
-				}
-				
-				// Remove existing directory
-				os.RemoveAll(workdirPath)
-				
-				// Create new directory
-				if err := os.MkdirAll(workdirPath, 0755); err != nil {
-					L.Push(lua.LBool(false))
-					return 1
-				}
-				
-				L.Push(lua.LBool(true))
-				return 1
-			}))
-		case "cleanup":
-			L.Push(L.NewFunction(func(L *lua.LState) int {
-				if workdirPath == "" {
-					L.Push(lua.LBool(false))
-					L.Push(lua.LString("no workdir specified"))
-					return 2
-				}
-				
-				slog.Warn("Manual workdir cleanup is disabled. Workdir preserved.", "workdir", workdirPath)
-				// if err := os.RemoveAll(workdirPath); err != nil {
-				// 	L.Push(lua.LBool(false))
-				// 	L.Push(lua.LString(err.Error()))
-				// 	return 2
-				// }
-				
-				L.Push(lua.LBool(true))
-				L.Push(lua.LString("workdir cleanup is disabled"))
-				return 2
-			}))
-		case "recreate":
-			L.Push(L.NewFunction(func(L *lua.LState) int {
-				if workdirPath == "" {
-					L.Push(lua.LBool(false))
-					L.Push(lua.LString("no workdir specified"))
-					return 2
-				}
-				
-				// Remove and recreate
-				os.RemoveAll(workdirPath)
-				if err := os.MkdirAll(workdirPath, 0755); err != nil {
-					L.Push(lua.LBool(false))
-					L.Push(lua.LString(err.Error()))
-					return 2
-				}
-				
-				L.Push(lua.LBool(true))
-				L.Push(lua.LString("workdir recreated successfully"))
-				return 2
-			}))
-		default:
-			L.Push(lua.LNil)
-		}
-		return 1
-	}))
-	
-	L.SetMetatable(workdirUD, workdirMt)
-	return workdirUD
-}
+// DEPRECATED: Moved to internal/luainterface/modules/workdir/workdir.go
 // RegisterGoroutineModule registers the goroutine module for parallel execution
 func RegisterGoroutineModule(L *lua.LState) {
 goroutineModule := coremodules.NewGoroutineModule()
