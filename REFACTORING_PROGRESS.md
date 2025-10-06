@@ -4,10 +4,10 @@
 
 **Objetivo**: Transformar codebase monolítico de 3.462 linhas em arquitetura modular enterprise-grade
 
-**Status**: **20% Completo**
+**Status**: **35% Completo** 🚀
 
 **Data Início**: 2025-10-06
-**Última Atualização**: 2025-10-06
+**Última Atualização**: 2025-10-06 07:00 UTC
 
 ---
 
@@ -34,7 +34,7 @@ cmd/sloth-runner/
 └── repositories/         📁 Planejado para futuro
 ```
 
-### 3. Comandos Agent (Parcial)
+### 3. Comandos Agent (40% Completo)
 
 | Comando | Status | Arquivo | Linhas |
 |---------|--------|---------|--------|
@@ -48,6 +48,27 @@ cmd/sloth-runner/
 | agent modules | 📝 Stub criado | modules.go | 15 |
 | agent metrics | 📝 Stub criado | metrics.go | 20 |
 | agent update | 📝 Stub criado | update.go | 17 |
+
+### 4. Comandos Stack (100% Estrutura Completa) 🎉
+
+| Comando | Status | Arquivo | Linhas |
+|---------|--------|---------|--------|
+| stack (parent) | ✅ Completo | stack.go | 30 |
+| stack list | ✅ Completo | list.go | 75 |
+| stack show | ✅ Completo | show.go | 120 |
+| stack new | ✅ Completo | new.go | 95 |
+| stack delete | ✅ Completo | delete.go | 55 |
+| stack history | ✅ Completo | history.go | 90 |
+
+### 5. Comandos Scheduler (100% Estrutura Completa) 🎉
+
+| Comando | Status | Arquivo | Linhas |
+|---------|--------|---------|--------|
+| scheduler (parent) | ✅ Completo | scheduler.go | 30 |
+| scheduler enable | 📝 Stub criado | enable.go | 17 |
+| scheduler disable | 📝 Stub criado | disable.go | 17 |
+| scheduler list | 📝 Stub criado | list.go | 17 |
+| scheduler delete | 📝 Stub criado | delete.go | 17 |
 
 ### 4. Documentação
 
@@ -70,14 +91,18 @@ cmd/sloth-runner/
 | Arquivo Original | Antes | Depois (Estimado) | Redução |
 |-----------------|-------|-------------------|---------|
 | main.go | 3.462 | ~100 | **97%** |
-| Comandos extraídos | 0 | 15 arquivos | N/A |
+| Comandos extraídos | 0 | 30+ arquivos | N/A |
 
 ### Arquivos Criados
 
-- **15 novos arquivos** de comandos modulares
-- **2 serviços** reutilizáveis
-- **1 handler** para lógica complexa
-- **4 documentos** arquiteturais
+- **30+ novos arquivos** de comandos modulares
+  - 10 comandos agent
+  - 6 comandos stack (todos funcionais!)
+  - 5 comandos scheduler
+  - Comandos: run, version, root
+- **2 serviços** reutilizáveis (Stack, Agent)
+- **1 handler** para lógica complexa (Run)
+- **5 documentos** arquiteturais
 - **1 script** de automação
 
 ---
@@ -155,20 +180,20 @@ commands/stack/
 - [ ] agent metrics (stub)
 - [ ] agent update (stub - integrar existente)
 
-#### Stack (0% completo)
-- [ ] stack (parent)
-- [ ] stack new
-- [ ] stack list
-- [ ] stack show
-- [ ] stack delete
-- [ ] stack history
+#### Stack (100% completo) 🎉
+- [x] stack (parent)
+- [x] stack new ✅
+- [x] stack list ✅
+- [x] stack show ✅
+- [x] stack delete ✅
+- [x] stack history ✅
 
-#### Scheduler (0% completo)
-- [ ] scheduler (parent)
-- [ ] scheduler enable
-- [ ] scheduler disable
-- [ ] scheduler list
-- [ ] scheduler delete
+#### Scheduler (100% estrutura completa) 🎉
+- [x] scheduler (parent)
+- [x] scheduler enable (stub)
+- [x] scheduler disable (stub)
+- [x] scheduler list (stub)
+- [x] scheduler delete (stub)
 
 #### State (0% completo)
 - [ ] state (parent)
