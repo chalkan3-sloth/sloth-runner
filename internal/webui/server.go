@@ -195,6 +195,64 @@ func (s *Server) setupRoutes(cfg *Config) {
 			ssh.GET("/:name/audit", sshHandler.GetAuditLogs)
 		}
 
+		// Workflow Executions
+		execHandler := handlers.NewWorkflowExecutionHandler(s.wsHub)
+		executions := api.Group("/executions")
+		{
+			executions.POST("", execHandler.ExecuteWorkflow)
+			executions.GET("", execHandler.ListExecutions)
+			executions.GET("/:id", execHandler.GetExecution)
+			executions.POST("/:id/cancel", execHandler.CancelExecution)
+			executions.GET("/:id/logs", execHandler.GetExecutionLogs)
+		}
+
+		// Metrics
+		metricsHandler := handlers.NewMetricsHandler(s.wsHub)
+		api.GET("/metrics", metricsHandler.GetMetrics)
+		api.GET("/metrics/history", metricsHandler.GetHistoricalMetrics)
+
+		// Logs
+		logsHandler := handlers.NewLogsHandler(s.wsHub)
+		logs := api.Group("/logs")
+		{
+			logs.GET("", logsHandler.ListLogFiles)
+			logs.GET("/:filename", logsHandler.GetLogFile)
+			logs.GET("/:filename/stream", logsHandler.StreamLogs)
+		}
+
+		// Scheduler
+		schedulerHandler := handlers.NewSchedulerHandler(s.wsHub)
+		scheduler := api.Group("/scheduler")
+		{
+			scheduler.GET("", schedulerHandler.ListSchedules)
+			scheduler.GET("/:id", schedulerHandler.GetSchedule)
+			scheduler.POST("", schedulerHandler.CreateSchedule)
+			scheduler.PUT("/:id", schedulerHandler.UpdateSchedule)
+			scheduler.DELETE("/:id", schedulerHandler.DeleteSchedule)
+			scheduler.POST("/:id/enable", schedulerHandler.EnableSchedule)
+			scheduler.POST("/:id/disable", schedulerHandler.DisableSchedule)
+			scheduler.POST("/:id/trigger", schedulerHandler.TriggerSchedule)
+		}
+
+		// Backup & Restore
+		backupHandler := handlers.NewBackupHandler()
+		backup := api.Group("/backup")
+		{
+			backup.GET("", backupHandler.ListBackups)
+			backup.POST("/create", backupHandler.CreateBackup)
+			backup.POST("/restore", backupHandler.RestoreBackup)
+		}
+
+		// Terminal
+		terminalHandler := handlers.NewTerminalHandler()
+		terminal := api.Group("/terminal")
+		{
+			terminal.POST("", terminalHandler.CreateSession)
+			terminal.GET("", terminalHandler.ListSessions)
+			terminal.GET("/:id/ws", terminalHandler.ConnectTerminal)
+			terminal.DELETE("/:id", terminalHandler.CloseSession)
+		}
+
 		// WebSocket
 		api.GET("/ws", func(c *gin.Context) {
 			handlers.ServeWebSocket(s.wsHub, c.Writer, c.Request)
@@ -209,6 +267,12 @@ func (s *Server) setupRoutes(cfg *Config) {
 	s.router.GET("/events", s.servePage("events.html"))
 	s.router.GET("/secrets", s.servePage("secrets.html"))
 	s.router.GET("/ssh", s.servePage("ssh.html"))
+	s.router.GET("/executions", s.servePage("executions.html"))
+	s.router.GET("/metrics", s.servePage("metrics.html"))
+	s.router.GET("/logs", s.servePage("logs.html"))
+	s.router.GET("/scheduler", s.servePage("scheduler.html"))
+	s.router.GET("/terminal", s.servePage("terminal.html"))
+	s.router.GET("/backup", s.servePage("backup.html"))
 
 	// Health check
 	s.router.GET("/health", func(c *gin.Context) {
