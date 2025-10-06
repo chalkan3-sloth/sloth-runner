@@ -254,9 +254,12 @@ async function openAgentDetail(agentName) {
 let resourceCharts = {};
 
 async function loadAgentOverview(agentName) {
+    console.log('[DEBUG] Loading agent overview for:', agentName);
     try {
         const response = await fetch(`/api/v1/agents/${agentName}/resources`);
+        console.log('[DEBUG] API response status:', response.status);
         const data = await response.json();
+        console.log('[DEBUG] API data received:', data);
 
         const content = document.getElementById('agent-overview-content');
         content.innerHTML = `
@@ -331,11 +334,21 @@ async function loadAgentOverview(agentName) {
         // Destroy old charts if they exist
         ['cpu-chart', 'memory-chart', 'disk-chart', 'history-chart'].forEach(id => {
             if (resourceCharts[id]) {
+                console.log('[DEBUG] Destroying old chart:', id);
                 resourceCharts[id].destroy();
             }
         });
 
+        // Check if Chart.js is loaded
+        if (typeof Chart === 'undefined') {
+            console.error('[ERROR] Chart.js is NOT loaded!');
+            content.innerHTML += '<div class="alert alert-danger mt-3">Chart.js library not loaded. Cannot display charts.</div>';
+            return;
+        }
+        console.log('[DEBUG] Chart.js is loaded, version:', Chart.version);
+
         // Create doughnut charts for resources
+        console.log('[DEBUG] Creating CPU chart...');
         const cpuChart = new Chart(document.getElementById('cpu-chart'), {
             type: 'doughnut',
             data: {
@@ -473,8 +486,15 @@ async function loadAgentOverview(agentName) {
             'history-chart': historyChart
         };
 
+        console.log('[DEBUG] All charts created successfully:', Object.keys(resourceCharts));
+
     } catch (error) {
-        console.error('Error loading agent overview:', error);
+        console.error('[ERROR] Error loading agent overview:', error);
+        console.error('[ERROR] Stack trace:', error.stack);
+        const content = document.getElementById('agent-overview-content');
+        if (content) {
+            content.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+        }
     }
 }
 
