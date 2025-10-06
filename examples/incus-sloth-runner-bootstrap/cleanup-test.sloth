@@ -1,0 +1,29 @@
+-- Cleanup de containers de teste
+
+local cleanup = task("cleanup")
+    :description("Remover containers de teste")
+    :delegate_to("192.168.1.17:50051")
+    :command(function(this, params)
+        log.info("🧹 Limpando containers de teste...")
+
+        -- Deletar test-container-01 se existir
+        local result = incus.delete({
+            type = "instance",
+            name = "test-container-01",
+            force = true
+        })
+
+        log.info("✅ Cleanup concluído")
+        return true, "Containers removidos"
+    end)
+    :build()
+
+workflow
+    .define("cleanup")
+    :description("Cleanup de containers")
+    :tasks({cleanup})
+    :on_complete(function(success, results)
+        if success then
+            log.info("✅ Cleanup OK")
+        end
+    end)

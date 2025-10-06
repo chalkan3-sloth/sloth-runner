@@ -1,11 +1,38 @@
 # 🦥 Incus Sloth Runner Bootstrap
 
-Bootstrap automatizado de agent sloth-runner em container Incus.
+Bootstrap automatizado de agent sloth-runner em container/VM Incus.
+
+## 📚 Exemplos Disponíveis
+
+### 🆕 Exemplo Moderno (Recomendado)
+**Arquivo:** `create-agent-vm-modern.sloth`
+
+Demonstra as **últimas features** do sloth-runner:
+- ✅ **Fluent API** - Encadeamento elegante de métodos
+- ✅ **Padrão (result, error)** - Tratamento consistente de erros
+- ✅ **Error Handling Robusto** - Verificação em cada passo
+- ✅ **Retry Automático** - Tentativas com backoff
+- ✅ **Idempotência** - Seguro para re-executar
+
+📖 [Ver documentação completa](./README-MODERN.md)
+
+### 🔧 Exemplo Original
+**Arquivo:** `bootstrap-agent.sloth`
+
+Exemplo funcional e estável para criar containers Incus.
+
+### 🧪 Testes
+**Arquivo:** `test-fluent-api.sloth`
+
+Suite de testes para validar:
+- Padrão (result, error)
+- Fluent API
+- Propagação de erros
 
 ## 📋 Overview
 
 Este exemplo demonstra como:
-- ✅ Criar container Arch Linux usando módulo `incus`
+- ✅ Criar container/VM Arch Linux usando módulo `incus`
 - ✅ Configurar SSH com chaves públicas
 - ✅ Criar proxy device para acesso SSH externo
 - ✅ Instalar sloth-runner agent usando módulo `sloth`
@@ -65,12 +92,33 @@ Este exemplo demonstra como:
    sloth-runner agent list --master 192.168.1.29:50053
    ```
 
-## 🚀 Uso
+## 🚀 Quick Start
 
-### Executar Bootstrap Completo
+### 1️⃣ Testar Fluent API (Recomendado primeiro)
 
 ```bash
-sloth-runner run --file examples/incus-sloth-runner-bootstrap/bootstrap-agent.sloth --yes
+# Executar testes sem criar recursos
+sloth-runner run \
+    --file examples/incus-sloth-runner-bootstrap/test-fluent-api.sloth \
+    --yes
+```
+
+### 2️⃣ Executar Bootstrap Moderno (Recomendado)
+
+```bash
+# Criar VM com fluent API e tratamento de erros
+sloth-runner run \
+    --file examples/incus-sloth-runner-bootstrap/create-agent-vm-modern.sloth \
+    --yes
+```
+
+### 3️⃣ Executar Bootstrap Original (Alternativa)
+
+```bash
+# Método original (container)
+sloth-runner run \
+    --file examples/incus-sloth-runner-bootstrap/bootstrap-agent.sloth \
+    --yes
 ```
 
 ### Workflow Passo a Passo
@@ -79,10 +127,12 @@ O workflow executa as seguintes tarefas:
 
 1. **create-container** - Cria container Arch Linux
    ```lua
-   incus.instance({
-       name = "agent-keite-01",
-       image = "images:archlinux"
-   }):create():start():wait_running()
+   local container = incus.instance("agent-keite-01")
+   container:image("images:archlinux")
+   container:create()
+   container:start()
+   -- Aguardar inicialização
+   exec.run("sleep 5")
    ```
 
 2. **configure-ssh** - Configura SSH no container

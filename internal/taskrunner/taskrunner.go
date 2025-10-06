@@ -506,7 +506,7 @@ func (tr *TaskRunner) Run() error {
 			taskMap[group.Tasks[i].Name] = &group.Tasks[i]
 		}
 
-		tasksToRun, err := tr.resolveTasksToRun(taskMap, tr.TargetTasks)
+		tasksToRun, err := tr.resolveTasksToRun(taskMap, group.Tasks, tr.TargetTasks)
 		if err != nil {
 			return err
 		}
@@ -1016,15 +1016,11 @@ func (tr *TaskRunner) getExecutionOrder(tasksToRun []*types.Task) ([]string, err
 		return nil
 	}
 
-	var taskNames []string
+	// Preserve the original task order from tasksToRun instead of sorting alphabetically
+	// This ensures tasks without dependencies execute in their definition order
 	for _, task := range tasksToRun {
-		taskNames = append(taskNames, task.Name)
-	}
-	sort.Strings(taskNames)
-
-	for _, taskName := range taskNames {
-		if !visited[taskName] {
-			if err := visit(taskName); err != nil {
+		if !visited[task.Name] {
+			if err := visit(task.Name); err != nil {
 				return nil, err
 			}
 		}
@@ -1033,11 +1029,12 @@ func (tr *TaskRunner) getExecutionOrder(tasksToRun []*types.Task) ([]string, err
 	return order, nil
 }
 
-func (tr *TaskRunner) resolveTasksToRun(originalTaskMap map[string]*types.Task, targetTasks []string) ([]*types.Task, error) {
+func (tr *TaskRunner) resolveTasksToRun(originalTaskMap map[string]*types.Task, originalTasksOrdered []types.Task, targetTasks []string) ([]*types.Task, error) {
 	if len(targetTasks) == 0 {
+		// Return all tasks in their original definition order
 		var allTasks []*types.Task
-		for _, task := range originalTaskMap {
-			allTasks = append(allTasks, task)
+		for i := range originalTasksOrdered {
+			allTasks = append(allTasks, &originalTasksOrdered[i])
 		}
 		return allTasks, nil
 	}
@@ -1072,9 +1069,13 @@ func (tr *TaskRunner) resolveTasksToRun(originalTaskMap map[string]*types.Task, 
 		}
 	}
 
+	// Return resolved tasks in their original definition order
 	var result []*types.Task
-	for _, task := range resolved {
-		result = append(result, task)
+	for i := range originalTasksOrdered {
+		task := &originalTasksOrdered[i]
+		if _, ok := resolved[task.Name]; ok {
+			result = append(result, task)
+		}
 	}
 	return result, nil
 }

@@ -69,10 +69,19 @@ func Run(L *lua.LState) int {
 			slog.Warn(stderrStr, "source", "lua-ssh", "stream", "stderr", "profile", GetSSHProfile())
 		}
 
-		L.Push(lua.LString(stdoutStr))
-		L.Push(lua.LString(stderrStr))
-		L.Push(lua.LBool(err != nil))
-		return 3
+		// Retornar objeto result consistente
+		result := L.NewTable()
+		L.SetField(result, "stdout", lua.LString(stdoutStr))
+		L.SetField(result, "stderr", lua.LString(stderrStr))
+		exitCode := 0
+		if err != nil {
+			exitCode = 1
+		}
+		L.SetField(result, "exit_code", lua.LNumber(exitCode))
+		L.SetField(result, "success", lua.LBool(err == nil))
+		L.Push(result)
+		L.Push(lua.LNil) // Sempre retornar (result, nil)
+		return 2
 	}
 
 	// Local execution
@@ -125,10 +134,23 @@ func Run(L *lua.LState) int {
 		slog.Warn(stderrStr, "source", "lua", "stream", "stderr")
 	}
 
-	L.Push(lua.LString(stdoutStr))
-	L.Push(lua.LString(stderrStr))
-	L.Push(lua.LBool(err != nil))
-	return 3
+	// Retornar objeto result consistente
+	result := L.NewTable()
+	L.SetField(result, "stdout", lua.LString(stdoutStr))
+	L.SetField(result, "stderr", lua.LString(stderrStr))
+	exitCode := 0
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			exitCode = exitErr.ExitCode()
+		} else {
+			exitCode = 1
+		}
+	}
+	L.SetField(result, "exit_code", lua.LNumber(exitCode))
+	L.SetField(result, "success", lua.LBool(err == nil))
+	L.Push(result)
+	L.Push(lua.LNil) // Sempre retornar (result, nil)
+	return 2
 }
 
 // Loader returns the exec module loader
