@@ -50,19 +50,22 @@ jobs:
             PATCH=$(echo $LATEST_TAG | sed -E 's/v([0-9]+)\.([0-9]+)\.([0-9]+)/\3/')
           fi
 
-          # Get commit message for analysis
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
-          echo "Analyzing commit: $(echo "$COMMIT_MSG" | head -c 100)..."
+          # Get commit message for analysis (use printf to safely handle special characters)
+          COMMIT_MSG=$(cat <<'EOF'
+          ${{ github.event.head_commit.message }}
+          EOF
+          )
+          echo "Analyzing commit: $(printf '%s' "$COMMIT_MSG" | head -c 100)..."
 
           # Determine version bump based on conventional commits
-          if echo "$COMMIT_MSG" | grep -iE "(BREAKING CHANGE|breaking change|breaking:|major:)"; then
+          if printf '%s' "$COMMIT_MSG" | grep -iE "(BREAKING CHANGE|breaking change|breaking:|major:)"; then
             # Major version bump
             NEW_MAJOR=$((MAJOR + 1))
             NEW_MINOR=0
             NEW_PATCH=0
             NEW_TAG="v${NEW_MAJOR}.${NEW_MINOR}.${NEW_PATCH}"
             echo "🚀 MAJOR version bump detected"
-          elif echo "$COMMIT_MSG" | grep -iE "(feat\(|feat:|feature:|minor:)"; then
+          elif printf '%s' "$COMMIT_MSG" | grep -iE "(feat\(|feat:|feature:|minor:)"; then
             # Minor version bump  
             NEW_MINOR=$((MINOR + 1))
             NEW_PATCH=0
