@@ -303,6 +303,7 @@ func (s *Server) setupRoutes(cfg *Config) {
 	s.router.GET("/scheduler", s.servePage("scheduler.html"))
 	s.router.GET("/terminal", s.servePage("terminal.html"))
 	s.router.GET("/backup", s.servePage("backup.html"))
+	s.router.GET("/chart-test", s.servePage("chart-test.html"))
 
 	// Health check
 	s.router.GET("/health", func(c *gin.Context) {

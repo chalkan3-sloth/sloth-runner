@@ -73,7 +73,7 @@ type ProcessInfo struct {
 	StartedAt     int64   `json:"started_at"`
 }
 
-// List returns all agents
+// List returns all agents with enriched metrics
 func (h *AgentHandler) List(c *gin.Context) {
 	ctx := c.Request.Context()
 
@@ -83,7 +83,69 @@ func (h *AgentHandler) List(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"agents": agents})
+	// Enrich agents with metrics from system_info
+	enrichedAgents := make([]map[string]interface{}, 0, len(agents))
+	for _, agent := range agents {
+		enriched := map[string]interface{}{
+			"id":                 agent.ID,
+			"name":               agent.Name,
+			"address":            agent.Address,
+			"status":             agent.Status,
+			"last_heartbeat":     agent.LastHeartbeat,
+			"registered_at":      agent.RegisteredAt,
+			"updated_at":         agent.UpdatedAt,
+			"last_info_collected": agent.LastInfoCollected,
+			"version":            agent.Version,
+		}
+
+		// Parse system_info JSON to extract metrics
+		if agent.SystemInfo != "" {
+			var sysInfo map[string]interface{}
+			if err := json.Unmarshal([]byte(agent.SystemInfo), &sysInfo); err == nil {
+				// Extract memory metrics
+				if memory, ok := sysInfo["memory"].(map[string]interface{}); ok {
+					if usedPercent, ok := memory["used_percent"].(float64); ok {
+						enriched["memory_percent"] = usedPercent
+					}
+				}
+
+				// Extract CPU count
+				if cpus, ok := sysInfo["cpus"].(float64); ok {
+					enriched["cpu_count"] = int(cpus)
+				}
+
+				// Extract disk metrics (use first disk)
+				if disks, ok := sysInfo["disk"].([]interface{}); ok && len(disks) > 0 {
+					if disk, ok := disks[0].(map[string]interface{}); ok {
+						if usedPercent, ok := disk["used_percent"].(float64); ok {
+							enriched["disk_percent"] = usedPercent
+						}
+					}
+				}
+
+				// Extract load average
+				if loadAvg, ok := sysInfo["load_average"].([]interface{}); ok && len(loadAvg) > 0 {
+					if load1, ok := loadAvg[0].(float64); ok {
+						enriched["load_avg"] = load1
+					}
+				}
+
+				// Extract uptime
+				if uptime, ok := sysInfo["uptime"].(float64); ok {
+					enriched["uptime"] = int64(uptime)
+				}
+
+				// Extract hostname
+				if hostname, ok := sysInfo["hostname"].(string); ok {
+					enriched["hostname"] = hostname
+				}
+			}
+		}
+
+		enrichedAgents = append(enrichedAgents, enriched)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"agents": enrichedAgents})
 }
 
 // Get returns an agent by name
@@ -133,11 +195,92 @@ func (h *AgentHandler) Update(c *gin.Context) {
 
 // GetResourceUsage returns detailed resource usage for an agent
 func (h *AgentHandler) GetResourceUsage(c *gin.Context) {
+	ctx := c.Request.Context()
 	name := c.Param("name")
 
-	// TODO: Get real metrics from agent via gRPC
-	// For now, return mock data
-	metrics := generateMockMetrics(name)
+	// Get agent from database
+	agent, err := h.db.GetAgent(ctx, name)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Agent not found"})
+		return
+	}
+
+	// Parse system_info to extract metrics
+	var sysInfo map[string]interface{}
+	if agent.SystemInfo == "" || json.Unmarshal([]byte(agent.SystemInfo), &sysInfo) != nil {
+		// Fallback to mock data if no system info
+		c.JSON(http.StatusOK, generateMockMetrics(name))
+		return
+	}
+
+	metrics := &AgentMetrics{}
+
+	// Extract memory metrics
+	if memory, ok := sysInfo["memory"].(map[string]interface{}); ok {
+		if used, ok := memory["used"].(float64); ok {
+			metrics.MemoryUsedBytes = uint64(used)
+		}
+		if total, ok := memory["total"].(float64); ok {
+			metrics.MemoryTotalBytes = uint64(total)
+		}
+		if usedPercent, ok := memory["used_percent"].(float64); ok {
+			metrics.MemoryPercent = usedPercent
+		}
+	}
+
+	// Extract disk metrics (use first disk)
+	if disks, ok := sysInfo["disk"].([]interface{}); ok && len(disks) > 0 {
+		if disk, ok := disks[0].(map[string]interface{}); ok {
+			if used, ok := disk["used"].(float64); ok {
+				metrics.DiskUsedBytes = uint64(used)
+			}
+			if total, ok := disk["total"].(float64); ok {
+				metrics.DiskTotalBytes = uint64(total)
+			}
+			if usedPercent, ok := disk["used_percent"].(float64); ok {
+				metrics.DiskPercent = usedPercent
+			}
+		}
+	}
+
+	// Extract load average
+	if loadAvg, ok := sysInfo["load_average"].([]interface{}); ok {
+		if len(loadAvg) > 0 {
+			if load1, ok := loadAvg[0].(float64); ok {
+				metrics.LoadAvg1Min = load1
+			}
+		}
+		if len(loadAvg) > 1 {
+			if load5, ok := loadAvg[1].(float64); ok {
+				metrics.LoadAvg5Min = load5
+			}
+		}
+		if len(loadAvg) > 2 {
+			if load15, ok := loadAvg[2].(float64); ok {
+				metrics.LoadAvg15Min = load15
+			}
+		}
+	}
+
+	// Extract process count
+	if processes, ok := sysInfo["processes"].(map[string]interface{}); ok {
+		if total, ok := processes["total"].(float64); ok {
+			metrics.ProcessCount = int(total)
+		}
+	}
+
+	// Extract uptime
+	if uptime, ok := sysInfo["uptime"].(float64); ok {
+		metrics.UptimeSeconds = uint64(uptime)
+	}
+
+	// Estimate CPU usage from load average (simple heuristic)
+	if cpus, ok := sysInfo["cpus"].(float64); ok && cpus > 0 {
+		metrics.CPUPercent = (metrics.LoadAvg1Min / cpus) * 100
+		if metrics.CPUPercent > 100 {
+			metrics.CPUPercent = 100
+		}
+	}
 
 	c.JSON(http.StatusOK, metrics)
 }
