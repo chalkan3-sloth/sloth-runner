@@ -26,6 +26,7 @@ type AgentRecord struct {
 	UpdatedAt         int64  `json:"updated_at"`
 	LastInfoCollected int64  `json:"last_info_collected"`
 	SystemInfo        string `json:"system_info"`
+	Version           string `json:"version"`
 }
 
 // NewAgentDB creates a new AgentDB instance
@@ -82,6 +83,7 @@ func (adb *AgentDB) initSchema() error {
 	migrations := []string{
 		`ALTER TABLE agents ADD COLUMN last_info_collected INTEGER DEFAULT 0`,
 		`ALTER TABLE agents ADD COLUMN system_info TEXT DEFAULT ''`,
+		`ALTER TABLE agents ADD COLUMN version TEXT DEFAULT ''`,
 	}
 
 	for _, migration := range migrations {
@@ -136,7 +138,7 @@ func (adb *AgentDB) UpdateHeartbeat(name string) error {
 // UpdateSystemInfo updates the system information for an agent
 func (adb *AgentDB) UpdateSystemInfo(name string, systemInfo string) error {
 	query := `UPDATE agents SET system_info = ?, last_info_collected = ?, updated_at = ? WHERE name = ?`
-	
+
 	now := time.Now().Unix()
 	result, err := adb.db.Exec(query, systemInfo, now, now, name)
 	if err != nil {
@@ -155,10 +157,32 @@ func (adb *AgentDB) UpdateSystemInfo(name string, systemInfo string) error {
 	return nil
 }
 
+// UpdateVersion updates the version for an agent
+func (adb *AgentDB) UpdateVersion(name string, version string) error {
+	query := `UPDATE agents SET version = ?, updated_at = ? WHERE name = ?`
+
+	now := time.Now().Unix()
+	result, err := adb.db.Exec(query, version, now, name)
+	if err != nil {
+		return fmt.Errorf("failed to update version: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check affected rows: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("agent not found: %s", name)
+	}
+
+	return nil
+}
+
 // GetAgent retrieves an agent by name
 func (adb *AgentDB) GetAgent(name string) (*AgentRecord, error) {
-	query := `SELECT id, name, address, status, last_heartbeat, registered_at, updated_at, 
-			  last_info_collected, system_info 
+	query := `SELECT id, name, address, status, last_heartbeat, registered_at, updated_at,
+			  last_info_collected, system_info, version
 			  FROM agents WHERE name = ?`
 
 	var agent AgentRecord
@@ -172,6 +196,7 @@ func (adb *AgentDB) GetAgent(name string) (*AgentRecord, error) {
 		&agent.UpdatedAt,
 		&agent.LastInfoCollected,
 		&agent.SystemInfo,
+		&agent.Version,
 	)
 
 	if err != nil {
@@ -187,7 +212,7 @@ func (adb *AgentDB) GetAgent(name string) (*AgentRecord, error) {
 // ListAgents retrieves all agents from the database
 func (adb *AgentDB) ListAgents() ([]*AgentRecord, error) {
 	query := `SELECT id, name, address, status, last_heartbeat, registered_at, updated_at,
-			  last_info_collected, system_info 
+			  last_info_collected, system_info, version
 			  FROM agents ORDER BY name`
 
 	rows, err := adb.db.Query(query)
@@ -211,6 +236,7 @@ func (adb *AgentDB) ListAgents() ([]*AgentRecord, error) {
 			&agent.UpdatedAt,
 			&agent.LastInfoCollected,
 			&agent.SystemInfo,
+			&agent.Version,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan agent row: %w", err)
