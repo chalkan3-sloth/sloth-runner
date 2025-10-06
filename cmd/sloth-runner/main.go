@@ -8,6 +8,7 @@ import (
 
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/agent"
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/db"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/events"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/hook"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/scheduler"
@@ -116,6 +117,10 @@ func Execute() error {
 	// Add events command and subcommands
 	eventsCmd := events.NewEventsCommand(ctx)
 	rootCmd.AddCommand(eventsCmd)
+
+	// Add db command and subcommands
+	dbCmd := db.NewDBCommand(ctx)
+	rootCmd.AddCommand(dbCmd)
 
 	// Add other root commands (kept for backward compatibility)
 	listCmd := commands.NewListCommand(ctx)

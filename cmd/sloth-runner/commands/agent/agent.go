@@ -29,6 +29,7 @@ func NewAgentCommand(ctx *commands.AppContext) *cobra.Command {
 		NewMetricsCommand(ctx),
 		NewUpdateCommand(ctx),
 		NewInstallCommand(ctx),
+		NewDocsCommand(ctx),
 	)
 
 	return cmd

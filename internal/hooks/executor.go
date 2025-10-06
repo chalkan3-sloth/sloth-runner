@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
 	"github.com/chalkan3-sloth/sloth-runner/internal/modules"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -69,6 +70,12 @@ func (e *Executor) Execute(hook *Hook, event *Event) (*HookResult, error) {
 		result.Duration = time.Since(startTime)
 		return result, err
 	}
+
+	// Load file_ops module globally (without require)
+	fileOpsModule := luainterface.NewFileOpsModule()
+	fileOpsModule.Loader(L)
+	L.SetGlobal("file_ops", L.Get(-1))
+	L.Pop(1)
 
 	// Execute the hook file
 	if err := L.DoFile(hook.FilePath); err != nil {

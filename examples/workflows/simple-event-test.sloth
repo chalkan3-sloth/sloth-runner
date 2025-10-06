@@ -1,0 +1,45 @@
+-- Simple workflow to test basic event dispatching
+
+local simple_task = task("simple_event_test")
+    :description("Simple task that dispatches events")
+    :delegate_to("lady-guica")
+    :command(function()
+        local event = require("event")
+        local exec = require("exec")
+
+        print("📤 Dispatching test events...")
+
+        -- Test event 1
+        event.dispatch("custom", {
+            name = "simple_test",
+            payload = {
+                message = "Hello from simple workflow",
+                timestamp = os.time()
+            },
+            source = "simple-event-test"
+        })
+
+        exec.run("sleep 1")
+
+        -- Test event 2
+        event.dispatch("custom", {
+            name = "simple_test_2",
+            payload = {
+                message = "Second test event",
+                count = 42
+            },
+            source = "simple-event-test"
+        })
+
+        print("✅ Events dispatched")
+
+        return true, "Events dispatched successfully"
+    end)
+    :build()
+
+workflow
+    .define("simple_event_test")
+    :description("Simple workflow for event testing")
+    :version("1.0.0")
+    :tasks({simple_task})
+    :build()
