@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logs - Sloth Runner</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/theme.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-lightning-charge-fill"></i> Sloth Runner
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/agents">Agents</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/workflows">Workflows</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/executions">Executions</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/hooks">Hooks</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/scheduler">Scheduler</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/metrics">Metrics</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/logs">Logs</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/terminal">Terminal</a></li>
+                </ul>
+                <button class="theme-toggle" onclick="themeManager.toggle()">
+                    <i class="bi bi-moon-stars-fill"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-lg-3">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-files"></i> Log Files</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush" id="logFilesList" style="max-height: 600px; overflow-y: auto;">
+                            <div class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-funnel"></i> Filters</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Search</label>
+                            <input type="text" class="form-control" id="searchInput" placeholder="Search in logs...">
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Log Level</label>
+                            <select class="form-select" id="logLevelFilter">
+                                <option value="">All Levels</option>
+                                <option value="DEBUG">DEBUG</option>
+                                <option value="INFO">INFO</option>
+                                <option value="WARN">WARN</option>
+                                <option value="ERROR">ERROR</option>
+                                <option value="FATAL">FATAL</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Tail Lines</label>
+                            <input type="number" class="form-control" id="tailLines" value="100" min="10" max="10000">
+                        </div>
+
+                        <button class="btn btn-primary w-100" onclick="applyFilters()">
+                            <i class="bi bi-funnel"></i> Apply Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-9">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-file-earmark-text"></i>
+                            <span id="currentLogFile">Select a log file</span>
+                        </h5>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="refreshLogs()" title="Refresh">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="downloadCurrentLog()" title="Download">
+                                <i class="bi bi-download"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="clearLogView()" title="Clear View">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" id="autoRefreshBtn" onclick="toggleAutoRefresh()" title="Auto Refresh">
+                                <i class="bi bi-arrow-repeat"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="logContent" class="p-3 bg-dark text-light" style="height: 700px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.4;">
+                            <div class="text-muted text-center py-5">
+                                <i class="bi bi-file-text fs-1"></i>
+                                <p class="mt-3">Select a log file from the list to view its contents</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                <span id="lineCount">0 lines</span>
+                                <span id="fileSize" class="ms-3"></span>
+                            </small>
+                            <small class="text-muted" id="lastUpdated"></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        let currentFile = null;
+        let autoRefresh = false;
+        let autoRefreshInterval = null;
+        let currentLogContent = '';
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadLogFiles();
+            setupSearchDebounce();
+        });
+
+        async function loadLogFiles() {
+            try {
+                const data = await API.get('/logs');
+                const list = document.getElementById('logFilesList');
+
+                if (!data.files || data.files.length === 0) {
+                    list.innerHTML = '<div class="text-center py-4 text-muted">No log files found</div>';
+                    return;
+                }
+
+                list.innerHTML = data.files.map(file => {
+                    const icon = getLogFileIcon(file.name);
+                    const activeClass = currentFile === file.name ? 'active' : '';
+
+                    return `
+                        <a href="#" class="list-group-item list-group-item-action ${activeClass}"
+                           onclick="selectLogFile('${file.name}'); return false;">
+                            <div class="d-flex w-100 justify-content-between align-items-center">
+                                <h6 class="mb-1">
+                                    <i class="bi bi-${icon}"></i>
+                                    ${file.name}
+                                </h6>
+                            </div>
+                            <div class="d-flex w-100 justify-content-between">
+                                <small class="text-muted">${formatBytes(file.size)}</small>
+                                <small class="text-muted">${formatDate(file.modified)}</small>
+                            </div>
+                        </a>
+                    `;
+                }).join('');
+            } catch (error) {
+                notify.error('Failed to load log files');
+            }
+        }
+
+        async function selectLogFile(filename) {
+            currentFile = filename;
+            document.getElementById('currentLogFile').textContent = filename;
+
+            // Update active state in list
+            document.querySelectorAll('#logFilesList .list-group-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+
+            await loadLogContent();
+        }
+
+        async function loadLogContent() {
+            if (!currentFile) return;
+
+            const search = document.getElementById('searchInput').value;
+            const tail = document.getElementById('tailLines').value;
+
+            try {
+                const params = new URLSearchParams();
+                if (search) params.append('search', search);
+                if (tail) params.append('tail', tail);
+
+                const data = await API.get(`/logs/${currentFile}?${params.toString()}`);
+
+                currentLogContent = data.content;
+                displayLogContent(data.content);
+
+                document.getElementById('fileSize').textContent = formatBytes(data.size);
+                document.getElementById('lastUpdated').textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+
+            } catch (error) {
+                notify.error('Failed to load log content');
+            }
+        }
+
+        function displayLogContent(content) {
+            const logDiv = document.getElementById('logContent');
+            const levelFilter = document.getElementById('logLevelFilter').value;
+
+            if (!content || content.trim() === '') {
+                logDiv.innerHTML = '<div class="text-muted text-center py-5">Log file is empty</div>';
+                document.getElementById('lineCount').textContent = '0 lines';
+                return;
+            }
+
+            let lines = content.split('\n');
+
+            // Apply log level filter
+            if (levelFilter) {
+                lines = lines.filter(line => line.includes(levelFilter));
+            }
+
+            // Format and colorize log lines
+            const formattedLines = lines.map(line => {
+                let color = '#e9ecef'; // default light color
+
+                if (line.includes('ERROR') || line.includes('FATAL')) {
+                    color = '#ff6b6b';
+                } else if (line.includes('WARN')) {
+                    color = '#feca57';
+                } else if (line.includes('INFO')) {
+                    color = '#48dbfb';
+                } else if (line.includes('DEBUG')) {
+                    color = '#a29bfe';
+                }
+
+                return `<div style="color: ${color}; margin-bottom: 2px;">${escapeHtml(line)}</div>`;
+            }).join('');
+
+            logDiv.innerHTML = formattedLines;
+            document.getElementById('lineCount').textContent = `${lines.length} lines`;
+
+            // Auto scroll to bottom
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function applyFilters() {
+            if (currentFile) {
+                loadLogContent();
+            }
+        }
+
+        function refreshLogs() {
+            if (currentFile) {
+                loadLogContent();
+                notify.info('Logs refreshed', 2000);
+            }
+        }
+
+        function clearLogView() {
+            document.getElementById('logContent').innerHTML = `
+                <div class="text-muted text-center py-5">
+                    <i class="bi bi-file-text fs-1"></i>
+                    <p class="mt-3">Log view cleared. Click a file to load logs.</p>
+                </div>
+            `;
+            document.getElementById('lineCount').textContent = '0 lines';
+            document.getElementById('fileSize').textContent = '';
+        }
+
+        function downloadCurrentLog() {
+            if (!currentFile || !currentLogContent) {
+                notify.warning('No log file selected');
+                return;
+            }
+
+            downloadFile(currentLogContent, currentFile, 'text/plain');
+        }
+
+        function toggleAutoRefresh() {
+            autoRefresh = !autoRefresh;
+            const btn = document.getElementById('autoRefreshBtn');
+
+            if (autoRefresh) {
+                btn.classList.add('active');
+                btn.innerHTML = '<i class="bi bi-pause-circle"></i>';
+                autoRefreshInterval = setInterval(refreshLogs, 5000);
+                notify.success('Auto-refresh enabled', 2000);
+            } else {
+                btn.classList.remove('active');
+                btn.innerHTML = '<i class="bi bi-arrow-repeat"></i>';
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                }
+                notify.info('Auto-refresh disabled', 2000);
+            }
+        }
+
+        function setupSearchDebounce() {
+            const searchInput = document.getElementById('searchInput');
+            let timeoutId;
+
+            searchInput.addEventListener('input', () => {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    if (currentFile) {
+                        applyFilters();
+                    }
+                }, 500);
+            });
+        }
+
+        function getLogFileIcon(filename) {
+            if (filename.includes('error')) return 'x-circle text-danger';
+            if (filename.includes('access')) return 'globe text-info';
+            if (filename.includes('agent')) return 'hdd-network text-primary';
+            if (filename.includes('workflow')) return 'gear text-warning';
+            return 'file-earmark-text';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Refresh file list every minute
+        setInterval(loadLogFiles, 60000);
+    </script>
+</body>
+</html>

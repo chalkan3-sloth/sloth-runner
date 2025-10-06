@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scheduler - Sloth Runner</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/theme.css">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-lightning-charge-fill"></i> Sloth Runner
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/agents">Agents</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/workflows">Workflows</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/executions">Executions</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/hooks">Hooks</a></li>
+                    <li class="nav-item"><a class="nav-link active" href="/scheduler">Scheduler</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/metrics">Metrics</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/terminal">Terminal</a></li>
+                </ul>
+                <button class="theme-toggle" onclick="themeManager.toggle()">
+                    <i class="bi bi-moon-stars-fill"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-calendar-event"></i> Scheduled Workflows</h2>
+            <button class="btn btn-primary" onclick="showScheduleModal()">
+                <i class="bi bi-plus-circle"></i> New Schedule
+            </button>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Workflow</th>
+                                        <th>Cron Expression</th>
+                                        <th>Status</th>
+                                        <th>Last Run</th>
+                                        <th>Next Run</th>
+                                        <th>Run Count</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="schedulesTable">
+                                    <tr>
+                                        <td colspan="8" class="text-center">
+                                            <div class="spinner-border text-primary" role="status"></div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Modal -->
+    <div class="modal fade" id="scheduleModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="scheduleModalTitle">New Schedule</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="scheduleForm">
+                        <input type="hidden" id="scheduleId">
+
+                        <div class="mb-3">
+                            <label class="form-label">Name *</label>
+                            <input type="text" class="form-control" id="scheduleName" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Workflow *</label>
+                            <select class="form-select" id="scheduleWorkflow" required>
+                                <option value="">Select workflow...</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Cron Expression *</label>
+                            <input type="text" class="form-control" id="scheduleCron" required
+                                   placeholder="e.g., 0 */6 * * * (every 6 hours)">
+                            <small class="text-muted">
+                                Format: minute hour day month weekday
+                                <br>Examples:
+                                <code>0 0 * * *</code> (daily at midnight),
+                                <code>*/15 * * * *</code> (every 15 minutes),
+                                <code>0 9-17 * * 1-5</code> (hourly, 9am-5pm, Mon-Fri)
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Delegate To</label>
+                            <select class="form-select" id="scheduleDelegateTo">
+                                <option value="">Local execution</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Variables (JSON)</label>
+                            <textarea class="form-control" id="scheduleVariables" rows="4"
+                                      placeholder='{"key": "value"}'>{}</textarea>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="scheduleEnabled" checked>
+                            <label class="form-check-label" for="scheduleEnabled">
+                                Enabled (schedule will run automatically)
+                            </label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveSchedule()">Save Schedule</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        let scheduleModal;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            scheduleModal = new bootstrap.Modal(document.getElementById('scheduleModal'));
+            await loadWorkflows();
+            await loadAgents();
+            await loadSchedules();
+        });
+
+        async function loadWorkflows() {
+            try {
+                const data = await API.get('/sloths');
+                const select = document.getElementById('scheduleWorkflow');
+                select.innerHTML = '<option value="">Select workflow...</option>';
+                data.sloths.forEach(sloth => {
+                    if (sloth.active) {
+                        select.innerHTML += `<option value="${sloth.name}">${sloth.name}</option>`;
+                    }
+                });
+            } catch (error) {
+                notify.error('Failed to load workflows');
+            }
+        }
+
+        async function loadAgents() {
+            try {
+                const data = await API.get('/agents');
+                const select = document.getElementById('scheduleDelegateTo');
+                select.innerHTML = '<option value="">Local execution</option>';
+                data.agents.forEach(agent => {
+                    if (agent.status === 'connected') {
+                        select.innerHTML += `<option value="${agent.name}">${agent.name}</option>`;
+                    }
+                });
+            } catch (error) {
+                console.error('Failed to load agents:', error);
+            }
+        }
+
+        async function loadSchedules() {
+            try {
+                const data = await API.get('/scheduler');
+                const tbody = document.getElementById('schedulesTable');
+
+                if (!data.schedules || data.schedules.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center">
+                                <div class="empty-state">
+                                    <i class="bi bi-calendar-x"></i>
+                                    <h5>No Scheduled Workflows</h5>
+                                    <p>Create a schedule to run workflows automatically</p>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                tbody.innerHTML = data.schedules.map(schedule => {
+                    const statusClass = schedule.enabled ? 'success' : 'secondary';
+                    const statusIcon = schedule.enabled ? 'check-circle' : 'pause-circle';
+
+                    return `
+                        <tr>
+                            <td><strong>${schedule.name}</strong></td>
+                            <td><code>${schedule.workflow_name}</code></td>
+                            <td><code>${schedule.cron_expr}</code></td>
+                            <td>
+                                <span class="badge bg-${statusClass}">
+                                    <i class="bi bi-${statusIcon}"></i>
+                                    ${schedule.enabled ? 'Enabled' : 'Disabled'}
+                                </span>
+                            </td>
+                            <td>${schedule.last_run ? formatDate(schedule.last_run) : 'Never'}</td>
+                            <td>${schedule.next_run ? formatDate(schedule.next_run) : '-'}</td>
+                            <td><span class="badge bg-info">${schedule.run_count || 0}</span></td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    ${schedule.enabled ?
+                                        `<button class="btn btn-outline-warning" onclick="toggleSchedule('${schedule.id}', false)" title="Disable">
+                                            <i class="bi bi-pause-circle"></i>
+                                        </button>` :
+                                        `<button class="btn btn-outline-success" onclick="toggleSchedule('${schedule.id}', true)" title="Enable">
+                                            <i class="bi bi-play-circle"></i>
+                                        </button>`
+                                    }
+                                    <button class="btn btn-outline-primary" onclick="triggerSchedule('${schedule.id}')" title="Run Now">
+                                        <i class="bi bi-play-fill"></i>
+                                    </button>
+                                    <button class="btn btn-outline-secondary" onclick="editSchedule('${schedule.id}')" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger" onclick="deleteSchedule('${schedule.id}')" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                document.getElementById('schedulesTable').innerHTML = `
+                    <tr><td colspan="8" class="text-center">
+                        <div class="alert alert-danger">Failed to load schedules</div>
+                    </td></tr>
+                `;
+            }
+        }
+
+        function showScheduleModal(id = null) {
+            document.getElementById('scheduleForm').reset();
+            document.getElementById('scheduleId').value = '';
+            document.getElementById('scheduleModalTitle').textContent = 'New Schedule';
+            document.getElementById('scheduleVariables').value = '{}';
+            scheduleModal.show();
+        }
+
+        async function editSchedule(id) {
+            try {
+                const data = await API.get(`/scheduler/${id}`);
+
+                document.getElementById('scheduleId').value = data.id;
+                document.getElementById('scheduleName').value = data.name;
+                document.getElementById('scheduleWorkflow').value = data.workflow_name;
+                document.getElementById('scheduleCron').value = data.cron_expr;
+                document.getElementById('scheduleDelegateTo').value = data.delegate_to || '';
+                document.getElementById('scheduleVariables').value = JSON.stringify(data.variables || {}, null, 2);
+                document.getElementById('scheduleEnabled').checked = data.enabled;
+                document.getElementById('scheduleModalTitle').textContent = 'Edit Schedule';
+
+                scheduleModal.show();
+            } catch (error) {
+                notify.error('Failed to load schedule details');
+            }
+        }
+
+        async function saveSchedule() {
+            const id = document.getElementById('scheduleId').value;
+            const name = document.getElementById('scheduleName').value;
+            const workflow = document.getElementById('scheduleWorkflow').value;
+            const cron = document.getElementById('scheduleCron').value;
+            const delegateTo = document.getElementById('scheduleDelegateTo').value;
+            const variablesText = document.getElementById('scheduleVariables').value;
+            const enabled = document.getElementById('scheduleEnabled').checked;
+
+            if (!name || !workflow || !cron) {
+                notify.error('Please fill all required fields');
+                return;
+            }
+
+            let variables = {};
+            try {
+                if (variablesText.trim()) {
+                    variables = JSON.parse(variablesText);
+                }
+            } catch (error) {
+                notify.error('Invalid JSON in variables field');
+                return;
+            }
+
+            const payload = {
+                name,
+                workflow_name: workflow,
+                cron_expr: cron,
+                delegate_to: delegateTo || undefined,
+                variables,
+                enabled
+            };
+
+            try {
+                if (id) {
+                    await API.put(`/scheduler/${id}`, payload);
+                    notify.success('Schedule updated successfully');
+                } else {
+                    await API.post('/scheduler', payload);
+                    notify.success('Schedule created successfully');
+                }
+
+                scheduleModal.hide();
+                await loadSchedules();
+            } catch (error) {
+                notify.error('Failed to save schedule');
+            }
+        }
+
+        async function toggleSchedule(id, enable) {
+            try {
+                if (enable) {
+                    await API.post(`/scheduler/${id}/enable`);
+                    notify.success('Schedule enabled');
+                } else {
+                    await API.post(`/scheduler/${id}/disable`);
+                    notify.success('Schedule disabled');
+                }
+                await loadSchedules();
+            } catch (error) {
+                notify.error('Failed to update schedule');
+            }
+        }
+
+        async function triggerSchedule(id) {
+            try {
+                await API.post(`/scheduler/${id}/trigger`);
+                notify.success('Schedule triggered successfully');
+            } catch (error) {
+                notify.error('Failed to trigger schedule');
+            }
+        }
+
+        async function deleteSchedule(id) {
+            confirmAction('Are you sure you want to delete this schedule?', async () => {
+                try {
+                    await API.delete(`/scheduler/${id}`);
+                    notify.success('Schedule deleted successfully');
+                    await loadSchedules();
+                } catch (error) {
+                    notify.error('Failed to delete schedule');
+                }
+            });
+        }
+
+        // Refresh schedules every 30 seconds
+        setInterval(loadSchedules, 30000);
+    </script>
+</body>
+</html>
