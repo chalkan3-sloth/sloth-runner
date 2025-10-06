@@ -1,0 +1,96 @@
+-- SSH Test Workflow
+-- This workflow tests SSH remote execution
+
+local check_hostname = task("check_hostname")
+    :description("Check hostname of remote system")
+    :command(function()
+        local hostname = exec.run("hostname")
+        print("Hostname: " .. hostname)
+        return true, "Hostname checked", {hostname = hostname}
+    end)
+    :build()
+
+local check_user = task("check_user")
+    :description("Check current user on remote system")
+    :command(function()
+        local user = exec.run("whoami")
+        print("Current user: " .. user)
+        return true, "User checked", {user = user}
+    end)
+    :depends_on({"check_hostname"})
+    :build()
+
+local list_files = task("list_files")
+    :description("List files in /tmp")
+    :command(function()
+        local files = exec.run("ls -la /tmp | head -5")
+        print("Files in /tmp:")
+        print(files)
+        return true, "Files listed"
+    end)
+    :depends_on({"check_user"})
+    :build()
+
+local create_test_file = task("create_test_file")
+    :description("Create a test file on remote system")
+    :command(function()
+        local timestamp = os.date("%Y%m%d_%H%M%S")
+        local filename = "/tmp/sloth_test_" .. timestamp .. ".txt"
+
+        exec.run("echo 'Hello from Sloth Runner SSH!' > " .. filename)
+        print("Created file: " .. filename)
+
+        -- Verify file was created
+        local check = exec.run("cat " .. filename)
+        print("File contents: " .. check)
+
+        return true, "Test file created", {filename = filename}
+    end)
+    :depends_on({"list_files"})
+    :build()
+
+local system_info = task("system_info")
+    :description("Get system information")
+    :command(function()
+        print("=== System Information ===")
+
+        -- OS info
+        local os_info = exec.run("uname -a")
+        print("OS: " .. os_info)
+
+        -- Memory
+        local mem_info = exec.run("free -h 2>/dev/null || echo 'free command not available'")
+        print("\nMemory:\n" .. mem_info)
+
+        -- Disk usage
+        local disk_info = exec.run("df -h | head -5")
+        print("\nDisk Usage:\n" .. disk_info)
+
+        return true, "System info retrieved"
+    end)
+    :depends_on({"create_test_file"})
+    :build()
+
+workflow
+    .define("ssh_test")
+    :description("Test SSH remote execution")
+    :version("1.0.0")
+    :tasks({
+        check_hostname,
+        check_user,
+        list_files,
+        create_test_file,
+        system_info
+    })
+    :config({
+        workdir = "/tmp",
+        timeout = "5m"
+    })
+    :on_complete(function(success, results)
+        if success then
+            print("\n✅ SSH test completed successfully!")
+            print("All tasks executed on remote system")
+        else
+            print("\n❌ SSH test failed")
+        end
+    end)

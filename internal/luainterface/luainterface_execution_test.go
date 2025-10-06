@@ -10,28 +10,27 @@ import (
 
 func TestTaskExecutionFlow(t *testing.T) {
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test execution flow",
-		tasks = {
-			{
-				name = "setup",
-				description = "Setup task",
-				cmd = "echo setup"
-			},
-			{
-				name = "main",
-				description = "Main task",
-				cmd = "echo main"
-			},
-			{
-				name = "cleanup",
-				description = "Cleanup task",
-				cmd = "echo cleanup"
-			}
+workflow({
+	name = "test_group",
+	description = "Test execution flow",
+	tasks = {
+		{
+			name = "setup",
+			description = "Setup task",
+			command = "echo setup"
+		},
+		{
+			name = "main",
+			description = "Main task",
+			command = "echo main"
+		},
+		{
+			name = "cleanup",
+			description = "Cleanup task",
+			command = "echo cleanup"
 		}
 	}
-}
+})
 `
 
 	tmpfile, err := os.CreateTemp("", "test-*.lua")
@@ -73,19 +72,20 @@ func TestConditionalTaskExecution(t *testing.T) {
 	script := `
 local should_run = true
 
-TaskDefinitions = {
-	test_group = {
-		description = "Test conditional execution",
-		tasks = {}
-	}
-}
+local tasks = {}
 
 if should_run then
-	table.insert(TaskDefinitions.test_group.tasks, {
+	table.insert(tasks, {
 		name = "conditional_task",
-		cmd = "echo running"
+		command = "echo running"
 	})
 end
+
+workflow({
+	name = "test_group",
+	description = "Test conditional execution",
+	tasks = tasks
+})
 `
 
 	if err := L.DoString(script); err != nil {
@@ -93,12 +93,12 @@ end
 	}
 
 	// Verify task was added
-	taskDefs := L.GetGlobal("TaskDefinitions")
-	if taskDefs.Type() != lua.LTTable {
-		t.Fatal("TaskDefinitions not a table")
+	workflows := L.GetGlobal("__workflows__")
+	if workflows.Type() != lua.LTTable {
+		t.Fatal("__workflows__ not a table")
 	}
 
-	testGroup := taskDefs.(*lua.LTable).RawGetString("test_group")
+	testGroup := workflows.(*lua.LTable).RawGetString("test_group")
 	if testGroup.Type() != lua.LTTable {
 		t.Fatal("test_group not a table")
 	}
@@ -135,25 +135,24 @@ func TestTaskWithVariablesExecution(t *testing.T) {
 local app = values.app_name
 local ver = values.version
 
-TaskDefinitions = {
-	test_group = {
-		description = "Deploy " .. app .. " version " .. ver,
-		tasks = {
-			{
-				name = "deploy_" .. app,
-				cmd = "echo deploying " .. app .. " " .. ver
-			}
+workflow({
+	name = "test_group",
+	description = "Deploy " .. app .. " version " .. ver,
+	tasks = {
+		{
+			name = "deploy_" .. app,
+			command = "echo deploying " .. app .. " " .. ver
 		}
 	}
-}
+})
 `
 
 	if err := L.DoString(script); err != nil {
 		t.Fatalf("Failed to execute script with variables: %v", err)
 	}
 
-	taskDefs := L.GetGlobal("TaskDefinitions")
-	testGroup := taskDefs.(*lua.LTable).RawGetString("test_group")
+	workflows := L.GetGlobal("__workflows__")
+	testGroup := workflows.(*lua.LTable).RawGetString("test_group")
 	description := testGroup.(*lua.LTable).RawGetString("description").String()
 
 	expected := "Deploy myapp version 1.0.0"
@@ -171,27 +170,28 @@ func TestLoopTaskGeneration(t *testing.T) {
 	script := `
 local services = {"web", "api", "worker"}
 
-TaskDefinitions = {
-	deploy = {
-		description = "Deploy all services",
-		tasks = {}
-	}
-}
+local tasks = {}
 
 for _, service in ipairs(services) do
-	table.insert(TaskDefinitions.deploy.tasks, {
+	table.insert(tasks, {
 		name = "deploy_" .. service,
-		cmd = "echo deploying " .. service
+		command = "echo deploying " .. service
 	})
 end
+
+workflow({
+	name = "deploy",
+	description = "Deploy all services",
+	tasks = tasks
+})
 `
 
 	if err := L.DoString(script); err != nil {
 		t.Fatalf("Failed to execute loop generation: %v", err)
 	}
 
-	taskDefs := L.GetGlobal("TaskDefinitions")
-	deployGroup := taskDefs.(*lua.LTable).RawGetString("deploy")
+	workflows := L.GetGlobal("__workflows__")
+	deployGroup := workflows.(*lua.LTable).RawGetString("deploy")
 	tasks := deployGroup.(*lua.LTable).RawGetString("tasks")
 
 	count := 0
@@ -207,22 +207,21 @@ end
 func TestTaskWithDelegation(t *testing.T) {
 t.Skip("Module not yet registered globally - needs refactoring")
 	script := `
-TaskDefinitions = {
-	distributed = {
-		description = "Distributed tasks",
-		tasks = {
-			{
-				name = "local_task",
-				cmd = "echo local"
-			},
-			{
-				name = "remote_task",
-				cmd = "echo remote",
-				delegate_to = "remote-agent"
-			}
+workflow({
+	name = "distributed",
+	description = "Distributed tasks",
+	tasks = {
+		{
+			name = "local_task",
+			command = "echo local"
+		},
+		{
+			name = "remote_task",
+			command = "echo remote",
+			delegate_to = "remote-agent"
 		}
 	}
-}
+})
 `
 
 	tmpfile, err := os.CreateTemp("", "test-*.lua")
@@ -263,29 +262,28 @@ func TestTaskWithHelperFunctions(t *testing.T) {
 local function make_task(name, cmd)
 	return {
 		name = name,
-		cmd = cmd,
+		command = cmd,
 		description = "Generated task: " .. name
 	}
 end
 
-TaskDefinitions = {
-	helpers = {
-		description = "Using helper functions",
-		tasks = {
-			make_task("task1", "echo 1"),
-			make_task("task2", "echo 2"),
-			make_task("task3", "echo 3")
-		}
+workflow({
+	name = "helpers",
+	description = "Using helper functions",
+	tasks = {
+		make_task("task1", "echo 1"),
+		make_task("task2", "echo 2"),
+		make_task("task3", "echo 3")
 	}
-}
+})
 `
 
 	if err := L.DoString(script); err != nil {
 		t.Fatalf("Failed to execute helper functions: %v", err)
 	}
 
-	taskDefs := L.GetGlobal("TaskDefinitions")
-	helpersGroup := taskDefs.(*lua.LTable).RawGetString("helpers")
+	workflows := L.GetGlobal("__workflows__")
+	helpersGroup := workflows.(*lua.LTable).RawGetString("helpers")
 	tasks := helpersGroup.(*lua.LTable).RawGetString("tasks")
 
 	count := 0
@@ -321,31 +319,30 @@ local config = {
 local config_json = json.encode(config)
 local config_yaml = yaml.encode(config)
 
-TaskDefinitions = {
-	config_tasks = {
-		description = "Tasks using modules",
-		tasks = {
-			{
-				name = "show_json",
-				cmd = "echo " .. config_json
-			},
-			{
-				name = "show_yaml",
-				cmd = "echo " .. config_yaml
-			}
+workflow({
+	name = "config_tasks",
+	description = "Tasks using modules",
+	tasks = {
+		{
+			name = "show_json",
+			command = "echo " .. config_json
+		},
+		{
+			name = "show_yaml",
+			command = "echo " .. config_yaml
 		}
 	}
-}
+})
 `
 
 	if err := L.DoString(script); err != nil {
 		t.Fatalf("Failed to execute nested module usage: %v", err)
 	}
 
-	// Verify TaskDefinitions was created
-	taskDefs := L.GetGlobal("TaskDefinitions")
-	if taskDefs.Type() != lua.LTTable {
-		t.Fatal("TaskDefinitions not created")
+	// Verify __workflows__ was created
+	workflows := L.GetGlobal("__workflows__")
+	if workflows.Type() != lua.LTTable {
+		t.Fatal("__workflows__ not created")
 	}
 }
 
@@ -357,30 +354,31 @@ func TestTaskErrorHandlingExecution(t *testing.T) {
 
 	// Test script with potential error
 	script := `
-TaskDefinitions = {
-	error_handling = {
-		description = "Test error handling",
-		tasks = {
-			{
-				name = "safe_task",
-				cmd = "echo safe"
-			}
-		}
+local tasks = {
+	{
+		name = "safe_task",
+		command = "echo safe"
 	}
 }
 
 -- Try to add invalid task (should not crash)
 pcall(function()
-	table.insert(TaskDefinitions.error_handling.tasks, nil)
+	table.insert(tasks, nil)
 end)
+
+workflow({
+	name = "error_handling",
+	description = "Test error handling",
+	tasks = tasks
+})
 `
 
 	if err := L.DoString(script); err != nil {
 		t.Fatalf("Failed to execute error handling script: %v", err)
 	}
 
-	taskDefs := L.GetGlobal("TaskDefinitions")
-	errorGroup := taskDefs.(*lua.LTable).RawGetString("error_handling")
+	workflows := L.GetGlobal("__workflows__")
+	errorGroup := workflows.(*lua.LTable).RawGetString("error_handling")
 	tasks := errorGroup.(*lua.LTable).RawGetString("tasks")
 
 	// Should still have at least the safe task
@@ -410,25 +408,24 @@ t.Skip("Module not yet registered globally - needs refactoring")
 	script := `
 local mode = env.get("TEST_MODE")
 
-TaskDefinitions = {
-	dynamic = {
-		description = "Dynamic configuration based on " .. mode,
-		tasks = {
-			{
-				name = "test_task",
-				cmd = "echo " .. mode
-			}
+workflow({
+	name = "dynamic",
+	description = "Dynamic configuration based on " .. mode,
+	tasks = {
+		{
+			name = "test_task",
+			command = "echo " .. mode
 		}
 	}
-}
+})
 `
 
 	if err := L.DoString(script); err != nil {
 		t.Fatalf("Failed to execute dynamic configuration: %v", err)
 	}
 
-	taskDefs := L.GetGlobal("TaskDefinitions")
-	dynamicGroup := taskDefs.(*lua.LTable).RawGetString("dynamic")
+	workflows := L.GetGlobal("__workflows__")
+	dynamicGroup := workflows.(*lua.LTable).RawGetString("dynamic")
 	description := dynamicGroup.(*lua.LTable).RawGetString("description").String()
 
 	if description != "Dynamic configuration based on integration" {
@@ -438,19 +435,18 @@ TaskDefinitions = {
 
 func TestTaskWithWorkdirExecution(t *testing.T) {
 	script := `
-TaskDefinitions = {
-	workdir_test = {
-		description = "Test workdir",
-		workdir = "/tmp/test",
-		create_workdir_before_run = true,
-		tasks = {
-			{
-				name = "task_in_workdir",
-				cmd = "pwd"
-			}
+workflow({
+	name = "workdir_test",
+	description = "Test workdir",
+	workdir = "/tmp/test",
+	create_workdir_before_run = true,
+	tasks = {
+		{
+			name = "task_in_workdir",
+			command = "pwd"
 		}
 	}
-}
+})
 `
 
 	tmpfile, err := os.CreateTemp("", "test-*.lua")
@@ -498,7 +494,7 @@ local function create_deploy_task(env)
 	return {
 		name = "deploy_to_" .. env,
 		description = "Deploy " .. config.app_name .. " to " .. env,
-		cmd = strings.join({
+		command = strings.join({
 			"deploy",
 			"--app", config.app_name,
 			"--env", env,
@@ -507,25 +503,26 @@ local function create_deploy_task(env)
 	}
 end
 
--- Build task definitions
-TaskDefinitions = {
-	multi_env_deploy = {
-		description = "Multi-environment deployment",
-		workdir = "/deployments",
-		tasks = {}
-	}
-}
+local tasks = {}
 
 -- Generate tasks for each environment
 for _, env in ipairs(config.environments) do
-	table.insert(TaskDefinitions.multi_env_deploy.tasks, create_deploy_task(env))
+	table.insert(tasks, create_deploy_task(env))
 end
 
 -- Add post-deployment task
-table.insert(TaskDefinitions.multi_env_deploy.tasks, {
+table.insert(tasks, {
 	name = "notify",
 	description = "Send deployment notification",
-	cmd = "echo Deployment complete"
+	command = "echo Deployment complete"
+})
+
+-- Build workflow
+workflow({
+	name = "multi_env_deploy",
+	description = "Multi-environment deployment",
+	workdir = "/deployments",
+	tasks = tasks
 })
 `
 
@@ -533,8 +530,8 @@ table.insert(TaskDefinitions.multi_env_deploy.tasks, {
 		t.Fatalf("Failed to execute complex scenario: %v", err)
 	}
 
-	taskDefs := L.GetGlobal("TaskDefinitions")
-	deployGroup := taskDefs.(*lua.LTable).RawGetString("multi_env_deploy")
+	workflows := L.GetGlobal("__workflows__")
+	deployGroup := workflows.(*lua.LTable).RawGetString("multi_env_deploy")
 	tasks := deployGroup.(*lua.LTable).RawGetString("tasks")
 
 	// Should have 3 deploy tasks + 1 notify task = 4 total

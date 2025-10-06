@@ -35,17 +35,17 @@ type LuaInterface struct {
 
 var ExecCommand = exec.Command
 
-// ParseLuaScript parses a Lua script and extracts task definitions
+// ParseLuaScript parses a Lua script using Modern DSL only
 func ParseLuaScript(ctx context.Context, filePath string, valuesTable *lua.LTable) (map[string]types.TaskGroup, error) {
 	L := lua.NewState()
 	defer L.Close()
 
 	// Register all modules
 	RegisterAllModules(L, nil)
-	
+
 	// Set up import function
 	OpenImport(L, filePath)
-	
+
 	// Load values if provided
 	if valuesTable != nil {
 		L.SetGlobal("Values", valuesTable)
@@ -57,79 +57,23 @@ func ParseLuaScript(ctx context.Context, filePath string, valuesTable *lua.LTabl
 		return nil, fmt.Errorf("failed to execute Lua script: %w", err)
 	}
 
-	// Extract task groups from TaskDefinitions
-	globalTaskDefs := L.GetGlobal("TaskDefinitions")
-	
-	// After script execution, check if any workflows were defined
-	// If workflows exist, remove default_group to prevent duplicate execution
-	// The new behavior: tasks alone are NOT executable, only workflows can trigger execution
-	if globalTaskDefs.Type() == lua.LTTable {
-		hasWorkflow := false
-		workflowNames := []string{}
-		globalTaskDefs.(*lua.LTable).ForEach(func(k, v lua.LValue) {
-			if k.Type() == lua.LTString && k.String() != "default_group" && v.Type() == lua.LTTable {
-				hasWorkflow = true
-				workflowNames = append(workflowNames, k.String())
-			}
-		})
-		
-		// If workflow exists, remove default_group
-		if hasWorkflow {
-			slog.Info("Workflows detected, removing default_group", "workflows", workflowNames)
-			globalTaskDefs.(*lua.LTable).RawSetString("default_group", lua.LNil)
-		} else {
-			slog.Debug("No workflows detected, keeping default_group")
-		}
-	}
-	
-	// Check for modern DSL tasks (registered with __task_ prefix)
-	var hasModernTasks bool
-	modernTasks := make(map[string]*lua.LTable)
-	L.GetGlobal("_G").(*lua.LTable).ForEach(func(k, v lua.LValue) {
-		if strings.HasPrefix(k.String(), "__task_") && v.Type() == lua.LTTable {
-			taskName := strings.TrimPrefix(k.String(), "__task_")
-			modernTasks[taskName] = v.(*lua.LTable)
-			hasModernTasks = true
-		}
-	})
-	
-	// NEW BEHAVIOR: Tasks alone are NOT executable
-	// Only create default_group if tasks exist AND no workflow was defined
-	// However, we now REQUIRE workflow.define() for execution
-	// So we DON'T create default_group at all - tasks must be in a workflow
-	
-	// Check if workflows were defined
-	hasWorkflowDefined := globalTaskDefs.Type() == lua.LTTable
-	if hasWorkflowDefined {
-		// Check if there are actual workflows (not just default_group)
-		hasActualWorkflow := false
-		globalTaskDefs.(*lua.LTable).ForEach(func(k, v lua.LValue) {
-			if k.Type() == lua.LTString && k.String() != "default_group" && v.Type() == lua.LTTable {
-				hasActualWorkflow = true
-			}
-		})
-		
-		if !hasActualWorkflow && hasModernTasks {
-			// Tasks defined but no workflow - this is not allowed
-			slog.Warn("Tasks defined without workflow.define() - tasks will not be executable")
-			slog.Warn("Please use workflow.define() to create a workflow that includes your tasks")
-		}
-	}
-	
-	// Don't create default_group anymore - workflows are required
-	
-	if globalTaskDefs.Type() != lua.LTTable {
-		return nil, fmt.Errorf("no valid task definitions found. Expected 'TaskDefinitions' table (legacy) or workflows defined with Modern DSL")
+	// Modern DSL: Extract workflows from __workflows__ global table
+	globalWorkflows := L.GetGlobal("__workflows__")
+
+	if globalWorkflows.Type() != lua.LTTable {
+		return nil, fmt.Errorf("no workflows found. Please define workflows using workflow() or workflow.define()")
 	}
 
 	loadedTaskGroups := make(map[string]types.TaskGroup)
-	globalTaskDefs.(*lua.LTable).ForEach(func(groupKey, groupValue lua.LValue) {
+	workflowCount := 0
+	globalWorkflows.(*lua.LTable).ForEach(func(groupKey, groupValue lua.LValue) {
+		workflowCount++
 		groupName := groupKey.String()
 		if groupValue.Type() != lua.LTTable {
-			slog.Warn("Expected group to be a table, skipping", "group", groupName)
+			slog.Warn("Expected workflow to be a table, skipping", "workflow", groupName)
 			return
 		}
-		
+
 		groupTable := groupValue.(*lua.LTable)
 		description := groupTable.RawGetString("description").String()
 		workdir := groupTable.RawGetString("workdir").String()
@@ -143,7 +87,7 @@ func ParseLuaScript(ctx context.Context, filePath string, valuesTable *lua.LTabl
 		if luaTasks.Type() == lua.LTTable {
 			luaTasks.(*lua.LTable).ForEach(func(taskKey, taskValue lua.LValue) {
 				if taskValue.Type() != lua.LTTable {
-					slog.Warn("Expected task entry to be a table, skipping", "group", groupName)
+					slog.Warn("Expected task entry to be a table, skipping", "workflow", groupName)
 					return
 				}
 				taskTable := taskValue.(*lua.LTable)
@@ -170,7 +114,7 @@ func ParseLuaScript(ctx context.Context, filePath string, valuesTable *lua.LTabl
 				tasks = append(tasks, finalTask)
 			})
 		}
-		
+
 		// Parse delegate_to
 		var delegateTo interface{}
 		luaDelegateTo := groupTable.RawGetString("delegate_to")
@@ -190,6 +134,11 @@ func ParseLuaScript(ctx context.Context, filePath string, valuesTable *lua.LTabl
 			DelegateTo:               delegateTo,
 		}
 	})
+
+	// Check if any workflows were found
+	if workflowCount == 0 {
+		return nil, fmt.Errorf("no workflows found. Please define workflows using workflow() or workflow.define()")
+	}
 
 	return loadedTaskGroups, nil
 }
@@ -1063,7 +1012,51 @@ func luaExecRun(L *lua.LState) int {
 		ctx = context.Background()
 	}
 
-	slog.Debug("executing command", "source", "lua", "command", commandStr)
+	// Check if SSH execution is enabled
+	if IsSSHExecutionEnabled() {
+		slog.Debug("executing command via SSH", "source", "lua", "command", commandStr, "profile", GetSSHProfile())
+
+		// For SSH execution, we need to handle workdir by prepending cd command
+		if workdir := opts.RawGetString("workdir"); workdir.Type() == lua.LTString {
+			commandStr = fmt.Sprintf("cd %s && %s", workdir.String(), commandStr)
+		}
+
+		// For SSH, environment variables need to be exported in the command
+		if envTbl := opts.RawGetString("env"); envTbl.Type() == lua.LTTable {
+			var envExports []string
+			envTbl.(*lua.LTable).ForEach(func(key, value lua.LValue) {
+				envExports = append(envExports, fmt.Sprintf("export %s='%s'", key.String(), value.String()))
+			})
+			if len(envExports) > 0 {
+				commandStr = strings.Join(envExports, "; ") + "; " + commandStr
+			}
+		}
+
+		// Execute via SSH
+		output, err := ExecuteCommandWithSSH(commandStr)
+
+		// SSH combines stdout and stderr
+		stdoutStr := output
+		stderrStr := ""
+		if err != nil {
+			stderrStr = err.Error()
+		}
+
+		if stdoutStr != "" {
+			slog.Info(stdoutStr, "source", "lua-ssh", "stream", "stdout", "profile", GetSSHProfile())
+		}
+		if stderrStr != "" {
+			slog.Warn(stderrStr, "source", "lua-ssh", "stream", "stderr", "profile", GetSSHProfile())
+		}
+
+		L.Push(lua.LString(stdoutStr))
+		L.Push(lua.LString(stderrStr))
+		L.Push(lua.LBool(err != nil))
+		return 3
+	}
+
+	// Local execution
+	slog.Debug("executing command locally", "source", "lua", "command", commandStr)
 
 	cmd := ExecCommand("bash", "-c", commandStr)
 

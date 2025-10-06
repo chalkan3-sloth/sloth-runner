@@ -19,21 +19,20 @@ func TestParseLuaScript_RunIfFunction(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test_runif_func.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group with run_if function",
-		tasks = {
-			conditional_task = {
-				name = "conditional_task",
-				description = "Task with run_if function",
-				command = "echo 'running'",
-				run_if = function(params, input)
-					return params.should_run == "true"
-				end,
-			}
+workflow({
+	name = "test_group",
+	description = "Test group with run_if function",
+	tasks = {
+		{
+			name = "conditional_task",
+			description = "Task with run_if function",
+			command = "echo 'running'",
+			run_if = function(params, input)
+				return params.should_run == "true"
+			end
 		}
 	}
-}
+})
 `
 	err := os.WriteFile(scriptPath, []byte(script), 0644)
 	require.NoError(t, err)
@@ -57,19 +56,18 @@ func TestParseLuaScript_RunIfString(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test_runif_str.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group with run_if string",
-		tasks = {
-			conditional_task = {
-				name = "conditional_task",
-				description = "Task with run_if string",
-				command = "echo 'running'",
-				run_if = "test -f /tmp/trigger_file",
-			}
+workflow({
+	name = "test_group",
+	description = "Test group with run_if string",
+	tasks = {
+		{
+			name = "conditional_task",
+			description = "Task with run_if string",
+			command = "echo 'running'",
+			run_if = "test -f /tmp/trigger_file"
 		}
 	}
-}
+})
 `
 	err := os.WriteFile(scriptPath, []byte(script), 0644)
 	require.NoError(t, err)
@@ -93,21 +91,20 @@ func TestParseLuaScript_AbortIfFunction(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test_abortif_func.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group with abort_if function",
-		tasks = {
-			abortable_task = {
-				name = "abortable_task",
-				description = "Task with abort_if function",
-				command = "echo 'running'",
-				abort_if = function(params, input)
-					return params.should_abort == "true"
-				end,
-			}
+workflow({
+	name = "test_group",
+	description = "Test group with abort_if function",
+	tasks = {
+		{
+			name = "abortable_task",
+			description = "Task with abort_if function",
+			command = "echo 'running'",
+			abort_if = function(params, input)
+				return params.should_abort == "true"
+			end
 		}
 	}
-}
+})
 `
 	err := os.WriteFile(scriptPath, []byte(script), 0644)
 	require.NoError(t, err)
@@ -131,19 +128,18 @@ func TestParseLuaScript_AbortIfString(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test_abortif_str.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group with abort_if string",
-		tasks = {
-			abortable_task = {
-				name = "abortable_task",
-				description = "Task with abort_if string",
-				command = "echo 'running'",
-				abort_if = "test -f /tmp/abort_trigger",
-			}
+workflow({
+	name = "test_group",
+	description = "Test group with abort_if string",
+	tasks = {
+		{
+			name = "abortable_task",
+			description = "Task with abort_if string",
+			command = "echo 'running'",
+			abort_if = "test -f /tmp/abort_trigger"
 		}
 	}
-}
+})
 `
 	err := os.WriteFile(scriptPath, []byte(script), 0644)
 	require.NoError(t, err)
@@ -167,22 +163,21 @@ func TestParseLuaScript_BothRunIfAndAbortIf(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test_both_conditions.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group with both conditions",
-		tasks = {
-			complex_task = {
-				name = "complex_task",
-				description = "Task with both run_if and abort_if",
-				command = "echo 'running'",
-				run_if = function(params, input)
-					return params.enabled == "true"
-				end,
-				abort_if = "test -f /tmp/emergency_stop",
-			}
+workflow({
+	name = "test_group",
+	description = "Test group with both conditions",
+	tasks = {
+		{
+			name = "complex_task",
+			description = "Task with both run_if and abort_if",
+			command = "echo 'running'",
+			run_if = function(params, input)
+				return params.enabled == "true"
+			end,
+			abort_if = "test -f /tmp/emergency_stop"
 		}
 	}
-}
+})
 `
 	err := os.WriteFile(scriptPath, []byte(script), 0644)
 	require.NoError(t, err)
@@ -206,18 +201,17 @@ func TestParseLuaScript_NoConditions(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test_no_conditions.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group without conditions",
-		tasks = {
-			simple_task = {
-				name = "simple_task",
-				description = "Simple task",
-				command = "echo 'running'",
-			}
+workflow({
+	name = "test_group",
+	description = "Test group without conditions",
+	tasks = {
+		{
+			name = "simple_task",
+			description = "Simple task",
+			command = "echo 'running'"
 		}
 	}
-}
+})
 `
 	err := os.WriteFile(scriptPath, []byte(script), 0644)
 	require.NoError(t, err)

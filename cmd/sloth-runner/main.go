@@ -33,6 +33,7 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
 	"github.com/chalkan3-sloth/sloth-runner/internal/output"
 	"github.com/chalkan3-sloth/sloth-runner/internal/scaffolding"
+	sshpkg "github.com/chalkan3-sloth/sloth-runner/internal/ssh"
 	"github.com/chalkan3-sloth/sloth-runner/internal/stack"
 	"github.com/chalkan3-sloth/sloth-runner/internal/state"
 	"github.com/chalkan3-sloth/sloth-runner/internal/taskrunner"
@@ -44,6 +45,11 @@ import (
 )
 
 var (
+	// Build variables (set via ldflags at build time)
+	version = "dev"
+	commit  = "unknown"
+	date    = "unknown"
+
 	configFilePath      string
 	env                 string
 	isProduction        bool
@@ -60,9 +66,6 @@ var (
 	runAsScheduler      bool
 	setFlags            []string // New: To store key-value pairs for template data
 	interactive         bool     // New: To enable interactive mode for task execution
-	version             = "dev"  // será substituído em tempo de compilação
-	commit              = "none" // será substituído em tempo de compilação
-	date                = "unknown" // será substituído em tempo de compilação
 )
 
 // Test output buffer for capturing output during tests
@@ -638,10 +641,13 @@ var listCmd = &cobra.Command{
 
 // Run command
 var runCmd = &cobra.Command{
-	Use:   "run [file.sloth|stack-name]",
-	Short: "Run sloth-runner tasks",
-	Long:  `Run sloth-runner tasks from Lua files with configurable output styles. Optionally specify a stack name for state persistence.`,
-	Args:  cobra.MaximumNArgs(1),
+	Use:   "run <stack-name> [--file <workflow.sloth>] [--ssh <profile>]",
+	Short: "Run sloth-runner tasks with a stack (required)",
+	Long:  `Run sloth-runner tasks from Lua files with a stack for state management.
+A stack name is REQUIRED for all executions to track state and history.
+Tasks can be executed locally or remotely via SSH profiles.
+When using --ssh, tasks will be executed on the remote host.`,
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		filePath, _ := cmd.Flags().GetString("file")
 
@@ -652,6 +658,10 @@ var runCmd = &cobra.Command{
 		debug, _ := cmd.Flags().GetBool("debug")
 		delegateToHosts, _ := cmd.Flags().GetStringArray("delegate-to")
 
+		// SSH remote execution flags
+		sshProfile, _ := cmd.Flags().GetString("ssh")
+		sshPasswordStdin, _ := cmd.Flags().GetBool("ssh-password-stdin")
+
 		// Configure log level based on debug flag
 		if debug {
 			pterm.DefaultLogger.Level = pterm.LogLevelDebug
@@ -661,24 +671,59 @@ var runCmd = &cobra.Command{
 			slog.SetDefault(slog.New(pterm.NewSlogHandler(&pterm.DefaultLogger)))
 		}
 
-		// Determine if argument is a file path or stack name
-		var stackName string
-		if len(args) > 0 {
-			arg := args[0]
-			// If argument ends with .sloth or is a path to an existing file, treat as file
-			if strings.HasSuffix(arg, ".sloth") || strings.Contains(arg, "/") || strings.Contains(arg, "\\") {
-				if filePath == "" {
-					filePath = arg
-				}
-			} else {
-				// Otherwise treat as stack name
-				stackName = arg
+		// Initialize SSH executor if profile is specified
+		var sshExecutor *sshpkg.Executor
+		var sshPassword *string
+
+		if sshProfile != "" {
+			// Initialize SSH database
+			dbPath := sshpkg.GetDefaultDatabasePath()
+			db, err := sshpkg.NewDatabase(dbPath)
+			if err != nil {
+				return fmt.Errorf("failed to initialize SSH database: %w", err)
 			}
+			defer db.Close()
+
+			// Create SSH executor
+			sshExecutor = sshpkg.NewExecutor(db)
+
+			// Handle password if requested
+			if sshPasswordStdin {
+				// Read password from stdin
+				pwd, err := sshpkg.ReadPasswordFromStdin()
+				if err != nil {
+					return fmt.Errorf("failed to read password: %w", err)
+				}
+				sshPassword = &pwd
+
+				// Clear password after use
+				defer func() {
+					if sshPassword != nil {
+						*sshPassword = strings.Repeat("x", len(*sshPassword))
+						*sshPassword = ""
+					}
+				}()
+			}
+
+			// Test connection before proceeding
+			pterm.Info.Printf("Testing SSH connection to profile '%s'...\n", sshProfile)
+			if err := sshExecutor.TestConnection(sshProfile, sshPassword); err != nil {
+				return fmt.Errorf("SSH connection test failed: %w", err)
+			}
+			pterm.Success.Println("SSH connection established successfully")
 		}
-		
-		// Default file path if none specified
+
+		// Stack name is now required (first argument)
+		stackName := args[0]
+
+		// Validate stack name
+		if stackName == "" {
+			return fmt.Errorf("stack name is required")
+		}
+
+		// File path must be specified via --file flag
 		if filePath == "" {
-			filePath = "examples/basic_pipeline.sloth"
+			return fmt.Errorf("workflow file is required (use --file flag)")
 		}
 
 		// Use test output buffer if available, otherwise use stdout
@@ -847,11 +892,16 @@ var runCmd = &cobra.Command{
 		// Create task runner
 		L := lua.NewState()
 		defer L.Close()
-		
+
 		// Register modules
 		luainterface.RegisterAllModules(L)
 		luainterface.OpenImport(L, filePath)
-		
+
+		// Set SSH executor if profile is specified
+		if sshExecutor != nil {
+			luainterface.SetSSHExecutor(sshExecutor, sshProfile, sshPassword)
+		}
+
 		// Set current stack if we have one
 		if stackName != "" {
 			currentStack, err := stackManager.GetStack(stackID)
@@ -2669,8 +2719,8 @@ var stackNewCmd = &cobra.Command{
 		stackName := args[0]
 		description, _ := cmd.Flags().GetString("description")
 		workflowFile, _ := cmd.Flags().GetString("workflow-file")
-		version, _ := cmd.Flags().GetString("version")
-		
+		stackVersion, _ := cmd.Flags().GetString("version")
+
 		stackManager, err := stack.NewStackManager("")
 		if err != nil {
 			return fmt.Errorf("failed to initialize stack manager: %w", err)
@@ -2686,8 +2736,8 @@ var stackNewCmd = &cobra.Command{
 		if description == "" {
 			description = fmt.Sprintf("Workflow stack: %s", stackName)
 		}
-		if version == "" {
-			version = "1.0.0"
+		if stackVersion == "" {
+			stackVersion = "1.0.0"
 		}
 
 		// Create new stack
@@ -2696,7 +2746,7 @@ var stackNewCmd = &cobra.Command{
 			ID:           stackID,
 			Name:         stackName,
 			Description:  description,
-			Version:      version,
+			Version:      stackVersion,
 			Status:       "created",
 			WorkflowFile: workflowFile,
 			TaskResults:  make(map[string]interface{}),
@@ -3242,6 +3292,7 @@ func init() {
 	agentGetCmd.Flags().StringP("output", "o", "text", "Output format: text or json")
 	agentCmd.AddCommand(agentModulesCheckCmd)
 	agentCmd.AddCommand(agentMetricsCmd)
+	agentCmd.AddCommand(agentUpdateCmd)
 	agentMetricsCmd.AddCommand(agentMetricsPromCmd)
 	agentMetricsPromCmd.Flags().Bool("snapshot", false, "Display current metrics snapshot instead of endpoint URL")
 	agentMetricsCmd.AddCommand(agentGrafanaCmd)
@@ -3270,6 +3321,9 @@ func init() {
 	runCmd.Flags().StringP("output", "o", "basic", "Output style: basic, enhanced, rich, modern, json")
 	runCmd.Flags().Bool("debug", false, "Enable debug logging (shows technical details)")
 	runCmd.Flags().StringArrayP("delegate-to", "d", []string{}, "Execute tasks on specified agents (can be used multiple times)")
+	// SSH remote execution flags
+	runCmd.Flags().String("ssh", "", "SSH profile name for remote execution")
+	runCmd.Flags().Bool("ssh-password-stdin", false, "Read SSH password from stdin (must be followed by -)")
 
 	// Preview command
 	rootCmd.AddCommand(previewCmd)

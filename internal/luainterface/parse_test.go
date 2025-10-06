@@ -16,18 +16,17 @@ func TestParseLuaScript_BasicTaskGroup(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group",
-		tasks = {
-			task1 = {
-				name = "task1",
-				description = "First task",
-				command = "echo hello"
-			}
+workflow({
+	name = "test_group",
+	description = "Test group",
+	tasks = {
+		{
+			name = "task1",
+			description = "First task",
+			command = "echo hello"
 		}
 	}
-}
+})
 `
 	require.NoError(t, os.WriteFile(scriptPath, []byte(script), 0644))
 
@@ -48,20 +47,19 @@ func TestParseLuaScript_WithWorkdir(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group",
-		workdir = "/tmp/test",
-		create_workdir_before_run = true,
-		tasks = {
-			task1 = {
-				name = "task1",
-				command = "ls",
-				workdir = "/tmp/task1"
-			}
+workflow({
+	name = "test_group",
+	description = "Test group",
+	workdir = "/tmp/test",
+	create_workdir_before_run = true,
+	tasks = {
+		{
+			name = "task1",
+			command = "ls",
+			workdir = "/tmp/task1"
 		}
 	}
-}
+})
 `
 	require.NoError(t, os.WriteFile(scriptPath, []byte(script), 0644))
 
@@ -79,27 +77,26 @@ func TestParseLuaScript_WithDependencies(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group",
-		tasks = {
-			task1 = {
-				name = "task1",
-				command = "echo task1"
-			},
-			task2 = {
-				name = "task2",
-				command = "echo task2",
-				depends_on = "task1"
-			},
-			task3 = {
-				name = "task3",
-				command = "echo task3",
-				depends_on = {"task1", "task2"}
-			}
+workflow({
+	name = "test_group",
+	description = "Test group",
+	tasks = {
+		{
+			name = "task1",
+			command = "echo task1"
+		},
+		{
+			name = "task2",
+			command = "echo task2",
+			depends_on = "task1"
+		},
+		{
+			name = "task3",
+			command = "echo task3",
+			depends_on = {"task1", "task2"}
 		}
 	}
-}
+})
 `
 	require.NoError(t, os.WriteFile(scriptPath, []byte(script), 0644))
 
@@ -132,23 +129,22 @@ func TestParseLuaScript_WithArtifacts(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group",
-		tasks = {
-			task1 = {
-				name = "task1",
-				command = "echo test",
-				artifacts = "output.txt"
-			},
-			task2 = {
-				name = "task2",
-				command = "echo test",
-				artifacts = {"file1.txt", "file2.txt"}
-			}
+workflow({
+	name = "test_group",
+	description = "Test group",
+	tasks = {
+		{
+			name = "task1",
+			command = "echo test",
+			artifacts = "output.txt"
+		},
+		{
+			name = "task2",
+			command = "echo test",
+			artifacts = {"file1.txt", "file2.txt"}
 		}
 	}
-}
+})
 `
 	require.NoError(t, os.WriteFile(scriptPath, []byte(script), 0644))
 
@@ -172,19 +168,18 @@ func TestParseLuaScript_WithRetries(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group",
-		tasks = {
-			task1 = {
-				name = "task1",
-				command = "echo test",
-				retries = 3,
-				timeout = "30s"
-			}
+workflow({
+	name = "test_group",
+	description = "Test group",
+	tasks = {
+		{
+			name = "task1",
+			command = "echo test",
+			retries = 3,
+			timeout = "30s"
 		}
 	}
-}
+})
 `
 	require.NoError(t, os.WriteFile(scriptPath, []byte(script), 0644))
 
@@ -201,18 +196,17 @@ func TestParseLuaScript_WithAsync(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group",
-		tasks = {
-			task1 = {
-				name = "task1",
-				command = "echo test",
-				async = true
-			}
+workflow({
+	name = "test_group",
+	description = "Test group",
+	tasks = {
+		{
+			name = "task1",
+			command = "echo test",
+			async = true
 		}
 	}
-}
+})
 `
 	require.NoError(t, os.WriteFile(scriptPath, []byte(script), 0644))
 
@@ -228,21 +222,20 @@ func TestParseLuaScript_WithParams(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group",
-		tasks = {
-			task1 = {
-				name = "task1",
-				command = "echo test",
-				params = {
-					key1 = "value1",
-					key2 = "value2"
-				}
+workflow({
+	name = "test_group",
+	description = "Test group",
+	tasks = {
+		{
+			name = "task1",
+			command = "echo test",
+			params = {
+				key1 = "value1",
+				key2 = "value2"
 			}
 		}
 	}
-}
+})
 `
 	require.NoError(t, os.WriteFile(scriptPath, []byte(script), 0644))
 
@@ -261,18 +254,17 @@ func TestParseLuaScript_WithDelegateTo_String(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group",
-		delegate_to = "remote-agent",
-		tasks = {
-			task1 = {
-				name = "task1",
-				command = "echo test"
-			}
+workflow({
+	name = "test_group",
+	description = "Test group",
+	delegate_to = "remote-agent",
+	tasks = {
+		{
+			name = "task1",
+			command = "echo test"
 		}
 	}
-}
+})
 `
 	require.NoError(t, os.WriteFile(scriptPath, []byte(script), 0644))
 
@@ -288,21 +280,20 @@ func TestParseLuaScript_WithDelegateTo_Table(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group",
-		delegate_to = {
-			agent = "remote-agent",
-			parallel = true
-		},
-		tasks = {
-			task1 = {
-				name = "task1",
-				command = "echo test"
-			}
+workflow({
+	name = "test_group",
+	description = "Test group",
+	delegate_to = {
+		agent = "remote-agent",
+		parallel = true
+	},
+	tasks = {
+		{
+			name = "task1",
+			command = "echo test"
 		}
 	}
-}
+})
 `
 	require.NoError(t, os.WriteFile(scriptPath, []byte(script), 0644))
 
@@ -321,17 +312,16 @@ func TestParseLuaScript_WithValues(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = Values.description,
-		tasks = {
-			task1 = {
-				name = "task1",
-				command = "echo " .. Values.message
-			}
+workflow({
+	name = "test_group",
+	description = Values.description,
+	tasks = {
+		{
+			name = "task1",
+			command = "echo " .. Values.message
 		}
 	}
-}
+})
 `
 	require.NoError(t, os.WriteFile(scriptPath, []byte(script), 0644))
 
@@ -355,12 +345,11 @@ func TestParseLuaScript_InvalidScript(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		-- Invalid syntax
-		description = 
-	}
-}
+workflow({
+	name = "test_group",
+	-- Invalid syntax
+	description =
+})
 `
 	require.NoError(t, os.WriteFile(scriptPath, []byte(script), 0644))
 
@@ -374,14 +363,14 @@ func TestParseLuaScript_NoTaskDefinitions(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test.sloth")
 
 	script := `
--- No TaskDefinitions
+-- No workflows
 local x = 42
 `
 	require.NoError(t, os.WriteFile(scriptPath, []byte(script), 0644))
 
 	_, err := ParseLuaScript(context.Background(), scriptPath, nil)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "no valid task definitions found")
+	assert.Contains(t, err.Error(), "no workflows found")
 }
 
 func TestParseLuaScript_WithConsumes(t *testing.T) {
@@ -389,24 +378,23 @@ func TestParseLuaScript_WithConsumes(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group",
-		tasks = {
-			task1 = {
-				name = "task1",
-				command = "echo test",
-				artifacts = "output.txt"
-			},
-			task2 = {
-				name = "task2",
-				command = "cat input.txt",
-				consumes = "output.txt",
-				depends_on = "task1"
-			}
+workflow({
+	name = "test_group",
+	description = "Test group",
+	tasks = {
+		{
+			name = "task1",
+			command = "echo test",
+			artifacts = "output.txt"
+		},
+		{
+			name = "task2",
+			command = "cat input.txt",
+			consumes = "output.txt",
+			depends_on = "task1"
 		}
 	}
-}
+})
 `
 	require.NoError(t, os.WriteFile(scriptPath, []byte(script), 0644))
 
@@ -426,22 +414,21 @@ func TestParseLuaScript_WithNextIfFail(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test.sloth")
 
 	script := `
-TaskDefinitions = {
-	test_group = {
-		description = "Test group",
-		tasks = {
-			task1 = {
-				name = "task1",
-				command = "test_command",
-				next_if_fail = "fallback_task"
-			},
-			fallback_task = {
-				name = "fallback_task",
-				command = "echo fallback"
-			}
+workflow({
+	name = "test_group",
+	description = "Test group",
+	tasks = {
+		{
+			name = "task1",
+			command = "test_command",
+			next_if_fail = "fallback_task"
+		},
+		{
+			name = "fallback_task",
+			command = "echo fallback"
 		}
 	}
-}
+})
 `
 	require.NoError(t, os.WriteFile(scriptPath, []byte(script), 0644))
 
@@ -461,26 +448,27 @@ func TestParseLuaScript_MultipleTaskGroups(t *testing.T) {
 	scriptPath := filepath.Join(tmpDir, "test.sloth")
 
 	script := `
-TaskDefinitions = {
-	group1 = {
-		description = "First group",
-		tasks = {
-			task1 = {
-				name = "task1",
-				command = "echo group1"
-			}
-		}
-	},
-	group2 = {
-		description = "Second group",
-		tasks = {
-			task1 = {
-				name = "task1",
-				command = "echo group2"
-			}
+workflow({
+	name = "group1",
+	description = "First group",
+	tasks = {
+		{
+			name = "task1",
+			command = "echo group1"
 		}
 	}
-}
+})
+
+workflow({
+	name = "group2",
+	description = "Second group",
+	tasks = {
+		{
+			name = "task1",
+			command = "echo group2"
+		}
+	}
+})
 `
 	require.NoError(t, os.WriteFile(scriptPath, []byte(script), 0644))
 

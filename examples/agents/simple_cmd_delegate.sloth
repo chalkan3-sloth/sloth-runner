@@ -1,57 +1,57 @@
 -- Exemplo SIMPLES e FUNCIONAL usando delegate_to via cmd
 -- Este exemplo usa o caminho que funciona: exec.run com comandos shell
 
-TaskDefinitions = {
-    simple_remote_commands = {
-        description = "Comandos simples executados remotamente",
-        tasks = {
-            {
-                name = "hostname_check",
-                description = "Verifica hostname do agente",
-                command = function()
-                    log.info("🖥️  Verificando hostname do agente...")
-                    
-                    local output, err, failed = exec.run("hostname && echo '---' && whoami")
-                    
-                    if not failed then
-                        log.info("✅ Hostname obtido com sucesso!")
-                        log.info("📋 Resultado:\n" .. output)
-                        return true, "Hostname verificado"
-                    else
-                        log.error("❌ Falha: " .. (err or "erro desconhecido"))
-                        return false, "Erro ao verificar hostname"
-                    end
-                end,
-                delegate_to = "ladyguica",
-                timeout = "30s"
-            },
-            {
-                name = "list_home",
-                description = "Lista arquivos do HOME",
-                command = function()
-                    log.info("📂 Listando arquivos do HOME...")
-                    
-                    local output, err, failed = exec.run("ls -la $HOME | head -20")
-                    
-                    if not failed then
-                        log.info("✅ Arquivos listados com sucesso!")
-                        log.info("📋 Primeiros 20 arquivos:\n" .. output)
-                        return true, "Listagem concluída"
-                    else
-                        log.error("❌ Falha: " .. (err or "erro desconhecido"))
-                        return false, "Erro ao listar"
-                    end
-                end,
-                delegate_to = "ladyguica",
-                timeout = "30s"
-            },
-            {
-                name = "system_info",
-                description = "Coleta informações do sistema",
-                command = function()
-                    log.info("ℹ️  Coletando informações do sistema...")
-                    
-                    local cmd = [[
+workflow({
+    name = "simple_remote_commands",
+    description = "Comandos simples executados remotamente",
+    tasks = {
+        {
+            name = "hostname_check",
+            description = "Verifica hostname do agente",
+            run = function()
+                log.info("🖥️  Verificando hostname do agente...")
+
+                local output, err, failed = exec.run("hostname && echo '---' && whoami")
+
+                if not failed then
+                    log.info("✅ Hostname obtido com sucesso!")
+                    log.info("📋 Resultado:\n" .. output)
+                    return {changed = true, message = "Hostname verificado"}
+                else
+                    log.error("❌ Falha: " .. (err or "erro desconhecido"))
+                    return {failed = true, message = "Erro ao verificar hostname"}
+                end
+            end,
+            delegate_to = "ladyguica",
+            timeout = "30s"
+        },
+        {
+            name = "list_home",
+            description = "Lista arquivos do HOME",
+            run = function()
+                log.info("📂 Listando arquivos do HOME...")
+
+                local output, err, failed = exec.run("ls -la $HOME | head -20")
+
+                if not failed then
+                    log.info("✅ Arquivos listados com sucesso!")
+                    log.info("📋 Primeiros 20 arquivos:\n" .. output)
+                    return {changed = true, message = "Listagem concluída"}
+                else
+                    log.error("❌ Falha: " .. (err or "erro desconhecido"))
+                    return {failed = true, message = "Erro ao listar"}
+                end
+            end,
+            delegate_to = "ladyguica",
+            timeout = "30s"
+        },
+        {
+            name = "system_info",
+            description = "Coleta informações do sistema",
+            run = function()
+                log.info("ℹ️  Coletando informações do sistema...")
+
+                local cmd = [[
 echo "=== SISTEMA ==="
 uname -a
 echo ""
@@ -64,21 +64,20 @@ echo ""
 echo "=== DIRETÓRIO ==="
 pwd
 ]]
-                    
-                    local output, err, failed = exec.run(cmd)
-                    
-                    if not failed then
-                        log.info("✅ Informações coletadas!")
-                        log.info("📋 Sistema:\n" .. output)
-                        return true, "Info coletada"
-                    else
-                        log.error("❌ Falha: " .. (err or "erro desconhecido"))
-                        return false, "Erro ao coletar"
-                    end
-                end,
-                delegate_to = "keiteguica",
-                timeout = "30s"
-            }
+
+                local output, err, failed = exec.run(cmd)
+
+                if not failed then
+                    log.info("✅ Informações coletadas!")
+                    log.info("📋 Sistema:\n" .. output)
+                    return {changed = true, message = "Info coletada"}
+                else
+                    log.error("❌ Falha: " .. (err or "erro desconhecido"))
+                    return {failed = true, message = "Erro ao coletar"}
+                end
+            end,
+            delegate_to = "keiteguica",
+            timeout = "30s"
         }
     }
-}
+})
