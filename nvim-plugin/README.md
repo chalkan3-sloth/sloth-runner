@@ -322,21 +322,6 @@ Env Variables     → Red (#ff6b6b)
 File Paths        → Cyan (#98d8c8)
 ```
 
-## 🔄 Folding
-
-Intelligent folding for:
-
-- Task definitions (from `task(` to `:build()`)
-- Workflow definitions (from `workflow.define(` to closing brace)
-- Function blocks
-
-**Fold display:**
-```
-📋 Task: deploy_application (15 lines) ⋯⋯⋯⋯⋯⋯⋯
-🔄 Workflow: ci_pipeline (42 lines) ⋯⋯⋯⋯⋯⋯⋯⋯
-⚡ Function: deploy_to_env (8 lines) ⋯⋯⋯⋯⋯⋯⋯
-```
-
 ## 🏥 Health Check
 
 Check plugin status and dependencies:
