@@ -1,0 +1,32 @@
+# Valores de configuração para bootstrap de agent Incus
+
+# Nome do container a ser criado
+container_name: agent-keite-01
+
+# Agent onde o container será criado
+host_agent: keite-guica
+
+# IP do host onde o container está (keite-guica)
+host_ip: 192.168.1.17
+
+# Endereço do master server
+master_addr: 192.168.1.29:50053
+
+# Porta SSH no host (será mapeada para porta 22 do container)
+ssh_port: 50060
+
+# Porta do agent sloth-runner
+agent_port: 50060
+
+# Imagem do container (padrão: Arch Linux)
+image: images:archlinux
+
+# Recursos do container (opcional)
+# limits:
+#   cpu: "2"
+#   memory: "2GB"
+
+# Perfis Incus adicionais (opcional)
+# profiles:
+#   - default
+#   - production

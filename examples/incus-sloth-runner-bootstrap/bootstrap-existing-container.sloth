@@ -1,0 +1,204 @@
+-- Bootstrap de Sloth Runner Agent em Container Incus Existente
+-- Use este workflow se você já tem um container Incus criado
+
+local container_name = "agent-keite-01"  -- Nome do container existente
+local host_agent = "keite-guica"          -- Agent onde o container está
+local master_addr = "192.168.1.29:50053"  -- Master server
+local ssh_port = 50060                     -- Porta SSH no host
+local agent_port = 50060                   -- Porta do agent
+
+-- Tarefa 1: Verificar container existe
+local check_container = task("check-container")
+    :description("Verificar se container existe")
+    :delegate_to(host_agent)
+    :command(function(this, params)
+        log.info("🔍 Verificando container: " .. container_name)
+
+        local result = exec.run("incus list " .. container_name .. " -f csv")
+
+        if result.exit_code ~= 0 or result.stdout == "" then
+            return false, "Container " .. container_name .. " não encontrado"
+        end
+
+        log.info("✅ Container encontrado")
+
+        -- Verificar se está rodando
+        if result.stdout:match("RUNNING") then
+            log.info("✅ Container já está rodando")
+        else
+            -- Iniciar container
+            log.info("⏳ Iniciando container...")
+            local start_result = exec.run("incus start " .. container_name)
+            if start_result.exit_code ~= 0 then
+                return false, "Erro ao iniciar container"
+            end
+            exec.run("sleep 5")  -- Aguardar inicialização
+        end
+
+        return true, "Container verificado e rodando"
+    end)
+    :build()
+
+-- Tarefa 2: Configurar SSH (se necessário)
+local setup_ssh = task("setup-ssh")
+    :description("Configurar SSH no container")
+    :delegate_to(host_agent)
+    :command(function(this, params)
+        log.info("🔐 Configurando SSH")
+
+        -- Verificar se SSH já está instalado
+        local ssh_check = exec.run(string.format(
+            "incus exec %s -- which sshd 2>/dev/null",
+            container_name
+        ))
+
+        if ssh_check.exit_code == 0 then
+            log.info("ℹ️  SSH já instalado")
+        else
+            log.info("📦 Instalando SSH...")
+            exec.run(string.format("incus exec %s -- pacman -Sy --noconfirm openssh sudo", container_name))
+        end
+
+        -- Obter chave pública
+        local key_result = exec.run("cat ~/.ssh/id_rsa.pub")
+        local ssh_key = key_result.stdout:gsub("\n", "")
+
+        -- Configurar chave SSH para root
+        exec.run(string.format("incus exec %s -- mkdir -p /root/.ssh", container_name))
+        exec.run(string.format("incus exec %s -- chmod 700 /root/.ssh", container_name))
+        exec.run(string.format('incus exec %s -- sh -c "echo \'%s\' > /root/.ssh/authorized_keys"', container_name, ssh_key))
+        exec.run(string.format("incus exec %s -- chmod 600 /root/.ssh/authorized_keys", container_name))
+
+        -- Configurar sshd
+        exec.run(string.format("incus exec %s -- sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config", container_name))
+        exec.run(string.format("incus exec %s -- systemctl enable --now sshd", container_name))
+
+        log.info("✅ SSH configurado")
+
+        return true, "SSH configurado no container"
+    end)
+    :build()
+
+-- Tarefa 3: Criar/Verificar SSH proxy
+local setup_proxy = task("setup-ssh-proxy")
+    :description("Configurar proxy SSH")
+    :delegate_to(host_agent)
+    :command(function(this, params)
+        log.info("🌐 Configurando proxy SSH")
+
+        -- Verificar se proxy já existe
+        local check_proxy = exec.run(string.format(
+            "incus config device show %s | grep ssh-proxy",
+            container_name
+        ))
+
+        if check_proxy.exit_code == 0 then
+            log.info("ℹ️  Proxy SSH já existe")
+            return true, "Proxy SSH já configurado", {changed = false}
+        end
+
+        -- Obter IP do container
+        local ip_result = exec.run(string.format("incus list %s -c 4 -f csv", container_name))
+        local container_ip = ip_result.stdout:match("(%d+%.%d+%.%d+%.%d+)")
+
+        if not container_ip then
+            -- Aguardar IP ser atribuído
+            log.info("⏳ Aguardando IP do container...")
+            exec.run("sleep 5")
+            ip_result = exec.run(string.format("incus list %s -c 4 -f csv", container_name))
+            container_ip = ip_result.stdout:match("(%d+%.%d+%.%d+%.%d+)")
+        end
+
+        if not container_ip then
+            return false, "Não foi possível obter IP do container"
+        end
+
+        -- Criar proxy
+        local proxy_cmd = string.format(
+            "incus config device add %s ssh-proxy proxy listen=tcp:0.0.0.0:%d connect=tcp:%s:22",
+            container_name, ssh_port, container_ip
+        )
+
+        local result = exec.run(proxy_cmd)
+        if result.exit_code ~= 0 then
+            return false, "Erro ao criar proxy: " .. result.stderr
+        end
+
+        log.info(string.format("✅ Proxy SSH: 0.0.0.0:%d -> %s:22", ssh_port, container_ip))
+
+        return true, "Proxy SSH configurado"
+    end)
+    :build()
+
+-- Tarefa 4: Instalar sloth-runner agent
+local install_agent = task("install-agent")
+    :description("Instalar sloth-runner agent")
+    :command(function(this, params)
+        log.info("🦥 Instalando sloth-runner agent")
+
+        local result = sloth.agent.install({
+            name = container_name,
+            ssh_host = "192.168.1.17",  -- IP do keite-guica
+            ssh_user = "root",
+            ssh_port = tostring(ssh_port),
+            master = master_addr,
+            bind_address = "0.0.0.0",
+            port = tostring(agent_port),
+            report_address = string.format("192.168.1.17:%d", agent_port)
+        })
+
+        if result and result.message then
+            log.info("📋 " .. result.message)
+            return true, result.message
+        end
+
+        return false, "Erro ao instalar agent"
+    end)
+    :build()
+
+-- Tarefa 5: Verificar agent
+local verify = task("verify-agent")
+    :description("Verificar agent conectado")
+    :command(function(this, params)
+        log.info("🔍 Verificando agent...")
+
+        exec.run("sleep 10")  -- Aguardar conexão
+
+        local result = sloth.agent.list({master = master_addr})
+
+        if result and result.output:match(container_name) then
+            log.info("✅ Agent conectado!")
+            return true, "Agent verificado"
+        end
+
+        return false, "Agent não encontrado"
+    end)
+    :build()
+
+-- Workflow
+workflow
+    .define("bootstrap_existing_container")
+    :description("Bootstrap agent em container Incus existente")
+    :version("1.0.0")
+    :tasks({
+        check_container,
+        setup_ssh,
+        setup_proxy,
+        install_agent,
+        verify
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("")
+            log.info("🎉 Agent instalado com sucesso!")
+            log.info("")
+            log.info("📝 Acesso SSH:")
+            log.info("   ssh -p " .. ssh_port .. " root@192.168.1.17")
+            log.info("")
+            log.info("🦥 Usar agent:")
+            log.info("   sloth-runner run <task> --delegate-to " .. container_name)
+            log.info("")
+        else
+            log.error("❌ Bootstrap falhou")
+        end
+    end)

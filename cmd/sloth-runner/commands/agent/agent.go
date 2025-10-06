@@ -27,7 +27,8 @@ func NewAgentCommand(ctx *commands.AppContext) *cobra.Command {
 		NewRunCommand(ctx),
 		NewModulesCommand(ctx),
 		NewMetricsCommand(ctx),
-		NewUpdateCommand(ctx), // Already exists in agent_update.go
+		NewUpdateCommand(ctx),
+		NewInstallCommand(ctx),
 	)
 
 	return cmd

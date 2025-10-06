@@ -530,11 +530,14 @@ func registerAllModulesInternal(L *lua.LState, agentClient interface{}) {
 	// For now, using default localhost:50053
 	factsModule := coremodules.NewFactsModule("localhost:50053")
 	factsModule.Register(L)
-	
+
+	// Register Sloth module for sloth-runner automation
+	coremodules.RegisterSlothModule(L)
+
 	// Register AI module
 	luaInterface := &LuaInterface{L: L}
 	luaInterface.registerAIModule()
-	
+
 	// Register GitOps module
 	luaInterface.registerGitOpsModule()
 	
