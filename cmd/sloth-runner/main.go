@@ -9,6 +9,7 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/agent"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/scheduler"
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/secrets"
 	slothcmd "github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sloth"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/stack"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/state"
@@ -81,6 +82,10 @@ func Execute() error {
 	// Add workflow command and subcommands
 	workflowCmd := workflow.NewWorkflowCommand(ctx)
 	rootCmd.AddCommand(workflowCmd)
+
+	// Add secrets command and subcommands
+	secretsCmd := secrets.NewSecretsCommand(ctx)
+	rootCmd.AddCommand(secretsCmd)
 
 	// Add other root commands (kept for backward compatibility)
 	listCmd := commands.NewListCommand(ctx)
