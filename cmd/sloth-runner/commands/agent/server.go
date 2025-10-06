@@ -160,56 +160,45 @@ func (s *agentServer) UpdateAgent(ctx context.Context, in *pb.UpdateAgentRequest
 		}, nil
 	}
 
-	// Backup current binary
-	backupPath := currentExe + ".backup"
-	if err := os.Rename(currentExe, backupPath); err != nil {
+	// Create update script that will run after agent stops
+	updateScript := fmt.Sprintf(`#!/bin/bash
+# Agent auto-update script
+sleep 2
+cp -f %s %s || exit 1
+chmod +x %s || exit 1
+# Restart the agent with original arguments
+%s %s &
+# Clean up
+rm -f $0
+`, newBinaryPath, currentExe, currentExe, currentExe, strings.Join(os.Args[1:], " "))
+
+	scriptPath := "/tmp/sloth-agent-update.sh"
+	if err := os.WriteFile(scriptPath, []byte(updateScript), 0755); err != nil {
 		return &pb.UpdateAgentResponse{
 			Success:    false,
-			Message:    fmt.Sprintf("Failed to backup current binary: %v", err),
+			Message:    fmt.Sprintf("Failed to create update script: %v", err),
 			OldVersion: currentVersion,
 		}, nil
 	}
 
-	// Copy new binary to current location
-	if err := copyFile(newBinaryPath, currentExe); err != nil {
-		// Restore backup on failure
-		os.Rename(backupPath, currentExe)
-		return &pb.UpdateAgentResponse{
-			Success:    false,
-			Message:    fmt.Sprintf("Failed to install new binary: %v", err),
-			OldVersion: currentVersion,
-		}, nil
-	}
+	slog.Info("Agent binary update prepared", "old", currentVersion, "new", targetVersion)
 
-	// Make new binary executable
-	if err := os.Chmod(currentExe, 0755); err != nil {
-		// Restore backup on failure
-		os.Remove(currentExe)
-		os.Rename(backupPath, currentExe)
-		return &pb.UpdateAgentResponse{
-			Success:    false,
-			Message:    fmt.Sprintf("Failed to set executable permissions: %v", err),
-			OldVersion: currentVersion,
-		}, nil
-	}
-
-	// Remove backup on success
-	os.Remove(backupPath)
-
-	slog.Info("Agent binary updated successfully", "old", currentVersion, "new", targetVersion)
-
-	// Restart agent if requested
+	// Launch update script and exit
 	if !in.SkipRestart {
-		slog.Info("Restarting agent service...")
+		slog.Info("Launching update script and exiting...")
 		go func() {
-			time.Sleep(2 * time.Second)
-			restartAgent()
+			time.Sleep(1 * time.Second)
+			// Execute update script in background
+			cmd := exec.Command("bash", scriptPath)
+			cmd.Start()
+			// Exit current process to allow binary replacement
+			os.Exit(0)
 		}()
 	}
 
 	return &pb.UpdateAgentResponse{
 		Success:    true,
-		Message:    "Agent updated successfully",
+		Message:    "Agent update initiated - binary will be replaced and agent restarted",
 		OldVersion: currentVersion,
 		NewVersion: targetVersion,
 	}, nil
