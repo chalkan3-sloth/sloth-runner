@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io"
@@ -34,6 +35,7 @@ type RunConfig struct {
 	DelegateToHosts  []string
 	SSHProfile       string
 	SSHPasswordStdin bool
+	PasswordStdin    bool
 	YesFlag          bool
 	Context          context.Context
 	Writer           io.Writer
@@ -106,8 +108,14 @@ func (h *RunHandler) Execute() error {
 		return err
 	}
 
+	// Load secrets if password is provided
+	secrets, err := h.loadSecrets(stackID)
+	if err != nil {
+		return err
+	}
+
 	// Execute tasks
-	return h.executeTasks(stackID, workflowName, taskGroups, enhancedOutput, sshExecutor, sshPassword)
+	return h.executeTasks(stackID, workflowName, taskGroups, enhancedOutput, sshExecutor, sshPassword, secrets)
 }
 
 // validateInputs validates the run configuration
@@ -163,6 +171,67 @@ func (h *RunHandler) cleanupSSH(password *string) {
 		*password = strings.Repeat("x", len(*password))
 		*password = ""
 	}
+}
+
+// loadSecrets loads secrets for the stack if password is provided
+func (h *RunHandler) loadSecrets(stackID string) (map[string]string, error) {
+	if !h.config.PasswordStdin {
+		return nil, nil
+	}
+
+	// Read password from stdin
+	reader := bufio.NewReader(os.Stdin)
+	password, err := reader.ReadString('\n')
+	if err != nil && err != io.EOF {
+		return nil, fmt.Errorf("failed to read password from stdin: %w", err)
+	}
+	password = strings.TrimSpace(password)
+
+	if password == "" {
+		return nil, fmt.Errorf("password cannot be empty")
+	}
+
+	// Get encryption salt
+	salt, err := services.GetOrCreateSalt(h.stackService, stackID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get encryption salt: %w", err)
+	}
+
+	// Get secrets service
+	secretsService, err := services.NewSecretsService()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create secrets service: %w", err)
+	}
+	defer secretsService.Close()
+
+	// Check if stack has secrets
+	hasSecrets, err := secretsService.HasSecrets(h.config.Context, stackID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check for secrets: %w", err)
+	}
+
+	if !hasSecrets {
+		if h.config.Debug {
+			slog.Debug("No secrets found for stack", "stack_id", stackID)
+		}
+		return nil, nil
+	}
+
+	// Load all secrets
+	secrets, err := secretsService.GetAllSecrets(h.config.Context, stackID, password, salt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load secrets: %w", err)
+	}
+
+	if h.config.Debug {
+		slog.Debug("Loaded secrets for stack", "stack_id", stackID, "count", len(secrets))
+	}
+
+	// Clean password from memory
+	password = strings.Repeat("x", len(password))
+	password = ""
+
+	return secrets, nil
 }
 
 // initializeOutput initializes enhanced output based on style
@@ -298,6 +367,7 @@ func (h *RunHandler) executeTasks(
 	enhancedOutput *output.PulumiStyleOutput,
 	sshExecutor *sshpkg.Executor,
 	sshPassword *string,
+	secrets map[string]string,
 ) error {
 	// Read Lua script content
 	luaScriptContent, err := os.ReadFile(h.config.FilePath)
@@ -320,6 +390,19 @@ func (h *RunHandler) executeTasks(
 	currentStack, err := h.stackService.GetStack(stackID)
 	if err == nil {
 		luainterface.SetCurrentStack(currentStack, h.stackService.GetManager())
+	}
+
+	// Set secrets in Lua global context
+	if secrets != nil && len(secrets) > 0 {
+		secretsTable := L.NewTable()
+		for key, value := range secrets {
+			secretsTable.RawSetString(key, lua.LString(value))
+		}
+		L.SetGlobal("secrets", secretsTable)
+
+		if h.config.Debug {
+			slog.Debug("Set secrets in Lua context", "count", len(secrets))
+		}
 	}
 
 	runner := taskrunner.NewTaskRunner(L, taskGroups, "", nil, false, h.config.Interactive, &taskrunner.DefaultSurveyAsker{}, string(luaScriptContent))
