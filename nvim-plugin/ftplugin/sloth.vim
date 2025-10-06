@@ -40,10 +40,10 @@ setlocal indentkeys+=:,0),0},0],0=end,0=then,0=else,0=elseif,0=until
 " Keywords for word boundaries and completion
 setlocal iskeyword+=:
 
-" Set up folding
-setlocal foldmethod=expr
-setlocal foldexpr=SlothFoldExpr(v:lnum)
-setlocal foldtext=SlothFoldText()
+" Disable folding (users can enable manually if desired)
+" setlocal foldmethod=expr
+" setlocal foldexpr=SlothFoldExpr(v:lnum)
+" setlocal foldtext=SlothFoldText()
 
 " Define abbreviations for common DSL patterns
 if has("autocmd") && exists("+omnifunc")

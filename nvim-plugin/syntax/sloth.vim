@@ -68,9 +68,9 @@ syntax match slothOperator '\v\.\.'
 syntax match slothDelimiter '\v[\(\)\[\]\{\}]'
 syntax match slothDelimiter '\v[,;:]'
 
-" Special workflow structure
-syntax region slothWorkflowBlock start='workflow\.define\s*(' end=')' contains=ALL fold
-syntax region slothTaskBlock start='task\s*(' end='\.build()' contains=ALL fold
+" Special workflow structure (folding disabled)
+" syntax region slothWorkflowBlock start='workflow\.define\s*(' end=')' contains=ALL fold
+" syntax region slothTaskBlock start='task\s*(' end='\.build()' contains=ALL fold
 
 " Environment variables
 syntax match slothEnvVar '\v\$\{[A-Z_][A-Z0-9_]*\}'
@@ -107,13 +107,13 @@ if has('gui_running') || &t_Co >= 256
   highlight slothPath        guifg=#98d8c8 ctermfg=116
 endif
 
-" Folding
-syntax region slothFold start='{' end='}' transparent fold
-syntax region slothFold start='function' end='end' transparent fold
-syntax region slothFold start='workflow\.define' end='})' transparent fold
+" Folding disabled (users can enable manually if desired)
+" syntax region slothFold start='{' end='}' transparent fold
+" syntax region slothFold start='function' end='end' transparent fold
+" syntax region slothFold start='workflow\.define' end='})' transparent fold
 
 " Set folding
-setlocal foldmethod=syntax
-setlocal foldlevel=1
+" setlocal foldmethod=syntax
+" setlocal foldlevel=1
 
 let b:current_syntax = "sloth"
