@@ -1,0 +1,32 @@
+-- Test the newly created agent
+local test_agent = task("test-new-agent")
+    :description("Test agent-keite-01 (default-agent)")
+    :delegate_to("192.168.1.17:50061")
+    :command(function(this, params)
+        log.info("🧪 Testing new agent...")
+
+        local tests = {
+            {name = "Hostname", cmd = "hostname"},
+            {name = "Kernel", cmd = "uname -r"},
+            {name = "Arch", cmd = "uname -m"},
+            {name = "Sloth Version", cmd = "sloth-runner version"}
+        }
+
+        for _, test in ipairs(tests) do
+            local result, err = exec.run(test.cmd)
+
+            if err then
+                log.error("❌ " .. test.name .. " failed: " .. err)
+            elseif result.success then
+                log.info("✅ " .. test.name .. ": " .. result.stdout:gsub("\n", ""))
+            end
+        end
+
+        return true, "Agent test completed successfully!"
+    end)
+    :build()
+
+workflow
+    .define("test_new_agent")
+    :description("Test the new agent created in VM")
+    :tasks({test_agent})

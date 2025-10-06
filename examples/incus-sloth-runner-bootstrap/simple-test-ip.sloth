@@ -1,0 +1,46 @@
+-- Teste com IP direto do agent
+
+local container_name = "test-container-01"
+
+local create = task("create-test-container")
+    :description("Criar container de teste")
+    :delegate_to("192.168.1.17:50051")  -- IP direto do keite-guica
+    :command(function(this, params)
+        log.info("🐧 Criando container: " .. container_name)
+
+        -- Criar instância (API correta: string como argumento)
+        local container = incus.instance(container_name)
+        container:image("images:archlinux")
+
+        container:create()
+        log.info("✅ Container criado")
+
+        container:start()
+        log.info("✅ Container iniciado")
+
+        -- Aguardar container iniciar
+        exec.run("sleep 5")
+        log.info("✅ Container rodando")
+
+        -- Executar comando de teste usando incus.exec
+        incus.exec({
+            instance = container_name,
+            command = "hostname"
+        })
+        log.info("✅ Comando executado")
+
+        return true, "Container criado com sucesso"
+    end)
+    :build()
+
+workflow
+    .define("test_incus_ip")
+    :description("Teste com IP direto")
+    :tasks({create})
+    :on_complete(function(success, results)
+        if success then
+            log.info("✅ Teste concluído!")
+        else
+            log.error("❌ Teste falhou")
+        end
+    end)

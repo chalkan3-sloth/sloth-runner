@@ -1,0 +1,475 @@
+-- 🦥 Bootstrap Moderno de Agent com Fluent API
+-- Este exemplo demonstra o uso da fluent API do módulo Incus e o padrão (result, error)
+
+-- ⚙️ Configuração
+local config = {
+    vm_name = "agent-keite-01",
+    image = "images:archlinux",
+    delegate_to = "192.168.1.17:50051",  -- IP:porta do agent keite-guica
+    master_addr = "192.168.1.29:50053",
+    host_ip = "192.168.1.17",
+    ssh_port = 50060,
+    agent_port = 50060,
+    memory = "2GB",
+    cpus = 2
+}
+
+-- Ler chave SSH local do Mac (antes de qualquer delegação)
+-- Esta chave será usada pela task install-agent que roda localmente
+local local_ssh_key_path = os.getenv("HOME") .. "/.ssh/id_ed25519.pub"
+local local_ssh_key_file = io.open(local_ssh_key_path, "r")
+local mac_ssh_key = ""
+
+if local_ssh_key_file then
+    mac_ssh_key = local_ssh_key_file:read("*all"):gsub("\n", "")
+    local_ssh_key_file:close()
+    log.info("📋 Chave SSH local lida: " .. local_ssh_key_path .. " (" .. #mac_ssh_key .. " bytes)")
+else
+    log.warn("⚠️  Chave SSH local não encontrada: " .. local_ssh_key_path)
+    log.warn("   A task install-agent pode falhar se a chave não estiver na VM")
+end
+
+-- 📋 Tarefa 1: Criar e configurar VM usando Fluent API
+local create_vm = task("create-vm-fluent")
+    :description("Criar VM Arch Linux usando fluent API")
+    :delegate_to(config.delegate_to)
+    :command(function(this, params)
+        log.info("🚀 Criando VM com fluent API: " .. config.vm_name)
+
+        -- Demonstração da Fluent API - encadeamento elegante
+        local result, err = incus.instance(config.vm_name)
+            :image(config.image)
+            :config({
+                ["limits.memory"] = config.memory,
+                ["limits.cpu"] = tostring(config.cpus)
+            })
+            :profile("default")
+            :ephemeral(false)
+            :launch()  -- launch cria e inicia em uma operação
+
+        -- ✅ Novo padrão: sempre verificar (result, error)
+        if err then
+            log.error("❌ Erro ao criar VM: " .. err)
+            return false, "Falha ao criar VM: " .. err
+        end
+
+        log.info("✅ VM criada e iniciada com sucesso!")
+        log.info("   Output: " .. (result or ""))
+
+        -- Aguardar VM inicializar completamente
+        log.info("⏳ Aguardando VM inicializar...")
+        local sleep_result, sleep_err = exec.run("sleep 10")
+        if sleep_err then
+            log.warn("⚠️  Aviso no sleep: " .. sleep_err)
+        end
+
+        return true, "VM " .. config.vm_name .. " criada e rodando"
+    end)
+    :build()
+
+-- 📋 Tarefa 2: Configurar SSH com checagem de erros
+local setup_ssh = task("setup-ssh-modern")
+    :description("Configurar SSH usando novo padrão de erros")
+    :delegate_to(config.delegate_to)
+    :command(function(this, params)
+        log.info("🔐 Configurando SSH com tratamento de erros")
+
+        -- Obter chave SSH pública do agent remoto
+        local key_result, key_err = exec.run("cat ~/.ssh/id_rsa.pub")
+        if key_err then
+            return false, "Erro ao ler chave SSH: " .. key_err
+        end
+
+        if not key_result.success then
+            return false, "Falha ao obter chave SSH: " .. key_result.stderr
+        end
+
+        local ssh_pub_key_remote = key_result.stdout:gsub("\n", "")
+        if ssh_pub_key_remote == "" then
+            return false, "Chave SSH pública do agent está vazia"
+        end
+
+        log.info("📋 Chave SSH do agent remoto obtida (" .. #ssh_pub_key_remote .. " bytes)")
+
+        -- Usar a chave SSH local do Mac da variável global
+        if mac_ssh_key and mac_ssh_key ~= "" then
+            log.info("📋 Chave SSH local do Mac obtida (" .. #mac_ssh_key .. " bytes)")
+        else
+            log.warn("⚠️  Chave SSH local do Mac não disponível")
+        end
+
+        -- Atualizar sistema
+        log.info("📦 Atualizando sistema...")
+        local update_result, update_err = incus.exec({
+            instance = config.vm_name,
+            command = "pacman -Sy --noconfirm"
+        })
+
+        if update_err then
+            return false, "Erro ao atualizar sistema: " .. update_err
+        end
+
+        log.info("✅ Sistema atualizado")
+
+        -- Instalar pacotes necessários
+        log.info("📦 Instalando openssh e sudo...")
+        local install_result, install_err = incus.exec({
+            instance = config.vm_name,
+            command = "pacman -S --noconfirm openssh sudo wget curl"
+        })
+
+        if install_err then
+            return false, "Erro ao instalar pacotes: " .. install_err
+        end
+
+        log.info("✅ Pacotes instalados")
+
+        -- Configurar diretório SSH
+        local commands = {
+            "mkdir -p /root/.ssh",
+            "chmod 700 /root/.ssh",
+            string.format('echo "%s" > /root/.ssh/authorized_keys', ssh_pub_key_remote)
+        }
+
+        -- Adicionar chave local do Mac se disponível
+        if mac_ssh_key and mac_ssh_key ~= "" then
+            table.insert(commands, string.format('echo "%s" >> /root/.ssh/authorized_keys', mac_ssh_key))
+            log.info("📝 Adicionando chave SSH local do Mac à VM")
+        else
+            log.warn("⚠️  Não foi possível adicionar chave do Mac - install-agent pode falhar")
+        end
+
+        table.insert(commands, "chmod 600 /root/.ssh/authorized_keys")
+
+        for _, cmd in ipairs(commands) do
+            local result, err = incus.exec({
+                instance = config.vm_name,
+                command = cmd
+            })
+            if err then
+                return false, "Erro ao executar: " .. cmd .. " - " .. err
+            end
+        end
+
+        if mac_ssh_key and mac_ssh_key ~= "" then
+            log.info("✅ Chaves SSH configuradas (agent remoto + Mac local)")
+        else
+            log.info("✅ Chave SSH configurada (apenas agent remoto)")
+            log.warn("⚠️  A task install-agent pode falhar pois a chave do Mac não está na VM")
+        end
+
+        -- Configurar sshd
+        local sshd_commands = {
+            "sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config",
+            "sed -i 's/#PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config",
+            "systemctl enable sshd",
+            "systemctl start sshd"
+        }
+
+        for _, cmd in ipairs(sshd_commands) do
+            local result, err = incus.exec({
+                instance = config.vm_name,
+                command = cmd
+            })
+            if err then
+                log.warn("⚠️  Aviso ao configurar sshd: " .. err)
+            end
+        end
+
+        log.info("✅ SSH daemon configurado")
+
+        return true, "SSH configurado com sucesso"
+    end)
+    :build()
+
+-- 📋 Tarefa 3: Criar proxy device para acesso externo usando Fluent API
+local create_proxy = task("create-proxy-modern")
+    :description("Criar proxy device usando fluent API")
+    :delegate_to(config.delegate_to)
+    :command(function(this, params)
+        log.info("🌐 Criando proxy devices com Fluent API...")
+
+        -- Obter IP da VM
+        local ip_cmd = string.format("incus list %s -c 4 -f csv", config.vm_name)
+        local ip_result, ip_err = exec.run(ip_cmd)
+
+        if ip_err then
+            return false, "Erro ao obter IP da VM: " .. ip_err
+        end
+
+        if not ip_result.success then
+            return false, "Falha ao listar VMs: " .. ip_result.stderr
+        end
+
+        local vm_ip = ip_result.stdout:match("(%d+%.%d+%.%d+%.%d+)")
+        if not vm_ip then
+            return false, "Não foi possível extrair IP da VM do output: " .. ip_result.stdout
+        end
+
+        log.info("📍 VM IP: " .. vm_ip)
+
+        -- ✨ Usar Fluent API para criar proxies
+        log.info("🔌 Criando proxies com :proxy()...")
+
+        -- Criar proxy SSH usando fluent API
+        local instance, err = incus.instance(config.vm_name)
+            :proxy("ssh-proxy",
+                   string.format("tcp:0.0.0.0:%d", config.ssh_port),
+                   string.format("tcp:%s:22", vm_ip))
+
+        if err then
+            log.warn("⚠️  Aviso ao criar proxy SSH: " .. err)
+        else
+            log.info(string.format("✅ Proxy SSH: 0.0.0.0:%d -> %s:22", config.ssh_port, vm_ip))
+        end
+
+        -- Criar proxy Agent usando fluent API
+        instance, err = incus.instance(config.vm_name)
+            :proxy("agent-proxy",
+                   string.format("tcp:0.0.0.0:%d", config.agent_port),
+                   string.format("tcp:%s:%d", vm_ip, config.agent_port))
+
+        if err then
+            log.warn("⚠️  Aviso ao criar proxy agent: " .. err)
+        else
+            log.info(string.format("✅ Proxy Agent: 0.0.0.0:%d -> %s:%d", config.agent_port, vm_ip, config.agent_port))
+        end
+
+        return true, "Proxies configurados com sucesso usando Fluent API"
+    end)
+    :build()
+
+-- 📋 Tarefa 4: Testar SSH com retry
+local test_ssh = task("test-ssh-retry")
+    :description("Testar SSH com retry automático")
+    :delegate_to(config.delegate_to)
+    :command(function(this, params)
+        log.info("🧪 Testando conexão SSH...")
+
+        -- Aguardar SSH estar pronto
+        log.info("⏳ Aguardando SSH inicializar...")
+        exec.run("sleep 8")
+
+        -- Tentar conectar com retry
+        local max_retries = 5
+        local retry_delay = 3
+
+        for attempt = 1, max_retries do
+            log.info(string.format("🔌 Tentativa %d/%d de conectar via SSH...", attempt, max_retries))
+
+            local ssh_cmd = string.format(
+                'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -p %d root@localhost "hostname"',
+                config.ssh_port
+            )
+
+            local result, err = exec.run(ssh_cmd)
+
+            if not err and result.success then
+                local hostname = result.stdout:gsub("\n", "")
+                log.info("✅ SSH conectado! Hostname: " .. hostname)
+                return true, "SSH testado com sucesso"
+            end
+
+            if attempt < max_retries then
+                log.info(string.format("⏳ Aguardando %ds antes da próxima tentativa...", retry_delay))
+                exec.run(string.format("sleep %d", retry_delay))
+            end
+        end
+
+        return false, string.format("SSH não respondeu após %d tentativas", max_retries)
+    end)
+    :build()
+
+-- 📋 Tarefa 5: Instalar Agent usando módulo sloth (novo padrão)
+local install_agent = task("install-agent-modern")
+    :description("Instalar agent usando novo padrão (result, error)")
+    :command(function(this, params)
+        log.info("🦥 Instalando sloth-runner agent...")
+
+        -- ✅ Novo padrão: sloth.agent.install retorna (result, error)
+        local result, err = sloth.agent.install({
+            name = config.vm_name,
+            ssh_host = config.host_ip,
+            ssh_user = "root",
+            ssh_port = tostring(config.ssh_port),
+            ssh_key = os.getenv("HOME") .. "/.ssh/id_ed25519",
+            master = config.master_addr,
+            bind_address = "0.0.0.0",
+            port = tostring(config.agent_port),
+            report_address = string.format("%s:%d", config.host_ip, config.agent_port)
+        })
+
+        -- Verificar erro
+        if err then
+            log.error("❌ Erro ao instalar agent")
+            log.error("   Mensagem: " .. err)
+            return false, "Falha ao instalar agent: " .. err
+        end
+
+        -- Verificar resultado (nil significa erro mesmo sem err)
+        if not result then
+            return false, "Resultado nil ao instalar agent"
+        end
+
+        -- ✅ Verificar se houve mudança (idempotência)
+        if result.changed then
+            log.info("✅ Agent instalado com sucesso!")
+            log.info("   Mensagem: " .. result.message)
+            if result.output then
+                log.info("   Output: " .. result.output)
+            end
+        else
+            log.info("ℹ️  " .. result.message)
+            log.info("   (Agent já estava instalado - idempotente)")
+        end
+
+        return true, result.message, {changed = result.changed}
+    end)
+    :build()
+
+-- 📋 Tarefa 6: Verificar agent conectado
+local verify_agent = task("verify-agent-modern")
+    :description("Verificar agent usando novo padrão")
+    :command(function(this, params)
+        log.info("🔍 Verificando agent no master...")
+
+        -- Aguardar agent conectar
+        log.info("⏳ Aguardando agent estabelecer conexão...")
+        exec.run("sleep 10")
+
+        -- ✅ Novo padrão: sloth.agent.list retorna (result, error)
+        local result, err = sloth.agent.list({
+            master = config.master_addr
+        })
+
+        if err then
+            return false, "Erro ao listar agents: " .. err
+        end
+
+        if not result then
+            return false, "Resultado nil ao listar agents"
+        end
+
+        log.info("📋 Agents registrados no master:")
+        log.info(result.output or "(sem output)")
+
+        -- Verificar se nosso agent está na lista
+        if result.output and result.output:match(config.vm_name) then
+            log.info("✅ Agent " .. config.vm_name .. " encontrado e ativo!")
+
+            -- Obter detalhes do agent
+            local details, details_err = sloth.agent.get({
+                name = config.vm_name,
+                master = config.master_addr
+            })
+
+            if not details_err and details then
+                log.info("📊 Detalhes do agent:")
+                log.info(details.output or "(sem detalhes)")
+            end
+
+            return true, "Agent verificado e conectado"
+        else
+            return false, "Agent " .. config.vm_name .. " não encontrado na lista"
+        end
+    end)
+    :build()
+
+-- 📋 Tarefa 7: Teste de execução remota
+local test_execution = task("test-remote-execution")
+    :description("Testar execução remota no novo agent")
+    :delegate_to(config.vm_name)
+    :command(function(this, params)
+        log.info("🧪 Testando execução remota...")
+
+        -- Executar comandos de teste
+        local tests = {
+            {name = "Hostname", cmd = "hostname"},
+            {name = "Kernel", cmd = "uname -r"},
+            {name = "Uptime", cmd = "uptime"},
+            {name = "Memória", cmd = "free -h | grep Mem"},
+            {name = "Disco", cmd = "df -h /"}
+        }
+
+        for _, test in ipairs(tests) do
+            local result, err = exec.run(test.cmd)
+
+            if err then
+                log.warn("⚠️  " .. test.name .. " falhou: " .. err)
+            elseif result.success then
+                local output = result.stdout:gsub("\n", " "):gsub("%s+", " ")
+                log.info("✅ " .. test.name .. ": " .. output)
+            else
+                log.warn("⚠️  " .. test.name .. " exit code: " .. result.exit_code)
+            end
+        end
+
+        log.info("🎉 Todos os testes concluídos!")
+
+        return true, "Execução remota funcionando perfeitamente"
+    end)
+    :build()
+
+-- 🔄 Workflow Principal
+workflow
+    .define("modern_incus_bootstrap")
+    :description("Bootstrap moderno de agent com fluent API e (result, error)")
+    :version("2.0.0")
+    :tasks({
+        create_vm,
+        setup_ssh,
+        create_proxy,
+        test_ssh,
+        install_agent,
+        verify_agent,
+        test_execution
+    })
+    :config({
+        timeout = "30m",
+        max_parallel_tasks = 1,
+        continue_on_error = false
+    })
+    :on_complete(function(success, results)
+        log.info("")
+        log.info("═══════════════════════════════════════════════")
+
+        if success then
+            log.info("🎉 BOOTSTRAP CONCLUÍDO COM SUCESSO!")
+            log.info("═══════════════════════════════════════════════")
+            log.info("")
+            log.info("📋 Configuração:")
+            log.info("   VM: " .. config.vm_name)
+            log.info("   Imagem: " .. config.image)
+            log.info("   Memória: " .. config.memory)
+            log.info("   CPUs: " .. config.cpus)
+            log.info("")
+            log.info("🌐 Acesso:")
+            log.info("   SSH: ssh -p " .. config.ssh_port .. " root@" .. config.host_ip)
+            log.info("   Agent: " .. config.vm_name .. " @ " .. config.master_addr)
+            log.info("")
+            log.info("🚀 Uso:")
+            log.info("   sloth-runner run <task> --delegate-to " .. config.vm_name)
+            log.info("")
+            log.info("✨ Features demonstradas:")
+            log.info("   ✅ Fluent API para Incus")
+            log.info("   ✅ Padrão (result, error) consistente")
+            log.info("   ✅ Tratamento de erros robusto")
+            log.info("   ✅ Operações idempotentes")
+            log.info("   ✅ Delegação remota")
+            log.info("")
+        else
+            log.error("❌ BOOTSTRAP FALHOU")
+            log.info("═══════════════════════════════════════════════")
+            log.error("")
+            log.error("Verifique os logs acima para identificar o erro.")
+            log.error("")
+            log.error("🛠️  Comandos úteis para debug:")
+            log.error("   incus list " .. config.vm_name)
+            log.error("   incus console " .. config.vm_name)
+            log.error("   ssh -p " .. config.ssh_port .. " root@" .. config.host_ip)
+            log.error("")
+        end
+
+        log.info("═══════════════════════════════════════════════")
+        log.info("")
+    end)

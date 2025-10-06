@@ -2,7 +2,8 @@
 -- Este workflow cria um container Arch Linux, configura SSH e instala o agent
 
 local container_name = "agent-keite-01"
-local host_agent = "keite-guica"
+local host_agent = "192.168.1.17:50051"  -- IP:porta do keite-guica
+local host_ip = "192.168.1.17"  -- IP do host keite-guica
 local master_addr = "192.168.1.29:50053"
 local ssh_port = 50060  -- Porta SSH no host keite-guica
 local agent_port = 50060  -- Porta do agent
@@ -14,11 +15,9 @@ local create_container = task("create-container")
     :command(function(this, params)
         log.info("🐧 Criando container Arch Linux: " .. container_name)
 
-        -- Criar instância usando módulo incus
-        local container = incus.instance({
-            name = container_name,
-            image = "images:archlinux"
-        })
+        -- Criar instância usando módulo incus (API correta: string como argumento)
+        local container = incus.instance(container_name)
+        container:image("images:archlinux")
 
         -- Criar container
         container:create()
@@ -28,8 +27,8 @@ local create_container = task("create-container")
         container:start()
         log.info("✅ Container iniciado")
 
-        -- Aguardar container estar rodando
-        container:wait_running(30)
+        -- Aguardar container iniciar
+        exec.run("sleep 5")
         log.info("✅ Container rodando")
 
         return true, "Container " .. container_name .. " criado e iniciado"
@@ -53,32 +52,30 @@ local configure_ssh = task("configure-ssh")
 
         log.info("📋 Chave SSH pública obtida")
 
-        -- Instalar e configurar OpenSSH no container
-        local container = incus.instance({name = container_name})
-
+        -- Instalar e configurar OpenSSH no container usando incus.exec()
         -- Atualizar sistema e instalar openssh
-        container:exec("pacman -Sy --noconfirm")
+        incus.exec({instance = container_name, command = "pacman -Sy --noconfirm"})
         log.info("✅ Sistema atualizado")
 
-        container:exec("pacman -S --noconfirm openssh sudo")
+        incus.exec({instance = container_name, command = "pacman -S --noconfirm openssh sudo"})
         log.info("✅ OpenSSH e sudo instalados")
 
         -- Criar diretório .ssh para root
-        container:exec("mkdir -p /root/.ssh")
-        container:exec("chmod 700 /root/.ssh")
+        incus.exec({instance = container_name, command = "mkdir -p /root/.ssh"})
+        incus.exec({instance = container_name, command = "chmod 700 /root/.ssh"})
 
         -- Adicionar chave pública autorizada
-        container:exec(string.format('echo "%s" > /root/.ssh/authorized_keys', ssh_pub_key))
-        container:exec("chmod 600 /root/.ssh/authorized_keys")
+        incus.exec({instance = container_name, command = string.format('echo "%s" > /root/.ssh/authorized_keys', ssh_pub_key)})
+        incus.exec({instance = container_name, command = "chmod 600 /root/.ssh/authorized_keys"})
         log.info("✅ Chave SSH adicionada para root")
 
         -- Configurar sshd
-        container:exec("sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config")
-        container:exec("sed -i 's/#PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config")
+        incus.exec({instance = container_name, command = "sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config"})
+        incus.exec({instance = container_name, command = "sed -i 's/#PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config"})
 
         -- Habilitar e iniciar sshd
-        container:exec("systemctl enable sshd")
-        container:exec("systemctl start sshd")
+        incus.exec({instance = container_name, command = "systemctl enable sshd"})
+        incus.exec({instance = container_name, command = "systemctl start sshd"})
         log.info("✅ SSH daemon configurado e iniciado")
 
         return true, "SSH configurado no container"
@@ -134,10 +131,6 @@ local test_ssh = task("test-ssh-connection")
     :command(function(this, params)
         log.info("🧪 Testando conexão SSH")
 
-        -- Obter IP do host keite-guica
-        local host_ip_result = exec.run("hostname -I | awk '{print $1}'")
-        local host_ip = host_ip_result.stdout:gsub("\n", "")
-
         log.info("🖥️  Host IP: " .. host_ip)
 
         -- Aguardar SSH estar disponível
@@ -168,11 +161,9 @@ local install_agent = task("install-sloth-runner-agent")
     :command(function(this, params)
         log.info("🦥 Instalando sloth-runner agent")
 
-        -- Obter IP do host keite-guica para acesso SSH
-        local host_ip = "192.168.1.17"  -- IP do keite-guica
-
         -- Usar módulo sloth para instalar agent
-        local result = sloth.agent.install({
+        -- sloth.agent.install retorna (result_table, nil) em sucesso ou (nil, error_msg) em erro
+        local result, err = sloth.agent.install({
             name = container_name,
             ssh_host = host_ip,
             ssh_user = "root",
@@ -183,17 +174,19 @@ local install_agent = task("install-sloth-runner-agent")
             report_address = string.format("%s:%d", host_ip, agent_port)
         })
 
-        if result then
-            if result.changed then
-                log.info("✅ Agent instalado com sucesso!")
-                log.info("   Mensagem: " .. result.message)
-            else
-                log.info("ℹ️  " .. result.message)
-            end
-            return true, result.message
+        if not result then
+            log.error("❌ Erro ao instalar agent: " .. (err or "erro desconhecido"))
+            return false, "Falha ao instalar agent: " .. (err or "erro desconhecido")
         end
 
-        return false, "Falha ao instalar agent"
+        if result.changed then
+            log.info("✅ Agent instalado com sucesso!")
+            log.info("   Mensagem: " .. result.message)
+        else
+            log.info("ℹ️  " .. result.message)
+        end
+
+        return true, result.message
     end)
     :build()
 

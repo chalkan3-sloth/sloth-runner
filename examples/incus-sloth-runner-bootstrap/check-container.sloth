@@ -1,0 +1,31 @@
+-- Verificar status do container criado
+
+local check = task("check-container")
+    :description("Verificar se container existe")
+    :delegate_to("192.168.1.17:50051")
+    :command(function(this, params)
+        log.info("🔍 Verificando containers...")
+
+        -- Usar incus.list() ao invés de exec.run
+        local list_result = incus.list({type = "instances", format = "csv"})
+
+        if list_result and list_result ~= "" then
+            log.info("Containers encontrados:")
+            log.info(list_result)
+        else
+            log.info("Nenhum container encontrado")
+        end
+
+        return true, "Verificação concluída"
+    end)
+    :build()
+
+workflow
+    .define("check_container")
+    :description("Verificar containers")
+    :tasks({check})
+    :on_complete(function(success, results)
+        if success then
+            log.info("✅ Verificação concluída")
+        end
+    end)

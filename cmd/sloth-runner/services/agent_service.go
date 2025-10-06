@@ -24,7 +24,7 @@ func NewAgentService(masterAddr string) *AgentService {
 	}
 	return &AgentService{
 		masterAddr: masterAddr,
-		timeout:    30 * time.Second,
+		timeout:    10 * time.Minute, // Increased timeout for long-running operations like image downloads
 	}
 }
 

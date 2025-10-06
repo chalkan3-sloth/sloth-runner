@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -299,7 +300,18 @@ func (m *IncusModule) exec(L *lua.LState) int {
 
 	args = append(args, "--", "sh", "-c", command)
 
-	fullCmd := fmt.Sprintf("incus %s", strings.Join(args, " "))
+	// Build command with proper quoting for sh -c
+	// Need to quote the command argument to sh -c
+	cmdArgs := []string{}
+	for i, arg := range args {
+		if i == len(args)-1 {
+			// Last argument is the command for sh -c, needs to be quoted
+			cmdArgs = append(cmdArgs, fmt.Sprintf("'%s'", strings.ReplaceAll(arg, "'", "'\\''")))
+		} else {
+			cmdArgs = append(cmdArgs, arg)
+		}
+	}
+	fullCmd := fmt.Sprintf("incus %s", strings.Join(cmdArgs, " "))
 
 	result, err := executeCommand(m.agentClient, fullCmd, target)
 	if err != nil {
@@ -309,7 +321,8 @@ func (m *IncusModule) exec(L *lua.LState) int {
 	}
 
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // list lista recursos Incus
@@ -352,7 +365,8 @@ func (m *IncusModule) list(L *lua.LState) int {
 	}
 
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // info obtém informações sobre um recurso
@@ -407,7 +421,8 @@ func (m *IncusModule) info(L *lua.LState) int {
 	}
 
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // delete deleta um recurso
@@ -461,15 +476,16 @@ func (m *IncusModule) delete(L *lua.LState) int {
 		return 2
 	}
 
-	_, err := executeCommand(m.agentClient, cmd, target)
+	result, err := executeCommand(m.agentClient, cmd, target)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(err.Error()))
 		return 2
 	}
 
-	L.Push(lua.LTrue)
-	return 1
+	L.Push(lua.LString(result))
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // RegisterInstanceMetatable registra o metatable para IncusInstance
@@ -480,6 +496,7 @@ func RegisterInstanceMetatable(L *lua.LState) {
 		"config":      instanceConfig,
 		"profile":     instanceProfile,
 		"device":      instanceDevice,
+		"proxy":       instanceProxy,
 		"delegate_to": instanceDelegateTo,
 		"ephemeral":   instanceEphemeral,
 		"start":       instanceStart,
@@ -499,7 +516,8 @@ func instanceImage(L *lua.LState) int {
 	image := L.CheckString(2)
 	instance.config["image"] = image
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func instanceConfig(L *lua.LState) int {
@@ -511,7 +529,8 @@ func instanceConfig(L *lua.LState) int {
 	})
 
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func instanceProfile(L *lua.LState) int {
@@ -519,7 +538,8 @@ func instanceProfile(L *lua.LState) int {
 	profile := L.CheckString(2)
 	instance.profiles = append(instance.profiles, profile)
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func instanceDevice(L *lua.LState) int {
@@ -534,7 +554,33 @@ func instanceDevice(L *lua.LState) int {
 
 	instance.devices[name] = deviceConfig
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
+}
+
+func instanceProxy(L *lua.LState) int {
+	instance := checkIncusInstance(L, 1)
+	deviceName := L.CheckString(2)
+	listen := L.CheckString(3)
+	connect := L.CheckString(4)
+
+	// Construir comando: incus config device add <instance> <device_name> proxy listen=<listen> connect=<connect>
+	cmd := fmt.Sprintf("incus config device add %s %s proxy listen=%s connect=%s",
+		instance.name, deviceName, listen, connect)
+
+	_, err := executeCommand(instance.agentClient, cmd, instance.target)
+	if err != nil {
+		// Se já existe, não é erro (idempotência)
+		if !strings.Contains(err.Error(), "already exists") {
+			L.Push(lua.LNil)
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
+	}
+
+	L.Push(L.Get(1))
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func instanceDelegateTo(L *lua.LState) int {
@@ -542,7 +588,8 @@ func instanceDelegateTo(L *lua.LState) int {
 	target := L.CheckString(2)
 	instance.target = target
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func instanceEphemeral(L *lua.LState) int {
@@ -553,7 +600,8 @@ func instanceEphemeral(L *lua.LState) int {
 	}
 	instance.config["ephemeral"] = fmt.Sprintf("%t", ephemeral)
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func instanceCreate(L *lua.LState) int {
@@ -576,7 +624,8 @@ func instanceStart(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 func instanceStop(L *lua.LState) int {
@@ -612,7 +661,8 @@ func instanceStop(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 func instanceRestart(L *lua.LState) int {
@@ -648,7 +698,8 @@ func instanceRestart(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 func instanceFreeze(L *lua.LState) int {
@@ -661,7 +712,8 @@ func instanceFreeze(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 func instanceUnfreeze(L *lua.LState) int {
@@ -674,7 +726,8 @@ func instanceUnfreeze(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 func instanceCopy(L *lua.LState) int {
@@ -689,7 +742,8 @@ func instanceCopy(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 func instanceMove(L *lua.LState) int {
@@ -704,7 +758,8 @@ func instanceMove(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 func executeInstanceOperation(L *lua.LState, instance *IncusInstance, operation string) int {
@@ -715,9 +770,20 @@ func executeInstanceOperation(L *lua.LState, instance *IncusInstance, operation 
 		return 2
 	}
 
-	args := []string{operation, instance.name}
-	if image != "" {
-		args = append(args, image)
+	// For launch/init operations, image must come before instance name
+	// Syntax: incus launch <image> <instance_name> [options]
+	var args []string
+	if operation == "launch" || operation == "init" {
+		if image != "" {
+			args = []string{operation, image, instance.name}
+		} else {
+			args = []string{operation, instance.name}
+		}
+	} else {
+		args = []string{operation, instance.name}
+		if image != "" {
+			args = append(args, image)
+		}
 	}
 
 	// Add profiles
@@ -754,7 +820,8 @@ func executeInstanceOperation(L *lua.LState, instance *IncusInstance, operation 
 	}
 
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // RegisterImageMetatable registra o metatable para IncusImage
@@ -775,7 +842,8 @@ func imageSource(L *lua.LState) int {
 	source := L.CheckString(2)
 	image.source = source
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func imageServer(L *lua.LState) int {
@@ -783,7 +851,8 @@ func imageServer(L *lua.LState) int {
 	server := L.CheckString(2)
 	image.server = server
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func imageDelegateTo(L *lua.LState) int {
@@ -791,7 +860,8 @@ func imageDelegateTo(L *lua.LState) int {
 	target := L.CheckString(2)
 	image.target = target
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func imageCopy(L *lua.LState) int {
@@ -805,7 +875,8 @@ func imageCopy(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 func imageExport(L *lua.LState) int {
@@ -820,7 +891,8 @@ func imageExport(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 func imageRefresh(L *lua.LState) int {
@@ -834,7 +906,8 @@ func imageRefresh(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // RegisterNetworkMetatable registra o metatable para IncusNetwork
@@ -855,7 +928,8 @@ func networkType(L *lua.LState) int {
 	netType := L.CheckString(2)
 	network.networkType = netType
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func networkConfig(L *lua.LState) int {
@@ -867,7 +941,8 @@ func networkConfig(L *lua.LState) int {
 	})
 
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func networkDelegateTo(L *lua.LState) int {
@@ -875,7 +950,8 @@ func networkDelegateTo(L *lua.LState) int {
 	target := L.CheckString(2)
 	network.target = target
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func networkCreate(L *lua.LState) int {
@@ -895,7 +971,8 @@ func networkCreate(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 func networkAttach(L *lua.LState) int {
@@ -911,7 +988,8 @@ func networkAttach(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 func networkDetach(L *lua.LState) int {
@@ -927,7 +1005,8 @@ func networkDetach(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // RegisterProfileMetatable registra o metatable para IncusProfile
@@ -949,7 +1028,8 @@ func profileDescription(L *lua.LState) int {
 	description := L.CheckString(2)
 	profile.description = description
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func profileConfig(L *lua.LState) int {
@@ -961,7 +1041,8 @@ func profileConfig(L *lua.LState) int {
 	})
 
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func profileDevice(L *lua.LState) int {
@@ -976,7 +1057,8 @@ func profileDevice(L *lua.LState) int {
 
 	profile.devices[name] = deviceConfig
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func profileDelegateTo(L *lua.LState) int {
@@ -984,7 +1066,8 @@ func profileDelegateTo(L *lua.LState) int {
 	target := L.CheckString(2)
 	profile.target = target
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func profileCreate(L *lua.LState) int {
@@ -1034,7 +1117,8 @@ func profileCreate(L *lua.LState) int {
 	}
 
 	L.Push(lua.LString(fmt.Sprintf("Profile %s created successfully", profile.name)))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 func profileApply(L *lua.LState) int {
@@ -1049,7 +1133,8 @@ func profileApply(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 func profileCopy(L *lua.LState) int {
@@ -1064,7 +1149,8 @@ func profileCopy(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // RegisterStorageMetatable registra o metatable para IncusStorage
@@ -1084,7 +1170,8 @@ func storageDriver(L *lua.LState) int {
 	driver := L.CheckString(2)
 	storage.driver = driver
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func storageConfig(L *lua.LState) int {
@@ -1096,7 +1183,8 @@ func storageConfig(L *lua.LState) int {
 	})
 
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func storageDelegateTo(L *lua.LState) int {
@@ -1104,7 +1192,8 @@ func storageDelegateTo(L *lua.LState) int {
 	target := L.CheckString(2)
 	storage.target = target
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func storageCreate(L *lua.LState) int {
@@ -1124,7 +1213,8 @@ func storageCreate(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 func storageVolume(L *lua.LState) int {
@@ -1139,7 +1229,8 @@ func storageVolume(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // RegisterSnapshotMetatable registra o metatable para IncusSnapshot
@@ -1162,7 +1253,8 @@ func snapshotStateful(L *lua.LState) int {
 	}
 	snapshot.stateful = stateful
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func snapshotDelegateTo(L *lua.LState) int {
@@ -1170,7 +1262,8 @@ func snapshotDelegateTo(L *lua.LState) int {
 	target := L.CheckString(2)
 	snapshot.target = target
 	L.Push(L.Get(1))
-	return 1
+	L.Push(lua.LNil) // Fluent API também retorna (self, nil)
+	return 2
 }
 
 func snapshotCreate(L *lua.LState) int {
@@ -1188,7 +1281,8 @@ func snapshotCreate(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 func snapshotRestore(L *lua.LState) int {
@@ -1202,7 +1296,8 @@ func snapshotRestore(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 func snapshotDelete(L *lua.LState) int {
@@ -1216,7 +1311,8 @@ func snapshotDelete(L *lua.LState) int {
 		return 2
 	}
 	L.Push(lua.LString(result))
-	return 1
+	L.Push(lua.LNil) // Sempre retornar (result, nil) no sucesso
+	return 2
 }
 
 // Helper functions
@@ -1275,21 +1371,41 @@ func checkIncusSnapshot(L *lua.LState, n int) *IncusSnapshot {
 }
 
 func executeCommand(agentClient interface{}, cmd string, target string) (string, error) {
-	if target == "" || agentClient == nil {
-		// Executar localmente
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
+	// When running on agent via delegate_to, target should be empty
+	// Execute locally using bash
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
 
-		parts := strings.Fields(cmd)
-		execCmd := exec.CommandContext(ctx, parts[0], parts[1:]...)
-		output, err := execCmd.CombinedOutput()
-		if err != nil {
-			return "", fmt.Errorf("command failed: %v - %s", err, string(output))
-		}
-		return string(output), nil
+	// Get environment variables from parent process or use defaults
+	xdgRuntime := os.Getenv("XDG_RUNTIME_DIR")
+	if xdgRuntime == "" {
+		xdgRuntime = "/run/user/1000"
 	}
 
-	// Executar remotamente via agente
-	// TODO: Implement agent-based execution properly
-	return "", fmt.Errorf("agent-based execution not yet implemented for target: %s", target)
+	dbusAddr := os.Getenv("DBUS_SESSION_BUS_ADDRESS")
+	if dbusAddr == "" {
+		dbusAddr = "unix:path=/run/user/1000/bus"
+	}
+
+	home := os.Getenv("HOME")
+	if home == "" {
+		home = "/home/chalkan3"
+	}
+
+	// Prepend export statements to the command to ensure environment variables
+	// are available to incus within the bash subprocess
+	// HOME is needed for Incus to find its configuration in ~/.config/incus/
+	wrappedCmd := fmt.Sprintf("export HOME='%s' && export XDG_RUNTIME_DIR='%s' && export DBUS_SESSION_BUS_ADDRESS='%s' && %s",
+		home, xdgRuntime, dbusAddr, cmd)
+
+	execCmd := exec.CommandContext(ctx, "bash", "-c", wrappedCmd)
+
+	// Also set the environment on the process for completeness
+	execCmd.Env = os.Environ()
+
+	output, err := execCmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("command failed: %v - %s", err, string(output))
+	}
+	return string(output), nil
 }
