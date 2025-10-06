@@ -2,350 +2,556 @@
 
 ## Overview
 
-The **Modern DSL (Domain Specific Language)** is a powerful, Lua-based configuration language for Sloth Runner that makes task automation intuitive and expressive. It provides a clean, readable syntax for defining complex automation workflows while leveraging the full power of Lua and Sloth Runner's extensive module ecosystem.
+The **Modern DSL** is Sloth Runner's Lua-based workflow definition language. Workflows are defined in `.sloth` files using simple, readable Lua syntax with access to powerful built-in modules.
 
 ## Why Modern DSL?
 
-The Modern DSL offers several advantages over traditional YAML-based configuration:
+- **🚀 Simple & Readable**: Clean Lua syntax, easy to understand
+- **📦 Global Modules**: All modules available without imports
+- **🔄 Dynamic**: Use Lua's full power - loops, conditionals, functions
+- **⚡ Fast**: Direct Lua execution, no YAML parsing
+- **🧩 Reusable**: Create functions for common patterns
 
-- **🚀 Dynamic Configuration**: Use variables, loops, and conditionals
-- **📦 Module System**: Access powerful built-in and custom modules
-- **🔄 Reusability**: Create functions and templates for common patterns
-- **🎯 Type Safety**: Leverage Lua's type system for safer configurations
-- **⚡ Performance**: Direct execution without YAML parsing overhead
-- **🧩 Composability**: Build complex workflows from simple components
+## Basic Workflow Structure
 
-## Basic Structure
-
-A Modern DSL file is a Lua script that defines tasks using Sloth Runner's API:
+Every `.sloth` file defines a workflow using the `workflow()` function:
 
 ```lua
--- Basic task definition
-name = "my-automation"
-version = "1.0.0"
-description = "My first Modern DSL automation"
-
--- Define a task group
-group "setup" {
-    description = "Initial setup tasks",
-
-    task "create_directory" {
-        module = "fs",
-        action = "mkdir",
-        path = "/opt/myapp",
-        mode = "0755"
-    }
-}
-```
-
-## Module System
-
-The power of Modern DSL comes from its seamless integration with Sloth Runner's module system:
-
-```lua
--- Using modules directly without require
-group "system_setup" {
-    task "install_packages" {
-        module = "pkg",
-        action = "install",
-        packages = {"nginx", "postgresql", "redis"},
-        state = "present"
-    }
-
-    task "configure_service" {
-        module = "systemd",
-        action = "service",
-        name = "nginx",
-        state = "started",
-        enabled = true
-    }
-}
-```
-
-## Dynamic Capabilities
-
-Unlike static YAML, Modern DSL supports full programming constructs:
-
-```lua
--- Variables and conditionals
-local environments = {"dev", "staging", "prod"}
-local base_path = "/opt/applications"
-
-for _, env in ipairs(environments) do
-    group("setup_" .. env) {
-        task("create_env_directory") {
-            module = "fs",
-            action = "mkdir",
-            path = base_path .. "/" .. env,
-            mode = "0755"
+workflow({
+    name = "my_workflow",
+    description = "What this workflow does",
+    tasks = {
+        {
+            name = "task_name",
+            description = "What this task does",
+            run = function()
+                -- Your task code here
+                return {changed = true, message = "Task completed"}
+            end
         }
-
-        if env == "prod" then
-            task("setup_monitoring") {
-                module = "systemd",
-                action = "service",
-                name = "prometheus-node-exporter",
-                state = "started"
-            }
-        end
     }
-end
+})
 ```
 
-## Global Modules
-
-Sloth Runner provides global modules that don't require explicit imports:
+## Complete Example
 
 ```lua
--- State management
-state.set("app_version", "2.0.1")
-local version = state.get("app_version")
+-- Simple web server setup workflow
+workflow({
+    name = "web_server_setup",
+    description = "Install and configure nginx",
+    tasks = {
+        {
+            name = "update_packages",
+            description = "Update package list",
+            run = function()
+                log.info("📦 Updating packages...")
+                local success, output = pkg.update()
 
--- Logging
-log.info("Starting deployment for version: " .. version)
+                if success then
+                    return {changed = true, message = "Packages updated"}
+                else
+                    return {failed = true, message = "Update failed"}
+                end
+            end
+        },
+        {
+            name = "install_nginx",
+            description = "Install nginx web server",
+            depends_on = {"update_packages"},
+            run = function()
+                log.info("📦 Installing nginx...")
+                local success, output = pkg.install({"nginx", "certbot"})
 
--- Facts (system information)
-local os_info = facts.get_os()
-if os_info.family == "debian" then
-    -- Debian-specific tasks
-end
+                if success then
+                    return {changed = true, message = "Nginx installed"}
+                else
+                    return {changed = false, message = "Already installed"}
+                end
+            end
+        },
+        {
+            name = "start_nginx",
+            description = "Start nginx service",
+            depends_on = {"install_nginx"},
+            run = function()
+                log.info("▶️  Starting nginx...")
 
--- HTTP operations
-local response = http.get("https://api.github.com/repos/myorg/myrepo/releases/latest")
-local latest_release = json.decode(response.body)
+                -- Use systemd module
+                local systemd = require("systemd")
+                local success, output = systemd.start("nginx")
+
+                if success then
+                    systemd.enable("nginx")
+                    return {changed = true, message = "Nginx started and enabled"}
+                else
+                    return {failed = true, message = "Failed to start nginx"}
+                end
+            end
+        }
+    }
+})
 ```
 
-## Parallel Execution
+## Task Structure
 
-Execute tasks in parallel for better performance:
+Each task in the `tasks` array has these fields:
 
 ```lua
-group "parallel_deployment" {
-    parallel = true,  -- Enable parallel execution for this group
-
-    task "deploy_web" {
-        module = "docker",
-        action = "container",
-        name = "web-app",
-        image = "myapp:latest",
-        state = "started"
-    }
-
-    task "deploy_api" {
-        module = "docker",
-        action = "container",
-        name = "api-server",
-        image = "myapi:latest",
-        state = "started"
-    }
-
-    task "deploy_worker" {
-        module = "docker",
-        action = "container",
-        name = "background-worker",
-        image = "myworker:latest",
-        state = "started"
-    }
+{
+    name = "task_name",              -- Required: unique task identifier
+    description = "What it does",    -- Optional: task description
+    timeout = "5m",                   -- Optional: task timeout (default: no limit)
+    retries = 3,                      -- Optional: retry count on failure
+    depends_on = {"other_task"},      -- Optional: task dependencies
+    run = function()                  -- Required: task function
+        -- Task code here
+        return {changed = true, message = "Done"}
+    end
 }
+```
+
+## Task Return Values
+
+Tasks must return a table with one of these formats:
+
+```lua
+-- Success with changes
+return {changed = true, message = "Task completed successfully"}
+
+-- Success without changes (idempotent)
+return {changed = false, message = "Already in desired state"}
+
+-- Failure
+return {failed = true, message = "Error: something went wrong"}
+```
+
+## Task Dependencies
+
+Use `depends_on` to control execution order:
+
+```lua
+workflow({
+    name = "deployment",
+    description = "Deploy application",
+    tasks = {
+        {
+            name = "build",
+            run = function()
+                -- Build code
+                return {changed = true, message = "Built"}
+            end
+        },
+        {
+            name = "test",
+            depends_on = {"build"},  -- Runs after build
+            run = function()
+                -- Run tests
+                return {changed = false, message = "Tests passed"}
+            end
+        },
+        {
+            name = "deploy",
+            depends_on = {"build", "test"},  -- Runs after both
+            run = function()
+                -- Deploy application
+                return {changed = true, message = "Deployed"}
+            end
+        }
+    }
+})
+```
+
+## Global Modules (No require!)
+
+Most modules are **globally available** - just use them:
+
+```lua
+run = function()
+    -- Package management
+    pkg.install({"nginx", "postgresql"})
+    pkg.update()
+    pkg.remove("oldpackage")
+
+    -- File operations
+    file_ops.copy({src = "/source", dest = "/dest"})
+    file_ops.delete({path = "/tmp/file"})
+    file_ops.mkdir({path = "/opt/app", mode = "0755"})
+
+    -- User management
+    user.create({
+        name = "appuser",
+        shell = "/bin/bash",
+        home = "/home/appuser",
+        create_home = true
+    })
+
+    -- Git operations
+    git.clone({
+        repo = "https://github.com/user/repo",
+        dest = "/opt/repo"
+    })
+
+    -- System facts
+    local os_info = facts.os()
+    local cpu_count = facts.cpu_count()
+
+    -- Logging
+    log.info("Information message")
+    log.warn("Warning message")
+    log.error("Error message")
+
+    -- Shell commands
+    local result = exec.run("hostname")
+    print("Hostname: " .. result)
+
+    return {changed = true, message = "Done"}
+end
+```
+
+## Modules That Need require()
+
+Only a few modules need `require()`:
+
+```lua
+run = function()
+    -- Systemd module
+    local systemd = require("systemd")
+    systemd.start("nginx")
+    systemd.enable("nginx")
+
+    -- Parallel execution
+    local goroutine = require("goroutine")
+    local handle = goroutine.async(function()
+        -- runs in parallel
+    end)
+    local results = goroutine.await_all({handle})
+
+    return {changed = true, message = "Done"}
+end
+```
+
+## Timeouts and Retries
+
+Add resilience to your tasks:
+
+```lua
+{
+    name = "flaky_network_call",
+    timeout = "30s",      -- Task will timeout after 30 seconds
+    retries = 3,          -- Retry up to 3 times on failure
+    run = function()
+        -- Make network call
+        local response = http.get("https://api.example.com/data")
+        return {changed = false, message = "Data fetched"}
+    end
+}
+```
+
+## Dynamic Workflows with Lua
+
+Leverage Lua's programming capabilities:
+
+```lua
+workflow({
+    name = "multi_server_setup",
+    description = "Setup multiple servers",
+    tasks = (function()
+        local servers = {"web-01", "web-02", "web-03"}
+        local tasks = {}
+
+        -- Generate a task for each server
+        for _, server in ipairs(servers) do
+            table.insert(tasks, {
+                name = "setup_" .. server,
+                description = "Setup " .. server,
+                run = function()
+                    log.info("Setting up " .. server)
+                    -- Setup code
+                    return {changed = true, message = server .. " configured"}
+                end
+            })
+        end
+
+        return tasks
+    end)()
+})
+```
+
+## Conditional Logic
+
+```lua
+workflow({
+    name = "os_specific_setup",
+    description = "Setup based on OS",
+    tasks = {
+        {
+            name = "install_packages",
+            run = function()
+                local os_info = facts.os()
+
+                if os_info.family == "debian" then
+                    pkg.install({"apt-transport-https", "ca-certificates"})
+                    log.info("Installed Debian packages")
+                elseif os_info.family == "redhat" then
+                    pkg.install({"yum-utils", "device-mapper-persistent-data"})
+                    log.info("Installed RedHat packages")
+                else
+                    log.warn("Unknown OS family: " .. os_info.family)
+                end
+
+                return {changed = true, message = "OS-specific packages installed"}
+            end
+        }
+    }
+})
 ```
 
 ## Error Handling
 
-Robust error handling with retry logic:
+Use Lua's `pcall` for error handling:
 
 ```lua
-group "deployment" {
-    on_error = "continue",  -- Continue on error
-    max_retries = 3,
-    retry_delay = 5,  -- seconds
-
-    task "download_artifact" {
-        module = "net",
-        action = "download",
-        url = "https://releases.example.com/app.tar.gz",
-        dest = "/tmp/app.tar.gz",
-
-        on_success = function(result)
-            log.info("Download completed: " .. result.size .. " bytes")
-        end,
-
-        on_failure = function(error)
-            log.error("Download failed: " .. error.message)
-            -- Send notification
-            notification.send("slack", {
-                channel = "#alerts",
-                message = "Deployment failed: " .. error.message
+{
+    name = "safe_operation",
+    run = function()
+        local success, err = pcall(function()
+            -- Risky operation
+            file_ops.copy({
+                src = "/important/file",
+                dest = "/backup/file"
             })
+        end)
+
+        if success then
+            return {changed = true, message = "File backed up"}
+        else
+            log.error("Backup failed: " .. tostring(err))
+            return {failed = true, message = "Backup failed"}
         end
-    }
+    end
 }
 ```
 
-## Templates and Functions
+## Parallel Execution
 
-Create reusable components:
+Execute tasks in parallel using the goroutine module:
 
 ```lua
--- Define a reusable function for creating services
-function create_service(name, port, replicas)
-    return task("deploy_" .. name) {
-        module = "docker",
-        action = "service",
-        name = name,
-        image = name .. ":latest",
-        replicas = replicas or 1,
-        ports = {port .. ":" .. port},
-        networks = {"app-network"},
-        environment = {
-            SERVICE_NAME = name,
-            SERVICE_PORT = port
+workflow({
+    name = "parallel_deployment",
+    description = "Deploy to multiple servers in parallel",
+    tasks = {
+        {
+            name = "deploy_all",
+            run = function()
+                local goroutine = require("goroutine")
+
+                local servers = {"web-01", "web-02", "web-03"}
+                local handles = {}
+
+                -- Start parallel deployments
+                for _, server in ipairs(servers) do
+                    local handle = goroutine.async(function()
+                        log.info("Deploying to " .. server)
+                        -- Deployment logic here
+                        goroutine.sleep(1000) -- simulate work
+                        return server, "success"
+                    end)
+                    table.insert(handles, handle)
+                end
+
+                -- Wait for all to complete
+                local results = goroutine.await_all(handles)
+
+                -- Check results
+                for _, result in ipairs(results) do
+                    if result.success then
+                        local server = result.values[1]
+                        log.info("✅ " .. server .. " deployed")
+                    else
+                        log.error("❌ Deployment failed: " .. result.error)
+                    end
+                end
+
+                return {changed = true, message = "All deployments completed"}
+            end
         }
     }
-end
-
--- Use the function
-group "microservices" {
-    create_service("auth-service", 3000, 2),
-    create_service("user-service", 3001, 3),
-    create_service("payment-service", 3002, 2),
-    create_service("notification-service", 3003, 1)
-}
+})
 ```
 
-## Integration with External Data
-
-Load configuration from external sources:
+## Complete Real-World Example
 
 ```lua
--- Load configuration from JSON
-local config = json.decode(fs.read("/etc/myapp/config.json"))
+-- Production web server deployment
+workflow({
+    name = "production_deployment",
+    description = "Deploy web application to production",
+    tasks = {
+        {
+            name = "update_system",
+            description = "Update system packages",
+            timeout = "5m",
+            run = function()
+                pkg.update()
+                pkg.install({"curl", "git", "build-essential"})
+                return {changed = true, message = "System updated"}
+            end
+        },
+        {
+            name = "create_app_user",
+            description = "Create application user",
+            depends_on = {"update_system"},
+            run = function()
+                user.create({
+                    name = "webapp",
+                    shell = "/bin/bash",
+                    home = "/opt/webapp",
+                    create_home = true,
+                    comment = "Web Application User"
+                })
+                return {changed = true, message = "User created"}
+            end
+        },
+        {
+            name = "clone_repository",
+            description = "Clone application repository",
+            depends_on = {"create_app_user"},
+            timeout = "10m",
+            retries = 3,
+            run = function()
+                git.clone({
+                    repo = "https://github.com/company/webapp.git",
+                    dest = "/opt/webapp/app",
+                    branch = "main"
+                })
+                return {changed = true, message = "Repository cloned"}
+            end
+        },
+        {
+            name = "install_dependencies",
+            description = "Install application dependencies",
+            depends_on = {"clone_repository"},
+            timeout = "15m",
+            run = function()
+                exec.run("cd /opt/webapp/app && npm install")
+                return {changed = true, message = "Dependencies installed"}
+            end
+        },
+        {
+            name = "configure_nginx",
+            description = "Configure nginx reverse proxy",
+            depends_on = {"install_dependencies"},
+            run = function()
+                pkg.install({"nginx"})
 
--- Load secrets from environment
-local db_password = os.getenv("DB_PASSWORD") or vault.get("database/password")
+                file_ops.template({
+                    src = "/templates/nginx.conf.j2",
+                    dest = "/etc/nginx/sites-available/webapp",
+                    mode = "0644"
+                })
 
-group "database_setup" {
-    task "configure_database" {
-        module = "postgresql",
-        action = "database",
-        name = config.database.name,
-        owner = config.database.user,
-        encoding = "UTF-8"
+                file_ops.link({
+                    src = "/etc/nginx/sites-available/webapp",
+                    dest = "/etc/nginx/sites-enabled/webapp"
+                })
+
+                local systemd = require("systemd")
+                systemd.restart("nginx")
+                systemd.enable("nginx")
+
+                return {changed = true, message = "Nginx configured"}
+            end
+        },
+        {
+            name = "start_application",
+            description = "Start web application",
+            depends_on = {"configure_nginx"},
+            run = function()
+                local systemd = require("systemd")
+
+                systemd.start("webapp")
+                systemd.enable("webapp")
+
+                -- Verify it's running
+                local active, state = systemd.is_active("webapp")
+                if active then
+                    log.info("✅ Application is running!")
+                    return {changed = true, message = "Application started"}
+                else
+                    return {failed = true, message = "Application failed to start: " .. state}
+                end
+            end
+        }
     }
-
-    task "create_user" {
-        module = "postgresql",
-        action = "user",
-        name = config.database.user,
-        password = db_password,
-        privileges = ["CREATEDB", "CREATEROLE"]
-    }
-}
+})
 ```
+
+## Available Modules
+
+Run `sloth-runner modules list` to see all available modules:
+
+- `pkg` - Package management (apt, yum, dnf, pacman)
+- `file_ops` - File operations
+- `user` - User and group management
+- `git` - Git operations
+- `systemd` - Service management (requires `require()`)
+- `incus` - LXC/VM container management
+- `stow` - Dotfiles management
+- `facts` - System information
+- `goroutine` - Parallel execution (requires `require()`)
+- `exec` - Shell command execution
+- `log` - Logging functions
+- And many more...
 
 ## Best Practices
 
-1. **Use descriptive names**: Make your tasks and groups self-documenting
-2. **Leverage modules**: Don't reinvent the wheel - use existing modules
-3. **Handle errors gracefully**: Always consider failure scenarios
-4. **Keep it DRY**: Use functions and templates for repeated patterns
-5. **Document complex logic**: Add comments for non-obvious implementations
-6. **Test incrementally**: Use `--dry-run` flag to preview changes
-7. **Version control**: Track your DSL files in Git
+1. **Use descriptive names** for workflows and tasks
+2. **Add descriptions** to document what each task does
+3. **Handle errors** with `pcall` for critical operations
+4. **Use dependencies** to control execution order
+5. **Set timeouts** for network operations
+6. **Add retries** for flaky operations
+7. **Log appropriately** with `log.info`, `log.warn`, `log.error`
+8. **Keep tasks focused** - one responsibility per task
+9. **Test incrementally** - start small, add complexity
+
+## Quick Reference Template
+
+```lua
+workflow({
+    name = "workflow_name",
+    description = "What this workflow does",
+    tasks = {
+        {
+            name = "task_name",
+            description = "What this task does",
+            timeout = "5m",
+            retries = 3,
+            depends_on = {"previous_task"},
+            run = function()
+                -- Your code here
+
+                -- Return success with changes
+                return {changed = true, message = "Task completed"}
+
+                -- Or return success without changes
+                -- return {changed = false, message = "Already in desired state"}
+
+                -- Or return failure
+                -- return {failed = true, message = "Error occurred"}
+            end
+        }
+    }
+})
+```
 
 ## Next Steps
 
-- [📚 Module API Examples](module-api-examples.md) - Comprehensive module usage examples
-- [🎯 Best Practices](best-practices.md) - Advanced patterns and techniques
+- [📚 Module API Examples](module-api-examples.md) - Real-world module usage
+- [🎯 Best Practices](best-practices.md) - Advanced patterns
 - [📖 Reference Guide](reference-guide.md) - Complete API reference
+- [🔧 Modules List](../../modules-list-command.md) - All available modules
 
-## Quick Example: Complete Infrastructure Setup
-
-```lua
-name = "infrastructure-setup"
-version = "2.0.0"
-description = "Complete infrastructure automation with Modern DSL"
-
--- Global configuration
-local app_name = "myapp"
-local domain = "example.com"
-local environments = {"dev", "staging", "prod"}
-
--- Helper function for environment-specific configs
-function get_replicas(env)
-    local replicas_map = {
-        dev = 1,
-        staging = 2,
-        prod = 5
-    }
-    return replicas_map[env] or 1
-end
-
--- Setup for each environment
-for _, env in ipairs(environments) do
-    group("setup_" .. env) {
-        description = "Setup " .. env .. " environment",
-
-        -- Create namespace
-        task("create_namespace") {
-            module = "k8s",
-            action = "namespace",
-            name = app_name .. "-" .. env,
-            state = "present"
-        },
-
-        -- Deploy application
-        task("deploy_app") {
-            module = "k8s",
-            action = "deployment",
-            name = app_name,
-            namespace = app_name .. "-" .. env,
-            replicas = get_replicas(env),
-            image = app_name .. ":" .. state.get("version", "latest"),
-
-            -- Environment-specific configuration
-            environment = {
-                APP_ENV = env,
-                APP_NAME = app_name,
-                DB_HOST = env .. "-db." .. domain,
-                CACHE_HOST = env .. "-redis." .. domain
-            },
-
-            -- Health checks
-            readiness_probe = {
-                http_get = {
-                    path = "/health",
-                    port = 8080
-                },
-                initial_delay_seconds = 10,
-                period_seconds = 5
-            }
-        },
-
-        -- Configure monitoring (production only)
-        when = (env == "prod"),
-        task("setup_monitoring") {
-            module = "prometheus",
-            action = "scrape_config",
-            job_name = app_name .. "_metrics",
-            targets = {app_name .. "-" .. env .. "." .. domain .. ":9090"}
-        }
-    }
-end
-
--- Post-deployment validation
-group "validation" {
-    task "check_deployments" {
-        module = "http",
-        action = "check",
-        urls = {
-            "https://dev." .. domain .. "/health",
-            "https://staging." .. domain .. "/health",
-            "https://prod." .. domain .. "/health"
-        },
-        expected_status = 200,
-        timeout = 30
-    }
-}
-```
-
-This introduction provides a foundation for understanding and using the Modern DSL. Continue to the [Module API Examples](module-api-examples.md) for detailed examples of working with specific modules.
+Start building your workflows with this simple, powerful DSL!

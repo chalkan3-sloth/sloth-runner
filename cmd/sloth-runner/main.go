@@ -9,6 +9,7 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/agent"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/scheduler"
+	slothcmd "github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sloth"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/stack"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/state"
 	"github.com/pterm/pterm"
@@ -63,6 +64,10 @@ func Execute() error {
 	// Add stack command and subcommands
 	stackCmd := stack.NewStackCommand(ctx)
 	rootCmd.AddCommand(stackCmd)
+
+	// Add sloth command and subcommands
+	slothCmd := slothcmd.NewSlothCommand(ctx)
+	rootCmd.AddCommand(slothCmd)
 
 	// Add scheduler command and subcommands
 	schedulerCmd := scheduler.NewSchedulerCommand(ctx)

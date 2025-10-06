@@ -159,6 +159,10 @@ nav:
     - '🆕 Latest Features': 'en/enterprise-features'
     - '🗂️ Stack Management': 'en/stack-management'
     - '🎯 Advanced Features': 'en/advanced-features'
+  - '🏗️ Architecture':
+    - '📐 System Architecture 🔥': 'architecture/sloth-runner-architecture'
+    - '🔧 Modular Design': 'architecture/modular-design'
+    - '♻️ Refactoring Guide': 'architecture/refactoring-guide'
   - '🎨 Modern DSL':
     - '📖 DSL Introduction': 'modern-dsl/introduction'
     - '🎯 Module API Examples 🔥': 'modern-dsl/module-api-examples'
@@ -196,6 +200,7 @@ nav:
   - '📖 Guides':
     - '✨ Using Values with delegate_to 🔥': 'guides/values-delegate-to'
     - '👤 Running Tasks as Different Users 🔥': 'features/user-field'
+    - '🦥 Sloth Management (Saved Workflows) 🔥': 'features/sloth-management'
   - '🎭 Examples': 'en/advanced-examples'
   - '⚡ Enterprise Features':
     - '🤖 AI Integration': 'en/ai-features'
