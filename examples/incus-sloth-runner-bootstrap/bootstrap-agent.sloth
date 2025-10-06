@@ -1,0 +1,290 @@
+-- Bootstrap de Sloth Runner Agent em Container Incus
+-- Este workflow cria um container Arch Linux, configura SSH e instala o agent
+
+local container_name = "agent-keite-01"
+local host_agent = "keite-guica"
+local master_addr = "192.168.1.29:50053"
+local ssh_port = 50060  -- Porta SSH no host keite-guica
+local agent_port = 50060  -- Porta do agent
+
+-- Tarefa 1: Criar container Arch Linux
+local create_container = task("create-container")
+    :description("Criar container Arch Linux no Incus")
+    :delegate_to(host_agent)
+    :command(function(this, params)
+        log.info("🐧 Criando container Arch Linux: " .. container_name)
+
+        -- Criar instância usando módulo incus
+        local container = incus.instance({
+            name = container_name,
+            image = "images:archlinux"
+        })
+
+        -- Criar container
+        container:create()
+        log.info("✅ Container criado")
+
+        -- Iniciar container
+        container:start()
+        log.info("✅ Container iniciado")
+
+        -- Aguardar container estar rodando
+        container:wait_running(30)
+        log.info("✅ Container rodando")
+
+        return true, "Container " .. container_name .. " criado e iniciado"
+    end)
+    :build()
+
+-- Tarefa 2: Configurar SSH no container
+local configure_ssh = task("configure-ssh")
+    :description("Configurar acesso SSH no container")
+    :delegate_to(host_agent)
+    :command(function(this, params)
+        log.info("🔐 Configurando SSH no container")
+
+        -- Obter chave pública SSH do usuário
+        local ssh_key_result = exec.run("cat ~/.ssh/id_rsa.pub")
+        local ssh_pub_key = ssh_key_result.stdout:gsub("\n", "")
+
+        if ssh_pub_key == "" then
+            return false, "Chave SSH pública não encontrada em ~/.ssh/id_rsa.pub"
+        end
+
+        log.info("📋 Chave SSH pública obtida")
+
+        -- Instalar e configurar OpenSSH no container
+        local container = incus.instance({name = container_name})
+
+        -- Atualizar sistema e instalar openssh
+        container:exec("pacman -Sy --noconfirm")
+        log.info("✅ Sistema atualizado")
+
+        container:exec("pacman -S --noconfirm openssh sudo")
+        log.info("✅ OpenSSH e sudo instalados")
+
+        -- Criar diretório .ssh para root
+        container:exec("mkdir -p /root/.ssh")
+        container:exec("chmod 700 /root/.ssh")
+
+        -- Adicionar chave pública autorizada
+        container:exec(string.format('echo "%s" > /root/.ssh/authorized_keys', ssh_pub_key))
+        container:exec("chmod 600 /root/.ssh/authorized_keys")
+        log.info("✅ Chave SSH adicionada para root")
+
+        -- Configurar sshd
+        container:exec("sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config")
+        container:exec("sed -i 's/#PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config")
+
+        -- Habilitar e iniciar sshd
+        container:exec("systemctl enable sshd")
+        container:exec("systemctl start sshd")
+        log.info("✅ SSH daemon configurado e iniciado")
+
+        return true, "SSH configurado no container"
+    end)
+    :build()
+
+-- Tarefa 3: Criar proxy device para SSH
+local create_ssh_proxy = task("create-ssh-proxy")
+    :description("Criar proxy device para acesso SSH externo")
+    :delegate_to(host_agent)
+    :command(function(this, params)
+        log.info("🌐 Criando proxy device SSH")
+
+        -- Obter IP do container
+        local ip_result = exec.run(string.format("incus list %s -c 4 -f csv", container_name))
+        local container_ip = ip_result.stdout:match("(%d+%.%d+%.%d+%.%d+)")
+
+        if not container_ip then
+            return false, "Não foi possível obter IP do container"
+        end
+
+        log.info("📍 Container IP: " .. container_ip)
+
+        -- Criar proxy device mapeando porta externa para SSH do container
+        local proxy_cmd = string.format(
+            "incus config device add %s ssh-proxy proxy listen=tcp:0.0.0.0:%d connect=tcp:%s:22",
+            container_name,
+            ssh_port,
+            container_ip
+        )
+
+        local result = exec.run(proxy_cmd)
+
+        if result.exit_code ~= 0 then
+            -- Pode já existir, verificar
+            if result.stderr:match("already exists") then
+                log.warn("⚠️  Proxy device já existe")
+                return true, "Proxy SSH já configurado", {changed = false}
+            end
+            return false, "Erro ao criar proxy: " .. result.stderr
+        end
+
+        log.info(string.format("✅ Proxy SSH criado: 0.0.0.0:%d -> %s:22", ssh_port, container_ip))
+
+        return true, string.format("Proxy SSH configurado na porta %d", ssh_port)
+    end)
+    :build()
+
+-- Tarefa 4: Testar conexão SSH
+local test_ssh = task("test-ssh-connection")
+    :description("Testar conexão SSH com o container")
+    :delegate_to(host_agent)
+    :command(function(this, params)
+        log.info("🧪 Testando conexão SSH")
+
+        -- Obter IP do host keite-guica
+        local host_ip_result = exec.run("hostname -I | awk '{print $1}'")
+        local host_ip = host_ip_result.stdout:gsub("\n", "")
+
+        log.info("🖥️  Host IP: " .. host_ip)
+
+        -- Aguardar SSH estar disponível
+        log.info("⏳ Aguardando SSH ficar disponível...")
+        exec.run("sleep 5")
+
+        -- Testar conexão SSH (usando StrictHostKeyChecking=no para primeira conexão)
+        local ssh_test_cmd = string.format(
+            'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10 -p %d root@localhost "hostname"',
+            ssh_port
+        )
+
+        local result = exec.run(ssh_test_cmd)
+
+        if result.exit_code ~= 0 then
+            return false, "Falha ao conectar via SSH: " .. result.stderr
+        end
+
+        log.info("✅ SSH funcionando! Hostname: " .. result.stdout:gsub("\n", ""))
+
+        return true, "Conexão SSH testada com sucesso"
+    end)
+    :build()
+
+-- Tarefa 5: Instalar sloth-runner agent usando módulo sloth
+local install_agent = task("install-sloth-runner-agent")
+    :description("Fazer bootstrap do sloth-runner agent no container")
+    :command(function(this, params)
+        log.info("🦥 Instalando sloth-runner agent")
+
+        -- Obter IP do host keite-guica para acesso SSH
+        local host_ip = "192.168.1.17"  -- IP do keite-guica
+
+        -- Usar módulo sloth para instalar agent
+        local result = sloth.agent.install({
+            name = container_name,
+            ssh_host = host_ip,
+            ssh_user = "root",
+            ssh_port = tostring(ssh_port),
+            master = master_addr,
+            bind_address = "0.0.0.0",
+            port = tostring(agent_port),
+            report_address = string.format("%s:%d", host_ip, agent_port)
+        })
+
+        if result then
+            if result.changed then
+                log.info("✅ Agent instalado com sucesso!")
+                log.info("   Mensagem: " .. result.message)
+            else
+                log.info("ℹ️  " .. result.message)
+            end
+            return true, result.message
+        end
+
+        return false, "Falha ao instalar agent"
+    end)
+    :build()
+
+-- Tarefa 6: Verificar agent conectado ao master
+local verify_agent = task("verify-agent")
+    :description("Verificar se agent está conectado ao master")
+    :command(function(this, params)
+        log.info("🔍 Verificando agent no master")
+
+        -- Aguardar um pouco para agent conectar
+        log.info("⏳ Aguardando agent conectar...")
+        exec.run("sleep 10")
+
+        -- Listar agents
+        local result = sloth.agent.list({
+            master = master_addr
+        })
+
+        if result then
+            log.info("📋 Agents ativos:")
+            log.info(result.output)
+
+            -- Verificar se nosso agent está na lista
+            if result.output:match(container_name) then
+                log.info("✅ Agent " .. container_name .. " encontrado e ativo!")
+                return true, "Agent verificado e conectado ao master"
+            else
+                return false, "Agent não encontrado na lista de agents ativos"
+            end
+        end
+
+        return false, "Erro ao listar agents"
+    end)
+    :build()
+
+-- Tarefa 7: Executar comando de teste no novo agent
+local test_agent = task("test-agent-execution")
+    :description("Executar comando de teste no novo agent")
+    :delegate_to(container_name)
+    :command(function(this, params)
+        log.info("🧪 Testando execução no novo agent")
+
+        -- Comandos de teste
+        local hostname_result = exec.run("hostname")
+        local os_info = facts.os()
+
+        log.info("✅ Hostname: " .. hostname_result.stdout:gsub("\n", ""))
+        log.info("✅ OS: " .. os_info.name)
+        log.info("✅ Arch: " .. os_info.arch)
+
+        return true, "Agent funcionando corretamente!"
+    end)
+    :build()
+
+-- Definir workflow
+workflow
+    .define("incus_agent_bootstrap")
+    :description("Bootstrap completo de agent sloth-runner em container Incus")
+    :version("1.0.0")
+    :tasks({
+        create_container,
+        configure_ssh,
+        create_ssh_proxy,
+        test_ssh,
+        install_agent,
+        verify_agent,
+        test_agent
+    })
+    :config({
+        timeout = "20m",
+        max_parallel_tasks = 1
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("")
+            log.info("🎉 Bootstrap concluído com sucesso!")
+            log.info("")
+            log.info("📋 Resumo:")
+            log.info("  ✅ Container criado: " .. container_name)
+            log.info("  ✅ SSH configurado na porta: " .. ssh_port)
+            log.info("  ✅ Agent instalado e conectado")
+            log.info("  ✅ Master: " .. master_addr)
+            log.info("")
+            log.info("🔧 Para acessar o container via SSH:")
+            log.info("   ssh -p " .. ssh_port .. " root@192.168.1.17")
+            log.info("")
+            log.info("🦥 Para usar o agent:")
+            log.info("   sloth-runner run <task> --delegate-to " .. container_name)
+            log.info("")
+        else
+            log.error("❌ Bootstrap falhou")
+            log.error("Verifique os logs acima para detalhes")
+        end
+    end)
