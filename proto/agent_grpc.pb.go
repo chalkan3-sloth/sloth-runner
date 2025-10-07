@@ -40,6 +40,7 @@ const (
 	Agent_GetSystemErrors_FullMethodName       = "/agent.Agent/GetSystemErrors"
 	Agent_GetPerformanceHistory_FullMethodName = "/agent.Agent/GetPerformanceHistory"
 	Agent_DiagnoseHealth_FullMethodName        = "/agent.Agent/DiagnoseHealth"
+	Agent_InteractiveShell_FullMethodName      = "/agent.Agent/InteractiveShell"
 )
 
 // AgentClient is the client API for Agent service.
@@ -69,6 +70,8 @@ type AgentClient interface {
 	GetSystemErrors(ctx context.Context, in *SystemErrorsRequest, opts ...grpc.CallOption) (*SystemErrorsResponse, error)
 	GetPerformanceHistory(ctx context.Context, in *PerformanceHistoryRequest, opts ...grpc.CallOption) (*PerformanceHistoryResponse, error)
 	DiagnoseHealth(ctx context.Context, in *HealthDiagnosticRequest, opts ...grpc.CallOption) (*HealthDiagnosticResponse, error)
+	// Interactive Shell RPC
+	InteractiveShell(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ShellInput, ShellOutput], error)
 }
 
 type agentClient struct {
@@ -316,6 +319,19 @@ func (c *agentClient) DiagnoseHealth(ctx context.Context, in *HealthDiagnosticRe
 	return out, nil
 }
 
+func (c *agentClient) InteractiveShell(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ShellInput, ShellOutput], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Agent_ServiceDesc.Streams[3], Agent_InteractiveShell_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[ShellInput, ShellOutput]{ClientStream: stream}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Agent_InteractiveShellClient = grpc.BidiStreamingClient[ShellInput, ShellOutput]
+
 // AgentServer is the server API for Agent service.
 // All implementations must embed UnimplementedAgentServer
 // for forward compatibility.
@@ -343,6 +359,8 @@ type AgentServer interface {
 	GetSystemErrors(context.Context, *SystemErrorsRequest) (*SystemErrorsResponse, error)
 	GetPerformanceHistory(context.Context, *PerformanceHistoryRequest) (*PerformanceHistoryResponse, error)
 	DiagnoseHealth(context.Context, *HealthDiagnosticRequest) (*HealthDiagnosticResponse, error)
+	// Interactive Shell RPC
+	InteractiveShell(grpc.BidiStreamingServer[ShellInput, ShellOutput]) error
 	mustEmbedUnimplementedAgentServer()
 }
 
@@ -415,6 +433,9 @@ func (UnimplementedAgentServer) GetPerformanceHistory(context.Context, *Performa
 }
 func (UnimplementedAgentServer) DiagnoseHealth(context.Context, *HealthDiagnosticRequest) (*HealthDiagnosticResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DiagnoseHealth not implemented")
+}
+func (UnimplementedAgentServer) InteractiveShell(grpc.BidiStreamingServer[ShellInput, ShellOutput]) error {
+	return status.Errorf(codes.Unimplemented, "method InteractiveShell not implemented")
 }
 func (UnimplementedAgentServer) mustEmbedUnimplementedAgentServer() {}
 func (UnimplementedAgentServer) testEmbeddedByValue()               {}
@@ -794,6 +815,13 @@ func _Agent_DiagnoseHealth_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Agent_InteractiveShell_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(AgentServer).InteractiveShell(&grpc.GenericServerStream[ShellInput, ShellOutput]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Agent_InteractiveShellServer = grpc.BidiStreamingServer[ShellInput, ShellOutput]
+
 // Agent_ServiceDesc is the grpc.ServiceDesc for Agent service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -889,6 +917,12 @@ var Agent_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "StreamMetrics",
 			Handler:       _Agent_StreamMetrics_Handler,
 			ServerStreams: true,
+		},
+		{
+			StreamName:    "InteractiveShell",
+			Handler:       _Agent_InteractiveShell_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "proto/agent.proto",

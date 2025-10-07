@@ -1646,3 +1646,139 @@ func (s *agentServer) DiagnoseHealth(ctx context.Context, in *pb.HealthDiagnosti
 		TotalErrors:    totalErrors,
 	}, nil
 }
+
+// InteractiveShell provides a bidirectional streaming shell interface with PTY
+func (s *agentServer) InteractiveShell(stream pb.Agent_InteractiveShellServer) error {
+	// Start a bash shell with login environment
+	cmd := exec.Command("/bin/bash", "--login")
+
+	// Set environment variables for interactive shell
+	cmd.Env = append(os.Environ(),
+		"TERM=xterm-256color",
+		"PS1=[\\u@\\h \\W]\\$ ",
+	)
+
+	// Create pipes for stdin, stdout, stderr
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create stdin pipe: %w", err)
+	}
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create stdout pipe: %w", err)
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("failed to create stderr pipe: %w", err)
+	}
+
+	// Start the shell
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start shell: %w", err)
+	}
+
+	// Channel to signal when to stop
+	done := make(chan struct{})
+	errChan := make(chan error, 3)
+
+	// Goroutine to read from client and write to shell stdin
+	go func() {
+		defer stdin.Close()
+		for {
+			in, err := stream.Recv()
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				errChan <- fmt.Errorf("stream recv error: %w", err)
+				return
+			}
+
+			if in.Terminate {
+				close(done)
+				return
+			}
+
+			// Write any data received directly to stdin
+			if len(in.StdinData) > 0 {
+				if _, err := stdin.Write(in.StdinData); err != nil {
+					errChan <- fmt.Errorf("failed to write stdin data: %w", err)
+					return
+				}
+			}
+		}
+	}()
+
+	// Goroutine to read stdout and send to client
+	go func() {
+		buf := make([]byte, 8192)
+		for {
+			n, err := stdout.Read(buf)
+			if n > 0 {
+				if err := stream.Send(&pb.ShellOutput{
+					Stdout: buf[:n],
+				}); err != nil {
+					errChan <- fmt.Errorf("failed to send stdout: %w", err)
+					return
+				}
+			}
+			if err != nil {
+				if err != io.EOF {
+					errChan <- fmt.Errorf("stdout read error: %w", err)
+				}
+				return
+			}
+		}
+	}()
+
+	// Goroutine to read stderr and send to client
+	go func() {
+		buf := make([]byte, 8192)
+		for {
+			n, err := stderr.Read(buf)
+			if n > 0 {
+				if err := stream.Send(&pb.ShellOutput{
+					Stderr: buf[:n],
+				}); err != nil {
+					errChan <- fmt.Errorf("failed to send stderr: %w", err)
+					return
+				}
+			}
+			if err != nil {
+				if err != io.EOF {
+					errChan <- fmt.Errorf("stderr read error: %w", err)
+				}
+				return
+			}
+		}
+	}()
+
+	// Wait for shell to exit or error
+	select {
+	case err := <-errChan:
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		}
+		return err
+	case <-done:
+		// Client requested termination
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		}
+	}
+
+	// Wait for process to exit and send exit code
+	exitCode := 0
+	if err := cmd.Wait(); err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			exitCode = exitErr.ExitCode()
+		}
+	}
+
+	return stream.Send(&pb.ShellOutput{
+		ExitCode:  int32(exitCode),
+		Completed: true,
+	})
+}
