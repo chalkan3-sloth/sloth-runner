@@ -4,11 +4,16 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"path/filepath"
 	"sync"
+	"time"
 
+	"github.com/chalkan3-sloth/sloth-runner/internal/config"
 	"github.com/chalkan3-sloth/sloth-runner/internal/hooks"
+	"github.com/chalkan3-sloth/sloth-runner/internal/metrics"
+	"github.com/chalkan3-sloth/sloth-runner/internal/webui/services"
 	pb "github.com/chalkan3-sloth/sloth-runner/proto"
 	"github.com/pterm/pterm"
 	"google.golang.org/grpc"
@@ -18,10 +23,12 @@ import (
 // agentRegistryServer implements the AgentRegistry service.
 type agentRegistryServer struct {
 	pb.UnimplementedAgentRegistryServer
-	mu         sync.RWMutex
-	db         *AgentDB
-	grpcServer *grpc.Server
-	dispatcher *hooks.Dispatcher
+	mu               sync.RWMutex
+	db               *AgentDB
+	grpcServer       *grpc.Server
+	dispatcher       *hooks.Dispatcher
+	metricsDB        *metrics.MetricsDB
+	metricsCollector *metrics.Collector
 }
 
 // newAgentRegistryServer creates a new agentRegistryServer.
@@ -52,9 +59,61 @@ func newAgentRegistryServer() *agentRegistryServer {
 		pterm.Success.Println("Hook system initialized")
 	}
 
+	// Initialize metrics database
+	metricsDBPath := config.GetMetricsDBPath()
+	if err := config.EnsureDataDir(); err != nil {
+		pterm.Error.Printf("Failed to create metrics directory: %v\n", err)
+	}
+
+	slog.Info("Initializing metrics database", "path", metricsDBPath)
+	metricsDB, err := metrics.NewMetricsDB(metricsDBPath)
+	if err != nil {
+		pterm.Error.Printf("Failed to initialize metrics database: %v\n", err)
+		metricsDB = nil
+	} else {
+		pterm.Success.Printf("Metrics database initialized at: %s\n", metricsDBPath)
+	}
+
+	// Initialize metrics collector
+	var metricsCollector *metrics.Collector
+	if metricsDB != nil && db != nil {
+		agentClient := services.NewAgentClient()
+		metricsCollector = metrics.NewCollector(metrics.CollectorConfig{
+			MetricsDB:     metricsDB,
+			AgentClient:   agentClient,
+			Interval:      30 * time.Second,
+			RetentionDays: 7,
+		})
+
+		// Start metrics collector with function to get agent list
+		ctx := context.Background()
+		if err := metricsCollector.Start(ctx, func() []metrics.AgentInfo {
+			agents, err := db.ListAgents()
+			if err != nil {
+				slog.Error("Failed to get agent list for metrics collection", "error", err)
+				return nil
+			}
+
+			agentInfos := make([]metrics.AgentInfo, 0, len(agents))
+			for _, agent := range agents {
+				agentInfos = append(agentInfos, metrics.AgentInfo{
+					Name:    agent.Name,
+					Address: agent.Address,
+				})
+			}
+			return agentInfos
+		}); err != nil {
+			pterm.Error.Printf("Failed to start metrics collector: %v\n", err)
+		} else {
+			pterm.Success.Println("Metrics collector started (interval: 30s, retention: 7 days)")
+		}
+	}
+
 	return &agentRegistryServer{
-		db:         db,
-		dispatcher: dispatcher,
+		db:               db,
+		dispatcher:       dispatcher,
+		metricsDB:        metricsDB,
+		metricsCollector: metricsCollector,
 	}
 }
 
