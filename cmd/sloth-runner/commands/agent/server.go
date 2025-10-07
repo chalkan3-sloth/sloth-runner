@@ -38,6 +38,15 @@ type agentServer struct {
 	cachedMetrics     *CachedMetrics
 	metricsCache      sync.RWMutex
 	lastMetricsUpdate time.Time
+
+	// Additional caches for network and disk info
+	cachedNetwork     []NetworkInterfaceInfo
+	networkCache      sync.RWMutex
+	lastNetworkUpdate time.Time
+
+	cachedDisk        []DiskPartitionInfo
+	diskCache         sync.RWMutex
+	lastDiskUpdate    time.Time
 }
 
 // CachedMetrics holds cached resource usage data
@@ -733,15 +742,48 @@ func (s *agentServer) GetProcessList(ctx context.Context, in *pb.ProcessListRequ
 	return &pb.ProcessListResponse{Processes: pbProcesses}, nil
 }
 
-// GetNetworkInfo returns network interface information
+// GetNetworkInfo returns network interface information (with 60s cache)
 func (s *agentServer) GetNetworkInfo(ctx context.Context, in *pb.NetworkInfoRequest) (*pb.NetworkInfoResponse, error) {
+	// Check cache first (60 second TTL - network info changes rarely)
+	s.networkCache.RLock()
+	if s.cachedNetwork != nil && time.Since(s.lastNetworkUpdate) < 60*time.Second {
+		interfaces := s.cachedNetwork
+		s.networkCache.RUnlock()
+
+		hostname, _ := os.Hostname()
+		pbInterfaces := make([]*pb.NetworkInterface, 0, len(interfaces))
+		for _, iface := range interfaces {
+			pbInterfaces = append(pbInterfaces, &pb.NetworkInterface{
+				Name:        iface.Name,
+				IpAddresses: iface.IPAddresses,
+				MacAddress:  iface.MACAddress,
+				BytesSent:   iface.BytesSent,
+				BytesRecv:   iface.BytesRecv,
+				IsUp:        iface.IsUp,
+			})
+		}
+
+		return &pb.NetworkInfoResponse{
+			Interfaces: pbInterfaces,
+			Hostname:   hostname,
+		}, nil
+	}
+	s.networkCache.RUnlock()
+
+	// Get fresh data
 	interfaces, err := getNetworkInterfaces()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get network interfaces: %w", err)
 	}
-	
+
+	// Update cache
+	s.networkCache.Lock()
+	s.cachedNetwork = interfaces
+	s.lastNetworkUpdate = time.Now()
+	s.networkCache.Unlock()
+
 	hostname, _ := os.Hostname()
-	
+
 	pbInterfaces := make([]*pb.NetworkInterface, 0, len(interfaces))
 	for _, iface := range interfaces {
 		pbInterfaces = append(pbInterfaces, &pb.NetworkInterface{
@@ -753,23 +795,61 @@ func (s *agentServer) GetNetworkInfo(ctx context.Context, in *pb.NetworkInfoRequ
 			IsUp:        iface.IsUp,
 		})
 	}
-	
+
 	return &pb.NetworkInfoResponse{
 		Interfaces: pbInterfaces,
 		Hostname:   hostname,
 	}, nil
 }
 
-// GetDiskInfo returns disk partition information
+// GetDiskInfo returns disk partition information (with 60s cache)
 func (s *agentServer) GetDiskInfo(ctx context.Context, in *pb.DiskInfoRequest) (*pb.DiskInfoResponse, error) {
+	// Check cache first (60 second TTL - disk info changes rarely)
+	s.diskCache.RLock()
+	if s.cachedDisk != nil && time.Since(s.lastDiskUpdate) < 60*time.Second {
+		partitions := s.cachedDisk
+		s.diskCache.RUnlock()
+
+		pbPartitions := make([]*pb.DiskPartition, 0, len(partitions))
+		var totalRead, totalWrite uint64
+
+		for _, part := range partitions {
+			pbPartitions = append(pbPartitions, &pb.DiskPartition{
+				Device:     part.Device,
+				Mountpoint: part.Mountpoint,
+				Fstype:     part.FSType,
+				TotalBytes: part.TotalBytes,
+				UsedBytes:  part.UsedBytes,
+				FreeBytes:  part.FreeBytes,
+				Percent:    part.Percent,
+			})
+			totalRead += part.IOReadBytes
+			totalWrite += part.IOWriteBytes
+		}
+
+		return &pb.DiskInfoResponse{
+			Partitions:        pbPartitions,
+			TotalIoReadBytes:  totalRead,
+			TotalIoWriteBytes: totalWrite,
+		}, nil
+	}
+	s.diskCache.RUnlock()
+
+	// Get fresh data
 	partitions, err := getDiskPartitions()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get disk partitions: %w", err)
 	}
-	
+
+	// Update cache
+	s.diskCache.Lock()
+	s.cachedDisk = partitions
+	s.lastDiskUpdate = time.Now()
+	s.diskCache.Unlock()
+
 	pbPartitions := make([]*pb.DiskPartition, 0, len(partitions))
 	var totalRead, totalWrite uint64
-	
+
 	for _, part := range partitions {
 		pbPartitions = append(pbPartitions, &pb.DiskPartition{
 			Device:     part.Device,
@@ -783,7 +863,7 @@ func (s *agentServer) GetDiskInfo(ctx context.Context, in *pb.DiskInfoRequest) (
 		totalRead += part.IOReadBytes
 		totalWrite += part.IOWriteBytes
 	}
-	
+
 	return &pb.DiskInfoResponse{
 		Partitions:        pbPartitions,
 		TotalIoReadBytes:  totalRead,
