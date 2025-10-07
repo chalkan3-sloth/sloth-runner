@@ -1,0 +1,299 @@
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <!-- Sloth Logo Animated -->
+  <symbol id="sloth-logo" viewBox="0 0 200 200">
+    <style>
+      .sloth-body { fill: #8B7355; }
+      .sloth-face { fill: #A68B6E; }
+      .sloth-eye { fill: #2D2D2D; }
+      .sloth-nose { fill: #3D3D3D; }
+      .sloth-smile { fill: none; stroke: #2D2D2D; stroke-width: 2; }
+      .sloth-arm { fill: #8B7355; }
+      .sloth-claw { fill: #6B5D51; }
+
+      /* Animations */
+      @keyframes sloth-hang {
+        0%, 100% { transform: rotate(0deg); }
+        50% { transform: rotate(3deg); }
+      }
+
+      @keyframes sloth-blink {
+        0%, 90%, 100% { transform: scaleY(1); }
+        95% { transform: scaleY(0.1); }
+      }
+
+      @keyframes sloth-wave {
+        0%, 100% { transform: rotate(0deg); }
+        25% { transform: rotate(-15deg); }
+        75% { transform: rotate(15deg); }
+      }
+
+      .animated-hang { animation: sloth-hang 3s ease-in-out infinite; transform-origin: center top; }
+      .animated-blink { animation: sloth-blink 4s ease-in-out infinite; }
+      .animated-wave { animation: sloth-wave 2s ease-in-out infinite; transform-origin: top center; }
+    </style>
+
+    <!-- Hanging branch -->
+    <rect x="50" y="5" width="100" height="8" rx="4" fill="#6B4423"/>
+
+    <!-- Sloth body group -->
+    <g class="animated-hang">
+      <!-- Body -->
+      <ellipse cx="100" cy="100" rx="45" ry="55" class="sloth-body"/>
+
+      <!-- Head -->
+      <circle cx="100" cy="70" r="35" class="sloth-body"/>
+
+      <!-- Face patch -->
+      <ellipse cx="100" cy="75" rx="25" ry="20" class="sloth-face"/>
+
+      <!-- Eyes -->
+      <g class="animated-blink">
+        <ellipse cx="90" cy="70" rx="6" ry="8" class="sloth-eye"/>
+        <ellipse cx="110" cy="70" rx="6" ry="8" class="sloth-eye"/>
+      </g>
+
+      <!-- Nose -->
+      <ellipse cx="100" cy="80" rx="4" ry="5" class="sloth-nose"/>
+
+      <!-- Smile -->
+      <path d="M 92 85 Q 100 90 108 85" class="sloth-smile"/>
+
+      <!-- Arms -->
+      <g class="animated-wave">
+        <ellipse cx="65" cy="20" rx="8" ry="45" class="sloth-arm" transform="rotate(-30 65 20)"/>
+        <ellipse cx="135" cy="20" rx="8" ry="45" class="sloth-arm" transform="rotate(30 135 20)"/>
+
+        <!-- Claws -->
+        <g>
+          <path d="M 55 15 L 50 10 M 58 12 L 53 7 M 61 10 L 56 5" class="sloth-claw" stroke="#6B5D51" stroke-width="2" fill="none"/>
+          <path d="M 145 15 L 150 10 M 142 12 L 147 7 M 139 10 L 144 5" class="sloth-claw" stroke="#6B5D51" stroke-width="2" fill="none"/>
+        </g>
+      </g>
+
+      <!-- Legs -->
+      <ellipse cx="80" cy="140" rx="10" ry="25" class="sloth-arm"/>
+      <ellipse cx="120" cy="140" rx="10" ry="25" class="sloth-arm"/>
+    </g>
+  </symbol>
+
+  <!-- Sloth Sleeping -->
+  <symbol id="sloth-sleeping" viewBox="0 0 200 200">
+    <style>
+      @keyframes sloth-breathe {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+      }
+
+      @keyframes zzz-float {
+        0% { opacity: 0; transform: translateY(0) scale(0.5); }
+        50% { opacity: 1; }
+        100% { opacity: 0; transform: translateY(-30px) scale(1); }
+      }
+
+      .breathing { animation: sloth-breathe 3s ease-in-out infinite; transform-origin: center; }
+      .zzz { animation: zzz-float 2s ease-in-out infinite; }
+      .zzz-2 { animation: zzz-float 2s ease-in-out infinite; animation-delay: 0.7s; }
+      .zzz-3 { animation: zzz-float 2s ease-in-out infinite; animation-delay: 1.4s; }
+    </style>
+
+    <g class="breathing">
+      <!-- Sleeping position -->
+      <ellipse cx="100" cy="110" rx="50" ry="40" class="sloth-body"/>
+      <circle cx="100" cy="90" r="30" class="sloth-body"/>
+      <ellipse cx="100" cy="92" rx="22" ry="18" class="sloth-face"/>
+
+      <!-- Closed eyes -->
+      <path d="M 88 88 Q 92 90 96 88" fill="none" stroke="#2D2D2D" stroke-width="2"/>
+      <path d="M 104 88 Q 108 90 112 88" fill="none" stroke="#2D2D2D" stroke-width="2"/>
+
+      <!-- Sleeping smile -->
+      <path d="M 92 100 Q 100 102 108 100" fill="none" stroke="#2D2D2D" stroke-width="1.5"/>
+    </g>
+
+    <!-- Z's -->
+    <text x="130" y="60" class="zzz" font-family="Arial" font-size="20" fill="#4F46E5" font-weight="bold">Z</text>
+    <text x="145" y="50" class="zzz-2" font-family="Arial" font-size="16" fill="#4F46E5" font-weight="bold">Z</text>
+    <text x="155" y="42" class="zzz-3" font-family="Arial" font-size="12" fill="#4F46E5" font-weight="bold">Z</text>
+  </symbol>
+
+  <!-- Sloth Working -->
+  <symbol id="sloth-working" viewBox="0 0 200 200">
+    <style>
+      @keyframes sloth-type {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-3px); }
+      }
+
+      @keyframes code-blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+
+      .typing { animation: sloth-type 0.5s ease-in-out infinite; }
+      .code-cursor { animation: code-blink 1s ease-in-out infinite; }
+    </style>
+
+    <!-- Body -->
+    <ellipse cx="100" cy="130" rx="45" ry="50" class="sloth-body"/>
+    <circle cx="100" cy="85" r="32" class="sloth-body"/>
+    <ellipse cx="100" cy="88" rx="24" ry="20" class="sloth-face"/>
+
+    <!-- Focused eyes -->
+    <ellipse cx="92" cy="84" rx="5" ry="7" class="sloth-eye"/>
+    <ellipse cx="108" cy="84" rx="5" ry="7" class="sloth-eye"/>
+
+    <!-- Concentrated mouth -->
+    <path d="M 95 95 L 105 95" fill="none" stroke="#2D2D2D" stroke-width="2"/>
+
+    <!-- Arms typing -->
+    <g class="typing">
+      <ellipse cx="70" cy="130" rx="8" ry="20" class="sloth-arm"/>
+      <ellipse cx="130" cy="130" rx="8" ry="20" class="sloth-arm"/>
+    </g>
+
+    <!-- Laptop -->
+    <rect x="60" y="140" width="80" height="45" rx="3" fill="#334155"/>
+    <rect x="65" y="145" width="70" height="35" rx="2" fill="#1E293B"/>
+
+    <!-- Code on screen -->
+    <line x1="70" y1="150" x2="100" y2="150" stroke="#10B981" stroke-width="2"/>
+    <line x1="70" y1="155" x2="110" y2="155" stroke="#3B82F6" stroke-width="2"/>
+    <line x1="70" y1="160" x2="90" y2="160" stroke="#F59E0B" stroke-width="2"/>
+    <line x1="70" y1="165" x2="120" y2="165" stroke="#EC4899" stroke-width="2"/>
+    <rect x="70" y="170" width="2" height="8" fill="#4F46E5" class="code-cursor"/>
+  </symbol>
+
+  <!-- Sloth Success/Celebration -->
+  <symbol id="sloth-success" viewBox="0 0 200 200">
+    <style>
+      @keyframes sloth-celebrate {
+        0%, 100% { transform: rotate(0deg) scale(1); }
+        25% { transform: rotate(-5deg) scale(1.05); }
+        75% { transform: rotate(5deg) scale(1.05); }
+      }
+
+      @keyframes star-twinkle {
+        0%, 100% { opacity: 0; transform: scale(0); }
+        50% { opacity: 1; transform: scale(1); }
+      }
+
+      .celebrate { animation: sloth-celebrate 0.8s ease-in-out infinite; transform-origin: center; }
+      .star { animation: star-twinkle 1s ease-in-out infinite; }
+      .star-1 { animation-delay: 0s; }
+      .star-2 { animation-delay: 0.3s; }
+      .star-3 { animation-delay: 0.6s; }
+    </style>
+
+    <g class="celebrate">
+      <!-- Happy sloth -->
+      <ellipse cx="100" cy="120" rx="45" ry="50" class="sloth-body"/>
+      <circle cx="100" cy="80" r="35" class="sloth-body"/>
+      <ellipse cx="100" cy="85" rx="26" ry="22" class="sloth-face"/>
+
+      <!-- Happy eyes -->
+      <path d="M 85 78 Q 90 75 95 78" fill="none" stroke="#2D2D2D" stroke-width="2.5"/>
+      <path d="M 105 78 Q 110 75 115 78" fill="none" stroke="#2D2D2D" stroke-width="2.5"/>
+
+      <!-- Big smile -->
+      <path d="M 88 92 Q 100 100 112 92" fill="none" stroke="#2D2D2D" stroke-width="2.5"/>
+
+      <!-- Arms up -->
+      <ellipse cx="65" cy="90" rx="10" ry="30" class="sloth-arm" transform="rotate(-45 65 90)"/>
+      <ellipse cx="135" cy="90" rx="10" ry="30" class="sloth-arm" transform="rotate(45 135 90)"/>
+    </g>
+
+    <!-- Sparkles -->
+    <g class="star star-1">
+      <path d="M 40 60 L 43 67 L 50 70 L 43 73 L 40 80 L 37 73 L 30 70 L 37 67 Z" fill="#F59E0B"/>
+    </g>
+    <g class="star star-2">
+      <path d="M 160 60 L 163 67 L 170 70 L 163 73 L 160 80 L 157 73 L 150 70 L 157 67 Z" fill="#10B981"/>
+    </g>
+    <g class="star star-3">
+      <path d="M 100 30 L 103 37 L 110 40 L 103 43 L 100 50 L 97 43 L 90 40 L 97 37 Z" fill="#4F46E5"/>
+    </g>
+  </symbol>
+
+  <!-- Sloth Error/Confused -->
+  <symbol id="sloth-error" viewBox="0 0 200 200">
+    <style>
+      @keyframes sloth-confused {
+        0%, 100% { transform: rotate(0deg); }
+        25% { transform: rotate(-3deg); }
+        75% { transform: rotate(3deg); }
+      }
+
+      .confused { animation: sloth-confused 0.5s ease-in-out infinite; transform-origin: center; }
+    </style>
+
+    <g class="confused">
+      <!-- Confused sloth -->
+      <ellipse cx="100" cy="120" rx="45" ry="50" class="sloth-body"/>
+      <circle cx="100" cy="80" r="35" class="sloth-body"/>
+      <ellipse cx="100" cy="85" rx="26" ry="22" class="sloth-face"/>
+
+      <!-- Confused eyes -->
+      <circle cx="90" cy="78" r="6" class="sloth-eye"/>
+      <circle cx="110" cy="78" r="6" class="sloth-eye"/>
+      <circle cx="90" cy="78" r="2" fill="#FFFFFF"/>
+      <circle cx="110" cy="78" r="2" fill="#FFFFFF"/>
+
+      <!-- Question mark mouth -->
+      <path d="M 95 92 Q 100 90 105 92 Q 105 96 100 98 L 100 102" fill="none" stroke="#2D2D2D" stroke-width="2"/>
+      <circle cx="100" cy="106" r="1.5" fill="#2D2D2D"/>
+
+      <!-- Scratching head arm -->
+      <ellipse cx="130" cy="70" rx="10" ry="25" class="sloth-arm" transform="rotate(30 130 70)"/>
+    </g>
+
+    <!-- Question mark -->
+    <text x="145" y="70" font-family="Arial" font-size="40" fill="#EF4444" font-weight="bold">?</text>
+  </symbol>
+
+  <!-- Sloth Loading -->
+  <symbol id="sloth-loading" viewBox="0 0 200 200">
+    <style>
+      @keyframes sloth-swing {
+        0%, 100% { transform: rotate(-10deg); }
+        50% { transform: rotate(10deg); }
+      }
+
+      @keyframes dot-bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+      }
+
+      .swinging { animation: sloth-swing 2s ease-in-out infinite; transform-origin: center top; }
+      .dot { animation: dot-bounce 1s ease-in-out infinite; }
+      .dot-1 { animation-delay: 0s; }
+      .dot-2 { animation-delay: 0.2s; }
+      .dot-3 { animation-delay: 0.4s; }
+    </style>
+
+    <!-- Branch -->
+    <rect x="60" y="10" width="80" height="6" rx="3" fill="#6B4423"/>
+
+    <g class="swinging">
+      <!-- Hanging sloth -->
+      <ellipse cx="100" cy="90" rx="40" ry="45" class="sloth-body"/>
+      <circle cx="100" cy="65" r="30" class="sloth-body"/>
+      <ellipse cx="100" cy="68" rx="22" ry="18" class="sloth-face"/>
+
+      <!-- Patient eyes -->
+      <ellipse cx="92" cy="65" rx="5" ry="7" class="sloth-eye"/>
+      <ellipse cx="108" cy="65" rx="5" ry="7" class="sloth-eye"/>
+
+      <!-- Calm smile -->
+      <path d="M 92 75 Q 100 77 108 75" fill="none" stroke="#2D2D2D" stroke-width="1.5"/>
+
+      <!-- Hanging arms -->
+      <ellipse cx="80" cy="25" rx="8" ry="35" class="sloth-arm"/>
+      <ellipse cx="120" cy="25" rx="8" ry="35" class="sloth-arm"/>
+    </g>
+
+    <!-- Loading dots -->
+    <circle cx="85" cy="150" r="5" fill="#4F46E5" class="dot dot-1"/>
+    <circle cx="100" cy="150" r="5" fill="#4F46E5" class="dot dot-2"/>
+    <circle cx="115" cy="150" r="5" fill="#4F46E5" class="dot dot-3"/>
+  </symbol>
+</svg>

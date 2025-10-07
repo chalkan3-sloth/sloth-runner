@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands"
@@ -56,8 +57,6 @@ func openAgentShell(agentName, masterAddr string) error {
 
 	agentInfo := agentResp.AgentInfo
 
-	pterm.Info.Printf("🔗 Connecting to agent %s at %s...\n", agentName, agentInfo.AgentAddress)
-
 	// Connect to agent directly
 	conn, err := grpc.Dial(agentInfo.AgentAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
@@ -67,18 +66,19 @@ func openAgentShell(agentName, masterAddr string) error {
 
 	agentClient := pb.NewAgentClient(conn)
 
+	// Check if we have a TTY
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		return fmt.Errorf("interactive shell requires a TTY - please run from a real terminal, not via pipes or automation")
+	}
+
 	// Start interactive shell stream
 	stream, err := agentClient.InteractiveShell(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to open shell: %w", err)
 	}
 
-	// Check if we have a TTY
-	if !term.IsTerminal(int(os.Stdin.Fd())) {
-		return fmt.Errorf("interactive shell requires a TTY - please run from a real terminal, not via pipes or automation")
-	}
-
-	pterm.Success.Printf("✅ Connected! Type 'exit' to quit\n\n")
+	// Display welcome banner
+	printShellBanner(agentName, agentInfo.AgentAddress)
 
 	// Save current terminal state
 	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
@@ -104,6 +104,13 @@ func openAgentShell(agentName, masterAddr string) error {
 				return
 			}
 			if err != nil {
+				// Check if it's a normal shell exit (PTY closed)
+				if strings.Contains(err.Error(), "PTY read error") ||
+				   strings.Contains(err.Error(), "input/output error") {
+					// Normal shell exit, not an error
+					close(done)
+					return
+				}
 				errChan <- fmt.Errorf("stream receive error: %w", err)
 				return
 			}
@@ -163,6 +170,24 @@ func openAgentShell(agentName, masterAddr string) error {
 	}
 
 	term.Restore(int(os.Stdin.Fd()), oldState)
-	pterm.Info.Println("\n👋 Shell session closed")
+	printShellGoodbye()
 	return nil
+}
+
+// printShellBanner displays a welcome banner when connecting to the shell
+func printShellBanner(agentName, address string) {
+	banner := pterm.DefaultBox.WithTitle("Sloth Runner Interactive Shell").WithTitleTopCenter().Sprint(
+		fmt.Sprintf("Connected to: %s\nAddress: %s\n\nCommands:\n  • Type commands normally\n  • Press Ctrl+D or type 'exit' to quit\n  • Press Ctrl+C to interrupt current command",
+			pterm.FgGreen.Sprint(agentName),
+			pterm.FgCyan.Sprint(address),
+		),
+	)
+	fmt.Println(banner)
+	fmt.Println()
+}
+
+// printShellGoodbye displays a goodbye message when exiting the shell
+func printShellGoodbye() {
+	fmt.Println()
+	pterm.Success.Println("Shell session closed. Goodbye!")
 }
