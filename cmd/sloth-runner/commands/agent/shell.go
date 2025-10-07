@@ -73,6 +73,11 @@ func openAgentShell(agentName, masterAddr string) error {
 		return fmt.Errorf("failed to open shell: %w", err)
 	}
 
+	// Check if we have a TTY
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		return fmt.Errorf("interactive shell requires a TTY - please run from a real terminal, not via pipes or automation")
+	}
+
 	pterm.Success.Printf("✅ Connected! Type 'exit' to quit\n\n")
 
 	// Save current terminal state
