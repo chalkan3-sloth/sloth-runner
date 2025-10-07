@@ -239,7 +239,7 @@ function renderAgentCard(agent) {
 
 function updateOverviewStats() {
     const total = agents.length;
-    const online = agents.filter(a => a.status === 'connected').length;
+    const online = agents.filter(a => a.status === 'Active' || a.status === 'connected').length;
     const avgCpu = agents.reduce((sum, a) => sum + (a.cpu_percent || 0), 0) / (agents.length || 1);
     const avgMem = agents.reduce((sum, a) => sum + (a.memory_percent || 0), 0) / (agents.length || 1);
 
@@ -343,15 +343,15 @@ async function loadAgentOverview(agentName) {
                     <table class="table table-sm">
                         <tr>
                             <td>1 min:</td>
-                            <td><strong>${data.load_avg_1min?.toFixed(2)}</strong></td>
+                            <td><strong>${(data.load_avg_1min || 0).toFixed(2)}</strong></td>
                         </tr>
                         <tr>
                             <td>5 min:</td>
-                            <td><strong>${data.load_avg_5min?.toFixed(2)}</strong></td>
+                            <td><strong>${(data.load_avg_5min || 0).toFixed(2)}</strong></td>
                         </tr>
                         <tr>
                             <td>15 min:</td>
-                            <td><strong>${data.load_avg_15min?.toFixed(2)}</strong></td>
+                            <td><strong>${(data.load_avg_15min || 0).toFixed(2)}</strong></td>
                         </tr>
                     </table>
                 </div>
@@ -549,14 +549,14 @@ async function loadAgentOverview(agentName) {
 
 async function loadMetricsHistory(agentName) {
     try {
-        const response = await fetch(`/api/v1/agents/${agentName}/metrics/history?limit=50`);
+        const response = await fetch(`/api/v1/agents/${agentName}/metrics/history?duration=5m&maxPoints=50`);
         if (!response.ok) {
             console.warn('Could not load metrics history, using mock data');
             return generateMockHistory({ cpu_percent: 0, memory_percent: 0, disk_percent: 0 });
         }
 
         const data = await response.json();
-        const history = data.history || [];
+        const history = data.datapoints || [];
 
         // If no history data, generate mock data
         if (history.length === 0) {
@@ -915,19 +915,19 @@ async function loadAgentNetwork(agentName) {
                                         <table class="table table-sm">
                                             <tr>
                                                 <td>IP Address:</td>
-                                                <td><strong>${iface.addrs?.join(', ') || 'N/A'}</strong></td>
+                                                <td><strong>${iface.ip_addresses?.join(', ') || 'N/A'}</strong></td>
                                             </tr>
                                             <tr>
                                                 <td>MAC Address:</td>
-                                                <td><code>${iface.hardware_addr || 'N/A'}</code></td>
+                                                <td><code>${iface.mac_address || 'N/A'}</code></td>
                                             </tr>
                                             <tr>
                                                 <td>MTU:</td>
-                                                <td>${iface.mtu || 'N/A'}</td>
+                                                <td>N/A</td>
                                             </tr>
                                             <tr>
                                                 <td>Status:</td>
-                                                <td><span class="badge bg-${iface.flags?.includes('up') ? 'success' : 'secondary'}">${iface.flags?.join(', ') || 'N/A'}</span></td>
+                                                <td><span class="badge bg-${iface.is_up ? 'success' : 'secondary'}">${iface.is_up ? 'UP' : 'DOWN'}</span></td>
                                             </tr>
                                         </table>
                                     </div>
@@ -981,7 +981,7 @@ async function loadAgentDisk(agentName) {
         content.innerHTML = `
             <div class="row">
                 ${data.partitions.map(partition => {
-                    const usedPercent = partition.usage?.percent || 0;
+                    const usedPercent = partition.percent || 0;
                     const usedClass = usedPercent > 80 ? 'danger' : usedPercent > 60 ? 'warning' : 'success';
 
                     return `
@@ -1000,15 +1000,15 @@ async function loadAgentDisk(agentName) {
                                         </tr>
                                         <tr>
                                             <td>Total:</td>
-                                            <td><strong>${formatBytes(partition.usage?.total)}</strong></td>
+                                            <td><strong>${formatBytes(partition.total_bytes)}</strong></td>
                                         </tr>
                                         <tr>
                                             <td>Used:</td>
-                                            <td><strong>${formatBytes(partition.usage?.used)}</strong></td>
+                                            <td><strong>${formatBytes(partition.used_bytes)}</strong></td>
                                         </tr>
                                         <tr>
                                             <td>Free:</td>
-                                            <td><strong>${formatBytes(partition.usage?.free)}</strong></td>
+                                            <td><strong>${formatBytes(partition.free_bytes)}</strong></td>
                                         </tr>
                                     </table>
                                     <div class="progress" style="height: 25px;">
@@ -1096,4 +1096,113 @@ function escapeHtml(text) {
         "'": '&#039;'
     };
     return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// Add performance tab listener
+document.getElementById('performance-tab-btn')?.addEventListener('click', () => {
+    loadPerformanceHistory(currentAgentName);
+});
+
+// Load performance history from database
+let performanceChart = null;
+async function loadPerformanceHistory(agentName) {
+    try {
+        const response = await fetch(`/api/v1/agents/${agentName}/metrics/history?duration=1h&maxPoints=60`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Prepare labels (timestamps)
+        const labels = data.datapoints.map(dp => {
+            const date = new Date(dp.timestamp * 1000);
+            return date.toLocaleTimeString();
+        });
+
+        // Prepare datasets
+        const cpuData = data.datapoints.map(dp => dp.cpu_percent);
+        const memoryData = data.datapoints.map(dp => dp.memory_percent);
+        const diskData = data.datapoints.map(dp => dp.disk_percent);
+
+        // Destroy previous chart if exists
+        if (performanceChart) {
+            performanceChart.destroy();
+        }
+
+        // Create new chart
+        const ctx = document.getElementById('performance-chart');
+        if (!ctx) {
+            console.error('Canvas element not found');
+            return;
+        }
+
+        performanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'CPU %',
+                        data: cpuData,
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Memory %',
+                        data: memoryData,
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Disk %',
+                        data: diskData,
+                        borderColor: 'rgb(255, 205, 86)',
+                        backgroundColor: 'rgba(255, 205, 86, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                    },
+                    title: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error loading performance history:', error);
+        const ctx = document.getElementById('performance-chart');
+        if (ctx) {
+            const parent = ctx.parentElement;
+            parent.innerHTML = `<div class="alert alert-danger">Failed to load performance history: ${error.message}</div>`;
+        }
+    }
 }

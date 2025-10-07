@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"io/fs"
 	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/chalkan3-sloth/sloth-runner/internal/config"
+	"github.com/chalkan3-sloth/sloth-runner/internal/metrics"
 	"github.com/chalkan3-sloth/sloth-runner/internal/webui/handlers"
 	"github.com/chalkan3-sloth/sloth-runner/internal/webui/middleware"
 	"github.com/chalkan3-sloth/sloth-runner/internal/webui/services"
@@ -20,17 +23,19 @@ var embeddedFS embed.FS
 
 // Server represents the web UI server
 type Server struct {
-	router      *gin.Engine
-	port        int
-	wsHub       *handlers.WebSocketHub
-	agentDB     *handlers.AgentDBWrapper
-	slothRepo   *handlers.SlothRepoWrapper
-	hookRepo    *handlers.HookRepoWrapper
-	secretsSvc  *handlers.SecretsServiceWrapper
-	sshDB       *handlers.SSHDBWrapper
-	stackHandler *handlers.StackHandler
-	httpServer  *http.Server
-	agentClient *services.AgentClient
+	router           *gin.Engine
+	port             int
+	wsHub            *handlers.WebSocketHub
+	agentDB          *handlers.AgentDBWrapper
+	slothRepo        *handlers.SlothRepoWrapper
+	hookRepo         *handlers.HookRepoWrapper
+	secretsSvc       *handlers.SecretsServiceWrapper
+	sshDB            *handlers.SSHDBWrapper
+	stackHandler     *handlers.StackHandler
+	httpServer       *http.Server
+	agentClient      *services.AgentClient
+	metricsDB        *metrics.MetricsDB
+	metricsCollector *metrics.Collector
 }
 
 // Config holds server configuration
@@ -43,6 +48,7 @@ type Config struct {
 	SecretsDBPath  string
 	SSHDBPath      string
 	StackDBPath    string
+	MetricsDBPath  string
 	EnableAuth     bool
 	Username       string
 	Password       string
@@ -94,6 +100,21 @@ func NewServer(cfg *Config) (*Server, error) {
 	// Initialize agent client for gRPC communication
 	agentClient := services.NewAgentClient()
 
+	// NOTE: Metrics database and collector are now initialized in the master server
+	// The UI simply reads from the existing metrics database
+	metricsDBPath := cfg.MetricsDBPath
+	if metricsDBPath == "" {
+		metricsDBPath = config.GetMetricsDBPath()
+	}
+
+	slog.Info("Connecting to metrics database", "path", metricsDBPath)
+	metricsDB, err := metrics.NewMetricsDB(metricsDBPath)
+	if err != nil {
+		slog.Warn("Failed to connect to metrics database", "error", err)
+		slog.Info("Metrics features will be unavailable. Make sure the master server is running.")
+		metricsDB = nil
+	}
+
 	server := &Server{
 		router:       router,
 		port:         cfg.Port,
@@ -105,6 +126,7 @@ func NewServer(cfg *Config) (*Server, error) {
 		sshDB:        sshDB,
 		stackHandler: stackHandler,
 		agentClient:  agentClient,
+		metricsDB:    metricsDB,
 	}
 
 	// Setup routes
@@ -154,12 +176,24 @@ func (s *Server) setupRoutes(cfg *Config) {
 			agents.GET("/:name/processes", agentHandler.GetProcessList)
 			agents.GET("/:name/network", agentHandler.GetNetworkInfo)
 			agents.GET("/:name/disk", agentHandler.GetDiskInfo)
-			agents.GET("/:name/metrics/history", agentHandler.GetMetricsHistory)
 			agents.POST("/:name/command", agentHandler.ExecuteCommand)
 			agents.POST("/:name/restart", agentHandler.RestartAgent)
 			agents.POST("/:name/shutdown", agentHandler.ShutdownAgent)
 			agents.GET("/:name/logs/stream", agentHandler.StreamLogs)
 			agents.GET("/:name/metrics/stream", agentHandler.StreamMetrics)
+
+			// Enhanced Troubleshooting & Diagnostics
+			diagnosticsHandler := handlers.NewAgentDiagnosticsHandler(s.agentDB, s.agentClient)
+			agents.GET("/:name/metrics/detailed", diagnosticsHandler.GetDetailedMetrics)
+			agents.GET("/:name/logs", diagnosticsHandler.GetRecentLogs)
+			agents.GET("/:name/connections", diagnosticsHandler.GetActiveConnections)
+			agents.GET("/:name/errors", diagnosticsHandler.GetSystemErrors)
+			agents.GET("/:name/performance/history", diagnosticsHandler.GetPerformanceHistory)
+			agents.GET("/:name/health/diagnose", diagnosticsHandler.DiagnoseHealth)
+
+			// Persistent Metrics History (new metrics database)
+			metricsHistoryHandler := handlers.NewMetricsHistoryHandler(s.metricsDB)
+			agents.GET("/:name/metrics/history", metricsHistoryHandler.GetAgentMetricsHistory)
 
 			// Bulk operations
 			agents.POST("/bulk/execute", agentHandler.BulkExecute)
@@ -266,6 +300,11 @@ func (s *Server) setupRoutes(cfg *Config) {
 		api.GET("/metrics", metricsHandler.GetMetrics)
 		api.GET("/metrics/history", metricsHandler.GetHistoricalMetrics)
 
+		// Metrics History (new persistent metrics)
+		metricsHistoryHandler := handlers.NewMetricsHistoryHandler(s.metricsDB)
+		api.GET("/metrics/all", metricsHistoryHandler.GetAllAgentsMetrics)
+		api.GET("/metrics/stats", metricsHistoryHandler.GetMetricsStats)
+
 		// Logs
 		logsHandler := handlers.NewLogsHandler(s.wsHub)
 		logs := api.Group("/logs")
@@ -342,6 +381,29 @@ func (s *Server) setupRoutes(cfg *Config) {
 	})
 }
 
+// getAgentList returns a list of all agents for metrics collection
+func (s *Server) getAgentList() []metrics.AgentInfo {
+	ctx := context.Background()
+	agents, err := s.agentDB.ListAgents(ctx)
+	if err != nil {
+		slog.Error("Failed to get agent list for metrics collection", "error", err)
+		return nil
+	}
+
+	slog.Info("Retrieved agents for metrics collection", "count", len(agents))
+
+	agentInfos := make([]metrics.AgentInfo, 0, len(agents))
+	for _, agent := range agents {
+		agentInfos = append(agentInfos, metrics.AgentInfo{
+			Name:    agent.Name,
+			Address: agent.Address,
+		})
+		slog.Info("Adding agent to metrics collection", "name", agent.Name, "address", agent.Address)
+	}
+
+	return agentInfos
+}
+
 // servePage returns a handler that serves an HTML page
 func (s *Server) servePage(filename string) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -374,6 +436,11 @@ func (s *Server) Start() error {
 func (s *Server) Shutdown(ctx context.Context) error {
 	log.Println("Shutting down web UI server...")
 
+	// Stop metrics collector
+	if s.metricsCollector != nil {
+		s.metricsCollector.Stop()
+	}
+
 	// Close WebSocket hub
 	s.wsHub.Shutdown()
 
@@ -397,6 +464,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	}
 	if s.sshDB != nil {
 		s.sshDB.Close()
+	}
+	if s.metricsDB != nil {
+		s.metricsDB.Close()
 	}
 
 	// Shutdown HTTP server

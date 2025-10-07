@@ -12,15 +12,24 @@ function getAgentFromURL() {
 
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('[Dashboard] DOM loaded, initializing...');
     agentName = getAgentFromURL();
+    console.log('[Dashboard] Agent name from URL:', agentName);
 
     if (!agentName) {
-        document.body.innerHTML = '<div class="container mt-5"><div class="alert alert-danger">No agent specified</div></div>';
+        console.error('[Dashboard] No agent name provided in URL');
+        document.body.innerHTML = '<div class="container mt-5"><div class="alert alert-danger">No agent specified. Use ?agent=AGENT_NAME</div></div>';
         return;
     }
 
     // Set agent name in header
-    document.getElementById('agent-name').textContent = agentName;
+    const agentNameEl = document.getElementById('agent-name');
+    if (agentNameEl) {
+        agentNameEl.textContent = agentName;
+        console.log('[Dashboard] Set agent name in header');
+    } else {
+        console.error('[Dashboard] Element #agent-name not found');
+    }
 
     // Load initial data
     await loadAgentData();
@@ -31,21 +40,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadAgentData();
     }, 5000);
 
-    // Setup tab switching
-    document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
-        tab.addEventListener('shown.bs.tab', function (e) {
-            const target = e.target.getAttribute('href');
-            if (target === '#processes') {
-                loadProcesses();
-            } else if (target === '#network') {
-                loadNetwork();
-            } else if (target === '#disk') {
-                loadDisk();
-            } else if (target === '#system') {
-                loadSystemInfo();
-            }
-        });
-    });
+    // Setup tab switching with direct click handling
+    setupTabSwitching();
 
     // Load processes tab initially
     await loadProcesses();
@@ -53,15 +49,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Load agent data
 async function loadAgentData() {
+    console.log('[Dashboard] loadAgentData() called for agent:', agentName);
     try {
-        const response = await fetch(`/api/v1/agents/${agentName}`);
-        const data = await response.json();
+        // Fetch both agent info and stats
+        console.log('[Dashboard] Fetching agent data...');
+        const [agentResponse, statsResponse] = await Promise.all([
+            fetch(`/api/v1/agents/${agentName}`),
+            fetch(`/api/v1/agents/${agentName}/stats`)
+        ]);
+
+        console.log('[Dashboard] Agent response status:', agentResponse.status);
+        console.log('[Dashboard] Stats response status:', statsResponse.status);
+
+        const agentData = await agentResponse.json();
+        const statsData = await statsResponse.json();
+
+        console.log('[Dashboard] Agent data:', agentData);
+        console.log('[Dashboard] Stats data:', statsData);
 
         // Update status
         const statusBadge = document.getElementById('agent-status');
         const addressSpan = document.getElementById('agent-address');
 
-        if (data.status === 'active' || data.last_heartbeat) {
+        if (agentData.status === 'active' || agentData.last_heartbeat) {
             statusBadge.className = 'badge bg-success';
             statusBadge.textContent = 'Active';
         } else {
@@ -69,17 +79,32 @@ async function loadAgentData() {
             statusBadge.textContent = 'Inactive';
         }
 
-        addressSpan.textContent = data.address || '';
+        addressSpan.textContent = agentData.address || '';
 
-        // Parse system_info if available
-        let systemInfo = {};
-        if (data.system_info) {
-            try {
-                systemInfo = JSON.parse(data.system_info);
-            } catch (e) {
-                console.error('Failed to parse system_info:', e);
+        // Build systemInfo object from stats data
+        const systemInfo = {
+            cpu: {
+                usage_percent: statsData.cpu_percent || 0
+            },
+            memory: {
+                used_percent: statsData.memory_percent || 0
+            },
+            disk: {
+                partitions: [{
+                    percent: statsData.disk_percent || 0
+                }]
+            },
+            load_average: {
+                '1min': statsData.load_avg?.[0] || 0,
+                '5min': statsData.load_avg?.[1] || 0,
+                '15min': statsData.load_avg?.[2] || 0
             }
-        }
+        };
+
+        // Hide all spinners first
+        document.querySelectorAll('.spinner-border').forEach(spinner => {
+            spinner.style.display = 'none';
+        });
 
         // Update metric cards
         updateMetricCard('cpu', systemInfo.cpu);
@@ -90,6 +115,10 @@ async function loadAgentData() {
         // Update distribution chart
         updateDistributionChart(systemInfo);
 
+        // Populate Overview tab details
+        populateCPUDetails(statsData);
+        populateMemoryDetails(statsData);
+
     } catch (error) {
         console.error('Failed to load agent data:', error);
     }
@@ -97,29 +126,43 @@ async function loadAgentData() {
 
 // Update metric card
 function updateMetricCard(type, data) {
-    if (!data) return;
+    console.log(`[Dashboard] updateMetricCard called for ${type}`, data);
+    if (!data) {
+        console.warn(`[Dashboard] No data for ${type}`);
+        return;
+    }
 
     const valueEl = document.getElementById(`${type}-value`);
     const progressEl = document.getElementById(`${type}-progress`);
+
+    console.log(`[Dashboard] Elements for ${type}:`, {valueEl, progressEl});
+
+    if (!valueEl) {
+        console.error(`[Dashboard] Element #${type}-value not found`);
+        return;
+    }
 
     switch (type) {
         case 'cpu':
             const cpuPercent = data.usage_percent || 0;
             valueEl.textContent = cpuPercent.toFixed(1) + '%';
-            progressEl.style.width = cpuPercent + '%';
+            if (progressEl) progressEl.style.width = cpuPercent + '%';
+            console.log(`[Dashboard] Updated CPU: ${cpuPercent.toFixed(1)}%`);
             break;
 
         case 'memory':
             const memPercent = data.used_percent || 0;
             valueEl.textContent = memPercent.toFixed(1) + '%';
-            progressEl.style.width = memPercent + '%';
+            if (progressEl) progressEl.style.width = memPercent + '%';
+            console.log(`[Dashboard] Updated Memory: ${memPercent.toFixed(1)}%`);
             break;
 
         case 'disk':
             if (data.partitions && data.partitions.length > 0) {
                 const avgPercent = data.partitions.reduce((sum, p) => sum + (p.percent || 0), 0) / data.partitions.length;
                 valueEl.textContent = avgPercent.toFixed(1) + '%';
-                progressEl.style.width = avgPercent + '%';
+                if (progressEl) progressEl.style.width = avgPercent + '%';
+                console.log(`[Dashboard] Updated Disk: ${avgPercent.toFixed(1)}%`);
             }
             break;
 
@@ -130,17 +173,123 @@ function updateMetricCard(type, data) {
             if (loadDetails) {
                 loadDetails.textContent = `${(data['1min'] || 0).toFixed(2)} / ${(data['5min'] || 0).toFixed(2)} / ${(data['15min'] || 0).toFixed(2)}`;
             }
+            console.log(`[Dashboard] Updated Load: ${load1.toFixed(2)}`);
             break;
     }
+
+    // Check computed styles for visibility debugging
+    const computedStyle = window.getComputedStyle(valueEl);
+    console.log(`[Dashboard] Computed style for ${type}-value:`, {
+        display: computedStyle.display,
+        visibility: computedStyle.visibility,
+        opacity: computedStyle.opacity,
+        color: computedStyle.color,
+        fontSize: computedStyle.fontSize,
+        position: computedStyle.position,
+        zIndex: computedStyle.zIndex,
+        offsetParent: valueEl.offsetParent !== null ? 'visible' : 'HIDDEN',
+        textContent: valueEl.textContent,
+        innerHTML: valueEl.innerHTML
+    });
+}
+
+// Setup tab switching with direct handling
+function setupTabSwitching() {
+    console.log('[Tabs] Setting up tab switching...');
+
+    // Get all tab links
+    const tabLinks = document.querySelectorAll('a[data-bs-toggle="tab"]');
+    console.log('[Tabs] Found', tabLinks.length, 'tab links');
+
+    // Store active tab
+    let activeTab = '#overview';
+
+    // Function to load tab content
+    function loadTabContent(tabId) {
+        console.log('[Tabs] Loading content for tab:', tabId);
+
+        switch(tabId) {
+            case '#processes':
+                loadProcesses();
+                break;
+            case '#network':
+                loadNetwork();
+                break;
+            case '#disk':
+                loadDisk();
+                break;
+            case '#system':
+                loadSystemInfo();
+                break;
+            case '#connections':
+                loadConnections();
+                break;
+            case '#logs':
+                loadLogs();
+                break;
+            case '#errors':
+                loadErrors();
+                break;
+            case '#health':
+                loadHealthDiagnostics();
+                break;
+            case '#performance':
+                console.log('[Tabs] Loading performance history...');
+                loadPerformanceHistory();
+                break;
+            case '#metrics':
+                loadDetailedMetrics();
+                break;
+            case '#overview':
+                console.log('[Tabs] Overview tab selected');
+                break;
+            default:
+                console.log('[Tabs] Unknown tab:', tabId);
+        }
+    }
+
+    // Attach click handlers to each tab
+    tabLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            // Get the target tab ID
+            const targetTab = this.getAttribute('href');
+            console.log('[Tabs] Tab clicked:', targetTab);
+
+            // Only load content if switching to a different tab
+            if (targetTab !== activeTab) {
+                activeTab = targetTab;
+
+                // Wait a moment for Bootstrap to complete the tab switch
+                setTimeout(() => {
+                    loadTabContent(targetTab);
+                }, 150);
+            }
+        });
+    });
+
+    // Also listen for Bootstrap tab shown event as backup
+    const tabElements = document.querySelectorAll('button[data-bs-toggle="tab"], a[data-bs-toggle="tab"]');
+    tabElements.forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function(event) {
+            const targetTab = event.target.getAttribute('href') || event.target.getAttribute('data-bs-target');
+            console.log('[Tabs] Bootstrap tab shown event:', targetTab);
+            if (targetTab && targetTab !== activeTab) {
+                activeTab = targetTab;
+                loadTabContent(targetTab);
+            }
+        });
+    });
+
+    console.log('[Tabs] Tab switching setup complete');
 }
 
 // Load historical metrics
 async function loadHistoricalMetrics() {
     try {
-        const response = await fetch(`/api/v1/agents/${agentName}/metrics/history?limit=50`);
+        const response = await fetch(`/api/v1/agents/${agentName}/metrics/history?duration=1h&maxPoints=50`);
         const data = await response.json();
 
-        const history = data.history || [];
+        const history = data.datapoints || [];
         history.sort((a, b) => a.timestamp - b.timestamp);
 
         const labels = history.map(h => {
@@ -258,6 +407,7 @@ function updateDistributionChart(systemInfo) {
 }
 
 // Load processes
+let allProcesses = [];
 async function loadProcesses() {
     const container = document.getElementById('processes-content');
     container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
@@ -267,37 +417,76 @@ async function loadProcesses() {
         const data = await response.json();
 
         if (data.processes && data.processes.length > 0) {
-            const table = `
-                <table class="table table-sm table-hover">
-                    <thead>
-                        <tr>
-                            <th>PID</th>
-                            <th>Name</th>
-                            <th>CPU %</th>
-                            <th>Memory %</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.processes.slice(0, 20).map(p => `
-                            <tr>
-                                <td>${p.pid}</td>
-                                <td>${p.name || '-'}</td>
-                                <td>${(p.cpu_percent || 0).toFixed(1)}%</td>
-                                <td>${(p.memory_percent || 0).toFixed(1)}%</td>
-                                <td><span class="badge bg-success">${p.status || 'running'}</span></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+            allProcesses = data.processes; // Store all processes for filtering
+
+            // Add filter input and table
+            const html = `
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="process-filter" placeholder="Filter processes by name or PID...">
+                </div>
+                <div id="process-table-container"></div>
             `;
-            container.innerHTML = table;
+            container.innerHTML = html;
+
+            // Render initial table
+            renderProcessTable(allProcesses.slice(0, 20));
+
+            // Setup filter
+            const filterInput = document.getElementById('process-filter');
+            if (filterInput) {
+                filterInput.addEventListener('input', function(e) {
+                    const filterValue = e.target.value.toLowerCase();
+                    const filtered = allProcesses.filter(p => {
+                        const name = (p.name || '').toLowerCase();
+                        const pid = String(p.pid);
+                        return name.includes(filterValue) || pid.includes(filterValue);
+                    });
+                    renderProcessTable(filtered.slice(0, 20));
+                });
+            }
         } else {
             container.innerHTML = '<div class="text-muted text-center py-4">No process data available</div>';
         }
     } catch (error) {
         container.innerHTML = '<div class="alert alert-warning m-3">Failed to load processes</div>';
     }
+}
+
+// Helper function to render process table
+function renderProcessTable(processes) {
+    const container = document.getElementById('process-table-container');
+    if (!container) return;
+
+    if (processes.length === 0) {
+        container.innerHTML = '<div class="text-muted text-center py-3">No processes match your filter</div>';
+        return;
+    }
+
+    const table = `
+        <table class="table table-sm table-hover">
+            <thead>
+                <tr>
+                    <th>PID</th>
+                    <th>Name</th>
+                    <th>CPU %</th>
+                    <th>Memory %</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${processes.map(p => `
+                    <tr>
+                        <td>${p.pid}</td>
+                        <td>${p.name || '-'}</td>
+                        <td>${(p.cpu_percent || 0).toFixed(1)}%</td>
+                        <td>${(p.memory_percent || 0).toFixed(1)}%</td>
+                        <td><span class="badge bg-success">${p.status || 'running'}</span></td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+    container.innerHTML = table;
 }
 
 // Load network info
@@ -310,24 +499,42 @@ async function loadNetwork() {
         const data = await response.json();
 
         if (data.interfaces && data.interfaces.length > 0) {
-            const cards = data.interfaces.map(iface => `
-                <div class="col-md-6 mb-3">
-                    <div class="card">
-                        <div class="card-body">
-                            <h6 class="card-title">${iface.name}</h6>
-                            <p class="mb-1"><strong>IP:</strong> ${iface.ip || '-'}</p>
-                            <p class="mb-1"><strong>MAC:</strong> ${iface.mac || '-'}</p>
-                            <p class="mb-0"><strong>Sent:</strong> ${formatBytes(iface.bytes_sent || 0)} | <strong>Received:</strong> ${formatBytes(iface.bytes_recv || 0)}</p>
+            const cards = data.interfaces.map(iface => {
+                // Format IP addresses (array)
+                const ipAddresses = iface.ip_addresses && iface.ip_addresses.length > 0
+                    ? iface.ip_addresses.join(', ')
+                    : '-';
+
+                // Status badge
+                const statusBadge = iface.is_up
+                    ? '<span class="badge bg-success ms-2">UP</span>'
+                    : '<span class="badge bg-secondary ms-2">DOWN</span>';
+
+                return `
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">${iface.name || '-'}${statusBadge}</h6>
+                                <p class="mb-1"><strong>IP:</strong> ${ipAddresses}</p>
+                                <p class="mb-1"><strong>MAC:</strong> ${iface.mac_address || '-'}</p>
+                                <p class="mb-0"><strong>Sent:</strong> ${formatBytes(iface.bytes_sent || 0)} | <strong>Received:</strong> ${formatBytes(iface.bytes_recv || 0)}</p>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
 
-            container.innerHTML = `<div class="row">${cards}</div>`;
+            container.innerHTML = `
+                <div class="row">
+                    ${data.hostname ? `<div class="col-12 mb-3"><div class="alert alert-info"><strong>Hostname:</strong> ${data.hostname}</div></div>` : ''}
+                    ${cards}
+                </div>
+            `;
         } else {
             container.innerHTML = '<div class="text-muted text-center py-4">No network data available</div>';
         }
     } catch (error) {
+        console.error('Failed to load network info:', error);
         container.innerHTML = '<div class="alert alert-warning m-3">Failed to load network info</div>';
     }
 }
@@ -377,9 +584,18 @@ async function loadSystemInfo() {
     container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
 
     try {
-        const response = await fetch(`/api/v1/agents/${agentName}`);
-        const data = await response.json();
+        // Fetch both agent info and detailed metrics for system information
+        const [agentResponse, detailedResponse, networkResponse] = await Promise.all([
+            fetch(`/api/v1/agents/${agentName}`),
+            fetch(`/api/v1/agents/${agentName}/metrics/detailed`),
+            fetch(`/api/v1/agents/${agentName}/network`)
+        ]);
 
+        const data = await agentResponse.json();
+        const detailed = await detailedResponse.json();
+        const network = await networkResponse.json();
+
+        // Try to parse system_info if it exists (for backward compatibility)
         let systemInfo = {};
         if (data.system_info) {
             try {
@@ -406,27 +622,35 @@ async function loadSystemInfo() {
                     </tr>
                     <tr>
                         <th>Platform</th>
-                        <td>${systemInfo.platform || '-'}</td>
+                        <td>${systemInfo.platform || data.platform || '-'}</td>
                     </tr>
                     <tr>
                         <th>Architecture</th>
-                        <td>${systemInfo.arch || '-'}</td>
+                        <td>${systemInfo.arch || data.arch || '-'}</td>
                     </tr>
                     <tr>
                         <th>CPU Cores</th>
-                        <td>${systemInfo.cpu?.cores || '-'}</td>
+                        <td>${detailed.cpu?.core_count || systemInfo.cpu?.cores || data.cpu_count || '-'}</td>
+                    </tr>
+                    <tr>
+                        <th>CPU Model</th>
+                        <td>${detailed.cpu?.model_name || '-'}</td>
                     </tr>
                     <tr>
                         <th>Total Memory</th>
-                        <td>${formatBytes(systemInfo.memory?.total || 0)}</td>
+                        <td>${formatBytes(detailed.memory?.total || systemInfo.memory?.total || 0)}</td>
                     </tr>
                     <tr>
                         <th>Hostname</th>
-                        <td>${systemInfo.hostname || '-'}</td>
+                        <td>${network.hostname || systemInfo.hostname || '-'}</td>
                     </tr>
                     <tr>
                         <th>Last Heartbeat</th>
                         <td>${data.last_heartbeat || '-'}</td>
+                    </tr>
+                    <tr>
+                        <th>Status</th>
+                        <td>${data.status === 'active' || data.last_heartbeat ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>'}</td>
                     </tr>
                 </tbody>
             </table>
@@ -434,6 +658,7 @@ async function loadSystemInfo() {
 
         container.innerHTML = table;
     } catch (error) {
+        console.error('Failed to load system info:', error);
         container.innerHTML = '<div class="alert alert-warning m-3">Failed to load system info</div>';
     }
 }
@@ -447,6 +672,526 @@ function formatBytes(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+// Load connections
+async function loadConnections() {
+    const container = document.getElementById('connections-content');
+    if (!container) return;
+
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+
+    try {
+        const response = await fetch(`/api/v1/agents/${agentName}/connections`);
+        const data = await response.json();
+
+        if (data.connections && data.connections.length > 0) {
+            // Update counters
+            const totalConnections = data.connections.length;
+            const established = data.connections.filter(c => c.state === 'ESTABLISHED').length;
+            const listening = data.connections.filter(c => c.state === 'LISTEN').length;
+            const timeWait = data.connections.filter(c => c.state === 'TIME_WAIT').length;
+
+            const connTotalEl = document.getElementById('conn-total');
+            const connEstablishedEl = document.getElementById('conn-established');
+            const connListeningEl = document.getElementById('conn-listening');
+            const connTimeWaitEl = document.getElementById('conn-time-wait');
+
+            if (connTotalEl) connTotalEl.textContent = totalConnections;
+            if (connEstablishedEl) connEstablishedEl.textContent = established;
+            if (connListeningEl) connListeningEl.textContent = listening;
+            if (connTimeWaitEl) connTimeWaitEl.textContent = timeWait;
+
+            // Populate table
+            const table = `
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Local Address</th>
+                            <th>Remote Address</th>
+                            <th>State</th>
+                            <th>PID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.connections.map(conn => `
+                            <tr>
+                                <td>${conn.local_addr || '-'}:${conn.local_port || '-'}</td>
+                                <td>${conn.remote_addr || '-'}:${conn.remote_port || '-'}</td>
+                                <td><span class="badge bg-${conn.state === 'ESTABLISHED' ? 'success' : conn.state === 'LISTEN' ? 'info' : 'secondary'}">${conn.state || '-'}</span></td>
+                                <td>${conn.pid || '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            container.innerHTML = table;
+        } else {
+            container.innerHTML = '<div class="text-muted text-center py-4">No connection data available</div>';
+        }
+    } catch (error) {
+        console.error('Failed to load connections:', error);
+        container.innerHTML = '<div class="alert alert-warning m-3">Failed to load connections</div>';
+    }
+}
+
+// Load logs
+async function loadLogs() {
+    const container = document.getElementById('logs-content');
+    if (!container) return;
+
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+
+    try {
+        const maxLines = document.getElementById('log-max-lines')?.value || 100;
+        const response = await fetch(`/api/v1/agents/${agentName}/logs?max_lines=${maxLines}`);
+        const data = await response.json();
+
+        if (data.logs && data.logs.length > 0) {
+            const logEntries = data.logs.map(log => {
+                let badgeClass = 'bg-primary';
+                if (log.level === 'warning') badgeClass = 'bg-warning';
+                else if (log.level === 'error') badgeClass = 'bg-danger';
+                else if (log.level === 'debug') badgeClass = 'bg-secondary';
+
+                return `
+                    <div class="log-entry mb-2 p-2 border-bottom">
+                        <div class="d-flex align-items-center">
+                            <small class="text-muted me-2">${log.timestamp || ''}</small>
+                            <span class="badge ${badgeClass} me-2">${log.level || 'info'}</span>
+                            <small class="text-muted">${log.source || ''}</small>
+                        </div>
+                        <div class="mt-1">${log.message || ''}</div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = logEntries;
+        } else {
+            container.innerHTML = '<div class="text-muted text-center py-4">No logs available</div>';
+        }
+    } catch (error) {
+        console.error('Failed to load logs:', error);
+        container.innerHTML = '<div class="alert alert-warning m-3">Failed to load logs</div>';
+    }
+}
+
+// Load errors
+async function loadErrors() {
+    const container = document.getElementById('errors-content');
+    if (!container) return;
+
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+
+    try {
+        const includeWarnings = document.getElementById('include-warnings')?.checked !== false;
+        const response = await fetch(`/api/v1/agents/${agentName}/errors?include_warnings=${includeWarnings}`);
+        const data = await response.json();
+
+        if (data.errors && data.errors.length > 0) {
+            // Find most common error
+            const errorMessages = data.errors.filter(e => e.severity === 'error').map(e => e.message);
+            const mostCommon = errorMessages.reduce((acc, msg) => {
+                acc[msg] = (acc[msg] || 0) + 1;
+                return acc;
+            }, {});
+            const mostCommonError = Object.keys(mostCommon).length > 0
+                ? Object.keys(mostCommon).reduce((a, b) => mostCommon[a] > mostCommon[b] ? a : b)
+                : 'None';
+
+            const mostCommonEl = document.getElementById('most-common-error');
+            const errorSummaryEl = document.getElementById('error-summary');
+            if (mostCommonEl) {
+                mostCommonEl.textContent = mostCommonError;
+            }
+            if (errorSummaryEl && mostCommonError !== 'None') {
+                errorSummaryEl.style.display = 'block';
+            }
+
+            // Populate table
+            const table = `
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Severity</th>
+                            <th>Source</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.errors.map(err => `
+                            <tr>
+                                <td><small>${err.timestamp || '-'}</small></td>
+                                <td><span class="badge bg-${err.severity === 'error' ? 'danger' : 'warning'}">${err.severity || '-'}</span></td>
+                                <td><small>${err.source || '-'}</small></td>
+                                <td>${err.message || '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            container.innerHTML = table;
+        } else {
+            container.innerHTML = '<div class="text-muted text-center py-4">No errors available</div>';
+        }
+    } catch (error) {
+        console.error('Failed to load errors:', error);
+        container.innerHTML = '<div class="alert alert-warning m-3">Failed to load errors</div>';
+    }
+}
+
+// Load health diagnostics
+async function loadHealthDiagnostics() {
+    const healthScoreCard = document.getElementById('health-score');
+    const scoreValue = document.getElementById('score-value');
+    const healthStatus = document.getElementById('health-status');
+    const healthIssues = document.getElementById('health-issues');
+
+    if (!healthIssues) return;
+
+    healthIssues.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+
+    try {
+        const deepCheck = document.getElementById('deep-check')?.checked || false;
+        const response = await fetch(`/api/v1/agents/${agentName}/health/diagnose?deep_check=${deepCheck}`);
+        const data = await response.json();
+
+        // Show health score card
+        if (healthScoreCard) {
+            healthScoreCard.style.display = 'block';
+        }
+
+        // Update health score
+        if (scoreValue) {
+            scoreValue.textContent = data.health_score || 0;
+        }
+
+        // Update health status
+        const status = data.health_status || 'unknown';
+        let statusBadgeClass = 'bg-secondary';
+        if (status === 'healthy') statusBadgeClass = 'bg-success';
+        else if (status === 'degraded') statusBadgeClass = 'bg-warning';
+        else if (status === 'unhealthy') statusBadgeClass = 'bg-danger';
+
+        if (healthStatus) {
+            healthStatus.innerHTML = `<span class="badge ${statusBadgeClass}">${status}</span>`;
+        }
+
+        // Populate health issues
+        if (data.issues && data.issues.length > 0) {
+            const issueCards = data.issues.map(issue => {
+                let severityBadge = 'bg-info';
+                if (issue.severity === 'critical') severityBadge = 'bg-danger';
+                else if (issue.severity === 'warning') severityBadge = 'bg-warning';
+
+                const suggestions = issue.suggestions && issue.suggestions.length > 0
+                    ? `<ul class="mb-0 mt-2">${issue.suggestions.map(s => `<li>${s}</li>`).join('')}</ul>`
+                    : '';
+
+                return `
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <h6 class="card-title">${issue.category || 'Issue'}</h6>
+                                <span class="badge ${severityBadge}">${issue.severity || 'info'}</span>
+                            </div>
+                            <p class="mb-1">${issue.description || ''}</p>
+                            ${issue.current_value ? `<small class="text-muted">Current: ${issue.current_value}</small>` : ''}
+                            ${issue.threshold ? `<small class="text-muted"> | Threshold: ${issue.threshold}</small>` : ''}
+                            ${suggestions}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            healthIssues.innerHTML = issueCards;
+        } else {
+            healthIssues.innerHTML = '<div class="alert alert-success">No health issues detected</div>';
+        }
+    } catch (error) {
+        console.error('Failed to load health diagnostics:', error);
+        healthIssues.innerHTML = '<div class="alert alert-warning">Failed to load health diagnostics</div>';
+    }
+}
+
+// Alias for HTML onclick
+function runHealthCheck() {
+    loadHealthDiagnostics();
+}
+
+// Load performance history
+let performanceChart = null;
+
+async function loadPerformanceHistory() {
+    console.log('[Performance] loadPerformanceHistory() called for agent:', agentName);
+    const container = document.getElementById('performance-chart-container');
+    if (!container) {
+        console.error('[Performance] Container #performance-chart-container not found');
+        return;
+    }
+
+    // Show loading state
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="mt-2">Loading performance history...</p></div>';
+
+    try {
+        // Check if Chart.js is loaded
+        if (typeof Chart === 'undefined') {
+            console.error('[Performance] Chart.js library not loaded!');
+            container.innerHTML = '<div class="alert alert-danger m-3">Chart library not available</div>';
+            return;
+        }
+        console.log('[Performance] Chart.js is available:', Chart);
+
+        // Fetch 1 hour of metrics history
+        console.log('[Performance] Fetching metrics from API...');
+        const response = await fetch(`/api/v1/agents/${agentName}/metrics/history?duration=1h&maxPoints=60`);
+        const data = await response.json();
+        console.log('[Performance] Received data:', data);
+
+        if (!data.datapoints || data.datapoints.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-info m-3">
+                    <i class="bi bi-info-circle"></i> No performance history available yet.
+                    <br><small>Metrics are collected every 30 seconds. Please wait a few minutes.</small>
+                </div>
+            `;
+            return;
+        }
+
+        // Prepare chart data
+        console.log('[Performance] Preparing chart data...');
+        const labels = data.datapoints.map(dp => {
+            const date = new Date(dp.timestamp * 1000);
+            return date.toLocaleTimeString();
+        });
+
+        const cpuData = data.datapoints.map(dp => dp.cpu_percent);
+        const memoryData = data.datapoints.map(dp => dp.memory_percent);
+        const diskData = data.datapoints.map(dp => dp.disk_percent);
+        console.log('[Performance] Labels:', labels.length, 'CPU points:', cpuData.length);
+
+        // Create canvas
+        console.log('[Performance] Creating canvas element...');
+        container.innerHTML = '<canvas id="performanceChart"></canvas>';
+        const canvas = document.getElementById('performanceChart');
+        if (!canvas) {
+            console.error('[Performance] Failed to create canvas element!');
+            return;
+        }
+        const ctx = canvas.getContext('2d');
+        console.log('[Performance] Canvas context:', ctx);
+
+        // Create chart
+        console.log('[Performance] Creating Chart.js chart...');
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'CPU %',
+                        data: cpuData,
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Memory %',
+                        data: memoryData,
+                        borderColor: 'rgb(54, 162, 235)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Disk %',
+                        data: diskData,
+                        borderColor: 'rgb(255, 206, 86)',
+                        backgroundColor: 'rgba(255, 206, 86, 0.1)',
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Resource Usage (Last Hour)'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        console.log('[Performance] Chart created successfully:', chart);
+
+    } catch (error) {
+        console.error('[Performance] Error in loadPerformanceHistory:', error);
+        console.error('[Performance] Error stack:', error.stack);
+        container.innerHTML = `<div class="alert alert-danger m-3">Failed to load performance history: ${error.message}</div>`;
+    }
+}
+
+// Load detailed metrics
+async function loadDetailedMetrics() {
+    const container = document.getElementById('detailed-metrics-container');
+    if (!container) return;
+
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+
+    try {
+        const response = await fetch(`/api/v1/agents/${agentName}/metrics/detailed`);
+        const data = await response.json();
+
+        let html = '';
+
+        // CPU Details
+        if (data.cpu) {
+            const perCoreUsage = data.cpu.per_core_usage && data.cpu.per_core_usage.length > 0
+                ? data.cpu.per_core_usage.map((usage, idx) => `
+                    <div class="col-md-3 mb-2">
+                        <small>Core ${idx}: ${usage.toFixed(1)}%</small>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar" style="width: ${usage}%"></div>
+                        </div>
+                    </div>
+                `).join('')
+                : '<div class="text-muted">No per-core data</div>';
+
+            html += `
+                <div class="card mb-3">
+                    <div class="card-header"><strong>CPU Details</strong></div>
+                    <div class="card-body">
+                        <p><strong>Cores:</strong> ${data.cpu.core_count || data.cpu.cores || '-'}</p>
+                        <p><strong>Model:</strong> ${data.cpu.model_name || data.cpu.model || '-'}</p>
+                        <p><strong>MHz:</strong> ${data.cpu.mhz || '-'}</p>
+                        <h6 class="mt-3">Per-Core Usage:</h6>
+                        <div class="row">${perCoreUsage}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Memory Details
+        if (data.memory) {
+            html += `
+                <div class="card mb-3">
+                    <div class="card-header"><strong>Memory Details</strong></div>
+                    <div class="card-body">
+                        <p><strong>Total:</strong> ${formatBytes(data.memory.total || 0)}</p>
+                        <p><strong>Used:</strong> ${formatBytes(data.memory.used || 0)}</p>
+                        <p><strong>Available:</strong> ${formatBytes(data.memory.available || 0)}</p>
+                        <p><strong>Swap Total:</strong> ${formatBytes(data.memory.swap_total || 0)}</p>
+                        <p><strong>Swap Used:</strong> ${formatBytes(data.memory.swap_used || 0)}</p>
+                        <p><strong>Cache:</strong> ${formatBytes(data.memory.cached || 0)}</p>
+                        <p><strong>Buffers:</strong> ${formatBytes(data.memory.buffers || 0)}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Disk Details
+        if (data.disk && data.disk.partitions) {
+            const partitionsHtml = data.disk.partitions.map(part => `
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6>${part.mountpoint || part.device}</h6>
+                            <div class="progress mb-2" style="height: 20px;">
+                                <div class="progress-bar" style="width: ${part.percent || 0}%">
+                                    ${(part.percent || 0).toFixed(1)}%
+                                </div>
+                            </div>
+                            <small><strong>Total:</strong> ${formatBytes(part.total || 0)}</small><br>
+                            <small><strong>Used:</strong> ${formatBytes(part.used || 0)}</small><br>
+                            <small><strong>Free:</strong> ${formatBytes(part.free || 0)}</small>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            html += `
+                <div class="card mb-3">
+                    <div class="card-header"><strong>Disk Partitions</strong></div>
+                    <div class="card-body">
+                        <div class="row">${partitionsHtml}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Network Details
+        if (data.network && data.network.interfaces) {
+            const interfacesHtml = data.network.interfaces.map(iface => {
+                const ipAddresses = iface.ip_addresses && iface.ip_addresses.length > 0
+                    ? iface.ip_addresses.join(', ')
+                    : '-';
+
+                const statusBadge = iface.is_up
+                    ? '<span class="badge bg-success ms-2">UP</span>'
+                    : '<span class="badge bg-secondary ms-2">DOWN</span>';
+
+                return `
+                    <div class="col-md-6 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6>${iface.name || '-'}${statusBadge}</h6>
+                                <p class="mb-1"><strong>IP:</strong> ${ipAddresses}</p>
+                                <p class="mb-1"><strong>MAC:</strong> ${iface.mac_address || '-'}</p>
+                                <p class="mb-1"><strong>Sent:</strong> ${formatBytes(iface.bytes_sent || 0)}</p>
+                                <p class="mb-0"><strong>Received:</strong> ${formatBytes(iface.bytes_recv || 0)}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            html += `
+                <div class="card mb-3">
+                    <div class="card-header"><strong>Network Interfaces</strong></div>
+                    <div class="card-body">
+                        <div class="row">${interfacesHtml}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html || '<div class="text-muted text-center py-4">No detailed metrics available</div>';
+    } catch (error) {
+        console.error('Failed to load detailed metrics:', error);
+        container.innerHTML = '<div class="alert alert-warning m-3">Failed to load detailed metrics</div>';
+    }
+}
+
+// Refresh helper functions for HTML onclick handlers
+function refreshProcesses() {
+    loadProcesses();
+}
+
+function refreshConnections() {
+    loadConnections();
+}
+
+function refreshLogs() {
+    loadLogs();
+}
+
+function refreshErrors() {
+    loadErrors();
+}
+
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {
     if (refreshInterval) {
@@ -458,4 +1203,69 @@ window.addEventListener('beforeunload', () => {
     if (distributionChart) {
         distributionChart.destroy();
     }
+    if (performanceChart) {
+        performanceChart.destroy();
+    }
 });
+
+// Populate CPU Details section in Overview tab
+function populateCPUDetails(statsData) {
+    const cpuDetails = document.getElementById('cpu-details');
+    if (!cpuDetails) return;
+
+    const cpuPercent = statsData.cpu_percent || 0;
+    const loadAvg = statsData.load_avg || [0, 0, 0];
+    const processCount = statsData.process_count || 0;
+
+    cpuDetails.innerHTML = `
+        <div class="row">
+            <div class="col-6">
+                <small class="text-muted">Current Usage</small>
+                <h4>${cpuPercent.toFixed(1)}%</h4>
+            </div>
+            <div class="col-6">
+                <small class="text-muted">Processes</small>
+                <h4>${processCount}</h4>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-12">
+                <small class="text-muted">Load Average</small>
+                <p class="mb-0">${loadAvg[0].toFixed(2)} (1m) | ${loadAvg[1].toFixed(2)} (5m) | ${loadAvg[2].toFixed(2)} (15m)</p>
+            </div>
+        </div>
+    `;
+}
+
+// Populate Memory Details section in Overview tab
+function populateMemoryDetails(statsData) {
+    const memoryDetails = document.getElementById('memory-details');
+    if (!memoryDetails) return;
+
+    const memUsedBytes = statsData.memory_used_bytes || 0;
+    const memTotalBytes = statsData.memory_total_bytes || 0;
+    const memPercent = statsData.memory_percent || 0;
+
+    const usedGB = (memUsedBytes / (1024 * 1024 * 1024)).toFixed(2);
+    const totalGB = (memTotalBytes / (1024 * 1024 * 1024)).toFixed(2);
+    const freeGB = ((memTotalBytes - memUsedBytes) / (1024 * 1024 * 1024)).toFixed(2);
+
+    memoryDetails.innerHTML = `
+        <div class="row">
+            <div class="col-6">
+                <small class="text-muted">Used</small>
+                <h4>${usedGB} GB</h4>
+            </div>
+            <div class="col-6">
+                <small class="text-muted">Free</small>
+                <h4>${freeGB} GB</h4>
+            </div>
+        </div>
+        <div class="row mt-2">
+            <div class="col-12">
+                <small class="text-muted">Total Memory</small>
+                <p class="mb-0">${totalGB} GB (${memPercent.toFixed(1)}% used)</p>
+            </div>
+        </div>
+    `;
+}
