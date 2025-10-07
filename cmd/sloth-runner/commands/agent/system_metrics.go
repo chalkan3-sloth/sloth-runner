@@ -2,6 +2,7 @@ package agent
 
 import (
 	"bufio"
+	"encoding/json"
 	"io/ioutil"
 	"log/slog"
 	"os/exec"
@@ -278,28 +279,66 @@ func getNetworkInterfaces() ([]NetworkInterfaceInfo, error) {
 		return getNetworkInterfacesFallback()
 	}
 
-	// Parse JSON output (simplified version)
-	interfaces := make([]NetworkInterfaceInfo, 0)
+	// Parse JSON output properly
+	var ipOutput []struct {
+		Ifname   string `json:"ifname"`
+		Operstate string `json:"operstate"`
+		Address  string `json:"address"`
+		AddrInfo []struct {
+			Family string `json:"family"`
+			Local  string `json:"local"`
+		} `json:"addr_info"`
+	}
 
-	// For simplicity, use a basic parser
-	lines := strings.Split(string(output), "\n")
-	var currentIface NetworkInterfaceInfo
+	if err := json.Unmarshal(output, &ipOutput); err != nil {
+		// Fallback if JSON parsing fails
+		return getNetworkInterfacesFallback()
+	}
 
-	for _, line := range lines {
-		if strings.Contains(line, "\"ifname\":") {
-			if currentIface.Name != "" {
-				interfaces = append(interfaces, currentIface)
+	// Get bytes sent/recv from /proc/net/dev
+	netStats := make(map[string]struct{ sent, recv uint64 })
+	if data, err := ioutil.ReadFile("/proc/net/dev"); err == nil {
+		lines := strings.Split(string(data), "\n")
+		for i := 2; i < len(lines); i++ {
+			line := strings.TrimSpace(lines[i])
+			if line == "" {
+				continue
 			}
-			// Extract interface name
-			parts := strings.Split(line, "\"")
-			if len(parts) >= 4 {
-				currentIface = NetworkInterfaceInfo{Name: parts[3]}
+			parts := strings.Split(line, ":")
+			if len(parts) != 2 {
+				continue
+			}
+			name := strings.TrimSpace(parts[0])
+			fields := strings.Fields(parts[1])
+			if len(fields) >= 9 {
+				recv, _ := strconv.ParseUint(fields[0], 10, 64)
+				sent, _ := strconv.ParseUint(fields[8], 10, 64)
+				netStats[name] = struct{ sent, recv uint64 }{sent, recv}
 			}
 		}
 	}
 
-	if currentIface.Name != "" {
-		interfaces = append(interfaces, currentIface)
+	interfaces := make([]NetworkInterfaceInfo, 0)
+	for _, iface := range ipOutput {
+		// Get IPs
+		ips := make([]string, 0)
+		for _, addr := range iface.AddrInfo {
+			if addr.Family == "inet" || addr.Family == "inet6" {
+				ips = append(ips, addr.Local)
+			}
+		}
+
+		// Get stats
+		stats := netStats[iface.Ifname]
+
+		interfaces = append(interfaces, NetworkInterfaceInfo{
+			Name:        iface.Ifname,
+			IPAddresses: ips,
+			MACAddress:  iface.Address,
+			BytesSent:   stats.sent,
+			BytesRecv:   stats.recv,
+			IsUp:        iface.Operstate == "UP" || iface.Operstate == "UNKNOWN",
+		})
 	}
 
 	return interfaces, nil
