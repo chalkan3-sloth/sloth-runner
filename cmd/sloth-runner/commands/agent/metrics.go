@@ -24,7 +24,7 @@ func NewMetricsCommand(ctx *commands.AppContext) *cobra.Command {
 
 	// Add subcommands
 	cmd.AddCommand(newPrometheusCommand())
-	cmd.AddCommand(newGrafanaCommand())
+	cmd.AddCommand(newDashboardCommand())
 
 	return cmd
 }
@@ -50,11 +50,11 @@ func newPrometheusCommand() *cobra.Command {
 	return cmd
 }
 
-func newGrafanaCommand() *cobra.Command {
+func newDashboardCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "grafana <agent_name>",
+		Use:   "dashboard <agent_name>",
 		Short: "Display detailed metrics dashboard for an agent",
-		Long:  `Shows a comprehensive terminal-based dashboard with detailed graphs and metrics visualization.`,
+		Long:  `Shows a comprehensive terminal-based dashboard with detailed system information and metrics visualization.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			agentName := args[0]
@@ -62,7 +62,7 @@ func newGrafanaCommand() *cobra.Command {
 			watch, _ := cmd.Flags().GetBool("watch")
 			interval, _ := cmd.Flags().GetInt("interval")
 
-			return grafanaDashboard(agentName, masterAddr, watch, interval)
+			return showAgentDashboard(agentName, masterAddr, watch, interval)
 		},
 	}
 
@@ -96,7 +96,7 @@ func prometheusMetrics(agentName, masterAddr string, showSnapshot bool) error {
 	return prometheusMetricsWithClient(ctx, client, opts)
 }
 
-func grafanaDashboard(agentName, masterAddr string, watch bool, interval int) error {
+func showAgentDashboard(agentName, masterAddr string, watch bool, interval int) error {
 	// Connect to master to get agent address
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -111,20 +111,14 @@ func grafanaDashboard(agentName, masterAddr string, watch bool, interval int) er
 
 	// If watch mode, handle it here with loop
 	if watch {
-		pterm.Info.Printf("🔄 Watching metrics for %s (refresh every %ds, press Ctrl+C to stop)\n", agentName, interval)
+		pterm.Info.Printf("🔄 Watching dashboard for %s (refresh every %ds, press Ctrl+C to stop)\n", agentName, interval)
 		fmt.Println()
 
 		for {
 			// Clear screen for watch mode
 			fmt.Print("\033[H\033[2J")
 
-			opts := DashboardOptions{
-				AgentName: agentName,
-				Watch:     false, // Set to false to avoid recursion
-				Interval:  interval,
-			}
-
-			if err := grafanaDashboardWithClient(ctx, client, opts); err != nil {
+			if err := displayAgentDashboard(ctx, client, agentName); err != nil {
 				return err
 			}
 
@@ -133,11 +127,5 @@ func grafanaDashboard(agentName, masterAddr string, watch bool, interval int) er
 	}
 
 	// One-time display
-	opts := DashboardOptions{
-		AgentName: agentName,
-		Watch:     false,
-		Interval:  interval,
-	}
-
-	return grafanaDashboardWithClient(ctx, client, opts)
+	return displayAgentDashboard(ctx, client, agentName)
 }
