@@ -5694,6 +5694,143 @@ func (x *HealthDiagnosticResponse) GetTotalErrors() int32 {
 	return 0
 }
 
+// Interactive Shell Messages
+type ShellInput struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Command       string                 `protobuf:"bytes,1,opt,name=command,proto3" json:"command,omitempty"`                      // Command to execute
+	StdinData     []byte                 `protobuf:"bytes,2,opt,name=stdin_data,json=stdinData,proto3" json:"stdin_data,omitempty"` // Input data for interactive commands
+	Terminate     bool                   `protobuf:"varint,3,opt,name=terminate,proto3" json:"terminate,omitempty"`                 // Signal to terminate the shell session
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShellInput) Reset() {
+	*x = ShellInput{}
+	mi := &file_proto_agent_proto_msgTypes[88]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShellInput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShellInput) ProtoMessage() {}
+
+func (x *ShellInput) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[88]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShellInput.ProtoReflect.Descriptor instead.
+func (*ShellInput) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{88}
+}
+
+func (x *ShellInput) GetCommand() string {
+	if x != nil {
+		return x.Command
+	}
+	return ""
+}
+
+func (x *ShellInput) GetStdinData() []byte {
+	if x != nil {
+		return x.StdinData
+	}
+	return nil
+}
+
+func (x *ShellInput) GetTerminate() bool {
+	if x != nil {
+		return x.Terminate
+	}
+	return false
+}
+
+type ShellOutput struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Stdout        []byte                 `protobuf:"bytes,1,opt,name=stdout,proto3" json:"stdout,omitempty"`                      // Standard output
+	Stderr        []byte                 `protobuf:"bytes,2,opt,name=stderr,proto3" json:"stderr,omitempty"`                      // Standard error
+	ExitCode      int32                  `protobuf:"varint,3,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"` // Exit code (only set when command completes)
+	Completed     bool                   `protobuf:"varint,4,opt,name=completed,proto3" json:"completed,omitempty"`               // True when command execution is complete
+	Error         string                 `protobuf:"bytes,5,opt,name=error,proto3" json:"error,omitempty"`                        // Error message if execution failed
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShellOutput) Reset() {
+	*x = ShellOutput{}
+	mi := &file_proto_agent_proto_msgTypes[89]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShellOutput) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShellOutput) ProtoMessage() {}
+
+func (x *ShellOutput) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[89]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShellOutput.ProtoReflect.Descriptor instead.
+func (*ShellOutput) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{89}
+}
+
+func (x *ShellOutput) GetStdout() []byte {
+	if x != nil {
+		return x.Stdout
+	}
+	return nil
+}
+
+func (x *ShellOutput) GetStderr() []byte {
+	if x != nil {
+		return x.Stderr
+	}
+	return nil
+}
+
+func (x *ShellOutput) GetExitCode() int32 {
+	if x != nil {
+		return x.ExitCode
+	}
+	return 0
+}
+
+func (x *ShellOutput) GetCompleted() bool {
+	if x != nil {
+		return x.Completed
+	}
+	return false
+}
+
+func (x *ShellOutput) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 var File_proto_agent_proto protoreflect.FileDescriptor
 
 const file_proto_agent_proto_rawDesc = "" +
@@ -6218,7 +6355,19 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\ftotal_errors\x18\a \x01(\x05R\vtotalErrors\x1a:\n" +
 	"\fSummaryEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012\x8c\f\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"c\n" +
+	"\n" +
+	"ShellInput\x12\x18\n" +
+	"\acommand\x18\x01 \x01(\tR\acommand\x12\x1d\n" +
+	"\n" +
+	"stdin_data\x18\x02 \x01(\fR\tstdinData\x12\x1c\n" +
+	"\tterminate\x18\x03 \x01(\bR\tterminate\"\x8e\x01\n" +
+	"\vShellOutput\x12\x16\n" +
+	"\x06stdout\x18\x01 \x01(\fR\x06stdout\x12\x16\n" +
+	"\x06stderr\x18\x02 \x01(\fR\x06stderr\x12\x1b\n" +
+	"\texit_code\x18\x03 \x01(\x05R\bexitCode\x12\x1c\n" +
+	"\tcompleted\x18\x04 \x01(\bR\tcompleted\x12\x14\n" +
+	"\x05error\x18\x05 \x01(\tR\x05error2\xcb\f\n" +
 	"\x05Agent\x12D\n" +
 	"\vExecuteTask\x12\x19.agent.ExecuteTaskRequest\x1a\x1a.agent.ExecuteTaskResponse\x12E\n" +
 	"\n" +
@@ -6242,7 +6391,8 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\x14GetActiveConnections\x12\x19.agent.ConnectionsRequest\x1a\x1a.agent.ConnectionsResponse\x12J\n" +
 	"\x0fGetSystemErrors\x12\x1a.agent.SystemErrorsRequest\x1a\x1b.agent.SystemErrorsResponse\x12\\\n" +
 	"\x15GetPerformanceHistory\x12 .agent.PerformanceHistoryRequest\x1a!.agent.PerformanceHistoryResponse\x12Q\n" +
-	"\x0eDiagnoseHealth\x12\x1e.agent.HealthDiagnosticRequest\x1a\x1f.agent.HealthDiagnosticResponse2\xdb\t\n" +
+	"\x0eDiagnoseHealth\x12\x1e.agent.HealthDiagnosticRequest\x1a\x1f.agent.HealthDiagnosticResponse\x12=\n" +
+	"\x10InteractiveShell\x12\x11.agent.ShellInput\x1a\x12.agent.ShellOutput(\x010\x012\xdb\t\n" +
 	"\rAgentRegistry\x12J\n" +
 	"\rRegisterAgent\x12\x1b.agent.RegisterAgentRequest\x1a\x1c.agent.RegisterAgentResponse\x12A\n" +
 	"\n" +
@@ -6274,7 +6424,7 @@ func file_proto_agent_proto_rawDescGZIP() []byte {
 	return file_proto_agent_proto_rawDescData
 }
 
-var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 96)
+var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 98)
 var file_proto_agent_proto_goTypes = []any{
 	(*ShutdownRequest)(nil),             // 0: agent.ShutdownRequest
 	(*ShutdownResponse)(nil),            // 1: agent.ShutdownResponse
@@ -6364,14 +6514,16 @@ var file_proto_agent_proto_goTypes = []any{
 	(*HealthDiagnosticRequest)(nil),     // 85: agent.HealthDiagnosticRequest
 	(*HealthIssue)(nil),                 // 86: agent.HealthIssue
 	(*HealthDiagnosticResponse)(nil),    // 87: agent.HealthDiagnosticResponse
-	nil,                                 // 88: agent.MetricsData.CustomMetricsEntry
-	nil,                                 // 89: agent.EnvVarsResponse.VariablesEntry
-	nil,                                 // 90: agent.CreateGroupRequest.TagsEntry
-	nil,                                 // 91: agent.AgentGroup.TagsEntry
-	nil,                                 // 92: agent.AggregatedMetricsResponse.CustomMetricsEntry
-	nil,                                 // 93: agent.AgentEvent.MetadataEntry
-	nil,                                 // 94: agent.SystemError.ContextEntry
-	nil,                                 // 95: agent.HealthDiagnosticResponse.SummaryEntry
+	(*ShellInput)(nil),                  // 88: agent.ShellInput
+	(*ShellOutput)(nil),                 // 89: agent.ShellOutput
+	nil,                                 // 90: agent.MetricsData.CustomMetricsEntry
+	nil,                                 // 91: agent.EnvVarsResponse.VariablesEntry
+	nil,                                 // 92: agent.CreateGroupRequest.TagsEntry
+	nil,                                 // 93: agent.AgentGroup.TagsEntry
+	nil,                                 // 94: agent.AggregatedMetricsResponse.CustomMetricsEntry
+	nil,                                 // 95: agent.AgentEvent.MetadataEntry
+	nil,                                 // 96: agent.SystemError.ContextEntry
+	nil,                                 // 97: agent.HealthDiagnosticResponse.SummaryEntry
 }
 var file_proto_agent_proto_depIdxs = []int32{
 	8,  // 0: agent.ListAgentsResponse.agents:type_name -> agent.AgentInfo
@@ -6379,15 +6531,15 @@ var file_proto_agent_proto_depIdxs = []int32{
 	25, // 2: agent.ProcessListResponse.processes:type_name -> agent.ProcessInfo
 	28, // 3: agent.NetworkInfoResponse.interfaces:type_name -> agent.NetworkInterface
 	31, // 4: agent.DiskInfoResponse.partitions:type_name -> agent.DiskPartition
-	88, // 5: agent.MetricsData.custom_metrics:type_name -> agent.MetricsData.CustomMetricsEntry
-	89, // 6: agent.EnvVarsResponse.variables:type_name -> agent.EnvVarsResponse.VariablesEntry
+	90, // 5: agent.MetricsData.custom_metrics:type_name -> agent.MetricsData.CustomMetricsEntry
+	91, // 6: agent.EnvVarsResponse.variables:type_name -> agent.EnvVarsResponse.VariablesEntry
 	46, // 7: agent.ModulesResponse.modules:type_name -> agent.ModuleInfo
-	90, // 8: agent.CreateGroupRequest.tags:type_name -> agent.CreateGroupRequest.TagsEntry
-	91, // 9: agent.AgentGroup.tags:type_name -> agent.AgentGroup.TagsEntry
+	92, // 8: agent.CreateGroupRequest.tags:type_name -> agent.CreateGroupRequest.TagsEntry
+	93, // 9: agent.AgentGroup.tags:type_name -> agent.AgentGroup.TagsEntry
 	55, // 10: agent.ListGroupsResponse.groups:type_name -> agent.AgentGroup
 	62, // 11: agent.MultipleAgentStatusResponse.statuses:type_name -> agent.AgentStatusInfo
-	92, // 12: agent.AggregatedMetricsResponse.custom_metrics:type_name -> agent.AggregatedMetricsResponse.CustomMetricsEntry
-	93, // 13: agent.AgentEvent.metadata:type_name -> agent.AgentEvent.MetadataEntry
+	94, // 12: agent.AggregatedMetricsResponse.custom_metrics:type_name -> agent.AggregatedMetricsResponse.CustomMetricsEntry
+	95, // 13: agent.AgentEvent.metadata:type_name -> agent.AgentEvent.MetadataEntry
 	31, // 14: agent.DiskDetail.partitions:type_name -> agent.DiskPartition
 	28, // 15: agent.NetworkDetail.interfaces:type_name -> agent.NetworkInterface
 	69, // 16: agent.DetailedMetricsResponse.cpu:type_name -> agent.CPUDetail
@@ -6396,14 +6548,14 @@ var file_proto_agent_proto_depIdxs = []int32{
 	72, // 19: agent.DetailedMetricsResponse.network:type_name -> agent.NetworkDetail
 	34, // 20: agent.RecentLogsResponse.logs:type_name -> agent.LogEntry
 	77, // 21: agent.ConnectionsResponse.connections:type_name -> agent.ConnectionInfo
-	94, // 22: agent.SystemError.context:type_name -> agent.SystemError.ContextEntry
+	96, // 22: agent.SystemError.context:type_name -> agent.SystemError.ContextEntry
 	80, // 23: agent.SystemErrorsResponse.errors:type_name -> agent.SystemError
 	83, // 24: agent.PerformanceHistoryResponse.snapshots:type_name -> agent.PerformanceSnapshot
 	83, // 25: agent.PerformanceHistoryResponse.avg:type_name -> agent.PerformanceSnapshot
 	83, // 26: agent.PerformanceHistoryResponse.min:type_name -> agent.PerformanceSnapshot
 	83, // 27: agent.PerformanceHistoryResponse.max:type_name -> agent.PerformanceSnapshot
 	86, // 28: agent.HealthDiagnosticResponse.issues:type_name -> agent.HealthIssue
-	95, // 29: agent.HealthDiagnosticResponse.summary:type_name -> agent.HealthDiagnosticResponse.SummaryEntry
+	97, // 29: agent.HealthDiagnosticResponse.summary:type_name -> agent.HealthDiagnosticResponse.SummaryEntry
 	4,  // 30: agent.Agent.ExecuteTask:input_type -> agent.ExecuteTaskRequest
 	16, // 31: agent.Agent.RunCommand:input_type -> agent.RunCommandRequest
 	0,  // 32: agent.Agent.Shutdown:input_type -> agent.ShutdownRequest
@@ -6425,61 +6577,63 @@ var file_proto_agent_proto_depIdxs = []int32{
 	79, // 48: agent.Agent.GetSystemErrors:input_type -> agent.SystemErrorsRequest
 	82, // 49: agent.Agent.GetPerformanceHistory:input_type -> agent.PerformanceHistoryRequest
 	85, // 50: agent.Agent.DiagnoseHealth:input_type -> agent.HealthDiagnosticRequest
-	6,  // 51: agent.AgentRegistry.RegisterAgent:input_type -> agent.RegisterAgentRequest
-	9,  // 52: agent.AgentRegistry.ListAgents:input_type -> agent.ListAgentsRequest
-	11, // 53: agent.AgentRegistry.StopAgent:input_type -> agent.StopAgentRequest
-	13, // 54: agent.AgentRegistry.UnregisterAgent:input_type -> agent.UnregisterAgentRequest
-	15, // 55: agent.AgentRegistry.ExecuteCommand:input_type -> agent.ExecuteCommandRequest
-	18, // 56: agent.AgentRegistry.Heartbeat:input_type -> agent.HeartbeatRequest
-	20, // 57: agent.AgentRegistry.GetAgentInfo:input_type -> agent.GetAgentInfoRequest
-	48, // 58: agent.AgentRegistry.CreateAgentGroup:input_type -> agent.CreateGroupRequest
-	50, // 59: agent.AgentRegistry.AddAgentToGroup:input_type -> agent.AddToGroupRequest
-	52, // 60: agent.AgentRegistry.RemoveAgentFromGroup:input_type -> agent.RemoveFromGroupRequest
-	54, // 61: agent.AgentRegistry.ListAgentGroups:input_type -> agent.ListGroupsRequest
-	57, // 62: agent.AgentRegistry.DeleteAgentGroup:input_type -> agent.DeleteGroupRequest
-	59, // 63: agent.AgentRegistry.ExecuteOnMultipleAgents:input_type -> agent.BulkExecuteRequest
-	61, // 64: agent.AgentRegistry.GetMultipleAgentStatus:input_type -> agent.MultipleAgentStatusRequest
-	64, // 65: agent.AgentRegistry.GetAggregatedMetrics:input_type -> agent.AggregatedMetricsRequest
-	66, // 66: agent.AgentRegistry.StreamAgentEvents:input_type -> agent.StreamEventsRequest
-	5,  // 67: agent.Agent.ExecuteTask:output_type -> agent.ExecuteTaskResponse
-	17, // 68: agent.Agent.RunCommand:output_type -> agent.StreamOutputResponse
-	1,  // 69: agent.Agent.Shutdown:output_type -> agent.ShutdownResponse
-	3,  // 70: agent.Agent.UpdateAgent:output_type -> agent.UpdateAgentResponse
-	23, // 71: agent.Agent.GetResourceUsage:output_type -> agent.ResourceUsageResponse
-	26, // 72: agent.Agent.GetProcessList:output_type -> agent.ProcessListResponse
-	29, // 73: agent.Agent.GetNetworkInfo:output_type -> agent.NetworkInfoResponse
-	32, // 74: agent.Agent.GetDiskInfo:output_type -> agent.DiskInfoResponse
-	34, // 75: agent.Agent.StreamLogs:output_type -> agent.LogEntry
-	36, // 76: agent.Agent.StreamMetrics:output_type -> agent.MetricsData
-	38, // 77: agent.Agent.RestartService:output_type -> agent.RestartServiceResponse
-	40, // 78: agent.Agent.GetEnvironmentVars:output_type -> agent.EnvVarsResponse
-	42, // 79: agent.Agent.SetEnvironmentVar:output_type -> agent.SetEnvVarResponse
-	44, // 80: agent.Agent.InstallModule:output_type -> agent.InstallModuleResponse
-	47, // 81: agent.Agent.GetInstalledModules:output_type -> agent.ModulesResponse
-	73, // 82: agent.Agent.GetDetailedMetrics:output_type -> agent.DetailedMetricsResponse
-	75, // 83: agent.Agent.GetRecentLogs:output_type -> agent.RecentLogsResponse
-	78, // 84: agent.Agent.GetActiveConnections:output_type -> agent.ConnectionsResponse
-	81, // 85: agent.Agent.GetSystemErrors:output_type -> agent.SystemErrorsResponse
-	84, // 86: agent.Agent.GetPerformanceHistory:output_type -> agent.PerformanceHistoryResponse
-	87, // 87: agent.Agent.DiagnoseHealth:output_type -> agent.HealthDiagnosticResponse
-	7,  // 88: agent.AgentRegistry.RegisterAgent:output_type -> agent.RegisterAgentResponse
-	10, // 89: agent.AgentRegistry.ListAgents:output_type -> agent.ListAgentsResponse
-	12, // 90: agent.AgentRegistry.StopAgent:output_type -> agent.StopAgentResponse
-	14, // 91: agent.AgentRegistry.UnregisterAgent:output_type -> agent.UnregisterAgentResponse
-	17, // 92: agent.AgentRegistry.ExecuteCommand:output_type -> agent.StreamOutputResponse
-	19, // 93: agent.AgentRegistry.Heartbeat:output_type -> agent.HeartbeatResponse
-	21, // 94: agent.AgentRegistry.GetAgentInfo:output_type -> agent.GetAgentInfoResponse
-	49, // 95: agent.AgentRegistry.CreateAgentGroup:output_type -> agent.CreateGroupResponse
-	51, // 96: agent.AgentRegistry.AddAgentToGroup:output_type -> agent.AddToGroupResponse
-	53, // 97: agent.AgentRegistry.RemoveAgentFromGroup:output_type -> agent.RemoveFromGroupResponse
-	56, // 98: agent.AgentRegistry.ListAgentGroups:output_type -> agent.ListGroupsResponse
-	58, // 99: agent.AgentRegistry.DeleteAgentGroup:output_type -> agent.DeleteGroupResponse
-	60, // 100: agent.AgentRegistry.ExecuteOnMultipleAgents:output_type -> agent.BulkExecuteResponse
-	63, // 101: agent.AgentRegistry.GetMultipleAgentStatus:output_type -> agent.MultipleAgentStatusResponse
-	65, // 102: agent.AgentRegistry.GetAggregatedMetrics:output_type -> agent.AggregatedMetricsResponse
-	67, // 103: agent.AgentRegistry.StreamAgentEvents:output_type -> agent.AgentEvent
-	67, // [67:104] is the sub-list for method output_type
-	30, // [30:67] is the sub-list for method input_type
+	88, // 51: agent.Agent.InteractiveShell:input_type -> agent.ShellInput
+	6,  // 52: agent.AgentRegistry.RegisterAgent:input_type -> agent.RegisterAgentRequest
+	9,  // 53: agent.AgentRegistry.ListAgents:input_type -> agent.ListAgentsRequest
+	11, // 54: agent.AgentRegistry.StopAgent:input_type -> agent.StopAgentRequest
+	13, // 55: agent.AgentRegistry.UnregisterAgent:input_type -> agent.UnregisterAgentRequest
+	15, // 56: agent.AgentRegistry.ExecuteCommand:input_type -> agent.ExecuteCommandRequest
+	18, // 57: agent.AgentRegistry.Heartbeat:input_type -> agent.HeartbeatRequest
+	20, // 58: agent.AgentRegistry.GetAgentInfo:input_type -> agent.GetAgentInfoRequest
+	48, // 59: agent.AgentRegistry.CreateAgentGroup:input_type -> agent.CreateGroupRequest
+	50, // 60: agent.AgentRegistry.AddAgentToGroup:input_type -> agent.AddToGroupRequest
+	52, // 61: agent.AgentRegistry.RemoveAgentFromGroup:input_type -> agent.RemoveFromGroupRequest
+	54, // 62: agent.AgentRegistry.ListAgentGroups:input_type -> agent.ListGroupsRequest
+	57, // 63: agent.AgentRegistry.DeleteAgentGroup:input_type -> agent.DeleteGroupRequest
+	59, // 64: agent.AgentRegistry.ExecuteOnMultipleAgents:input_type -> agent.BulkExecuteRequest
+	61, // 65: agent.AgentRegistry.GetMultipleAgentStatus:input_type -> agent.MultipleAgentStatusRequest
+	64, // 66: agent.AgentRegistry.GetAggregatedMetrics:input_type -> agent.AggregatedMetricsRequest
+	66, // 67: agent.AgentRegistry.StreamAgentEvents:input_type -> agent.StreamEventsRequest
+	5,  // 68: agent.Agent.ExecuteTask:output_type -> agent.ExecuteTaskResponse
+	17, // 69: agent.Agent.RunCommand:output_type -> agent.StreamOutputResponse
+	1,  // 70: agent.Agent.Shutdown:output_type -> agent.ShutdownResponse
+	3,  // 71: agent.Agent.UpdateAgent:output_type -> agent.UpdateAgentResponse
+	23, // 72: agent.Agent.GetResourceUsage:output_type -> agent.ResourceUsageResponse
+	26, // 73: agent.Agent.GetProcessList:output_type -> agent.ProcessListResponse
+	29, // 74: agent.Agent.GetNetworkInfo:output_type -> agent.NetworkInfoResponse
+	32, // 75: agent.Agent.GetDiskInfo:output_type -> agent.DiskInfoResponse
+	34, // 76: agent.Agent.StreamLogs:output_type -> agent.LogEntry
+	36, // 77: agent.Agent.StreamMetrics:output_type -> agent.MetricsData
+	38, // 78: agent.Agent.RestartService:output_type -> agent.RestartServiceResponse
+	40, // 79: agent.Agent.GetEnvironmentVars:output_type -> agent.EnvVarsResponse
+	42, // 80: agent.Agent.SetEnvironmentVar:output_type -> agent.SetEnvVarResponse
+	44, // 81: agent.Agent.InstallModule:output_type -> agent.InstallModuleResponse
+	47, // 82: agent.Agent.GetInstalledModules:output_type -> agent.ModulesResponse
+	73, // 83: agent.Agent.GetDetailedMetrics:output_type -> agent.DetailedMetricsResponse
+	75, // 84: agent.Agent.GetRecentLogs:output_type -> agent.RecentLogsResponse
+	78, // 85: agent.Agent.GetActiveConnections:output_type -> agent.ConnectionsResponse
+	81, // 86: agent.Agent.GetSystemErrors:output_type -> agent.SystemErrorsResponse
+	84, // 87: agent.Agent.GetPerformanceHistory:output_type -> agent.PerformanceHistoryResponse
+	87, // 88: agent.Agent.DiagnoseHealth:output_type -> agent.HealthDiagnosticResponse
+	89, // 89: agent.Agent.InteractiveShell:output_type -> agent.ShellOutput
+	7,  // 90: agent.AgentRegistry.RegisterAgent:output_type -> agent.RegisterAgentResponse
+	10, // 91: agent.AgentRegistry.ListAgents:output_type -> agent.ListAgentsResponse
+	12, // 92: agent.AgentRegistry.StopAgent:output_type -> agent.StopAgentResponse
+	14, // 93: agent.AgentRegistry.UnregisterAgent:output_type -> agent.UnregisterAgentResponse
+	17, // 94: agent.AgentRegistry.ExecuteCommand:output_type -> agent.StreamOutputResponse
+	19, // 95: agent.AgentRegistry.Heartbeat:output_type -> agent.HeartbeatResponse
+	21, // 96: agent.AgentRegistry.GetAgentInfo:output_type -> agent.GetAgentInfoResponse
+	49, // 97: agent.AgentRegistry.CreateAgentGroup:output_type -> agent.CreateGroupResponse
+	51, // 98: agent.AgentRegistry.AddAgentToGroup:output_type -> agent.AddToGroupResponse
+	53, // 99: agent.AgentRegistry.RemoveAgentFromGroup:output_type -> agent.RemoveFromGroupResponse
+	56, // 100: agent.AgentRegistry.ListAgentGroups:output_type -> agent.ListGroupsResponse
+	58, // 101: agent.AgentRegistry.DeleteAgentGroup:output_type -> agent.DeleteGroupResponse
+	60, // 102: agent.AgentRegistry.ExecuteOnMultipleAgents:output_type -> agent.BulkExecuteResponse
+	63, // 103: agent.AgentRegistry.GetMultipleAgentStatus:output_type -> agent.MultipleAgentStatusResponse
+	65, // 104: agent.AgentRegistry.GetAggregatedMetrics:output_type -> agent.AggregatedMetricsResponse
+	67, // 105: agent.AgentRegistry.StreamAgentEvents:output_type -> agent.AgentEvent
+	68, // [68:106] is the sub-list for method output_type
+	30, // [30:68] is the sub-list for method input_type
 	30, // [30:30] is the sub-list for extension type_name
 	30, // [30:30] is the sub-list for extension extendee
 	0,  // [0:30] is the sub-list for field type_name
@@ -6496,7 +6650,7 @@ func file_proto_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_agent_proto_rawDesc), len(file_proto_agent_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   96,
+			NumMessages:   98,
 			NumExtensions: 0,
 			NumServices:   2,
 		},
