@@ -1608,6 +1608,41 @@ sloth-runner ui
 # Open http://localhost:8080 in your browser
 ```
 
+**📸 Screenshots Gallery:**
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/assets/screenshots/dashboard.png" alt="Dashboard">
+      <p align="center"><b>Real-time Dashboard</b><br/>System metrics with live charts</p>
+    </td>
+    <td width="50%">
+      <img src="docs/assets/screenshots/agent-dashboard.png" alt="Agent Dashboard">
+      <p align="center"><b>Agent Dashboard</b><br/>Detailed agent monitoring</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/assets/screenshots/agent-control.png" alt="Agent Control">
+      <p align="center"><b>Agent Control Center</b><br/>Bulk operations and commands</p>
+    </td>
+    <td width="50%">
+      <img src="docs/assets/screenshots/stacks.png" alt="Stack Management">
+      <p align="center"><b>Stack Management</b><br/>Environment configuration</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="docs/assets/screenshots/agent-details.png" alt="Agent Details">
+      <p align="center"><b>Agent Details</b><br/>6 tabs with complete info</p>
+    </td>
+    <td width="50%">
+      <img src="docs/assets/screenshots/metrics-charts.png" alt="Live Charts">
+      <p align="center"><b>Live Metrics Charts</b><br/>WebSocket real-time updates</p>
+    </td>
+  </tr>
+</table>
+
 **Features:**
 - 🎯 **Real-time Dashboard** - System metrics with live charts (CPU, Memory, Disk, Network)
 - 🖥️ **Agent Management** - Monitor and control distributed agents
