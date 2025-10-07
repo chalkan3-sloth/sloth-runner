@@ -2,8 +2,37 @@
 
 Uma interface web moderna e completa para gerenciar e monitorar o Sloth Runner em tempo real.
 
+## 📸 Screenshots
+
+### Dashboard - Real-time Metrics
+![Dashboard](assets/screenshots/dashboard.png)
+*Dashboard principal com métricas do sistema em tempo real*
+
+### Agent Dashboard - Detailed Monitoring
+![Agent Dashboard](assets/screenshots/agent-dashboard.png)
+*Monitoramento detalhado de agentes com filtros e estatísticas*
+
+### Agent Control Center
+![Agent Control](assets/screenshots/agent-control.png)
+*Centro de controle com ações em massa e operações bulk*
+
+### Stack Management
+![Stacks](assets/screenshots/stacks.png)
+*Gerenciamento completo de stacks e variáveis de ambiente*
+
+### Agent Details - Complete Information
+![Agent Details](assets/screenshots/agent-details.png)
+*Detalhes completos do agente com 6 tabs (Overview, Processes, Network, Disk, Logs, Execute)*
+
+### Live Metrics Charts
+![Metrics Charts](assets/screenshots/metrics-charts.png)
+*Gráficos de métricas atualizados em tempo real via WebSocket*
+
+---
+
 ## 📋 Índice
 
+- [Screenshots](#screenshots)
 - [Visão Geral](#visão-geral)
 - [Iniciando](#iniciando)
 - [Páginas da Interface](#páginas-da-interface)
