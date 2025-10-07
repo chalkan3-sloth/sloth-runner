@@ -37,14 +37,14 @@ func newPrometheusCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			agentName := args[0]
-			masterAddr, _ := cmd.Flags().GetString("master")
+			masterAddr := getMasterAddress(cmd)
 			showSnapshot, _ := cmd.Flags().GetBool("snapshot")
 
 			return prometheusMetrics(agentName, masterAddr, showSnapshot)
 		},
 	}
 
-	cmd.Flags().String("master", "localhost:50051", "Master server address")
+	addMasterFlag(cmd)
 	cmd.Flags().Bool("snapshot", false, "Display current metrics snapshot")
 
 	return cmd
@@ -58,7 +58,7 @@ func newDashboardCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			agentName := args[0]
-			masterAddr, _ := cmd.Flags().GetString("master")
+			masterAddr := getMasterAddress(cmd)
 			watch, _ := cmd.Flags().GetBool("watch")
 			interval, _ := cmd.Flags().GetInt("interval")
 
@@ -66,7 +66,7 @@ func newDashboardCommand() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().String("master", "localhost:50051", "Master server address")
+	addMasterFlag(cmd)
 	cmd.Flags().Bool("watch", false, "Continuously update dashboard")
 	cmd.Flags().Int("interval", 5, "Refresh interval in seconds (for watch mode)")
 
