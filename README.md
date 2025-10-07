@@ -1597,6 +1597,36 @@ workflow.define("data_pipeline", {
 - **🛡️ Reliability:** Circuit breakers and failure handling patterns
 - **🌐 Clustering:** Master-agent architecture with load balancing
 
+### 🎨 **Modern Web UI** 🔥
+*Complete web-based management and monitoring interface*
+
+Manage your entire Sloth Runner infrastructure through an intuitive web interface!
+
+```bash
+# Start the Web UI
+sloth-runner ui
+# Open http://localhost:8080 in your browser
+```
+
+**Features:**
+- 🎯 **Real-time Dashboard** - System metrics with live charts (CPU, Memory, Disk, Network)
+- 🖥️ **Agent Management** - Monitor and control distributed agents
+- 📦 **Stack Management** - Full CRUD for stacks and variables
+- 📋 **Workflow Browser** - View and manage your .sloth files
+- ⚡ **Event & Hook System** - Monitor automation events
+- 🔐 **Secrets & SSH** - Secure credential management
+- 📊 **Live Monitoring** - WebSocket-powered real-time updates
+
+**Quick Tour:**
+- **Dashboard** - `http://localhost:8080/` - System overview
+- **Agent Dashboard** - `http://localhost:8080/agent-dashboard` - Detailed agent monitoring
+- **Agent Control** - `http://localhost:8080/agent-control` - Bulk operations
+- **Stacks** - `http://localhost:8080/stacks` - Environment management
+
+📖 **[Complete Web UI Guide](./docs/WEBUI_GUIDE.md)** - Full documentation with screenshots and examples
+
+---
+
 ### 💻 **Modern CLI Interface**
 *Comprehensive command-line interface for all operations*
 
@@ -1623,10 +1653,13 @@ sloth-runner agent start --name agent1  # Start agent
 sloth-runner agent list                 # List all agents
 sloth-runner agent exec agent1 "command" # Execute on specific agent
 
+# Web UI
+sloth-runner ui                         # Start web dashboard (port 8080)
+sloth-runner ui --port 3000             # Custom port
+
 # Utilities
 sloth-runner scheduler enable           # Enable task scheduler
 sloth-runner scheduler list             # List scheduled tasks
-sloth-runner ui                         # Start web dashboard
 sloth-runner version                    # Show version information
 ```
 
