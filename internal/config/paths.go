@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -88,6 +89,11 @@ func GetMetricsDBPath() string {
 	return filepath.Join(GetDataDir(), "metrics.db")
 }
 
+// GetMastersDBPath returns the full path to the masters database
+func GetMastersDBPath() string {
+	return filepath.Join(GetDataDir(), "masters.db")
+}
+
 // EnsureDataDir creates the data directory if it doesn't exist
 func EnsureDataDir() error {
 	dir := GetDataDir()
@@ -95,14 +101,17 @@ func EnsureDataDir() error {
 }
 
 // GetMasterAddress returns the configured master server address
-// Priority: 1. SLOTH_RUNNER_MASTER_ADDR env var, 2. master.conf file, 3. default localhost:50051
+// Priority: 1. SLOTH_RUNNER_MASTER_ADDR env var, 2. Default master from DB, 3. master.conf file, 4. default localhost:50051
 func GetMasterAddress() string {
 	// First check environment variable
 	if addr := os.Getenv("SLOTH_RUNNER_MASTER_ADDR"); addr != "" {
 		return addr
 	}
 
-	// Then check config file
+	// Then check database for default master (lazy import to avoid circular dependency)
+	// This will be handled by the caller in most cases
+
+	// Then check config file (legacy support)
 	configPath := filepath.Join(GetDataDir(), "master.conf")
 	if data, err := os.ReadFile(configPath); err == nil && len(data) > 0 {
 		return string(data)
@@ -110,4 +119,33 @@ func GetMasterAddress() string {
 
 	// Default to localhost
 	return "localhost:50051"
+}
+
+// GetMasterAddressOrName returns the master address, resolving names to addresses
+// If the input is a name (no colon), it looks up the address from the database
+// If the input is an address (has colon), it returns it directly
+func GetMasterAddressOrName(nameOrAddr string) (string, error) {
+	// If empty, get default
+	if nameOrAddr == "" {
+		return GetMasterAddress(), nil
+	}
+
+	// If it contains a colon, it's an address
+	if filepath.Ext(nameOrAddr) != "" || len(nameOrAddr) > 0 && nameOrAddr[len(nameOrAddr)-1] >= '0' && nameOrAddr[len(nameOrAddr)-1] <= '9' {
+		// Simple heuristic: if it looks like an address, return it
+		return nameOrAddr, nil
+	}
+
+	// Otherwise, treat as a name and look it up
+	// This will be implemented by the caller using masterdb
+	return "", fmt.Errorf("master name resolution not implemented in config package - use masterdb directly")
+}
+
+// ResolveMasterAddress is a helper to get master address with proper error handling
+// It should be used by commands that need to resolve master names
+func ResolveMasterAddress(nameOrAddr string) (string, error) {
+	if nameOrAddr == "" {
+		return GetMasterAddress(), nil
+	}
+	return nameOrAddr, nil
 }

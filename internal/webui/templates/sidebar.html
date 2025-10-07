@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        /* Modern Fixed Sidebar Navigation */
+        :root {
+            --sidebar-width: 260px;
+            --sidebar-collapsed-width: 70px;
+            --sidebar-bg: linear-gradient(180deg, #1E293B 0%, #0F172A 100%);
+            --sidebar-item-hover: rgba(79, 70, 229, 0.1);
+            --sidebar-item-active: linear-gradient(90deg, #4F46E5 0%, #7C3AED 100%);
+        }
+
+        [data-theme="light"] {
+            --sidebar-bg: linear-gradient(180deg, #FFFFFF 0%, #F9FAFB 100%);
+            --sidebar-border: 1px solid #E5E7EB;
+        }
+
+        .sidebar-container {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: var(--sidebar-width);
+            background: var(--sidebar-bg);
+            border-right: var(--sidebar-border, none);
+            box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-container.collapsed {
+            width: var(--sidebar-collapsed-width);
+        }
+
+        /* Sidebar Header */
+        .sidebar-header {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            min-height: 70px;
+        }
+
+        [data-theme="light"] .sidebar-header {
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .sidebar-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .sidebar-logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+        }
+
+        .sidebar-logo-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: white;
+        }
+
+        .sidebar-logo-text {
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            opacity: 1;
+            transition: opacity 0.3s ease, width 0.3s ease;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        [data-theme="light"] .sidebar-logo-text {
+            color: #1E293B;
+        }
+
+        .sidebar-container.collapsed .sidebar-logo-text {
+            opacity: 0;
+            width: 0;
+        }
+
+        .sidebar-toggle {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        [data-theme="light"] .sidebar-toggle {
+            background: rgba(0, 0, 0, 0.05);
+            color: #1E293B;
+        }
+
+        .sidebar-toggle:hover {
+            background: rgba(79, 70, 229, 0.3);
+            transform: scale(1.1);
+        }
+
+        .sidebar-container.collapsed .sidebar-toggle {
+            transform: rotate(180deg);
+        }
+
+        /* Sidebar Navigation */
+        .sidebar-nav {
+            flex: 1;
+            padding: 20px 12px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .sidebar-nav::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar-nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 24px;
+        }
+
+        .sidebar-section-title {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0 16px;
+            margin-bottom: 8px;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        [data-theme="light"] .sidebar-section-title {
+            color: #6B7280;
+        }
+
+        .sidebar-container.collapsed .sidebar-section-title {
+            opacity: 0;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar-menu-item {
+            margin-bottom: 4px;
+        }
+
+        .sidebar-menu-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        [data-theme="light"] .sidebar-menu-link {
+            color: #4B5563;
+        }
+
+        .sidebar-menu-link::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, #4F46E5 0%, #7C3AED 100%);
+            transform: scaleY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-menu-link:hover {
+            background: var(--sidebar-item-hover);
+            color: white;
+            transform: translateX(4px);
+        }
+
+        [data-theme="light"] .sidebar-menu-link:hover {
+            background: rgba(79, 70, 229, 0.1);
+            color: #4F46E5;
+        }
+
+        .sidebar-menu-link.active {
+            background: var(--sidebar-item-active);
+            color: white;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+        }
+
+        .sidebar-menu-link.active::before {
+            transform: scaleY(1);
+        }
+
+        .sidebar-menu-icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .sidebar-menu-icon i {
+            font-size: 20px;
+        }
+
+        .sidebar-menu-text {
+            flex: 1;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .sidebar-container.collapsed .sidebar-menu-text {
+            opacity: 0;
+            width: 0;
+        }
+
+        .sidebar-menu-badge {
+            background: #EF4444;
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 10px;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-container.collapsed .sidebar-menu-badge {
+            opacity: 0;
+        }
+
+        /* Sidebar Footer */
+        .sidebar-footer {
+            padding: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        [data-theme="light"] .sidebar-footer {
+            border-top: 1px solid #E5E7EB;
+        }
+
+        .sidebar-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        [data-theme="light"] .sidebar-user {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        .sidebar-user:hover {
+            background: rgba(79, 70, 229, 0.2);
+        }
+
+        .sidebar-user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-user-info {
+            flex: 1;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .sidebar-container.collapsed .sidebar-user-info {
+            opacity: 0;
+            width: 0;
+        }
+
+        .sidebar-user-name {
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        [data-theme="light"] .sidebar-user-name {
+            color: #1E293B;
+        }
+
+        .sidebar-user-role {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 12px;
+        }
+
+        [data-theme="light"] .sidebar-user-role {
+            color: #6B7280;
+        }
+
+        /* Main Content Adjustment */
+        .main-content {
+            margin-left: var(--sidebar-width);
+            transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .sidebar-container.collapsed ~ .main-content {
+            margin-left: var(--sidebar-collapsed-width);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .sidebar-container {
+                transform: translateX(-100%);
+            }
+
+            .sidebar-container.mobile-open {
+                transform: translateX(0);
+            }
+
+            .sidebar-container.collapsed {
+                width: var(--sidebar-width);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .mobile-sidebar-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 999;
+            }
+
+            .mobile-sidebar-overlay.active {
+                display: block;
+            }
+
+            .mobile-menu-button {
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                z-index: 1001;
+                background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+                border: none;
+                width: 44px;
+                height: 44px;
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+                font-size: 20px;
+                box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+                cursor: pointer;
+            }
+
+            .mobile-menu-button:active {
+                transform: scale(0.95);
+            }
+        }
+
+        /* Desktop - hide mobile button */
+        @media (min-width: 769px) {
+            .mobile-menu-button {
+                display: none !important;
+            }
+        }
+
+        /* Tooltip for collapsed state */
+        .sidebar-container.collapsed .sidebar-menu-link {
+            position: relative;
+        }
+
+        .sidebar-container.collapsed .sidebar-menu-link:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: calc(100% + 12px);
+            top: 50%;
+            transform: translateY(-50%);
+            background: #1E293B;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            white-space: nowrap;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 1001;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+        }
+
+        [data-theme="light"] .sidebar-container.collapsed .sidebar-menu-link:hover::after {
+            background: white;
+            color: #1E293B;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile Sidebar Overlay -->
+    <div class="mobile-sidebar-overlay" id="mobileOverlay" onclick="toggleMobileSidebar()"></div>
+
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-button" onclick="toggleMobileSidebar()">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <!-- Sidebar -->
+    <aside class="sidebar-container" id="sidebar">
+        <!-- Header -->
+        <div class="sidebar-header">
+            <a href="/" class="sidebar-logo">
+                <div class="sidebar-logo-icon">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <use href="/static/img/sloth-icons.svg#sloth-logo"/>
+                    </svg>
+                </div>
+                <span class="sidebar-logo-text">Sloth Runner</span>
+            </a>
+            <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">
+                <i class="bi bi-chevron-left"></i>
+            </button>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="sidebar-nav">
+            <!-- Main Section -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Main</div>
+                <ul class="sidebar-menu">
+                    <li class="sidebar-menu-item">
+                        <a href="/" class="sidebar-menu-link" data-tooltip="Dashboard">
+                            <span class="sidebar-menu-icon"><i class="bi bi-speedometer2"></i></span>
+                            <span class="sidebar-menu-text">Dashboard</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="/metrics" class="sidebar-menu-link" data-tooltip="Metrics">
+                            <span class="sidebar-menu-icon"><i class="bi bi-graph-up"></i></span>
+                            <span class="sidebar-menu-text">Metrics</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="/logs" class="sidebar-menu-link" data-tooltip="Logs">
+                            <span class="sidebar-menu-icon"><i class="bi bi-file-text"></i></span>
+                            <span class="sidebar-menu-text">Logs</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Resources Section -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Resources</div>
+                <ul class="sidebar-menu">
+                    <li class="sidebar-menu-item">
+                        <a href="/agents" class="sidebar-menu-link" data-tooltip="Agents">
+                            <span class="sidebar-menu-icon"><i class="bi bi-hdd-network"></i></span>
+                            <span class="sidebar-menu-text">Agents</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="/workflows" class="sidebar-menu-link" data-tooltip="Workflows">
+                            <span class="sidebar-menu-icon"><i class="bi bi-diagram-3"></i></span>
+                            <span class="sidebar-menu-text">Workflows</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="/stacks" class="sidebar-menu-link" data-tooltip="Stacks">
+                            <span class="sidebar-menu-icon"><i class="bi bi-layers"></i></span>
+                            <span class="sidebar-menu-text">Stacks</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Automation Section -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Automation</div>
+                <ul class="sidebar-menu">
+                    <li class="sidebar-menu-item">
+                        <a href="/hooks" class="sidebar-menu-link" data-tooltip="Hooks">
+                            <span class="sidebar-menu-icon"><i class="bi bi-lightning"></i></span>
+                            <span class="sidebar-menu-text">Hooks</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="/events" class="sidebar-menu-link" data-tooltip="Events">
+                            <span class="sidebar-menu-icon"><i class="bi bi-bell"></i></span>
+                            <span class="sidebar-menu-text">Events</span>
+                            <span class="sidebar-menu-badge" id="events-badge">0</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="/scheduler" class="sidebar-menu-link" data-tooltip="Scheduler">
+                            <span class="sidebar-menu-icon"><i class="bi bi-calendar-event"></i></span>
+                            <span class="sidebar-menu-text">Scheduler</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="/executions" class="sidebar-menu-link" data-tooltip="Executions">
+                            <span class="sidebar-menu-icon"><i class="bi bi-play-circle"></i></span>
+                            <span class="sidebar-menu-text">Executions</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Configuration Section -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Configuration</div>
+                <ul class="sidebar-menu">
+                    <li class="sidebar-menu-item">
+                        <a href="/ssh" class="sidebar-menu-link" data-tooltip="SSH Profiles">
+                            <span class="sidebar-menu-icon"><i class="bi bi-key"></i></span>
+                            <span class="sidebar-menu-text">SSH Profiles</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="/secrets" class="sidebar-menu-link" data-tooltip="Secrets">
+                            <span class="sidebar-menu-icon"><i class="bi bi-shield-lock"></i></span>
+                            <span class="sidebar-menu-text">Secrets</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-menu-item">
+                        <a href="/backup" class="sidebar-menu-link" data-tooltip="Backup">
+                            <span class="sidebar-menu-icon"><i class="bi bi-cloud-upload"></i></span>
+                            <span class="sidebar-menu-text">Backup</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Tools Section -->
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">Tools</div>
+                <ul class="sidebar-menu">
+                    <li class="sidebar-menu-item">
+                        <a href="/terminal" class="sidebar-menu-link" data-tooltip="Terminal">
+                            <span class="sidebar-menu-icon"><i class="bi bi-terminal"></i></span>
+                            <span class="sidebar-menu-text">Terminal</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Footer -->
+        <div class="sidebar-footer">
+            <div class="sidebar-user" onclick="showUserMenu()">
+                <div class="sidebar-user-avatar">SR</div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-name">Admin</div>
+                    <div class="sidebar-user-role">Administrator</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <script>
+        // Sidebar toggle functionality
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+
+            // Save state to localStorage
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            localStorage.setItem('sidebarCollapsed', isCollapsed);
+        }
+
+        // Mobile sidebar toggle
+        function toggleMobileSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+
+        // Set active menu item based on current path
+        function setActiveMenuItem() {
+            const currentPath = window.location.pathname;
+            const menuLinks = document.querySelectorAll('.sidebar-menu-link');
+
+            menuLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                if (href === currentPath || (currentPath.startsWith(href) && href !== '/')) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+        }
+
+        // Load sidebar state from localStorage
+        function loadSidebarState() {
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                document.getElementById('sidebar').classList.add('collapsed');
+            }
+        }
+
+        // User menu placeholder
+        function showUserMenu() {
+            console.log('User menu clicked');
+            // Implement user menu modal/dropdown
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSidebarState();
+            setActiveMenuItem();
+        });
+
+        // Close mobile sidebar when clicking overlay
+        document.getElementById('mobileOverlay')?.addEventListener('click', toggleMobileSidebar);
+    </script>
+</body>
+</html>

@@ -9,6 +9,11 @@
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/theme.css">
     <link rel="stylesheet" href="/static/css/sloth-theme.css">
+    <!-- NEW: Modern UI Styles -->
+    <link rel="stylesheet" href="/static/css/toast.css">
+    <link rel="stylesheet" href="/static/css/skeletons.css">
+    <link rel="stylesheet" href="/static/css/animations.css">
+    <link rel="stylesheet" href="/static/css/glassmorphism.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -16,6 +21,20 @@
     <div id="sloth-navbar"></div>
 
     <div class="container-fluid mt-4">
+        <!-- Demo Button for New Features -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="alert alert-info alert-dismissible fade show glass-card" role="alert">
+                    <strong>🎨 New UI Features!</strong> Try the new components:
+                    <button class="btn btn-sm btn-primary ms-2" onclick="demoToast()">Toast Demo</button>
+                    <button class="btn btn-sm btn-success ms-2" onclick="demoConfetti()">🎉 Confetti</button>
+                    <button class="btn btn-sm btn-warning ms-2" onclick="demoSkeleton()">Skeleton</button>
+                    <button class="close" type="button" data-bs-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+            </div>
+        </div>
         <!-- Header -->
         <div class="row mb-4">
             <div class="col-12">
@@ -27,7 +46,7 @@
         <!-- Quick Stats Cards -->
         <div class="row mb-4">
             <div class="col-lg-3 col-md-6 mb-3">
-                <div class="card stat-card border-0 shadow-sm">
+                <div class="card stat-card border-0 shadow-sm glass-card hover-lift fade-in-up stagger-1">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
@@ -44,7 +63,7 @@
             </div>
 
             <div class="col-lg-3 col-md-6 mb-3">
-                <div class="card stat-card border-0 shadow-sm">
+                <div class="card stat-card border-0 shadow-sm glass-card hover-lift fade-in-up stagger-2">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
@@ -61,7 +80,7 @@
             </div>
 
             <div class="col-lg-3 col-md-6 mb-3">
-                <div class="card stat-card border-0 shadow-sm">
+                <div class="card stat-card border-0 shadow-sm glass-card hover-lift fade-in-up stagger-3">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
@@ -78,7 +97,7 @@
             </div>
 
             <div class="col-lg-3 col-md-6 mb-3">
-                <div class="card stat-card border-0 shadow-sm">
+                <div class="card stat-card border-0 shadow-sm glass-card hover-lift fade-in-up stagger-4">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
@@ -257,6 +276,12 @@
     <script src="/static/js/navbar.js"></script>
     <script src="/static/js/utils.js"></script>
     <script src="/static/js/websocket.js"></script>
+    <!-- NEW: Modern UI Scripts -->
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/confetti.js"></script>
+    <script src="/static/js/skeletons.js"></script>
+    <script src="/static/js/breadcrumbs.js"></script>
+    <script src="/static/js/advanced-charts.js"></script>
     <script src="/static/js/dashboard.js"></script>
     <script>
         // Initialize health chart
@@ -346,10 +371,64 @@
             }
         }
 
+        // Demo functions for new UI features
+        function demoToast() {
+            const demos = [
+                () => toastManager.success('This is a success toast!', 'Success'),
+                () => toastManager.error('This is an error toast!', 'Error'),
+                () => toastManager.warning('This is a warning toast!', 'Warning'),
+                () => toastManager.info('This is an info toast!', 'Info'),
+                () => toastManager.show({
+                    message: 'Toast with actions',
+                    type: 'info',
+                    actions: [
+                        { label: 'Accept', onClick: () => toastManager.success('Accepted!') },
+                        { label: 'Decline', onClick: () => toastManager.error('Declined!') }
+                    ]
+                })
+            ];
+            const randomDemo = demos[Math.floor(Math.random() * demos.length)];
+            randomDemo();
+        }
+
+        function demoConfetti() {
+            const demos = [
+                () => confetti.celebrate(),
+                () => confetti.workflowSuccess(),
+                () => confetti.fireworks(5, 200),
+                () => confetti.burst({ particleCount: 150, spread: 180 })
+            ];
+            const randomDemo = demos[Math.floor(Math.random() * demos.length)];
+            randomDemo();
+            toastManager.success('Confetti celebration!', '🎉');
+        }
+
+        function demoSkeleton() {
+            const container = document.querySelector('.row.mb-4');
+            const originalContent = container.innerHTML;
+
+            // Show skeleton
+            container.innerHTML = SkeletonLoader.dashboardStats();
+            toastManager.info('Loading skeleton shown...', 'Demo');
+
+            // Restore after 3 seconds
+            setTimeout(() => {
+                container.innerHTML = originalContent;
+                toastManager.success('Content restored!', 'Demo');
+            }, 3000);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             initHealthChart();
             loadMetrics();
             setInterval(loadMetrics, 5000);
+
+            // Show welcome toast on first load
+            setTimeout(() => {
+                toastManager.success('Welcome to the modern Sloth Runner UI!', '🦥 Welcome', {
+                    duration: 5000
+                });
+            }, 1000);
         });
     </script>
 </body>

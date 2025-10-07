@@ -29,12 +29,14 @@ func NewListCommand(ctx *commands.AppContext) *cobra.Command {
 			}
 
 			local, _ := cmd.Flags().GetBool("local")
-			masterAddr, _ := cmd.Flags().GetString("master")
 
-			// If --local flag is set or master is empty, use local database
-			if local || masterAddr == "" {
+			// If --local flag is set, use local database
+			if local {
 				return listAgentsFromLocalDB(debug)
 			}
+
+			// Get master address (supports both names and addresses)
+			masterAddr := getMasterAddress(cmd)
 
 			// Try master server first, fallback to local DB if it fails
 			ctx := context.Background()
