@@ -93,3 +93,21 @@ func EnsureDataDir() error {
 	dir := GetDataDir()
 	return os.MkdirAll(dir, 0755)
 }
+
+// GetMasterAddress returns the configured master server address
+// Priority: 1. SLOTH_RUNNER_MASTER_ADDR env var, 2. master.conf file, 3. default localhost:50051
+func GetMasterAddress() string {
+	// First check environment variable
+	if addr := os.Getenv("SLOTH_RUNNER_MASTER_ADDR"); addr != "" {
+		return addr
+	}
+
+	// Then check config file
+	configPath := filepath.Join(GetDataDir(), "master.conf")
+	if data, err := os.ReadFile(configPath); err == nil && len(data) > 0 {
+		return string(data)
+	}
+
+	// Default to localhost
+	return "localhost:50051"
+}
