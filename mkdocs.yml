@@ -159,6 +159,7 @@ nav:
     - '🆕 Latest Features': 'en/enterprise-features'
     - '🗂️ Stack Management': 'en/stack-management'
     - '🎯 Advanced Features': 'en/advanced-features'
+    - '⚡ Performance & Optimization 🔥': 'en/performance'
   - '🏗️ Architecture':
     - '📐 System Architecture 🔥': 'architecture/sloth-runner-architecture'
     - '⚡ Hooks & Events System 🔥': 'architecture/hooks-events-system'
@@ -207,6 +208,7 @@ nav:
     - '🤖 AI Integration': 'en/ai-features'
     - '🌐 Distributed Agents': 'en/distributed'
     - '🤖 Agent Setup Guide': 'en/master-agent-architecture'
+    - '🎯 Master Management 🔥': 'en/master-management'
     - '🔄 Agent Auto-Reconnection 🔥': 'en/agent-improvements'
     - '📦 Agents in Incus/LXC Containers': 'pt/agente-em-containers'
     - '📊 Web UI 🔥':
