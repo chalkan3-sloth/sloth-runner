@@ -596,3 +596,216 @@ func extractTarData(reader io.Reader, dest string) error {
 		}
 	}
 }
+
+// GetResourceUsage returns current resource usage of the agent
+func (s *agentServer) GetResourceUsage(ctx context.Context, in *pb.ResourceUsageRequest) (*pb.ResourceUsageResponse, error) {
+	// Get CPU usage
+	cpuPercent := getCPUPercent()
+	
+	// Get memory usage
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	memPercent := float64(m.Alloc) / float64(m.Sys) * 100
+	
+	// Get system memory info
+	memInfo, err := getMemoryInfo()
+	if err != nil {
+		slog.Warn("Failed to get memory info", "error", err)
+	}
+	
+	// Get disk usage
+	diskInfo, err := getDiskUsage("/")
+	if err != nil {
+		slog.Warn("Failed to get disk info", "error", err)
+	}
+	
+	// Get load average
+	loadAvg := getLoadAverage()
+	
+	// Get process count
+	processCount := getProcessCount()
+	
+	// Get uptime
+	uptime := getSystemUptime()
+	
+	response := &pb.ResourceUsageResponse{
+		CpuPercent:       cpuPercent,
+		MemoryPercent:    memPercent,
+		MemoryUsedBytes:  memInfo.Used,
+		MemoryTotalBytes: memInfo.Total,
+		DiskPercent:      diskInfo.UsedPercent,
+		DiskUsedBytes:    diskInfo.Used,
+		DiskTotalBytes:   diskInfo.Total,
+		ProcessCount:     uint32(processCount),
+		LoadAvg_1Min:     loadAvg[0],
+		LoadAvg_5Min:     loadAvg[1],
+		LoadAvg_15Min:    loadAvg[2],
+		UptimeSeconds:    uptime,
+	}
+	
+	return response, nil
+}
+
+// GetProcessList returns list of running processes
+func (s *agentServer) GetProcessList(ctx context.Context, in *pb.ProcessListRequest) (*pb.ProcessListResponse, error) {
+	processes, err := getProcesses()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get processes: %w", err)
+	}
+	
+	pbProcesses := make([]*pb.ProcessInfo, 0, len(processes))
+	for _, p := range processes {
+		pbProcesses = append(pbProcesses, &pb.ProcessInfo{
+			Pid:           int32(p.PID),
+			Name:          p.Name,
+			Status:        p.Status,
+			CpuPercent:    p.CPUPercent,
+			MemoryPercent: p.MemoryPercent,
+			MemoryBytes:   p.MemoryBytes,
+			User:          p.User,
+			Command:       p.Command,
+			StartedAt:     p.StartedAt,
+		})
+	}
+	
+	return &pb.ProcessListResponse{Processes: pbProcesses}, nil
+}
+
+// GetNetworkInfo returns network interface information
+func (s *agentServer) GetNetworkInfo(ctx context.Context, in *pb.NetworkInfoRequest) (*pb.NetworkInfoResponse, error) {
+	interfaces, err := getNetworkInterfaces()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get network interfaces: %w", err)
+	}
+	
+	hostname, _ := os.Hostname()
+	
+	pbInterfaces := make([]*pb.NetworkInterface, 0, len(interfaces))
+	for _, iface := range interfaces {
+		pbInterfaces = append(pbInterfaces, &pb.NetworkInterface{
+			Name:        iface.Name,
+			IpAddresses: iface.IPAddresses,
+			MacAddress:  iface.MACAddress,
+			BytesSent:   iface.BytesSent,
+			BytesRecv:   iface.BytesRecv,
+			IsUp:        iface.IsUp,
+		})
+	}
+	
+	return &pb.NetworkInfoResponse{
+		Interfaces: pbInterfaces,
+		Hostname:   hostname,
+	}, nil
+}
+
+// GetDiskInfo returns disk partition information
+func (s *agentServer) GetDiskInfo(ctx context.Context, in *pb.DiskInfoRequest) (*pb.DiskInfoResponse, error) {
+	partitions, err := getDiskPartitions()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get disk partitions: %w", err)
+	}
+	
+	pbPartitions := make([]*pb.DiskPartition, 0, len(partitions))
+	var totalRead, totalWrite uint64
+	
+	for _, part := range partitions {
+		pbPartitions = append(pbPartitions, &pb.DiskPartition{
+			Device:     part.Device,
+			Mountpoint: part.Mountpoint,
+			Fstype:     part.FSType,
+			TotalBytes: part.TotalBytes,
+			UsedBytes:  part.UsedBytes,
+			FreeBytes:  part.FreeBytes,
+			Percent:    part.Percent,
+		})
+		totalRead += part.IOReadBytes
+		totalWrite += part.IOWriteBytes
+	}
+	
+	return &pb.DiskInfoResponse{
+		Partitions:        pbPartitions,
+		TotalIoReadBytes:  totalRead,
+		TotalIoWriteBytes: totalWrite,
+	}, nil
+}
+
+// StreamLogs streams agent logs
+func (s *agentServer) StreamLogs(in *pb.StreamLogsRequest, stream pb.Agent_StreamLogsServer) error {
+	// For now, stream system journal logs
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+	
+	logChan := make(chan LogEntry, 100)
+	go collectLogs(logChan)
+	
+	for {
+		select {
+		case <-stream.Context().Done():
+			return nil
+		case entry := <-logChan:
+			err := stream.Send(&pb.LogEntry{
+				Timestamp: entry.Timestamp,
+				Level:     entry.Level,
+				Message:   entry.Message,
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+}
+
+// StreamMetrics streams real-time metrics
+func (s *agentServer) StreamMetrics(in *pb.StreamMetricsRequest, stream pb.Agent_StreamMetricsServer) error {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	
+	for {
+		select {
+		case <-stream.Context().Done():
+			return nil
+		case <-ticker.C:
+			// Get current metrics
+			cpuPercent := getCPUPercent()
+			memInfo, _ := getMemoryInfo()
+			diskInfo, _ := getDiskUsage("/")
+			
+			memPercent := float64(memInfo.Used) / float64(memInfo.Total) * 100
+			
+			err := stream.Send(&pb.MetricsData{
+				Timestamp:     time.Now().Unix(),
+				CpuPercent:    cpuPercent,
+				MemoryPercent: memPercent,
+				DiskPercent:   diskInfo.UsedPercent,
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+}
+
+// RestartService restarts the agent service
+func (s *agentServer) RestartService(ctx context.Context, in *pb.RestartServiceRequest) (*pb.RestartServiceResponse, error) {
+	slog.Info("Agent restart requested")
+	
+	go func() {
+		time.Sleep(1 * time.Second)
+		// Get current executable and args
+		exe, _ := os.Executable()
+		args := os.Args[1:]
+		
+		// Start new instance
+		cmd := exec.Command(exe, args...)
+		cmd.Start()
+		
+		// Stop current instance
+		s.grpcServer.GracefulStop()
+		os.Exit(0)
+	}()
+	
+	return &pb.RestartServiceResponse{
+		Success: true,
+		Message: "Agent restart initiated",
+	}, nil
+}

@@ -3,21 +3,28 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"io"
 	"net/http"
+	"strconv"
+	"sync"
 	"time"
 
+	"github.com/chalkan3-sloth/sloth-runner/internal/webui/services"
 	"github.com/gin-gonic/gin"
 )
 
 // AgentHandler handles agent operations
 type AgentHandler struct {
-	db *AgentDBWrapper
+	db          *AgentDBWrapper
+	agentClient *services.AgentClient
 }
 
 // NewAgentHandler creates a new agent handler
-func NewAgentHandler(db *AgentDBWrapper) *AgentHandler {
-	return &AgentHandler{db: db}
+func NewAgentHandler(db *AgentDBWrapper, agentClient *services.AgentClient) *AgentHandler {
+	return &AgentHandler{
+		db:          db,
+		agentClient: agentClient,
+	}
 }
 
 // AgentMetrics represents detailed agent metrics
@@ -193,6 +200,27 @@ func (h *AgentHandler) Update(c *gin.Context) {
 	c.JSON(http.StatusNotImplemented, gin.H{"error": "Not implemented yet"})
 }
 
+// GetMetricsHistory returns historical metrics for an agent
+func (h *AgentHandler) GetMetricsHistory(c *gin.Context) {
+	ctx := c.Request.Context()
+	name := c.Param("name")
+
+	limit := 50 // Last 50 data points
+	if limitParam := c.Query("limit"); limitParam != "" {
+		if l, err := strconv.Atoi(limitParam); err == nil {
+			limit = l
+		}
+	}
+
+	history, err := h.db.GetMetricsHistory(ctx, name, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"history": history})
+}
+
 // GetResourceUsage returns detailed resource usage for an agent
 func (h *AgentHandler) GetResourceUsage(c *gin.Context) {
 	ctx := c.Request.Context()
@@ -205,81 +233,26 @@ func (h *AgentHandler) GetResourceUsage(c *gin.Context) {
 		return
 	}
 
-	// Parse system_info to extract metrics
-	var sysInfo map[string]interface{}
-	if agent.SystemInfo == "" || json.Unmarshal([]byte(agent.SystemInfo), &sysInfo) != nil {
-		// Fallback to mock data if no system info
-		c.JSON(http.StatusOK, generateMockMetrics(name))
+	// Get real resource usage via gRPC
+	resp, err := h.agentClient.GetResourceUsage(ctx, agent.Address)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to get resource usage: %v", err)})
 		return
 	}
 
-	metrics := &AgentMetrics{}
-
-	// Extract memory metrics
-	if memory, ok := sysInfo["memory"].(map[string]interface{}); ok {
-		if used, ok := memory["used"].(float64); ok {
-			metrics.MemoryUsedBytes = uint64(used)
-		}
-		if total, ok := memory["total"].(float64); ok {
-			metrics.MemoryTotalBytes = uint64(total)
-		}
-		if usedPercent, ok := memory["used_percent"].(float64); ok {
-			metrics.MemoryPercent = usedPercent
-		}
-	}
-
-	// Extract disk metrics (use first disk)
-	if disks, ok := sysInfo["disk"].([]interface{}); ok && len(disks) > 0 {
-		if disk, ok := disks[0].(map[string]interface{}); ok {
-			if used, ok := disk["used"].(float64); ok {
-				metrics.DiskUsedBytes = uint64(used)
-			}
-			if total, ok := disk["total"].(float64); ok {
-				metrics.DiskTotalBytes = uint64(total)
-			}
-			if usedPercent, ok := disk["used_percent"].(float64); ok {
-				metrics.DiskPercent = usedPercent
-			}
-		}
-	}
-
-	// Extract load average
-	if loadAvg, ok := sysInfo["load_average"].([]interface{}); ok {
-		if len(loadAvg) > 0 {
-			if load1, ok := loadAvg[0].(float64); ok {
-				metrics.LoadAvg1Min = load1
-			}
-		}
-		if len(loadAvg) > 1 {
-			if load5, ok := loadAvg[1].(float64); ok {
-				metrics.LoadAvg5Min = load5
-			}
-		}
-		if len(loadAvg) > 2 {
-			if load15, ok := loadAvg[2].(float64); ok {
-				metrics.LoadAvg15Min = load15
-			}
-		}
-	}
-
-	// Extract process count
-	if processes, ok := sysInfo["processes"].(map[string]interface{}); ok {
-		if total, ok := processes["total"].(float64); ok {
-			metrics.ProcessCount = int(total)
-		}
-	}
-
-	// Extract uptime
-	if uptime, ok := sysInfo["uptime"].(float64); ok {
-		metrics.UptimeSeconds = uint64(uptime)
-	}
-
-	// Estimate CPU usage from load average (simple heuristic)
-	if cpus, ok := sysInfo["cpus"].(float64); ok && cpus > 0 {
-		metrics.CPUPercent = (metrics.LoadAvg1Min / cpus) * 100
-		if metrics.CPUPercent > 100 {
-			metrics.CPUPercent = 100
-		}
+	metrics := &AgentMetrics{
+		CPUPercent:       resp.CpuPercent,
+		MemoryPercent:    resp.MemoryPercent,
+		MemoryUsedBytes:  resp.MemoryUsedBytes,
+		MemoryTotalBytes: resp.MemoryTotalBytes,
+		DiskPercent:      resp.DiskPercent,
+		DiskUsedBytes:    resp.DiskUsedBytes,
+		DiskTotalBytes:   resp.DiskTotalBytes,
+		ProcessCount:     int(resp.ProcessCount),
+		LoadAvg1Min:      resp.LoadAvg_1Min,
+		LoadAvg5Min:      resp.LoadAvg_5Min,
+		LoadAvg15Min:     resp.LoadAvg_15Min,
+		UptimeSeconds:    resp.UptimeSeconds,
 	}
 
 	c.JSON(http.StatusOK, metrics)
@@ -287,10 +260,37 @@ func (h *AgentHandler) GetResourceUsage(c *gin.Context) {
 
 // GetProcessList returns list of processes running on agent
 func (h *AgentHandler) GetProcessList(c *gin.Context) {
+	ctx := c.Request.Context()
 	name := c.Param("name")
 
-	// TODO: Get real process list from agent via gRPC
-	processes := generateMockProcesses(name)
+	// Get agent from database
+	agent, err := h.db.GetAgent(ctx, name)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Agent not found"})
+		return
+	}
+
+	// Get real process list via gRPC
+	resp, err := h.agentClient.GetProcessList(ctx, agent.Address)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to get process list: %v", err)})
+		return
+	}
+
+	processes := make([]ProcessInfo, 0, len(resp.Processes))
+	for _, p := range resp.Processes {
+		processes = append(processes, ProcessInfo{
+			PID:           int(p.Pid),
+			Name:          p.Name,
+			Status:        p.Status,
+			CPUPercent:    p.CpuPercent,
+			MemoryPercent: p.MemoryPercent,
+			MemoryBytes:   p.MemoryBytes,
+			User:          p.User,
+			Command:       p.Command,
+			StartedAt:     p.StartedAt,
+		})
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"processes":   processes,
@@ -300,33 +300,83 @@ func (h *AgentHandler) GetProcessList(c *gin.Context) {
 
 // GetNetworkInfo returns network information for an agent
 func (h *AgentHandler) GetNetworkInfo(c *gin.Context) {
+	ctx := c.Request.Context()
 	name := c.Param("name")
 
-	// TODO: Get real network info from agent via gRPC
-	interfaces := generateMockNetworkInterfaces(name)
+	// Get agent from database
+	agent, err := h.db.GetAgent(ctx, name)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Agent not found"})
+		return
+	}
+
+	// Get real network info via gRPC
+	resp, err := h.agentClient.GetNetworkInfo(ctx, agent.Address)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to get network info: %v", err)})
+		return
+	}
+
+	interfaces := make([]NetworkInterface, 0, len(resp.Interfaces))
+	for _, iface := range resp.Interfaces {
+		interfaces = append(interfaces, NetworkInterface{
+			Name:        iface.Name,
+			IPAddresses: iface.IpAddresses,
+			MACAddress:  iface.MacAddress,
+			BytesSent:   iface.BytesSent,
+			BytesRecv:   iface.BytesRecv,
+			IsUp:        iface.IsUp,
+		})
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"interfaces": interfaces,
-		"hostname":   name,
+		"hostname":   resp.Hostname,
 	})
 }
 
 // GetDiskInfo returns disk information for an agent
 func (h *AgentHandler) GetDiskInfo(c *gin.Context) {
+	ctx := c.Request.Context()
 	name := c.Param("name")
 
-	// TODO: Get real disk info from agent via gRPC
-	partitions := generateMockDiskPartitions(name)
+	// Get agent from database
+	agent, err := h.db.GetAgent(ctx, name)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Agent not found"})
+		return
+	}
+
+	// Get real disk info via gRPC
+	resp, err := h.agentClient.GetDiskInfo(ctx, agent.Address)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to get disk info: %v", err)})
+		return
+	}
+
+	partitions := make([]DiskPartition, 0, len(resp.Partitions))
+	for _, part := range resp.Partitions {
+		partitions = append(partitions, DiskPartition{
+			Device:     part.Device,
+			Mountpoint: part.Mountpoint,
+			FSType:     part.Fstype,
+			TotalBytes: part.TotalBytes,
+			UsedBytes:  part.UsedBytes,
+			FreeBytes:  part.FreeBytes,
+			Percent:    part.Percent,
+		})
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"partitions":          partitions,
-		"total_io_read_bytes": uint64(rand.Int63n(1000000000000)),
-		"total_io_write_bytes": uint64(rand.Int63n(500000000000)),
+		"partitions":           partitions,
+		"total_io_read_bytes":  resp.TotalIoReadBytes,
+		"total_io_write_bytes": resp.TotalIoWriteBytes,
 	})
 }
 
 // ExecuteCommand executes a command on an agent
 func (h *AgentHandler) ExecuteCommand(c *gin.Context) {
+	ctx := c.Request.Context()
 	name := c.Param("name")
 
 	var req struct {
@@ -338,8 +388,20 @@ func (h *AgentHandler) ExecuteCommand(c *gin.Context) {
 		return
 	}
 
-	// TODO: Execute command via gRPC and stream output
-	// For now, return mock output
+	// Get agent from database
+	agent, err := h.db.GetAgent(ctx, name)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Agent not found"})
+		return
+	}
+
+	// Execute command via gRPC and stream output
+	stream, err := h.agentClient.RunCommand(ctx, agent.Address, req.Command)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Failed to execute command: %v\n", err)
+		return
+	}
+
 	c.Header("Content-Type", "text/plain")
 	c.Header("Transfer-Encoding", "chunked")
 
@@ -350,28 +412,56 @@ func (h *AgentHandler) ExecuteCommand(c *gin.Context) {
 		return
 	}
 
-	// Simulate command execution
-	fmt.Fprintf(w, "$ %s\n", req.Command)
-	flusher.Flush()
+	// Stream output from agent
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			fmt.Fprintf(w, "\nError: %v\n", err)
+			flusher.Flush()
+			break
+		}
 
-	time.Sleep(100 * time.Millisecond)
-	fmt.Fprintf(w, "Executing on agent: %s\n", name)
-	flusher.Flush()
-
-	time.Sleep(200 * time.Millisecond)
-	fmt.Fprintf(w, "Output: Command executed successfully\n")
-	flusher.Flush()
-
-	time.Sleep(100 * time.Millisecond)
-	fmt.Fprintf(w, "Exit code: 0\n")
-	flusher.Flush()
+		if resp.StdoutChunk != "" {
+			fmt.Fprint(w, resp.StdoutChunk)
+			flusher.Flush()
+		}
+		if resp.StderrChunk != "" {
+			fmt.Fprint(w, resp.StderrChunk)
+			flusher.Flush()
+		}
+		if resp.Finished {
+			fmt.Fprintf(w, "\nExit code: %d\n", resp.ExitCode)
+			flusher.Flush()
+			break
+		}
+	}
 }
 
 // RestartAgent restarts an agent
 func (h *AgentHandler) RestartAgent(c *gin.Context) {
+	ctx := c.Request.Context()
 	name := c.Param("name")
 
-	// TODO: Restart agent via gRPC
+	// Get agent from database
+	agent, err := h.db.GetAgent(ctx, name)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Agent not found"})
+		return
+	}
+
+	// Restart agent via gRPC
+	err = h.agentClient.RestartService(ctx, agent.Address)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   fmt.Sprintf("Failed to restart agent: %v", err),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": fmt.Sprintf("Agent %s restart initiated", name),
@@ -380,9 +470,26 @@ func (h *AgentHandler) RestartAgent(c *gin.Context) {
 
 // ShutdownAgent shuts down an agent
 func (h *AgentHandler) ShutdownAgent(c *gin.Context) {
+	ctx := c.Request.Context()
 	name := c.Param("name")
 
-	// TODO: Shutdown agent via gRPC
+	// Get agent from database
+	agent, err := h.db.GetAgent(ctx, name)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Agent not found"})
+		return
+	}
+
+	// Shutdown agent via gRPC
+	err = h.agentClient.Shutdown(ctx, agent.Address)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   fmt.Sprintf("Failed to shutdown agent: %v", err),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": fmt.Sprintf("Agent %s shutdown initiated", name),
@@ -391,7 +498,15 @@ func (h *AgentHandler) ShutdownAgent(c *gin.Context) {
 
 // StreamLogs streams logs from an agent
 func (h *AgentHandler) StreamLogs(c *gin.Context) {
+	ctx := c.Request.Context()
 	name := c.Param("name")
+
+	// Get agent from database
+	agent, err := h.db.GetAgent(ctx, name)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Agent not found"})
+		return
+	}
 
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
@@ -404,44 +519,67 @@ func (h *AgentHandler) StreamLogs(c *gin.Context) {
 		return
 	}
 
-	// TODO: Stream real logs from agent
-	// For now, generate mock log entries
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-
-	logLines := []string{
-		fmt.Sprintf("[INFO] Agent %s - System check completed", name),
-		fmt.Sprintf("[DEBUG] Agent %s - Heartbeat sent to master", name),
-		fmt.Sprintf("[INFO] Agent %s - Resource monitoring active", name),
-		fmt.Sprintf("[DEBUG] Agent %s - Task queue: 0 pending", name),
-		fmt.Sprintf("[INFO] Agent %s - All systems operational", name),
+	// Stream real logs from agent via gRPC
+	stream, err := h.agentClient.StreamLogs(ctx, agent.Address)
+	if err != nil {
+		logEntry := map[string]interface{}{
+			"timestamp": time.Now().Unix(),
+			"level":     "ERROR",
+			"message":   fmt.Sprintf("Failed to stream logs: %v", err),
+			"source":    name,
+		}
+		data, _ := json.Marshal(logEntry)
+		fmt.Fprintf(w, "data: %s\n\n", data)
+		flusher.Flush()
+		return
 	}
 
-	for i, line := range logLines {
+	for {
 		select {
-		case <-c.Request.Context().Done():
+		case <-ctx.Done():
 			return
-		case <-ticker.C:
-			logEntry := map[string]interface{}{
-				"timestamp": time.Now().Unix(),
-				"level":     "INFO",
-				"message":   line,
-				"source":    name,
-			}
-			data, _ := json.Marshal(logEntry)
-			fmt.Fprintf(w, "data: %s\n\n", data)
-			flusher.Flush()
-
-			if i >= len(logLines)-1 {
+		default:
+			logEntry, err := stream.Recv()
+			if err == io.EOF {
 				return
 			}
+			if err != nil {
+				errorEntry := map[string]interface{}{
+					"timestamp": time.Now().Unix(),
+					"level":     "ERROR",
+					"message":   fmt.Sprintf("Stream error: %v", err),
+					"source":    name,
+				}
+				data, _ := json.Marshal(errorEntry)
+				fmt.Fprintf(w, "data: %s\n\n", data)
+				flusher.Flush()
+				return
+			}
+
+			entry := map[string]interface{}{
+				"timestamp": logEntry.Timestamp,
+				"level":     logEntry.Level,
+				"message":   logEntry.Message,
+				"source":    name,
+			}
+			data, _ := json.Marshal(entry)
+			fmt.Fprintf(w, "data: %s\n\n", data)
+			flusher.Flush()
 		}
 	}
 }
 
 // StreamMetrics streams metrics from an agent
 func (h *AgentHandler) StreamMetrics(c *gin.Context) {
+	ctx := c.Request.Context()
 	name := c.Param("name")
+
+	// Get agent from database
+	agent, err := h.db.GetAgent(ctx, name)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Agent not found"})
+		return
+	}
 
 	c.Header("Content-Type", "text/event-stream")
 	c.Header("Cache-Control", "no-cache")
@@ -454,23 +592,46 @@ func (h *AgentHandler) StreamMetrics(c *gin.Context) {
 		return
 	}
 
-	// TODO: Stream real metrics from agent
-	ticker := time.NewTicker(2 * time.Second)
-	defer ticker.Stop()
+	// Stream real metrics from agent via gRPC
+	stream, err := h.agentClient.StreamMetrics(ctx, agent.Address)
+	if err != nil {
+		errorData := map[string]interface{}{
+			"timestamp": time.Now().Unix(),
+			"error":     fmt.Sprintf("Failed to stream metrics: %v", err),
+		}
+		data, _ := json.Marshal(errorData)
+		fmt.Fprintf(w, "data: %s\n\n", data)
+		flusher.Flush()
+		return
+	}
 
 	for {
 		select {
-		case <-c.Request.Context().Done():
+		case <-ctx.Done():
 			return
-		case <-ticker.C:
-			metrics := generateMockMetrics(name)
-			metricsData := map[string]interface{}{
-				"timestamp":      time.Now().Unix(),
-				"cpu_percent":    metrics.CPUPercent,
-				"memory_percent": metrics.MemoryPercent,
-				"disk_percent":   metrics.DiskPercent,
+		default:
+			metricsData, err := stream.Recv()
+			if err == io.EOF {
+				return
 			}
-			data, _ := json.Marshal(metricsData)
+			if err != nil {
+				errorData := map[string]interface{}{
+					"timestamp": time.Now().Unix(),
+					"error":     fmt.Sprintf("Stream error: %v", err),
+				}
+				data, _ := json.Marshal(errorData)
+				fmt.Fprintf(w, "data: %s\n\n", data)
+				flusher.Flush()
+				return
+			}
+
+			metrics := map[string]interface{}{
+				"timestamp":      metricsData.Timestamp,
+				"cpu_percent":    metricsData.CpuPercent,
+				"memory_percent": metricsData.MemoryPercent,
+				"disk_percent":   metricsData.DiskPercent,
+			}
+			data, _ := json.Marshal(metrics)
 			fmt.Fprintf(w, "data: %s\n\n", data)
 			flusher.Flush()
 		}
@@ -479,6 +640,8 @@ func (h *AgentHandler) StreamMetrics(c *gin.Context) {
 
 // BulkExecute executes a command on multiple agents
 func (h *AgentHandler) BulkExecute(c *gin.Context) {
+	ctx := c.Request.Context()
+
 	var req struct {
 		AgentNames []string `json:"agent_names"`
 		GroupName  string   `json:"group_name"`
@@ -501,26 +664,103 @@ func (h *AgentHandler) BulkExecute(c *gin.Context) {
 		return
 	}
 
-	// TODO: Execute on real agents
-	for _, agentName := range req.AgentNames {
-		time.Sleep(100 * time.Millisecond)
+	// Execute on real agents
+	executeOnAgent := func(agentName string) {
+		startTime := time.Now()
 
-		result := map[string]interface{}{
-			"agent_name":       agentName,
-			"success":          true,
-			"output":           fmt.Sprintf("Command executed on %s", agentName),
-			"exit_code":        0,
-			"execution_time_ms": rand.Intn(500) + 100,
+		// Get agent from database
+		agent, err := h.db.GetAgent(ctx, agentName)
+		if err != nil {
+			result := map[string]interface{}{
+				"agent_name":        agentName,
+				"success":           false,
+				"error":             fmt.Sprintf("Agent not found: %v", err),
+				"execution_time_ms": time.Since(startTime).Milliseconds(),
+			}
+			data, _ := json.Marshal(result)
+			fmt.Fprintf(w, "%s\n", data)
+			flusher.Flush()
+			return
 		}
 
+		// Execute command via gRPC
+		stream, err := h.agentClient.RunCommand(ctx, agent.Address, req.Command)
+		if err != nil {
+			result := map[string]interface{}{
+				"agent_name":        agentName,
+				"success":           false,
+				"error":             fmt.Sprintf("Failed to execute: %v", err),
+				"execution_time_ms": time.Since(startTime).Milliseconds(),
+			}
+			data, _ := json.Marshal(result)
+			fmt.Fprintf(w, "%s\n", data)
+			flusher.Flush()
+			return
+		}
+
+		// Collect output
+		var output string
+		var exitCode int32
+		for {
+			resp, err := stream.Recv()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				result := map[string]interface{}{
+					"agent_name":        agentName,
+					"success":           false,
+					"error":             fmt.Sprintf("Stream error: %v", err),
+					"execution_time_ms": time.Since(startTime).Milliseconds(),
+				}
+				data, _ := json.Marshal(result)
+				fmt.Fprintf(w, "%s\n", data)
+				flusher.Flush()
+				return
+			}
+
+			output += resp.StdoutChunk + resp.StderrChunk
+			if resp.Finished {
+				exitCode = resp.ExitCode
+				break
+			}
+		}
+
+		result := map[string]interface{}{
+			"agent_name":        agentName,
+			"success":           exitCode == 0,
+			"output":            output,
+			"exit_code":         exitCode,
+			"execution_time_ms": time.Since(startTime).Milliseconds(),
+		}
 		data, _ := json.Marshal(result)
 		fmt.Fprintf(w, "%s\n", data)
 		flusher.Flush()
+	}
+
+	if req.Parallel {
+		// Execute in parallel
+		var wg sync.WaitGroup
+		for _, agentName := range req.AgentNames {
+			wg.Add(1)
+			go func(name string) {
+				defer wg.Done()
+				executeOnAgent(name)
+			}(agentName)
+		}
+		wg.Wait()
+	} else {
+		// Execute sequentially
+		for _, agentName := range req.AgentNames {
+			executeOnAgent(agentName)
+		}
 	}
 }
 
 // GetMultipleStatus returns status of multiple agents
 func (h *AgentHandler) GetMultipleStatus(c *gin.Context) {
+	ctx := c.Request.Context()
+
 	var req struct {
 		AgentNames []string `json:"agent_names"`
 		GroupName  string   `json:"group_name"`
@@ -531,103 +771,44 @@ func (h *AgentHandler) GetMultipleStatus(c *gin.Context) {
 		return
 	}
 
-	// TODO: Get real status from agents
-	statuses := make([]map[string]interface{}, 0)
+	statuses := make([]map[string]interface{}, 0, len(req.AgentNames))
 
 	for _, name := range req.AgentNames {
-		metrics := generateMockMetrics(name)
+		// Get agent from database
+		agent, err := h.db.GetAgent(ctx, name)
+		if err != nil {
+			statuses = append(statuses, map[string]interface{}{
+				"agent_name": name,
+				"status":     "unknown",
+				"error":      "Agent not found",
+				"healthy":    false,
+			})
+			continue
+		}
+
+		// Get real metrics from agent
+		metrics, err := h.agentClient.GetResourceUsage(ctx, agent.Address)
+		if err != nil {
+			statuses = append(statuses, map[string]interface{}{
+				"agent_name":     name,
+				"status":         "disconnected",
+				"error":          err.Error(),
+				"last_heartbeat": agent.LastHeartbeat,
+				"healthy":        false,
+			})
+			continue
+		}
+
 		status := map[string]interface{}{
 			"agent_name":     name,
 			"status":         "connected",
-			"cpu_percent":    metrics.CPUPercent,
+			"cpu_percent":    metrics.CpuPercent,
 			"memory_percent": metrics.MemoryPercent,
-			"last_heartbeat": time.Now().Unix(),
+			"last_heartbeat": agent.LastHeartbeat,
 			"healthy":        true,
 		}
 		statuses = append(statuses, status)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"statuses": statuses})
-}
-
-// Mock data generators
-func generateMockMetrics(agentName string) *AgentMetrics {
-	rand.Seed(time.Now().UnixNano() + int64(len(agentName)))
-
-	totalMemory := uint64(16 * 1024 * 1024 * 1024) // 16 GB
-	usedMemory := uint64(float64(totalMemory) * (rand.Float64()*0.5 + 0.2))
-
-	totalDisk := uint64(500 * 1024 * 1024 * 1024) // 500 GB
-	usedDisk := uint64(float64(totalDisk) * (rand.Float64()*0.6 + 0.2))
-
-	return &AgentMetrics{
-		CPUPercent:       rand.Float64()*60 + 10,
-		MemoryPercent:    float64(usedMemory) / float64(totalMemory) * 100,
-		MemoryUsedBytes:  usedMemory,
-		MemoryTotalBytes: totalMemory,
-		DiskPercent:      float64(usedDisk) / float64(totalDisk) * 100,
-		DiskUsedBytes:    usedDisk,
-		DiskTotalBytes:   totalDisk,
-		ProcessCount:     rand.Intn(200) + 50,
-		LoadAvg1Min:      rand.Float64()*2 + 0.5,
-		LoadAvg5Min:      rand.Float64()*2 + 0.3,
-		LoadAvg15Min:     rand.Float64()*2 + 0.2,
-		UptimeSeconds:    uint64(rand.Intn(86400*30) + 86400),
-	}
-}
-
-func generateMockProcesses(agentName string) []ProcessInfo {
-	processes := []ProcessInfo{
-		{PID: 1, Name: "systemd", Status: "running", CPUPercent: 0.1, MemoryPercent: 0.5, MemoryBytes: 80000000, User: "root", Command: "/sbin/systemd", StartedAt: time.Now().Add(-24 * time.Hour).Unix()},
-		{PID: 123, Name: "sloth-runner", Status: "running", CPUPercent: 2.5, MemoryPercent: 3.2, MemoryBytes: 512000000, User: "sloth", Command: "/usr/bin/sloth-runner agent start", StartedAt: time.Now().Add(-6 * time.Hour).Unix()},
-		{PID: 456, Name: "nginx", Status: "running", CPUPercent: 1.2, MemoryPercent: 1.8, MemoryBytes: 288000000, User: "www-data", Command: "nginx: master process", StartedAt: time.Now().Add(-12 * time.Hour).Unix()},
-		{PID: 789, Name: "postgres", Status: "running", CPUPercent: 3.1, MemoryPercent: 5.4, MemoryBytes: 864000000, User: "postgres", Command: "/usr/lib/postgresql/14/bin/postgres", StartedAt: time.Now().Add(-48 * time.Hour).Unix()},
-		{PID: 1011, Name: "docker", Status: "running", CPUPercent: 0.8, MemoryPercent: 2.1, MemoryBytes: 336000000, User: "root", Command: "/usr/bin/dockerd", StartedAt: time.Now().Add(-72 * time.Hour).Unix()},
-	}
-
-	return processes
-}
-
-func generateMockNetworkInterfaces(agentName string) []NetworkInterface {
-	return []NetworkInterface{
-		{
-			Name:        "eth0",
-			IPAddresses: []string{"192.168.1.100", "fe80::1"},
-			MACAddress:  "00:1a:2b:3c:4d:5e",
-			BytesSent:   uint64(rand.Int63n(10000000000)),
-			BytesRecv:   uint64(rand.Int63n(20000000000)),
-			IsUp:        true,
-		},
-		{
-			Name:        "lo",
-			IPAddresses: []string{"127.0.0.1", "::1"},
-			MACAddress:  "00:00:00:00:00:00",
-			BytesSent:   uint64(rand.Int63n(1000000000)),
-			BytesRecv:   uint64(rand.Int63n(1000000000)),
-			IsUp:        true,
-		},
-	}
-}
-
-func generateMockDiskPartitions(agentName string) []DiskPartition {
-	return []DiskPartition{
-		{
-			Device:     "/dev/sda1",
-			Mountpoint: "/",
-			FSType:     "ext4",
-			TotalBytes: 500 * 1024 * 1024 * 1024,
-			UsedBytes:  250 * 1024 * 1024 * 1024,
-			FreeBytes:  250 * 1024 * 1024 * 1024,
-			Percent:    50.0,
-		},
-		{
-			Device:     "/dev/sda2",
-			Mountpoint: "/home",
-			FSType:     "ext4",
-			TotalBytes: 1000 * 1024 * 1024 * 1024,
-			UsedBytes:  600 * 1024 * 1024 * 1024,
-			FreeBytes:  400 * 1024 * 1024 * 1024,
-			Percent:    60.0,
-		},
-	}
 }

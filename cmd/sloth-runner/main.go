@@ -33,18 +33,6 @@ func main() {
 	// Set up structured logging with pterm
 	slog.SetDefault(slog.New(pterm.NewSlogHandler(&pterm.DefaultLogger)))
 
-	// Initialize global hook dispatcher system
-	if err := hooks.InitializeGlobalDispatcher(); err != nil {
-		slog.Warn("failed to initialize hook system", "error", err)
-	} else {
-		// Wire up the dispatcher to the event module
-		dispatcher := hooks.GetGlobalDispatcher()
-		if dispatcher != nil {
-			dispatcherFunc := dispatcher.CreateEventDispatcherFunc()
-			coremodules.SetGlobalEventDispatcher(dispatcherFunc)
-		}
-	}
-
 	// Execute the CLI
 	if err := Execute(); err != nil {
 		// Print formatted errors
@@ -57,6 +45,23 @@ func main() {
 		}
 		os.Exit(1)
 	}
+}
+
+// InitializeHookSystem initializes the global hook dispatcher
+// This should be called only by commands that need hook support
+func InitializeHookSystem() error {
+	if err := hooks.InitializeGlobalDispatcher(); err != nil {
+		return err
+	}
+
+	// Wire up the dispatcher to the event module
+	dispatcher := hooks.GetGlobalDispatcher()
+	if dispatcher != nil {
+		dispatcherFunc := dispatcher.CreateEventDispatcherFunc()
+		coremodules.SetGlobalEventDispatcher(dispatcherFunc)
+	}
+
+	return nil
 }
 
 func Execute() error {

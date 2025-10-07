@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/chalkan3-sloth/sloth-runner/internal/webui/handlers"
 	"github.com/chalkan3-sloth/sloth-runner/internal/webui/middleware"
+	"github.com/chalkan3-sloth/sloth-runner/internal/webui/services"
 )
 
 //go:embed static/css static/js templates
@@ -19,15 +20,17 @@ var embeddedFS embed.FS
 
 // Server represents the web UI server
 type Server struct {
-	router     *gin.Engine
-	port       int
-	wsHub      *handlers.WebSocketHub
-	agentDB    *handlers.AgentDBWrapper
-	slothRepo  *handlers.SlothRepoWrapper
-	hookRepo   *handlers.HookRepoWrapper
-	secretsSvc *handlers.SecretsServiceWrapper
-	sshDB      *handlers.SSHDBWrapper
-	httpServer *http.Server
+	router      *gin.Engine
+	port        int
+	wsHub       *handlers.WebSocketHub
+	agentDB     *handlers.AgentDBWrapper
+	slothRepo   *handlers.SlothRepoWrapper
+	hookRepo    *handlers.HookRepoWrapper
+	secretsSvc  *handlers.SecretsServiceWrapper
+	sshDB       *handlers.SSHDBWrapper
+	stackHandler *handlers.StackHandler
+	httpServer  *http.Server
+	agentClient *services.AgentClient
 }
 
 // Config holds server configuration
@@ -39,6 +42,7 @@ type Config struct {
 	HookDBPath     string
 	SecretsDBPath  string
 	SSHDBPath      string
+	StackDBPath    string
 	EnableAuth     bool
 	Username       string
 	Password       string
@@ -82,15 +86,25 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to initialize SSH database: %w", err)
 	}
 
+	stackHandler, err := handlers.NewStackHandler(cfg.StackDBPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize stack handler: %w", err)
+	}
+
+	// Initialize agent client for gRPC communication
+	agentClient := services.NewAgentClient()
+
 	server := &Server{
-		router:     router,
-		port:       cfg.Port,
-		wsHub:      wsHub,
-		agentDB:    agentDB,
-		slothRepo:  slothRepo,
-		hookRepo:   hookRepo,
-		secretsSvc: secretsSvc,
-		sshDB:      sshDB,
+		router:       router,
+		port:         cfg.Port,
+		wsHub:        wsHub,
+		agentDB:      agentDB,
+		slothRepo:    slothRepo,
+		hookRepo:     hookRepo,
+		secretsSvc:   secretsSvc,
+		sshDB:        sshDB,
+		stackHandler: stackHandler,
+		agentClient:  agentClient,
 	}
 
 	// Setup routes
@@ -126,7 +140,7 @@ func (s *Server) setupRoutes(cfg *Config) {
 		api.GET("/dashboard", dashboard.GetStats)
 
 		// Agents
-		agentHandler := handlers.NewAgentHandler(s.agentDB)
+		agentHandler := handlers.NewAgentHandler(s.agentDB, s.agentClient)
 		agents := api.Group("/agents")
 		{
 			agents.GET("", agentHandler.List)
@@ -140,6 +154,7 @@ func (s *Server) setupRoutes(cfg *Config) {
 			agents.GET("/:name/processes", agentHandler.GetProcessList)
 			agents.GET("/:name/network", agentHandler.GetNetworkInfo)
 			agents.GET("/:name/disk", agentHandler.GetDiskInfo)
+			agents.GET("/:name/metrics/history", agentHandler.GetMetricsHistory)
 			agents.POST("/:name/command", agentHandler.ExecuteCommand)
 			agents.POST("/:name/restart", agentHandler.RestartAgent)
 			agents.POST("/:name/shutdown", agentHandler.ShutdownAgent)
@@ -223,6 +238,18 @@ func (s *Server) setupRoutes(cfg *Config) {
 			ssh.GET("/:name/audit", sshHandler.GetAuditLogs)
 		}
 
+		// Stacks
+		stacks := api.Group("/stacks")
+		{
+			stacks.GET("", s.stackHandler.List)
+			stacks.GET("/:name", s.stackHandler.Get)
+			stacks.POST("", s.stackHandler.Create)
+			stacks.PUT("/:name", s.stackHandler.Update)
+			stacks.DELETE("/:name", s.stackHandler.Delete)
+			stacks.POST("/:name/variables", s.stackHandler.AddVariable)
+			stacks.DELETE("/:name/variables/:key", s.stackHandler.DeleteVariable)
+		}
+
 		// Workflow Executions
 		execHandler := handlers.NewWorkflowExecutionHandler(s.wsHub)
 		executions := api.Group("/executions")
@@ -292,6 +319,7 @@ func (s *Server) setupRoutes(cfg *Config) {
 	s.router.GET("/agents", s.servePage("agents.html"))
 	s.router.GET("/agent-control", s.servePage("agent-control.html"))
 	s.router.GET("/workflows", s.servePage("workflows.html"))
+	s.router.GET("/stacks", s.servePage("stacks.html"))
 	s.router.GET("/hooks", s.servePage("hooks.html"))
 	s.router.GET("/events", s.servePage("events.html"))
 	s.router.GET("/secrets", s.servePage("secrets.html"))
@@ -348,6 +376,11 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 	// Close WebSocket hub
 	s.wsHub.Shutdown()
+
+	// Close agent client connections
+	if s.agentClient != nil {
+		s.agentClient.CloseAll()
+	}
 
 	// Close database connections
 	if s.agentDB != nil {
