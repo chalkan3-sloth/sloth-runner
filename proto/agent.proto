@@ -22,6 +22,14 @@ service Agent {
   rpc SetEnvironmentVar(SetEnvVarRequest) returns (SetEnvVarResponse);
   rpc InstallModule(InstallModuleRequest) returns (InstallModuleResponse);
   rpc GetInstalledModules(ModulesRequest) returns (ModulesResponse);
+
+  // Enhanced Troubleshooting RPCs
+  rpc GetDetailedMetrics(DetailedMetricsRequest) returns (DetailedMetricsResponse);
+  rpc GetRecentLogs(RecentLogsRequest) returns (RecentLogsResponse);
+  rpc GetActiveConnections(ConnectionsRequest) returns (ConnectionsResponse);
+  rpc GetSystemErrors(SystemErrorsRequest) returns (SystemErrorsResponse);
+  rpc GetPerformanceHistory(PerformanceHistoryRequest) returns (PerformanceHistoryResponse);
+  rpc DiagnoseHealth(HealthDiagnosticRequest) returns (HealthDiagnosticResponse);
 }
 
 message ShutdownRequest {}
@@ -449,4 +457,183 @@ message AgentEvent {
   string message = 4;
   map<string, string> metadata = 5;
   string severity = 6; // info, warning, error, critical
+}
+
+// Enhanced Troubleshooting Messages
+
+message DetailedMetricsRequest {}
+
+message CPUDetail {
+  int32 core_count = 1;
+  repeated double per_core_usage = 2;
+  double user_time = 3;
+  double system_time = 4;
+  double idle_time = 5;
+  double iowait_time = 6;
+  string model_name = 7;
+  double mhz = 8;
+}
+
+message MemoryDetail {
+  uint64 total_bytes = 1;
+  uint64 available_bytes = 2;
+  uint64 used_bytes = 3;
+  uint64 free_bytes = 4;
+  uint64 cached_bytes = 5;
+  uint64 buffers_bytes = 6;
+  uint64 swap_total_bytes = 7;
+  uint64 swap_used_bytes = 8;
+  uint64 swap_free_bytes = 9;
+  double percent = 10;
+  double swap_percent = 11;
+}
+
+message DiskDetail {
+  repeated DiskPartition partitions = 1;
+  uint64 read_bytes_total = 2;
+  uint64 write_bytes_total = 3;
+  uint64 read_count = 4;
+  uint64 write_count = 5;
+  uint64 read_time_ms = 6;
+  uint64 write_time_ms = 7;
+}
+
+message NetworkDetail {
+  repeated NetworkInterface interfaces = 1;
+  uint64 bytes_sent_total = 2;
+  uint64 bytes_recv_total = 3;
+  uint64 packets_sent_total = 4;
+  uint64 packets_recv_total = 5;
+  uint64 errors_in = 6;
+  uint64 errors_out = 7;
+  uint64 drops_in = 8;
+  uint64 drops_out = 9;
+  int32 active_connections = 10;
+  int32 listening_ports = 11;
+}
+
+message DetailedMetricsResponse {
+  int64 timestamp = 1;
+  CPUDetail cpu = 2;
+  MemoryDetail memory = 3;
+  DiskDetail disk = 4;
+  NetworkDetail network = 5;
+  double load_avg_1min = 6;
+  double load_avg_5min = 7;
+  double load_avg_15min = 8;
+  uint64 uptime_seconds = 9;
+  int32 process_count = 10;
+  int32 thread_count = 11;
+  string kernel_version = 12;
+  string os_version = 13;
+}
+
+message RecentLogsRequest {
+  int32 max_lines = 1; // Default 100
+  string level_filter = 2; // error, warning, info, debug
+  string source_filter = 3; // Filter by source/service
+  int64 since_timestamp = 4; // Get logs since this timestamp
+}
+
+message RecentLogsResponse {
+  repeated LogEntry logs = 1;
+  int32 total_count = 2;
+  bool has_more = 3;
+}
+
+message ConnectionsRequest {
+  string state_filter = 1; // ESTABLISHED, LISTEN, TIME_WAIT, etc
+  bool include_local = 2; // Include localhost connections
+}
+
+message ConnectionInfo {
+  string local_addr = 1;
+  uint32 local_port = 2;
+  string remote_addr = 3;
+  uint32 remote_port = 4;
+  string state = 5;
+  int32 pid = 6;
+  string process_name = 7;
+  uint64 bytes_sent = 8;
+  uint64 bytes_recv = 9;
+  int64 established_at = 10;
+}
+
+message ConnectionsResponse {
+  repeated ConnectionInfo connections = 1;
+  int32 total_established = 2;
+  int32 total_listening = 3;
+  int32 total_time_wait = 4;
+  int32 total_all = 5;
+}
+
+message SystemErrorsRequest {
+  int32 max_errors = 1; // Default 50
+  int64 since_timestamp = 2;
+  bool include_warnings = 3;
+}
+
+message SystemError {
+  int64 timestamp = 1;
+  string severity = 2; // error, warning, critical
+  string source = 3;
+  string message = 4;
+  string stack_trace = 5;
+  map<string, string> context = 6;
+  int32 occurrence_count = 7;
+}
+
+message SystemErrorsResponse {
+  repeated SystemError errors = 1;
+  int32 total_errors = 2;
+  int32 total_warnings = 3;
+  string most_common_error = 4;
+}
+
+message PerformanceHistoryRequest {
+  int32 duration_minutes = 1; // Default 60
+  int32 data_points = 2; // How many samples to return
+}
+
+message PerformanceSnapshot {
+  int64 timestamp = 1;
+  double cpu_percent = 2;
+  double memory_percent = 3;
+  double disk_percent = 4;
+  double network_throughput_mbps = 5;
+  double load_avg = 6;
+  int32 active_connections = 7;
+  int32 process_count = 8;
+}
+
+message PerformanceHistoryResponse {
+  repeated PerformanceSnapshot snapshots = 1;
+  PerformanceSnapshot avg = 2;
+  PerformanceSnapshot min = 3;
+  PerformanceSnapshot max = 4;
+}
+
+message HealthDiagnosticRequest {
+  bool include_suggestions = 1;
+  bool deep_check = 2;
+}
+
+message HealthIssue {
+  string category = 1; // cpu, memory, disk, network, process
+  string severity = 2; // info, warning, critical
+  string description = 3;
+  string current_value = 4;
+  string threshold = 5;
+  repeated string suggestions = 6;
+  bool auto_fixable = 7;
+}
+
+message HealthDiagnosticResponse {
+  string overall_status = 1; // healthy, degraded, unhealthy
+  int32 health_score = 2; // 0-100
+  repeated HealthIssue issues = 3;
+  map<string, string> summary = 4;
+  int64 check_timestamp = 5;
+  int32 total_warnings = 6;
+  int32 total_errors = 7;
 }

@@ -8,35 +8,93 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/sloth-theme.css">
+    <!-- Highlight.js for Lua syntax highlighting -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .editor-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            border: 1px solid #3e4451;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        #code-editor-textarea {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            tab-size: 4;
+            background-color: #282c34;
+            color: transparent;
+            caret-color: #abb2bf;
+            border: none;
+            padding: 12px;
+            resize: none;
+            overflow: auto;
+            z-index: 2;
+        }
+
+        #code-highlight {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 12px;
+            margin: 0;
+            background-color: #282c34;
+            overflow: auto;
+            pointer-events: none;
+            z-index: 1;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        #code-highlight code {
+            font-family: inherit;
+            font-size: inherit;
+            line-height: inherit;
+        }
+
+        #code-editor-textarea:focus {
+            outline: none;
+        }
+
+        .editor-container:focus-within {
+            border-color: #528bff;
+            box-shadow: 0 0 0 3px rgba(82, 139, 255, 0.1);
+        }
+    </style>
 </head>
 <body>
     <!-- Navbar will be injected here by navbar.js -->
     <div id="sloth-navbar"></div>
 
     <div class="container-fluid mt-4">
-        <div class="row">
+        <!-- Header -->
+        <div class="row mb-4">
             <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h2>Workflows</h2>
+                        <h2><i class="bi bi-diagram-3"></i> Workflows</h2>
                         <p class="text-muted">Manage workflow definitions (.sloth files)</p>
                     </div>
-                    <div class="btn-group">
-                        <button class="btn btn-outline-secondary filter-btn active" onclick="filterWorkflows('all')">
-                            All
-                        </button>
-                        <button class="btn btn-outline-secondary filter-btn" onclick="filterWorkflows('active')">
-                            Active
-                        </button>
-                        <button class="btn btn-outline-secondary filter-btn" onclick="filterWorkflows('inactive')">
-                            Inactive
-                        </button>
-                    </div>
-                    <div class="ms-2">
+                    <div class="d-flex gap-2">
                         <button class="btn btn-success" onclick="showAddWorkflowModal()">
-                            <i class="bi bi-plus-lg"></i> Add Workflow
+                            <i class="bi bi-plus-lg"></i> Create Workflow
                         </button>
-                        <button class="btn btn-primary" onclick="loadWorkflows()">
+                        <button class="btn btn-outline-primary" onclick="loadWorkflows()">
                             <i class="bi bi-arrow-clockwise"></i> Refresh
                         </button>
                     </div>
@@ -44,6 +102,114 @@
             </div>
         </div>
 
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="card-subtitle text-muted mb-0">Total Workflows</h6>
+                            <i class="bi bi-file-earmark-code text-primary fs-4"></i>
+                        </div>
+                        <h3 class="mb-0" id="stat-total-workflows">0</h3>
+                        <small class="text-muted">Registered workflows</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="card-subtitle text-muted mb-0">Active</h6>
+                            <i class="bi bi-check-circle text-success fs-4"></i>
+                        </div>
+                        <h3 class="mb-0" id="stat-active-workflows">0</h3>
+                        <small class="text-muted">Ready to execute</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="card-subtitle text-muted mb-0">Total Executions</h6>
+                            <i class="bi bi-play-circle text-info fs-4"></i>
+                        </div>
+                        <h3 class="mb-0" id="stat-total-executions">0</h3>
+                        <small class="text-muted">All-time runs</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="card-subtitle text-muted mb-0">Success Rate</h6>
+                            <i class="bi bi-graph-up text-warning fs-4"></i>
+                        </div>
+                        <h3 class="mb-0" id="stat-success-rate">0%</h3>
+                        <small class="text-muted">Last 30 days</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row mb-4">
+            <div class="col-lg-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-graph-up"></i> Execution Trends (Last 7 Days)
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="executionTrendsChart" style="height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-pie-chart"></i> Status Distribution
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="statusDistributionChart" style="height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-secondary filter-btn active" onclick="filterWorkflows('all')">
+                                    <i class="bi bi-list"></i> All
+                                </button>
+                                <button class="btn btn-outline-secondary filter-btn" onclick="filterWorkflows('active')">
+                                    <i class="bi bi-check-circle"></i> Active
+                                </button>
+                                <button class="btn btn-outline-secondary filter-btn" onclick="filterWorkflows('inactive')">
+                                    <i class="bi bi-x-circle"></i> Inactive
+                                </button>
+                            </div>
+                            <div class="input-group" style="max-width: 300px;">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control form-control-sm" id="searchWorkflows" placeholder="Search workflows..." onkeyup="searchWorkflows()">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Workflows List -->
         <div class="row" id="workflows-container">
             <div class="col-12 text-center py-5">
                 <div class="spinner-border text-primary"></div>
@@ -52,33 +218,85 @@
         </div>
     </div>
 
-    <!-- Add Workflow Modal -->
+    <!-- Add/Edit Workflow Modal with Code Editor -->
     <div class="modal fade" id="addWorkflowModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Add Workflow</h5>
+                    <h5 class="modal-title">
+                        <i class="bi bi-plus-circle"></i>
+                        <span id="modal-title-text">Create New Workflow</span>
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <form id="addWorkflowForm">
-                        <div class="mb-3">
-                            <label class="form-label">Name *</label>
-                            <input type="text" class="form-control" id="addWorkflowName" required>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Workflow Name *</label>
+                                <input type="text" class="form-control" id="addWorkflowName" required placeholder="my-workflow">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">File Path *</label>
+                                <input type="text" class="form-control" id="addWorkflowPath" required placeholder="/path/to/workflow.sloth">
+                            </div>
                         </div>
+
                         <div class="mb-3">
-                            <label class="form-label">File Path *</label>
-                            <input type="text" class="form-control" id="addWorkflowPath" required placeholder="/path/to/workflow.sloth">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label mb-0">Workflow Content (Sloth DSL)</label>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="insertTemplate('basic'); return false;">
+                                        <i class="bi bi-file-code"></i> Basic Template
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="insertTemplate('advanced'); return false;">
+                                        <i class="bi bi-layers"></i> Advanced Template
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" onclick="formatCode(); return false;">
+                                        <i class="bi bi-brush"></i> Format
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="editor-container">
+                                <pre id="code-highlight"><code class="language-lua"></code></pre>
+                                <textarea id="code-editor-textarea" spellcheck="false"></textarea>
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Content</label>
-                            <textarea class="form-control font-monospace" id="addWorkflowContent" rows="10" placeholder="Optional: paste workflow content here"></textarea>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Description (optional)</label>
+                                    <textarea class="form-control" id="addWorkflowDescription" rows="2" placeholder="Brief description of this workflow"></textarea>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Tags (optional)</label>
+                                    <input type="text" class="form-control" id="addWorkflowTags" placeholder="deployment, production, monitoring">
+                                    <small class="text-muted">Comma-separated tags</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="addWorkflowActive" checked>
+                            <label class="form-check-label" for="addWorkflowActive">
+                                Mark as Active
+                            </label>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="addWorkflow()">Add Workflow</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg"></i> Cancel
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" onclick="validateWorkflow()">
+                        <i class="bi bi-check-circle"></i> Validate
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="saveWorkflow()">
+                        <i class="bi bi-save"></i> Save Workflow
+                    </button>
                 </div>
             </div>
         </div>
@@ -86,30 +304,138 @@
 
     <!-- Run Workflow Modal -->
     <div class="modal fade" id="runWorkflowModal" tabindex="-1">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-play-circle"></i> Run Workflow</h5>
+                    <h5 class="modal-title"><i class="bi bi-play-circle"></i> Execute Workflow</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="runWorkflowName">
-                    <p><strong>Workflow:</strong> <span id="runWorkflowPath"></span></p>
-                    <div class="mb-3">
-                        <label class="form-label">Group (optional)</label>
-                        <input type="text" class="form-control" id="runWorkflowGroup" placeholder="e.g., deploy_production">
+
+                    <!-- Workflow Info -->
+                    <div class="alert alert-info">
+                        <div class="d-flex align-items-start">
+                            <i class="bi bi-info-circle fs-4 me-3"></i>
+                            <div>
+                                <strong>Workflow:</strong> <span id="runWorkflowPath"></span><br>
+                                <small class="text-muted">This will execute the workflow on the selected agents</small>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Execution Options -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                <i class="bi bi-collection"></i> Group/Task (optional)
+                            </label>
+                            <input type="text" class="form-control" id="runWorkflowGroup" placeholder="e.g., deploy_production">
+                            <small class="text-muted">Specific group within the workflow</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                <i class="bi bi-gear"></i> Execution Mode
+                            </label>
+                            <select class="form-select" id="runWorkflowMode">
+                                <option value="normal">Normal</option>
+                                <option value="dry-run">Dry Run (Simulate)</option>
+                                <option value="step-by-step">Step-by-Step</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Agent Selection -->
                     <div class="mb-3">
-                        <label class="form-label">Delegate to Agents (optional)</label>
-                        <input type="text" class="form-control" id="runWorkflowAgents" placeholder="agent1,agent2">
-                        <small class="text-muted">Comma-separated agent names</small>
+                        <label class="form-label">
+                            <i class="bi bi-hdd-network"></i> Target Agents (optional)
+                        </label>
+                        <div id="agent-selection-list" class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                            <div class="text-center text-muted py-3">
+                                <div class="spinner-border spinner-border-sm"></div>
+                                <small class="d-block mt-2">Loading agents...</small>
+                            </div>
+                        </div>
+                        <small class="text-muted">Leave empty to use default agents from workflow</small>
+                    </div>
+
+                    <!-- Environment Variables -->
+                    <div class="mb-3">
+                        <label class="form-label">
+                            <i class="bi bi-code-square"></i> Environment Variables (optional)
+                        </label>
+                        <textarea class="form-control font-monospace" id="runWorkflowEnv" rows="3" placeholder="KEY=value&#10;ANOTHER_KEY=another_value"></textarea>
+                        <small class="text-muted">One variable per line</small>
+                    </div>
+
+                    <!-- Advanced Options -->
+                    <div class="accordion" id="advancedOptions">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#advancedOptionsBody">
+                                    <i class="bi bi-sliders me-2"></i> Advanced Options
+                                </button>
+                            </h2>
+                            <div id="advancedOptionsBody" class="accordion-collapse collapse" data-bs-parent="#advancedOptions">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">Timeout (seconds)</label>
+                                                <input type="number" class="form-control" id="runWorkflowTimeout" value="3600" min="0">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label class="form-label">Max Retries</label>
+                                                <input type="number" class="form-control" id="runWorkflowRetries" value="0" min="0" max="5">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="runWorkflowVerbose">
+                                        <label class="form-check-label" for="runWorkflowVerbose">
+                                            Verbose Output
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="runWorkflowNotify" checked>
+                                        <label class="form-check-label" for="runWorkflowNotify">
+                                            Send Notification on Completion
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="executeWorkflow()">
-                        <i class="bi bi-play-fill"></i> Run
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg"></i> Cancel
                     </button>
+                    <button type="button" class="btn btn-outline-info" onclick="scheduleWorkflow()">
+                        <i class="bi bi-calendar-plus"></i> Schedule
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="executeWorkflow()">
+                        <i class="bi bi-play-fill"></i> Execute Now
+                    </button>
+                </div>
+
+                <!-- Execution Progress -->
+                <div id="execution-progress" class="card-footer d-none">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm text-primary me-3"></div>
+                        <div class="flex-grow-1">
+                            <strong>Executing...</strong>
+                            <div class="progress mt-2" style="height: 6px;">
+                                <div id="execution-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger ms-3" onclick="cancelExecution()">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </button>
+                    </div>
+                    <div id="execution-status" class="mt-2 small text-muted"></div>
                 </div>
             </div>
         </div>
@@ -136,6 +462,9 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Highlight.js for syntax highlighting -->
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/lua.min.js"></script>
     <script src="/static/js/navbar.js"></script>
     <script src="/static/js/workflows.js"></script>
 </body>

@@ -19,21 +19,27 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Agent_ExecuteTask_FullMethodName         = "/agent.Agent/ExecuteTask"
-	Agent_RunCommand_FullMethodName          = "/agent.Agent/RunCommand"
-	Agent_Shutdown_FullMethodName            = "/agent.Agent/Shutdown"
-	Agent_UpdateAgent_FullMethodName         = "/agent.Agent/UpdateAgent"
-	Agent_GetResourceUsage_FullMethodName    = "/agent.Agent/GetResourceUsage"
-	Agent_GetProcessList_FullMethodName      = "/agent.Agent/GetProcessList"
-	Agent_GetNetworkInfo_FullMethodName      = "/agent.Agent/GetNetworkInfo"
-	Agent_GetDiskInfo_FullMethodName         = "/agent.Agent/GetDiskInfo"
-	Agent_StreamLogs_FullMethodName          = "/agent.Agent/StreamLogs"
-	Agent_StreamMetrics_FullMethodName       = "/agent.Agent/StreamMetrics"
-	Agent_RestartService_FullMethodName      = "/agent.Agent/RestartService"
-	Agent_GetEnvironmentVars_FullMethodName  = "/agent.Agent/GetEnvironmentVars"
-	Agent_SetEnvironmentVar_FullMethodName   = "/agent.Agent/SetEnvironmentVar"
-	Agent_InstallModule_FullMethodName       = "/agent.Agent/InstallModule"
-	Agent_GetInstalledModules_FullMethodName = "/agent.Agent/GetInstalledModules"
+	Agent_ExecuteTask_FullMethodName           = "/agent.Agent/ExecuteTask"
+	Agent_RunCommand_FullMethodName            = "/agent.Agent/RunCommand"
+	Agent_Shutdown_FullMethodName              = "/agent.Agent/Shutdown"
+	Agent_UpdateAgent_FullMethodName           = "/agent.Agent/UpdateAgent"
+	Agent_GetResourceUsage_FullMethodName      = "/agent.Agent/GetResourceUsage"
+	Agent_GetProcessList_FullMethodName        = "/agent.Agent/GetProcessList"
+	Agent_GetNetworkInfo_FullMethodName        = "/agent.Agent/GetNetworkInfo"
+	Agent_GetDiskInfo_FullMethodName           = "/agent.Agent/GetDiskInfo"
+	Agent_StreamLogs_FullMethodName            = "/agent.Agent/StreamLogs"
+	Agent_StreamMetrics_FullMethodName         = "/agent.Agent/StreamMetrics"
+	Agent_RestartService_FullMethodName        = "/agent.Agent/RestartService"
+	Agent_GetEnvironmentVars_FullMethodName    = "/agent.Agent/GetEnvironmentVars"
+	Agent_SetEnvironmentVar_FullMethodName     = "/agent.Agent/SetEnvironmentVar"
+	Agent_InstallModule_FullMethodName         = "/agent.Agent/InstallModule"
+	Agent_GetInstalledModules_FullMethodName   = "/agent.Agent/GetInstalledModules"
+	Agent_GetDetailedMetrics_FullMethodName    = "/agent.Agent/GetDetailedMetrics"
+	Agent_GetRecentLogs_FullMethodName         = "/agent.Agent/GetRecentLogs"
+	Agent_GetActiveConnections_FullMethodName  = "/agent.Agent/GetActiveConnections"
+	Agent_GetSystemErrors_FullMethodName       = "/agent.Agent/GetSystemErrors"
+	Agent_GetPerformanceHistory_FullMethodName = "/agent.Agent/GetPerformanceHistory"
+	Agent_DiagnoseHealth_FullMethodName        = "/agent.Agent/DiagnoseHealth"
 )
 
 // AgentClient is the client API for Agent service.
@@ -56,6 +62,13 @@ type AgentClient interface {
 	SetEnvironmentVar(ctx context.Context, in *SetEnvVarRequest, opts ...grpc.CallOption) (*SetEnvVarResponse, error)
 	InstallModule(ctx context.Context, in *InstallModuleRequest, opts ...grpc.CallOption) (*InstallModuleResponse, error)
 	GetInstalledModules(ctx context.Context, in *ModulesRequest, opts ...grpc.CallOption) (*ModulesResponse, error)
+	// Enhanced Troubleshooting RPCs
+	GetDetailedMetrics(ctx context.Context, in *DetailedMetricsRequest, opts ...grpc.CallOption) (*DetailedMetricsResponse, error)
+	GetRecentLogs(ctx context.Context, in *RecentLogsRequest, opts ...grpc.CallOption) (*RecentLogsResponse, error)
+	GetActiveConnections(ctx context.Context, in *ConnectionsRequest, opts ...grpc.CallOption) (*ConnectionsResponse, error)
+	GetSystemErrors(ctx context.Context, in *SystemErrorsRequest, opts ...grpc.CallOption) (*SystemErrorsResponse, error)
+	GetPerformanceHistory(ctx context.Context, in *PerformanceHistoryRequest, opts ...grpc.CallOption) (*PerformanceHistoryResponse, error)
+	DiagnoseHealth(ctx context.Context, in *HealthDiagnosticRequest, opts ...grpc.CallOption) (*HealthDiagnosticResponse, error)
 }
 
 type agentClient struct {
@@ -243,6 +256,66 @@ func (c *agentClient) GetInstalledModules(ctx context.Context, in *ModulesReques
 	return out, nil
 }
 
+func (c *agentClient) GetDetailedMetrics(ctx context.Context, in *DetailedMetricsRequest, opts ...grpc.CallOption) (*DetailedMetricsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DetailedMetricsResponse)
+	err := c.cc.Invoke(ctx, Agent_GetDetailedMetrics_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) GetRecentLogs(ctx context.Context, in *RecentLogsRequest, opts ...grpc.CallOption) (*RecentLogsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RecentLogsResponse)
+	err := c.cc.Invoke(ctx, Agent_GetRecentLogs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) GetActiveConnections(ctx context.Context, in *ConnectionsRequest, opts ...grpc.CallOption) (*ConnectionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ConnectionsResponse)
+	err := c.cc.Invoke(ctx, Agent_GetActiveConnections_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) GetSystemErrors(ctx context.Context, in *SystemErrorsRequest, opts ...grpc.CallOption) (*SystemErrorsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SystemErrorsResponse)
+	err := c.cc.Invoke(ctx, Agent_GetSystemErrors_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) GetPerformanceHistory(ctx context.Context, in *PerformanceHistoryRequest, opts ...grpc.CallOption) (*PerformanceHistoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PerformanceHistoryResponse)
+	err := c.cc.Invoke(ctx, Agent_GetPerformanceHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) DiagnoseHealth(ctx context.Context, in *HealthDiagnosticRequest, opts ...grpc.CallOption) (*HealthDiagnosticResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HealthDiagnosticResponse)
+	err := c.cc.Invoke(ctx, Agent_DiagnoseHealth_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AgentServer is the server API for Agent service.
 // All implementations must embed UnimplementedAgentServer
 // for forward compatibility.
@@ -263,6 +336,13 @@ type AgentServer interface {
 	SetEnvironmentVar(context.Context, *SetEnvVarRequest) (*SetEnvVarResponse, error)
 	InstallModule(context.Context, *InstallModuleRequest) (*InstallModuleResponse, error)
 	GetInstalledModules(context.Context, *ModulesRequest) (*ModulesResponse, error)
+	// Enhanced Troubleshooting RPCs
+	GetDetailedMetrics(context.Context, *DetailedMetricsRequest) (*DetailedMetricsResponse, error)
+	GetRecentLogs(context.Context, *RecentLogsRequest) (*RecentLogsResponse, error)
+	GetActiveConnections(context.Context, *ConnectionsRequest) (*ConnectionsResponse, error)
+	GetSystemErrors(context.Context, *SystemErrorsRequest) (*SystemErrorsResponse, error)
+	GetPerformanceHistory(context.Context, *PerformanceHistoryRequest) (*PerformanceHistoryResponse, error)
+	DiagnoseHealth(context.Context, *HealthDiagnosticRequest) (*HealthDiagnosticResponse, error)
 	mustEmbedUnimplementedAgentServer()
 }
 
@@ -317,6 +397,24 @@ func (UnimplementedAgentServer) InstallModule(context.Context, *InstallModuleReq
 }
 func (UnimplementedAgentServer) GetInstalledModules(context.Context, *ModulesRequest) (*ModulesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetInstalledModules not implemented")
+}
+func (UnimplementedAgentServer) GetDetailedMetrics(context.Context, *DetailedMetricsRequest) (*DetailedMetricsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDetailedMetrics not implemented")
+}
+func (UnimplementedAgentServer) GetRecentLogs(context.Context, *RecentLogsRequest) (*RecentLogsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetRecentLogs not implemented")
+}
+func (UnimplementedAgentServer) GetActiveConnections(context.Context, *ConnectionsRequest) (*ConnectionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetActiveConnections not implemented")
+}
+func (UnimplementedAgentServer) GetSystemErrors(context.Context, *SystemErrorsRequest) (*SystemErrorsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetSystemErrors not implemented")
+}
+func (UnimplementedAgentServer) GetPerformanceHistory(context.Context, *PerformanceHistoryRequest) (*PerformanceHistoryResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPerformanceHistory not implemented")
+}
+func (UnimplementedAgentServer) DiagnoseHealth(context.Context, *HealthDiagnosticRequest) (*HealthDiagnosticResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DiagnoseHealth not implemented")
 }
 func (UnimplementedAgentServer) mustEmbedUnimplementedAgentServer() {}
 func (UnimplementedAgentServer) testEmbeddedByValue()               {}
@@ -588,6 +686,114 @@ func _Agent_GetInstalledModules_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Agent_GetDetailedMetrics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DetailedMetricsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).GetDetailedMetrics(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_GetDetailedMetrics_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).GetDetailedMetrics(ctx, req.(*DetailedMetricsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Agent_GetRecentLogs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RecentLogsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).GetRecentLogs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_GetRecentLogs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).GetRecentLogs(ctx, req.(*RecentLogsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Agent_GetActiveConnections_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ConnectionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).GetActiveConnections(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_GetActiveConnections_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).GetActiveConnections(ctx, req.(*ConnectionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Agent_GetSystemErrors_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SystemErrorsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).GetSystemErrors(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_GetSystemErrors_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).GetSystemErrors(ctx, req.(*SystemErrorsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Agent_GetPerformanceHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PerformanceHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).GetPerformanceHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_GetPerformanceHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).GetPerformanceHistory(ctx, req.(*PerformanceHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Agent_DiagnoseHealth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HealthDiagnosticRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).DiagnoseHealth(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_DiagnoseHealth_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).DiagnoseHealth(ctx, req.(*HealthDiagnosticRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Agent_ServiceDesc is the grpc.ServiceDesc for Agent service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -642,6 +848,30 @@ var Agent_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetInstalledModules",
 			Handler:    _Agent_GetInstalledModules_Handler,
+		},
+		{
+			MethodName: "GetDetailedMetrics",
+			Handler:    _Agent_GetDetailedMetrics_Handler,
+		},
+		{
+			MethodName: "GetRecentLogs",
+			Handler:    _Agent_GetRecentLogs_Handler,
+		},
+		{
+			MethodName: "GetActiveConnections",
+			Handler:    _Agent_GetActiveConnections_Handler,
+		},
+		{
+			MethodName: "GetSystemErrors",
+			Handler:    _Agent_GetSystemErrors_Handler,
+		},
+		{
+			MethodName: "GetPerformanceHistory",
+			Handler:    _Agent_GetPerformanceHistory_Handler,
+		},
+		{
+			MethodName: "DiagnoseHealth",
+			Handler:    _Agent_DiagnoseHealth_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

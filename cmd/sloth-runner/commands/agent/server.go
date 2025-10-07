@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -788,24 +789,860 @@ func (s *agentServer) StreamMetrics(in *pb.StreamMetricsRequest, stream pb.Agent
 // RestartService restarts the agent service
 func (s *agentServer) RestartService(ctx context.Context, in *pb.RestartServiceRequest) (*pb.RestartServiceResponse, error) {
 	slog.Info("Agent restart requested")
-	
+
 	go func() {
 		time.Sleep(1 * time.Second)
 		// Get current executable and args
 		exe, _ := os.Executable()
 		args := os.Args[1:]
-		
+
 		// Start new instance
 		cmd := exec.Command(exe, args...)
 		cmd.Start()
-		
+
 		// Stop current instance
 		s.grpcServer.GracefulStop()
 		os.Exit(0)
 	}()
-	
+
 	return &pb.RestartServiceResponse{
 		Success: true,
 		Message: "Agent restart initiated",
+	}, nil
+}
+
+// GetDetailedMetrics returns detailed system metrics
+func (s *agentServer) GetDetailedMetrics(ctx context.Context, in *pb.DetailedMetricsRequest) (*pb.DetailedMetricsResponse, error) {
+	// Get CPU details
+	data, _ := os.ReadFile("/proc/cpuinfo")
+	cpuInfo := string(data)
+
+	// Count CPU cores
+	coreCount := int32(0)
+	modelName := ""
+	cpuMhz := 0.0
+	for _, line := range strings.Split(cpuInfo, "\n") {
+		if strings.HasPrefix(line, "processor") {
+			coreCount++
+		}
+		if strings.HasPrefix(line, "model name") && modelName == "" {
+			parts := strings.Split(line, ":")
+			if len(parts) >= 2 {
+				modelName = strings.TrimSpace(parts[1])
+			}
+		}
+		if strings.HasPrefix(line, "cpu MHz") && cpuMhz == 0 {
+			parts := strings.Split(line, ":")
+			if len(parts) >= 2 {
+				cpuMhz, _ = strconv.ParseFloat(strings.TrimSpace(parts[1]), 64)
+			}
+		}
+	}
+
+	// Get per-core CPU usage from /proc/stat
+	perCoreUsage := []float64{}
+	statData, _ := os.ReadFile("/proc/stat")
+	for _, line := range strings.Split(string(statData), "\n") {
+		if strings.HasPrefix(line, "cpu") && !strings.HasPrefix(line, "cpu ") {
+			fields := strings.Fields(line)
+			if len(fields) >= 5 {
+				var total, idle uint64
+				for i := 1; i < len(fields); i++ {
+					val, _ := strconv.ParseUint(fields[i], 10, 64)
+					total += val
+					if i == 4 {
+						idle = val
+					}
+				}
+				if total > 0 {
+					usage := float64(total-idle) / float64(total) * 100.0
+					perCoreUsage = append(perCoreUsage, usage)
+				}
+			}
+		}
+	}
+
+	// Parse CPU times
+	firstLine := strings.Split(string(statData), "\n")[0]
+	cpuFields := strings.Fields(firstLine)
+	userTime, _ := strconv.ParseFloat(cpuFields[1], 64)
+	systemTime, _ := strconv.ParseFloat(cpuFields[3], 64)
+	idleTime, _ := strconv.ParseFloat(cpuFields[4], 64)
+	iowaitTime, _ := strconv.ParseFloat(cpuFields[5], 64)
+
+	cpuDetail := &pb.CPUDetail{
+		CoreCount:    coreCount,
+		PerCoreUsage: perCoreUsage,
+		UserTime:     userTime,
+		SystemTime:   systemTime,
+		IdleTime:     idleTime,
+		IowaitTime:   iowaitTime,
+		ModelName:    modelName,
+		Mhz:          cpuMhz,
+	}
+
+	// Get memory details
+	memInfo, _ := getMemoryInfo()
+	memData, _ := os.ReadFile("/proc/meminfo")
+	var cached, buffers, swapTotal, swapFree uint64
+
+	for _, line := range strings.Split(string(memData), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		value, _ := strconv.ParseUint(fields[1], 10, 64)
+		value *= 1024 // KB to bytes
+
+		if strings.HasPrefix(fields[0], "Cached:") {
+			cached = value
+		} else if strings.HasPrefix(fields[0], "Buffers:") {
+			buffers = value
+		} else if strings.HasPrefix(fields[0], "SwapTotal:") {
+			swapTotal = value
+		} else if strings.HasPrefix(fields[0], "SwapFree:") {
+			swapFree = value
+		}
+	}
+
+	swapUsed := swapTotal - swapFree
+	swapPercent := 0.0
+	if swapTotal > 0 {
+		swapPercent = float64(swapUsed) / float64(swapTotal) * 100.0
+	}
+
+	memoryDetail := &pb.MemoryDetail{
+		TotalBytes:     memInfo.Total,
+		AvailableBytes: memInfo.Free,
+		UsedBytes:      memInfo.Used,
+		FreeBytes:      memInfo.Free,
+		CachedBytes:    cached,
+		BuffersBytes:   buffers,
+		SwapTotalBytes: swapTotal,
+		SwapUsedBytes:  swapUsed,
+		SwapFreeBytes:  swapFree,
+		Percent:        float64(memInfo.Used) / float64(memInfo.Total) * 100.0,
+		SwapPercent:    swapPercent,
+	}
+
+	// Get disk details
+	partitions, _ := getDiskPartitions()
+	pbPartitions := make([]*pb.DiskPartition, 0, len(partitions))
+	var totalRead, totalWrite uint64
+
+	for _, part := range partitions {
+		pbPartitions = append(pbPartitions, &pb.DiskPartition{
+			Device:     part.Device,
+			Mountpoint: part.Mountpoint,
+			Fstype:     part.FSType,
+			TotalBytes: part.TotalBytes,
+			UsedBytes:  part.UsedBytes,
+			FreeBytes:  part.FreeBytes,
+			Percent:    part.Percent,
+		})
+		totalRead += part.IOReadBytes
+		totalWrite += part.IOWriteBytes
+	}
+
+	diskDetail := &pb.DiskDetail{
+		Partitions:      pbPartitions,
+		ReadBytesTotal:  totalRead,
+		WriteBytesTotal: totalWrite,
+		ReadCount:       0,
+		WriteCount:      0,
+		ReadTimeMs:      0,
+		WriteTimeMs:     0,
+	}
+
+	// Get network details
+	interfaces, _ := getNetworkInterfaces()
+	pbInterfaces := make([]*pb.NetworkInterface, 0, len(interfaces))
+	var bytesSentTotal, bytesRecvTotal uint64
+
+	for _, iface := range interfaces {
+		pbInterfaces = append(pbInterfaces, &pb.NetworkInterface{
+			Name:        iface.Name,
+			IpAddresses: iface.IPAddresses,
+			MacAddress:  iface.MACAddress,
+			BytesSent:   iface.BytesSent,
+			BytesRecv:   iface.BytesRecv,
+			IsUp:        iface.IsUp,
+		})
+		bytesSentTotal += iface.BytesSent
+		bytesRecvTotal += iface.BytesRecv
+	}
+
+	networkDetail := &pb.NetworkDetail{
+		Interfaces:        pbInterfaces,
+		BytesSentTotal:    bytesSentTotal,
+		BytesRecvTotal:    bytesRecvTotal,
+		PacketsSentTotal:  0,
+		PacketsRecvTotal:  0,
+		ErrorsIn:          0,
+		ErrorsOut:         0,
+		DropsIn:           0,
+		DropsOut:          0,
+		ActiveConnections: 0,
+		ListeningPorts:    0,
+	}
+
+	// Get load average and other metrics
+	loadAvg := getLoadAverage()
+	uptime := getSystemUptime()
+	processCount := getProcessCount()
+
+	// Get kernel and OS version
+	kernelData, _ := os.ReadFile("/proc/version")
+	kernelVersion := strings.TrimSpace(string(kernelData))
+
+	osData, _ := os.ReadFile("/etc/os-release")
+	osVersion := "Unknown"
+	for _, line := range strings.Split(string(osData), "\n") {
+		if strings.HasPrefix(line, "PRETTY_NAME=") {
+			osVersion = strings.Trim(strings.TrimPrefix(line, "PRETTY_NAME="), "\"")
+			break
+		}
+	}
+
+	return &pb.DetailedMetricsResponse{
+		Timestamp:     time.Now().Unix(),
+		Cpu:           cpuDetail,
+		Memory:        memoryDetail,
+		Disk:          diskDetail,
+		Network:       networkDetail,
+		LoadAvg_1Min:  loadAvg[0],
+		LoadAvg_5Min:  loadAvg[1],
+		LoadAvg_15Min: loadAvg[2],
+		UptimeSeconds: uptime,
+		ProcessCount:  int32(processCount),
+		ThreadCount:   0,
+		KernelVersion: kernelVersion,
+		OsVersion:     osVersion,
+	}, nil
+}
+
+// GetRecentLogs returns recent system logs
+func (s *agentServer) GetRecentLogs(ctx context.Context, in *pb.RecentLogsRequest) (*pb.RecentLogsResponse, error) {
+	maxLines := in.MaxLines
+	if maxLines == 0 {
+		maxLines = 100
+	}
+
+	// Build journalctl command
+	args := []string{"-n", strconv.Itoa(int(maxLines)), "-o", "json"}
+
+	// Add level filter
+	if in.LevelFilter != "" {
+		args = append(args, "-p", in.LevelFilter)
+	}
+
+	// Add source filter
+	if in.SourceFilter != "" {
+		args = append(args, "-u", in.SourceFilter)
+	}
+
+	// Add since timestamp
+	if in.SinceTimestamp > 0 {
+		args = append(args, "--since", fmt.Sprintf("@%d", in.SinceTimestamp))
+	}
+
+	cmd := exec.Command("journalctl", args...)
+	output, err := cmd.Output()
+	if err != nil {
+		// Fallback to reading /var/log/syslog
+		data, err := os.ReadFile("/var/log/syslog")
+		if err != nil {
+			return &pb.RecentLogsResponse{
+				Logs:       []*pb.LogEntry{},
+				TotalCount: 0,
+				HasMore:    false,
+			}, nil
+		}
+
+		lines := strings.Split(string(data), "\n")
+		logs := []*pb.LogEntry{}
+		count := 0
+
+		for i := len(lines) - 1; i >= 0 && count < int(maxLines); i-- {
+			if lines[i] == "" {
+				continue
+			}
+			logs = append([]*pb.LogEntry{{
+				Timestamp: time.Now().Unix(),
+				Level:     "INFO",
+				Message:   lines[i],
+				Source:    "syslog",
+			}}, logs...)
+			count++
+		}
+
+		return &pb.RecentLogsResponse{
+			Logs:       logs,
+			TotalCount: int32(count),
+			HasMore:    len(lines) > int(maxLines),
+		}, nil
+	}
+
+	// Parse journalctl output
+	logs := []*pb.LogEntry{}
+	for _, line := range strings.Split(string(output), "\n") {
+		if line == "" {
+			continue
+		}
+
+		// Simple parsing (journalctl -o json returns one JSON per line)
+		logs = append(logs, &pb.LogEntry{
+			Timestamp: time.Now().Unix(),
+			Level:     "INFO",
+			Message:   line,
+			Source:    "journalctl",
+		})
+	}
+
+	return &pb.RecentLogsResponse{
+		Logs:       logs,
+		TotalCount: int32(len(logs)),
+		HasMore:    false,
+	}, nil
+}
+
+// GetActiveConnections returns active network connections
+func (s *agentServer) GetActiveConnections(ctx context.Context, in *pb.ConnectionsRequest) (*pb.ConnectionsResponse, error) {
+	connections := []*pb.ConnectionInfo{}
+	totalEstablished := int32(0)
+	totalListening := int32(0)
+	totalTimeWait := int32(0)
+
+	// Read TCP connections
+	tcpData, err := os.ReadFile("/proc/net/tcp")
+	if err == nil {
+		lines := strings.Split(string(tcpData), "\n")
+		for i, line := range lines {
+			if i == 0 || line == "" {
+				continue
+			}
+
+			fields := strings.Fields(line)
+			if len(fields) < 10 {
+				continue
+			}
+
+			// Parse local address and port
+			localParts := strings.Split(fields[1], ":")
+			remoteParts := strings.Split(fields[2], ":")
+
+			if len(localParts) != 2 || len(remoteParts) != 2 {
+				continue
+			}
+
+			localPort, _ := strconv.ParseInt(localParts[1], 16, 64)
+			remotePort, _ := strconv.ParseInt(remoteParts[1], 16, 64)
+
+			// Parse state
+			stateHex, _ := strconv.ParseInt(fields[3], 16, 64)
+			state := "UNKNOWN"
+			switch stateHex {
+			case 1:
+				state = "ESTABLISHED"
+				totalEstablished++
+			case 2:
+				state = "SYN_SENT"
+			case 3:
+				state = "SYN_RECV"
+			case 6:
+				state = "TIME_WAIT"
+				totalTimeWait++
+			case 10:
+				state = "LISTEN"
+				totalListening++
+			}
+
+			// Apply state filter
+			if in.StateFilter != "" && state != in.StateFilter {
+				continue
+			}
+
+			// Parse local address (hex IP)
+			localIP := parseHexIP(localParts[0])
+			remoteIP := parseHexIP(remoteParts[0])
+
+			// Skip localhost if not included
+			if !in.IncludeLocal && (localIP == "127.0.0.1" || remoteIP == "127.0.0.1") {
+				continue
+			}
+
+			connections = append(connections, &pb.ConnectionInfo{
+				LocalAddr:  localIP,
+				LocalPort:  uint32(localPort),
+				RemoteAddr: remoteIP,
+				RemotePort: uint32(remotePort),
+				State:      state,
+				Pid:        0,
+			})
+		}
+	}
+
+	// Read UDP connections
+	udpData, err := os.ReadFile("/proc/net/udp")
+	if err == nil {
+		lines := strings.Split(string(udpData), "\n")
+		for i, line := range lines {
+			if i == 0 || line == "" {
+				continue
+			}
+
+			fields := strings.Fields(line)
+			if len(fields) < 10 {
+				continue
+			}
+
+			localParts := strings.Split(fields[1], ":")
+			if len(localParts) != 2 {
+				continue
+			}
+
+			localPort, _ := strconv.ParseInt(localParts[1], 16, 64)
+			localIP := parseHexIP(localParts[0])
+
+			if !in.IncludeLocal && localIP == "127.0.0.1" {
+				continue
+			}
+
+			connections = append(connections, &pb.ConnectionInfo{
+				LocalAddr:  localIP,
+				LocalPort:  uint32(localPort),
+				RemoteAddr: "0.0.0.0",
+				RemotePort: 0,
+				State:      "UDP",
+			})
+		}
+	}
+
+	return &pb.ConnectionsResponse{
+		Connections:      connections,
+		TotalEstablished: totalEstablished,
+		TotalListening:   totalListening,
+		TotalTimeWait:    totalTimeWait,
+		TotalAll:         int32(len(connections)),
+	}, nil
+}
+
+// parseHexIP converts hex IP address to dotted decimal
+func parseHexIP(hexIP string) string {
+	if len(hexIP) != 8 {
+		return "0.0.0.0"
+	}
+
+	// Parse as little-endian
+	ip := make([]byte, 4)
+	for i := 0; i < 4; i++ {
+		val, _ := strconv.ParseUint(hexIP[i*2:(i+1)*2], 16, 8)
+		ip[3-i] = byte(val)
+	}
+
+	return fmt.Sprintf("%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3])
+}
+
+// GetSystemErrors returns system errors from logs
+func (s *agentServer) GetSystemErrors(ctx context.Context, in *pb.SystemErrorsRequest) (*pb.SystemErrorsResponse, error) {
+	maxErrors := in.MaxErrors
+	if maxErrors == 0 {
+		maxErrors = 50
+	}
+
+	errors := []*pb.SystemError{}
+	totalErrors := int32(0)
+	totalWarnings := int32(0)
+	errorCounts := make(map[string]int32)
+
+	// Try to get errors from journalctl
+	args := []string{"-p", "err", "-n", strconv.Itoa(int(maxErrors)), "-o", "short"}
+	if in.SinceTimestamp > 0 {
+		args = append(args, "--since", fmt.Sprintf("@%d", in.SinceTimestamp))
+	}
+
+	cmd := exec.Command("journalctl", args...)
+	output, err := cmd.Output()
+	if err == nil {
+		lines := strings.Split(string(output), "\n")
+		for _, line := range lines {
+			if line == "" {
+				continue
+			}
+
+			severity := "error"
+			if strings.Contains(strings.ToLower(line), "warning") {
+				severity = "warning"
+				totalWarnings++
+			} else {
+				totalErrors++
+			}
+
+			errors = append(errors, &pb.SystemError{
+				Timestamp:       time.Now().Unix(),
+				Severity:        severity,
+				Source:          "journalctl",
+				Message:         line,
+				OccurrenceCount: 1,
+			})
+
+			// Count error types
+			errorCounts[line]++
+		}
+	}
+
+	// Try to get kernel errors from dmesg
+	dmesgCmd := exec.Command("dmesg", "-l", "err,warn", "-T")
+	dmesgOutput, err := dmesgCmd.Output()
+	if err == nil {
+		lines := strings.Split(string(dmesgOutput), "\n")
+		count := 0
+		for _, line := range lines {
+			if line == "" || count >= int(maxErrors) {
+				continue
+			}
+
+			severity := "error"
+			if strings.Contains(strings.ToLower(line), "warn") {
+				severity = "warning"
+				totalWarnings++
+			} else {
+				totalErrors++
+			}
+
+			errors = append(errors, &pb.SystemError{
+				Timestamp:       time.Now().Unix(),
+				Severity:        severity,
+				Source:          "dmesg",
+				Message:         line,
+				OccurrenceCount: 1,
+			})
+
+			errorCounts[line]++
+			count++
+		}
+	}
+
+	// Include warnings if requested
+	if in.IncludeWarnings {
+		warnArgs := []string{"-p", "warning", "-n", "20", "-o", "short"}
+		if in.SinceTimestamp > 0 {
+			warnArgs = append(warnArgs, "--since", fmt.Sprintf("@%d", in.SinceTimestamp))
+		}
+
+		warnCmd := exec.Command("journalctl", warnArgs...)
+		warnOutput, _ := warnCmd.Output()
+
+		for _, line := range strings.Split(string(warnOutput), "\n") {
+			if line == "" {
+				continue
+			}
+
+			errors = append(errors, &pb.SystemError{
+				Timestamp:       time.Now().Unix(),
+				Severity:        "warning",
+				Source:          "journalctl",
+				Message:         line,
+				OccurrenceCount: 1,
+			})
+			totalWarnings++
+		}
+	}
+
+	// Find most common error
+	mostCommon := ""
+	maxCount := int32(0)
+	for msg, count := range errorCounts {
+		if count > maxCount {
+			maxCount = count
+			mostCommon = msg
+		}
+	}
+
+	return &pb.SystemErrorsResponse{
+		Errors:           errors,
+		TotalErrors:      totalErrors,
+		TotalWarnings:    totalWarnings,
+		MostCommonError:  mostCommon,
+	}, nil
+}
+
+// GetPerformanceHistory returns historical performance metrics
+func (s *agentServer) GetPerformanceHistory(ctx context.Context, in *pb.PerformanceHistoryRequest) (*pb.PerformanceHistoryResponse, error) {
+	duration := in.DurationMinutes
+	if duration == 0 {
+		duration = 60
+	}
+
+	dataPoints := in.DataPoints
+	if dataPoints == 0 {
+		dataPoints = 30
+	}
+
+	// Calculate interval between samples
+	intervalSeconds := (duration * 60) / dataPoints
+
+	snapshots := []*pb.PerformanceSnapshot{}
+	var sumCPU, sumMemory, sumDisk, sumLoad float64
+	var minCPU, minMemory, minDisk = 100.0, 100.0, 100.0
+	var maxCPU, maxMemory, maxDisk float64
+
+	// Collect samples
+	for i := int32(0); i < dataPoints; i++ {
+		cpuPercent := getCPUPercent()
+		memInfo, _ := getMemoryInfo()
+		diskInfo, _ := getDiskUsage("/")
+		loadAvg := getLoadAverage()
+		processCount := getProcessCount()
+
+		memPercent := float64(memInfo.Used) / float64(memInfo.Total) * 100.0
+
+		snapshot := &pb.PerformanceSnapshot{
+			Timestamp:             time.Now().Unix() - int64((dataPoints-i-1)*intervalSeconds),
+			CpuPercent:            cpuPercent,
+			MemoryPercent:         memPercent,
+			DiskPercent:           diskInfo.UsedPercent,
+			NetworkThroughputMbps: 0.0,
+			LoadAvg:               loadAvg[0],
+			ActiveConnections:     0,
+			ProcessCount:          int32(processCount),
+		}
+
+		snapshots = append(snapshots, snapshot)
+
+		// Update aggregates
+		sumCPU += cpuPercent
+		sumMemory += memPercent
+		sumDisk += diskInfo.UsedPercent
+		sumLoad += loadAvg[0]
+
+		if cpuPercent < minCPU {
+			minCPU = cpuPercent
+		}
+		if cpuPercent > maxCPU {
+			maxCPU = cpuPercent
+		}
+		if memPercent < minMemory {
+			minMemory = memPercent
+		}
+		if memPercent > maxMemory {
+			maxMemory = memPercent
+		}
+		if diskInfo.UsedPercent < minDisk {
+			minDisk = diskInfo.UsedPercent
+		}
+		if diskInfo.UsedPercent > maxDisk {
+			maxDisk = diskInfo.UsedPercent
+		}
+
+		// Sleep between samples (only if not last iteration)
+		if i < dataPoints-1 {
+			time.Sleep(time.Duration(intervalSeconds) * time.Second)
+		}
+	}
+
+	count := float64(len(snapshots))
+
+	return &pb.PerformanceHistoryResponse{
+		Snapshots: snapshots,
+		Avg: &pb.PerformanceSnapshot{
+			CpuPercent:    sumCPU / count,
+			MemoryPercent: sumMemory / count,
+			DiskPercent:   sumDisk / count,
+			LoadAvg:       sumLoad / count,
+		},
+		Min: &pb.PerformanceSnapshot{
+			CpuPercent:    minCPU,
+			MemoryPercent: minMemory,
+			DiskPercent:   minDisk,
+		},
+		Max: &pb.PerformanceSnapshot{
+			CpuPercent:    maxCPU,
+			MemoryPercent: maxMemory,
+			DiskPercent:   maxDisk,
+		},
+	}, nil
+}
+
+// DiagnoseHealth performs health diagnostic and calculates health score
+func (s *agentServer) DiagnoseHealth(ctx context.Context, in *pb.HealthDiagnosticRequest) (*pb.HealthDiagnosticResponse, error) {
+	issues := []*pb.HealthIssue{}
+	healthScore := int32(100)
+	totalWarnings := int32(0)
+	totalErrors := int32(0)
+
+	// Check CPU usage
+	cpuPercent := getCPUPercent()
+	if cpuPercent > 90 {
+		healthScore -= 20
+		totalErrors++
+		issues = append(issues, &pb.HealthIssue{
+			Category:     "cpu",
+			Severity:     "critical",
+			Description:  "CPU usage is critically high",
+			CurrentValue: fmt.Sprintf("%.2f%%", cpuPercent),
+			Threshold:    "90%",
+			Suggestions:  []string{"Identify and terminate resource-intensive processes", "Consider scaling up CPU resources", "Check for runaway processes"},
+			AutoFixable:  false,
+		})
+	} else if cpuPercent > 75 {
+		healthScore -= 10
+		totalWarnings++
+		issues = append(issues, &pb.HealthIssue{
+			Category:     "cpu",
+			Severity:     "warning",
+			Description:  "CPU usage is elevated",
+			CurrentValue: fmt.Sprintf("%.2f%%", cpuPercent),
+			Threshold:    "75%",
+			Suggestions:  []string{"Monitor CPU-intensive processes", "Consider load balancing"},
+			AutoFixable:  false,
+		})
+	}
+
+	// Check memory usage
+	memInfo, _ := getMemoryInfo()
+	memPercent := float64(memInfo.Used) / float64(memInfo.Total) * 100.0
+	if memPercent > 90 {
+		healthScore -= 20
+		totalErrors++
+		issues = append(issues, &pb.HealthIssue{
+			Category:     "memory",
+			Severity:     "critical",
+			Description:  "Memory usage is critically high",
+			CurrentValue: fmt.Sprintf("%.2f%%", memPercent),
+			Threshold:    "90%",
+			Suggestions:  []string{"Free up memory by closing unused applications", "Increase swap space", "Add more RAM", "Check for memory leaks"},
+			AutoFixable:  false,
+		})
+	} else if memPercent > 80 {
+		healthScore -= 10
+		totalWarnings++
+		issues = append(issues, &pb.HealthIssue{
+			Category:     "memory",
+			Severity:     "warning",
+			Description:  "Memory usage is high",
+			CurrentValue: fmt.Sprintf("%.2f%%", memPercent),
+			Threshold:    "80%",
+			Suggestions:  []string{"Monitor memory usage", "Consider adding more RAM"},
+			AutoFixable:  false,
+		})
+	}
+
+	// Check disk usage
+	diskInfo, _ := getDiskUsage("/")
+	if diskInfo.UsedPercent > 90 {
+		healthScore -= 20
+		totalErrors++
+		issues = append(issues, &pb.HealthIssue{
+			Category:     "disk",
+			Severity:     "critical",
+			Description:  "Disk space is critically low",
+			CurrentValue: fmt.Sprintf("%.2f%%", diskInfo.UsedPercent),
+			Threshold:    "90%",
+			Suggestions:  []string{"Clean up old logs and temporary files", "Remove unused packages", "Expand disk space", "Archive old data"},
+			AutoFixable:  true,
+		})
+	} else if diskInfo.UsedPercent > 80 {
+		healthScore -= 10
+		totalWarnings++
+		issues = append(issues, &pb.HealthIssue{
+			Category:     "disk",
+			Severity:     "warning",
+			Description:  "Disk space is running low",
+			CurrentValue: fmt.Sprintf("%.2f%%", diskInfo.UsedPercent),
+			Threshold:    "80%",
+			Suggestions:  []string{"Review and clean up unnecessary files", "Monitor disk usage"},
+			AutoFixable:  true,
+		})
+	}
+
+	// Check load average
+	loadAvg := getLoadAverage()
+	cpuCount := float64(runtime.NumCPU())
+	loadRatio := loadAvg[0] / cpuCount
+
+	if loadRatio > 2.0 {
+		healthScore -= 15
+		totalErrors++
+		issues = append(issues, &pb.HealthIssue{
+			Category:     "cpu",
+			Severity:     "critical",
+			Description:  "System load is very high",
+			CurrentValue: fmt.Sprintf("%.2f (%.0fx CPU count)", loadAvg[0], loadRatio),
+			Threshold:    "2x CPU count",
+			Suggestions:  []string{"Check for hung processes", "Reduce concurrent workloads", "Increase CPU resources"},
+			AutoFixable:  false,
+		})
+	} else if loadRatio > 1.5 {
+		healthScore -= 5
+		totalWarnings++
+		issues = append(issues, &pb.HealthIssue{
+			Category:     "cpu",
+			Severity:     "warning",
+			Description:  "System load is elevated",
+			CurrentValue: fmt.Sprintf("%.2f (%.1fx CPU count)", loadAvg[0], loadRatio),
+			Threshold:    "1.5x CPU count",
+			Suggestions:  []string{"Monitor system load", "Review running processes"},
+			AutoFixable:  false,
+		})
+	}
+
+	// Deep check: check for system errors if requested
+	if in.DeepCheck {
+		errCmd := exec.Command("journalctl", "-p", "err", "-n", "10", "--since", "1 hour ago")
+		errOutput, err := errCmd.Output()
+		if err == nil {
+			errorLines := strings.Split(string(errOutput), "\n")
+			errorCount := 0
+			for _, line := range errorLines {
+				if line != "" {
+					errorCount++
+				}
+			}
+
+			if errorCount > 10 {
+				healthScore -= 10
+				totalWarnings++
+				issues = append(issues, &pb.HealthIssue{
+					Category:     "process",
+					Severity:     "warning",
+					Description:  fmt.Sprintf("System has %d recent errors in logs", errorCount),
+					CurrentValue: fmt.Sprintf("%d errors", errorCount),
+					Threshold:    "10 errors/hour",
+					Suggestions:  []string{"Review system logs for recurring issues", "Check application health"},
+					AutoFixable:  false,
+				})
+			}
+		}
+	}
+
+	// Ensure health score doesn't go negative
+	if healthScore < 0 {
+		healthScore = 0
+	}
+
+	// Determine overall status
+	overallStatus := "healthy"
+	if healthScore < 50 {
+		overallStatus = "unhealthy"
+	} else if healthScore < 80 {
+		overallStatus = "degraded"
+	}
+
+	summary := map[string]string{
+		"cpu_usage":    fmt.Sprintf("%.2f%%", cpuPercent),
+		"memory_usage": fmt.Sprintf("%.2f%%", memPercent),
+		"disk_usage":   fmt.Sprintf("%.2f%%", diskInfo.UsedPercent),
+		"load_avg":     fmt.Sprintf("%.2f", loadAvg[0]),
+	}
+
+	return &pb.HealthDiagnosticResponse{
+		OverallStatus:  overallStatus,
+		HealthScore:    healthScore,
+		Issues:         issues,
+		Summary:        summary,
+		CheckTimestamp: time.Now().Unix(),
+		TotalWarnings:  totalWarnings,
+		TotalErrors:    totalErrors,
 	}, nil
 }

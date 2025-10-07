@@ -81,6 +81,7 @@ func runUIServer(port int, debug bool, enableAuth bool, username string, passwor
 	secretsDBPath := config.GetSecretsDBPath()
 	sshDBPath := config.GetSSHDBPath()
 	stackDBPath := config.GetStackDBPath()
+	metricsDBPath := config.GetMetricsDBPath()
 
 	// Create server config
 	cfg := &webui.Config{
@@ -92,6 +93,7 @@ func runUIServer(port int, debug bool, enableAuth bool, username string, passwor
 		SecretsDBPath: secretsDBPath,
 		SSHDBPath:     sshDBPath,
 		StackDBPath:   stackDBPath,
+		MetricsDBPath: metricsDBPath,
 		EnableAuth:    enableAuth,
 		Username:      username,
 		Password:      password,
