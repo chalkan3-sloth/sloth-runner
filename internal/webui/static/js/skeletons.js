@@ -374,3 +374,5 @@ const SkeletonLoader = {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = SkeletonLoader;
 }
+// Export globally
+window.SkeletonLoader = SkeletonLoader;

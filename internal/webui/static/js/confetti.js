@@ -367,6 +367,10 @@ class ConfettiCelebration {
 // Create global instance
 const confetti = new ConfettiCelebration();
 
+// Export as global
+window.confetti = confetti;
+window.ConfettiCelebration = ConfettiCelebration;
+
 // Export for module systems
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = ConfettiCelebration;

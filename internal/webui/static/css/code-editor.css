@@ -1,0 +1,382 @@
+/* ===================================
+   Code Editor with Syntax Highlighting
+   Professional styling for Sloth DSL and YAML
+   =================================== */
+
+.code-editor-container {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+[data-theme="dark"] .code-editor-container {
+    background: var(--bg-secondary);
+    border-color: #374151;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.code-editor-container:focus-within {
+    border-color: #4F46E5;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
+}
+
+/* Header */
+.code-editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .code-editor-header {
+    background: #1f2937;
+    border-bottom-color: #374151;
+}
+
+.code-editor-info {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.code-editor-language {
+    font-size: 11px;
+    font-weight: 600;
+    color: #4F46E5;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    background: rgba(79, 70, 229, 0.1);
+    border-radius: 4px;
+}
+
+[data-theme="dark"] .code-editor-language {
+    color: #818CF8;
+    background: rgba(129, 140, 248, 0.1);
+}
+
+.code-editor-lines {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.code-editor-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.code-editor-actions .btn {
+    padding: 4px 8px;
+    font-size: 14px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.code-editor-actions .btn:hover {
+    color: var(--text-primary);
+    background: rgba(79, 70, 229, 0.1);
+}
+
+.code-editor-actions .btn-primary {
+    background: #4F46E5;
+    color: white;
+}
+
+.code-editor-actions .btn-primary:hover {
+    background: #4338CA;
+}
+
+/* Editor Body */
+.code-editor-body {
+    position: relative;
+    display: flex;
+    background: var(--bg-primary);
+    min-height: 300px;
+    max-height: 600px;
+    overflow: hidden;
+}
+
+[data-theme="dark"] .code-editor-body {
+    background: #1a1d23;
+}
+
+/* Line Numbers */
+.code-editor-line-numbers {
+    flex-shrink: 0;
+    padding: 12px 0;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    overflow: hidden;
+    user-select: none;
+    width: 50px;
+    text-align: right;
+}
+
+[data-theme="dark"] .code-editor-line-numbers {
+    background: #111419;
+    border-right-color: #374151;
+}
+
+.line-number {
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Fira Mono', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-tertiary);
+    padding: 0 12px;
+}
+
+.line-number:hover {
+    color: var(--text-secondary);
+}
+
+/* Editor Content */
+.code-editor-content {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+}
+
+.code-editor-pre {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: 0;
+    padding: 12px;
+    overflow: auto;
+    pointer-events: none;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Fira Mono', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    color: transparent;
+    caret-color: transparent;
+}
+
+.code-editor-pre code {
+    display: block;
+    color: var(--text-primary);
+}
+
+.code-editor-textarea {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 12px;
+    border: none;
+    outline: none;
+    resize: none;
+    background: transparent;
+    color: transparent;
+    caret-color: var(--text-primary);
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Fira Mono', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    overflow: auto;
+    white-space: pre;
+    word-wrap: normal;
+}
+
+.code-editor-textarea::selection {
+    background: rgba(79, 70, 229, 0.3);
+}
+
+.code-editor-textarea::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+.code-editor-textarea::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+.code-editor-textarea::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 6px;
+}
+
+[data-theme="dark"] .code-editor-textarea::-webkit-scrollbar-thumb {
+    background: #475569;
+}
+
+.code-editor-textarea::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+}
+
+/* Syntax Highlighting */
+.yaml-key {
+    color: #0EA5E9;
+    font-weight: 500;
+}
+
+[data-theme="dark"] .yaml-key {
+    color: #38BDF8;
+}
+
+.yaml-string {
+    color: #10B981;
+}
+
+[data-theme="dark"] .yaml-string {
+    color: #34D399;
+}
+
+.yaml-boolean {
+    color: #F59E0B;
+    font-weight: 500;
+}
+
+[data-theme="dark"] .yaml-boolean {
+    color: #FBBF24;
+}
+
+.yaml-number {
+    color: #8B5CF6;
+}
+
+[data-theme="dark"] .yaml-number {
+    color: #A78BFA;
+}
+
+.yaml-comment {
+    color: #6B7280;
+    font-style: italic;
+}
+
+[data-theme="dark"] .yaml-comment {
+    color: #9CA3AF;
+}
+
+.yaml-variable {
+    color: #EC4899;
+    font-weight: 500;
+}
+
+[data-theme="dark"] .yaml-variable {
+    color: #F472B6;
+}
+
+.yaml-keyword {
+    color: #4F46E5;
+    font-weight: 600;
+}
+
+[data-theme="dark"] .yaml-keyword {
+    color: #818CF8;
+}
+
+/* Footer */
+.code-editor-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+[data-theme="dark"] .code-editor-footer {
+    background: #1f2937;
+    border-top-color: #374151;
+}
+
+.code-editor-cursor {
+    font-family: 'SF Mono', 'Monaco', monospace;
+}
+
+.code-editor-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.code-editor-status i {
+    font-size: 14px;
+}
+
+/* Read-only mode */
+.code-editor-container.readonly .code-editor-textarea {
+    background: var(--bg-secondary);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.code-editor-container.readonly .code-editor-header {
+    opacity: 0.8;
+}
+
+/* Focus state */
+.code-editor-container:focus-within .code-editor-line-numbers {
+    border-right-color: #4F46E5;
+}
+
+/* Animations */
+@keyframes editor-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.code-editor-container {
+    animation: editor-fade-in 0.3s ease;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .code-editor-header {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .code-editor-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .code-editor-line-numbers {
+        width: 40px;
+    }
+
+    .line-number {
+        padding: 0 8px;
+        font-size: 11px;
+    }
+
+    .code-editor-textarea,
+    .code-editor-pre {
+        font-size: 13px;
+    }
+}
+
+/* Print styles */
+@media print {
+    .code-editor-header,
+    .code-editor-footer {
+        display: none;
+    }
+
+    .code-editor-container {
+        border: 1px solid #e5e7eb;
+        box-shadow: none;
+    }
+}

@@ -136,8 +136,17 @@ function renderAgents() {
 
 function renderAgentCard(agent) {
     const isOnline = agent.status === 'Active' || agent.status === 'connected';
-    const cpuPercent = agent.cpu_percent || 0;
-    const memoryPercent = agent.memory_percent || 0;
+
+    // CPU: Convert load_avg to percentage (load_avg / cpu_count * 100)
+    let cpuPercent = 0;
+    if (agent.load_avg !== undefined && agent.cpu_count) {
+        cpuPercent = (agent.load_avg / agent.cpu_count) * 100;
+        cpuPercent = Math.min(cpuPercent, 100); // Cap at 100%
+    }
+
+    // Memory: Use memory_percent directly
+    let memoryPercent = agent.memory_percent || 0;
+
     const isSelected = selectedAgents.has(agent.name);
 
     let cardClass = 'agent-control-card';
@@ -153,54 +162,32 @@ function renderAgentCard(agent) {
     const memGaugeClass = memoryPercent > 80 ? 'high' : memoryPercent > 50 ? 'medium' : 'low';
 
     return `
-        <div class="card ${cardClass}">
+        <div class="card ${cardClass} hover-lift fade-in-up">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-3">
+                <!-- Header -->
+                <div class="agent-header">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox"
                                id="select-${agent.name}"
                                ${isSelected ? 'checked' : ''}
                                onchange="toggleAgentSelection('${agent.name}')">
-                        <label class="form-check-label" for="select-${agent.name}">
-                            <h5 class="mb-0">
-                                <i class="bi bi-server"></i>
-                                ${agent.name}
-                            </h5>
+                        <label class="form-check-label agent-name" for="select-${agent.name}">
+                            <i class="bi bi-server"></i>
+                            ${agent.name}
                         </label>
                     </div>
                     <span class="live-indicator ${isOnline ? 'online' : 'offline'}"></span>
                 </div>
 
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-1">
-                        <small class="text-muted">CPU</small>
-                        <small class="fw-bold">${cpuPercent.toFixed(1)}%</small>
+                <!-- Agent Info -->
+                <div class="agent-info">
+                    <div class="agent-info-row">
+                        <i class="bi bi-clock"></i>
+                        <span><strong>Uptime:</strong> ${formatUptime(agent.uptime_seconds || 0)}</span>
                     </div>
-                    <div class="resource-gauge">
-                        <div class="resource-gauge-fill ${cpuGaugeClass}" style="width: ${cpuPercent}%"></div>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between mb-1">
-                        <small class="text-muted">Memory</small>
-                        <small class="fw-bold">${memoryPercent.toFixed(1)}%</small>
-                    </div>
-                    <div class="resource-gauge">
-                        <div class="resource-gauge-fill ${memGaugeClass}" style="width: ${memoryPercent}%"></div>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <div class="d-flex justify-content-between">
-                        <small class="text-muted">
-                            <i class="bi bi-clock"></i>
-                            ${formatUptime(agent.uptime_seconds || 0)}
-                        </small>
-                        <small class="text-muted">
-                            <i class="bi bi-hdd"></i>
-                            ${agent.disk_percent?.toFixed(0) || 0}%
-                        </small>
+                    <div class="agent-info-row">
+                        <i class="bi bi-hdd"></i>
+                        <span><strong>Disk:</strong> ${agent.disk_percent?.toFixed(0) || 0}%</span>
                     </div>
                 </div>
 
@@ -210,26 +197,46 @@ function renderAgentCard(agent) {
                     </div>
                 ` : ''}
 
-                <div class="d-flex gap-2">
-                    <button class="btn btn-sm btn-outline-primary agent-action-btn flex-fill"
+                <!-- Resources -->
+                <div class="resource-section">
+                    <div class="resource-row">
+                        <div class="resource-label">
+                            <span><i class="bi bi-cpu"></i> CPU</span>
+                            <strong>${cpuPercent.toFixed(1)}%</strong>
+                        </div>
+                        <div class="resource-gauge">
+                            <div class="resource-gauge-fill ${cpuGaugeClass}" style="width: ${cpuPercent}%"></div>
+                        </div>
+                    </div>
+
+                    <div class="resource-row">
+                        <div class="resource-label">
+                            <span><i class="bi bi-memory"></i> Memory</span>
+                            <strong>${memoryPercent.toFixed(1)}%</strong>
+                        </div>
+                        <div class="resource-gauge">
+                            <div class="resource-gauge-fill ${memGaugeClass}" style="width: ${memoryPercent}%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions Footer -->
+                <div class="agent-actions-footer">
+                    <button class="btn btn-outline-primary agent-action-btn"
                             onclick="window.location.href='/agent-dashboard?agent=${agent.name}'" ${!isOnline ? 'disabled' : ''}>
                         <i class="bi bi-speedometer2"></i> Dashboard
                     </button>
-                    <button class="btn btn-sm btn-primary agent-action-btn flex-fill"
+                    <button class="btn btn-primary agent-action-btn"
                             onclick="openAgentDetail('${agent.name}')" ${!isOnline ? 'disabled' : ''}>
                         <i class="bi bi-eye"></i> Details
                     </button>
-                    <button class="btn btn-sm btn-outline-success agent-action-btn"
+                    <button class="btn btn-outline-success agent-action-btn"
                             onclick="quickCommand('${agent.name}')" ${!isOnline ? 'disabled' : ''}>
-                        <i class="bi bi-terminal"></i>
+                        <i class="bi bi-terminal"></i> Command
                     </button>
-                    <button class="btn btn-sm btn-outline-warning agent-action-btn"
+                    <button class="btn btn-outline-danger agent-action-btn"
                             onclick="restartAgent('${agent.name}')" ${!isOnline ? 'disabled' : ''}>
-                        <i class="bi bi-arrow-clockwise"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger agent-action-btn"
-                            onclick="shutdownAgent('${agent.name}')" ${!isOnline ? 'disabled' : ''}>
-                        <i class="bi bi-power"></i>
+                        <i class="bi bi-arrow-clockwise"></i> Restart
                     </button>
                 </div>
             </div>
@@ -240,7 +247,16 @@ function renderAgentCard(agent) {
 function updateOverviewStats() {
     const total = agents.length;
     const online = agents.filter(a => a.status === 'Active' || a.status === 'connected').length;
-    const avgCpu = agents.reduce((sum, a) => sum + (a.cpu_percent || 0), 0) / (agents.length || 1);
+
+    // Calculate average CPU from load_avg
+    const avgCpu = agents.reduce((sum, a) => {
+        if (a.load_avg !== undefined && a.cpu_count) {
+            return sum + ((a.load_avg / a.cpu_count) * 100);
+        }
+        return sum;
+    }, 0) / (agents.length || 1);
+
+    // Calculate average Memory
     const avgMem = agents.reduce((sum, a) => sum + (a.memory_percent || 0), 0) / (agents.length || 1);
 
     document.getElementById('total-agents').textContent = total;
