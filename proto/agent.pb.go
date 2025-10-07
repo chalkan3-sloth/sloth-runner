@@ -4030,6 +4030,1670 @@ func (x *AgentEvent) GetSeverity() string {
 	return ""
 }
 
+type DetailedMetricsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DetailedMetricsRequest) Reset() {
+	*x = DetailedMetricsRequest{}
+	mi := &file_proto_agent_proto_msgTypes[68]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DetailedMetricsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DetailedMetricsRequest) ProtoMessage() {}
+
+func (x *DetailedMetricsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[68]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DetailedMetricsRequest.ProtoReflect.Descriptor instead.
+func (*DetailedMetricsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{68}
+}
+
+type CPUDetail struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CoreCount     int32                  `protobuf:"varint,1,opt,name=core_count,json=coreCount,proto3" json:"core_count,omitempty"`
+	PerCoreUsage  []float64              `protobuf:"fixed64,2,rep,packed,name=per_core_usage,json=perCoreUsage,proto3" json:"per_core_usage,omitempty"`
+	UserTime      float64                `protobuf:"fixed64,3,opt,name=user_time,json=userTime,proto3" json:"user_time,omitempty"`
+	SystemTime    float64                `protobuf:"fixed64,4,opt,name=system_time,json=systemTime,proto3" json:"system_time,omitempty"`
+	IdleTime      float64                `protobuf:"fixed64,5,opt,name=idle_time,json=idleTime,proto3" json:"idle_time,omitempty"`
+	IowaitTime    float64                `protobuf:"fixed64,6,opt,name=iowait_time,json=iowaitTime,proto3" json:"iowait_time,omitempty"`
+	ModelName     string                 `protobuf:"bytes,7,opt,name=model_name,json=modelName,proto3" json:"model_name,omitempty"`
+	Mhz           float64                `protobuf:"fixed64,8,opt,name=mhz,proto3" json:"mhz,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CPUDetail) Reset() {
+	*x = CPUDetail{}
+	mi := &file_proto_agent_proto_msgTypes[69]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CPUDetail) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CPUDetail) ProtoMessage() {}
+
+func (x *CPUDetail) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[69]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CPUDetail.ProtoReflect.Descriptor instead.
+func (*CPUDetail) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{69}
+}
+
+func (x *CPUDetail) GetCoreCount() int32 {
+	if x != nil {
+		return x.CoreCount
+	}
+	return 0
+}
+
+func (x *CPUDetail) GetPerCoreUsage() []float64 {
+	if x != nil {
+		return x.PerCoreUsage
+	}
+	return nil
+}
+
+func (x *CPUDetail) GetUserTime() float64 {
+	if x != nil {
+		return x.UserTime
+	}
+	return 0
+}
+
+func (x *CPUDetail) GetSystemTime() float64 {
+	if x != nil {
+		return x.SystemTime
+	}
+	return 0
+}
+
+func (x *CPUDetail) GetIdleTime() float64 {
+	if x != nil {
+		return x.IdleTime
+	}
+	return 0
+}
+
+func (x *CPUDetail) GetIowaitTime() float64 {
+	if x != nil {
+		return x.IowaitTime
+	}
+	return 0
+}
+
+func (x *CPUDetail) GetModelName() string {
+	if x != nil {
+		return x.ModelName
+	}
+	return ""
+}
+
+func (x *CPUDetail) GetMhz() float64 {
+	if x != nil {
+		return x.Mhz
+	}
+	return 0
+}
+
+type MemoryDetail struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	TotalBytes     uint64                 `protobuf:"varint,1,opt,name=total_bytes,json=totalBytes,proto3" json:"total_bytes,omitempty"`
+	AvailableBytes uint64                 `protobuf:"varint,2,opt,name=available_bytes,json=availableBytes,proto3" json:"available_bytes,omitempty"`
+	UsedBytes      uint64                 `protobuf:"varint,3,opt,name=used_bytes,json=usedBytes,proto3" json:"used_bytes,omitempty"`
+	FreeBytes      uint64                 `protobuf:"varint,4,opt,name=free_bytes,json=freeBytes,proto3" json:"free_bytes,omitempty"`
+	CachedBytes    uint64                 `protobuf:"varint,5,opt,name=cached_bytes,json=cachedBytes,proto3" json:"cached_bytes,omitempty"`
+	BuffersBytes   uint64                 `protobuf:"varint,6,opt,name=buffers_bytes,json=buffersBytes,proto3" json:"buffers_bytes,omitempty"`
+	SwapTotalBytes uint64                 `protobuf:"varint,7,opt,name=swap_total_bytes,json=swapTotalBytes,proto3" json:"swap_total_bytes,omitempty"`
+	SwapUsedBytes  uint64                 `protobuf:"varint,8,opt,name=swap_used_bytes,json=swapUsedBytes,proto3" json:"swap_used_bytes,omitempty"`
+	SwapFreeBytes  uint64                 `protobuf:"varint,9,opt,name=swap_free_bytes,json=swapFreeBytes,proto3" json:"swap_free_bytes,omitempty"`
+	Percent        float64                `protobuf:"fixed64,10,opt,name=percent,proto3" json:"percent,omitempty"`
+	SwapPercent    float64                `protobuf:"fixed64,11,opt,name=swap_percent,json=swapPercent,proto3" json:"swap_percent,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *MemoryDetail) Reset() {
+	*x = MemoryDetail{}
+	mi := &file_proto_agent_proto_msgTypes[70]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MemoryDetail) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MemoryDetail) ProtoMessage() {}
+
+func (x *MemoryDetail) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[70]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MemoryDetail.ProtoReflect.Descriptor instead.
+func (*MemoryDetail) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{70}
+}
+
+func (x *MemoryDetail) GetTotalBytes() uint64 {
+	if x != nil {
+		return x.TotalBytes
+	}
+	return 0
+}
+
+func (x *MemoryDetail) GetAvailableBytes() uint64 {
+	if x != nil {
+		return x.AvailableBytes
+	}
+	return 0
+}
+
+func (x *MemoryDetail) GetUsedBytes() uint64 {
+	if x != nil {
+		return x.UsedBytes
+	}
+	return 0
+}
+
+func (x *MemoryDetail) GetFreeBytes() uint64 {
+	if x != nil {
+		return x.FreeBytes
+	}
+	return 0
+}
+
+func (x *MemoryDetail) GetCachedBytes() uint64 {
+	if x != nil {
+		return x.CachedBytes
+	}
+	return 0
+}
+
+func (x *MemoryDetail) GetBuffersBytes() uint64 {
+	if x != nil {
+		return x.BuffersBytes
+	}
+	return 0
+}
+
+func (x *MemoryDetail) GetSwapTotalBytes() uint64 {
+	if x != nil {
+		return x.SwapTotalBytes
+	}
+	return 0
+}
+
+func (x *MemoryDetail) GetSwapUsedBytes() uint64 {
+	if x != nil {
+		return x.SwapUsedBytes
+	}
+	return 0
+}
+
+func (x *MemoryDetail) GetSwapFreeBytes() uint64 {
+	if x != nil {
+		return x.SwapFreeBytes
+	}
+	return 0
+}
+
+func (x *MemoryDetail) GetPercent() float64 {
+	if x != nil {
+		return x.Percent
+	}
+	return 0
+}
+
+func (x *MemoryDetail) GetSwapPercent() float64 {
+	if x != nil {
+		return x.SwapPercent
+	}
+	return 0
+}
+
+type DiskDetail struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Partitions      []*DiskPartition       `protobuf:"bytes,1,rep,name=partitions,proto3" json:"partitions,omitempty"`
+	ReadBytesTotal  uint64                 `protobuf:"varint,2,opt,name=read_bytes_total,json=readBytesTotal,proto3" json:"read_bytes_total,omitempty"`
+	WriteBytesTotal uint64                 `protobuf:"varint,3,opt,name=write_bytes_total,json=writeBytesTotal,proto3" json:"write_bytes_total,omitempty"`
+	ReadCount       uint64                 `protobuf:"varint,4,opt,name=read_count,json=readCount,proto3" json:"read_count,omitempty"`
+	WriteCount      uint64                 `protobuf:"varint,5,opt,name=write_count,json=writeCount,proto3" json:"write_count,omitempty"`
+	ReadTimeMs      uint64                 `protobuf:"varint,6,opt,name=read_time_ms,json=readTimeMs,proto3" json:"read_time_ms,omitempty"`
+	WriteTimeMs     uint64                 `protobuf:"varint,7,opt,name=write_time_ms,json=writeTimeMs,proto3" json:"write_time_ms,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *DiskDetail) Reset() {
+	*x = DiskDetail{}
+	mi := &file_proto_agent_proto_msgTypes[71]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DiskDetail) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DiskDetail) ProtoMessage() {}
+
+func (x *DiskDetail) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[71]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DiskDetail.ProtoReflect.Descriptor instead.
+func (*DiskDetail) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{71}
+}
+
+func (x *DiskDetail) GetPartitions() []*DiskPartition {
+	if x != nil {
+		return x.Partitions
+	}
+	return nil
+}
+
+func (x *DiskDetail) GetReadBytesTotal() uint64 {
+	if x != nil {
+		return x.ReadBytesTotal
+	}
+	return 0
+}
+
+func (x *DiskDetail) GetWriteBytesTotal() uint64 {
+	if x != nil {
+		return x.WriteBytesTotal
+	}
+	return 0
+}
+
+func (x *DiskDetail) GetReadCount() uint64 {
+	if x != nil {
+		return x.ReadCount
+	}
+	return 0
+}
+
+func (x *DiskDetail) GetWriteCount() uint64 {
+	if x != nil {
+		return x.WriteCount
+	}
+	return 0
+}
+
+func (x *DiskDetail) GetReadTimeMs() uint64 {
+	if x != nil {
+		return x.ReadTimeMs
+	}
+	return 0
+}
+
+func (x *DiskDetail) GetWriteTimeMs() uint64 {
+	if x != nil {
+		return x.WriteTimeMs
+	}
+	return 0
+}
+
+type NetworkDetail struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Interfaces        []*NetworkInterface    `protobuf:"bytes,1,rep,name=interfaces,proto3" json:"interfaces,omitempty"`
+	BytesSentTotal    uint64                 `protobuf:"varint,2,opt,name=bytes_sent_total,json=bytesSentTotal,proto3" json:"bytes_sent_total,omitempty"`
+	BytesRecvTotal    uint64                 `protobuf:"varint,3,opt,name=bytes_recv_total,json=bytesRecvTotal,proto3" json:"bytes_recv_total,omitempty"`
+	PacketsSentTotal  uint64                 `protobuf:"varint,4,opt,name=packets_sent_total,json=packetsSentTotal,proto3" json:"packets_sent_total,omitempty"`
+	PacketsRecvTotal  uint64                 `protobuf:"varint,5,opt,name=packets_recv_total,json=packetsRecvTotal,proto3" json:"packets_recv_total,omitempty"`
+	ErrorsIn          uint64                 `protobuf:"varint,6,opt,name=errors_in,json=errorsIn,proto3" json:"errors_in,omitempty"`
+	ErrorsOut         uint64                 `protobuf:"varint,7,opt,name=errors_out,json=errorsOut,proto3" json:"errors_out,omitempty"`
+	DropsIn           uint64                 `protobuf:"varint,8,opt,name=drops_in,json=dropsIn,proto3" json:"drops_in,omitempty"`
+	DropsOut          uint64                 `protobuf:"varint,9,opt,name=drops_out,json=dropsOut,proto3" json:"drops_out,omitempty"`
+	ActiveConnections int32                  `protobuf:"varint,10,opt,name=active_connections,json=activeConnections,proto3" json:"active_connections,omitempty"`
+	ListeningPorts    int32                  `protobuf:"varint,11,opt,name=listening_ports,json=listeningPorts,proto3" json:"listening_ports,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *NetworkDetail) Reset() {
+	*x = NetworkDetail{}
+	mi := &file_proto_agent_proto_msgTypes[72]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NetworkDetail) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NetworkDetail) ProtoMessage() {}
+
+func (x *NetworkDetail) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[72]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NetworkDetail.ProtoReflect.Descriptor instead.
+func (*NetworkDetail) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{72}
+}
+
+func (x *NetworkDetail) GetInterfaces() []*NetworkInterface {
+	if x != nil {
+		return x.Interfaces
+	}
+	return nil
+}
+
+func (x *NetworkDetail) GetBytesSentTotal() uint64 {
+	if x != nil {
+		return x.BytesSentTotal
+	}
+	return 0
+}
+
+func (x *NetworkDetail) GetBytesRecvTotal() uint64 {
+	if x != nil {
+		return x.BytesRecvTotal
+	}
+	return 0
+}
+
+func (x *NetworkDetail) GetPacketsSentTotal() uint64 {
+	if x != nil {
+		return x.PacketsSentTotal
+	}
+	return 0
+}
+
+func (x *NetworkDetail) GetPacketsRecvTotal() uint64 {
+	if x != nil {
+		return x.PacketsRecvTotal
+	}
+	return 0
+}
+
+func (x *NetworkDetail) GetErrorsIn() uint64 {
+	if x != nil {
+		return x.ErrorsIn
+	}
+	return 0
+}
+
+func (x *NetworkDetail) GetErrorsOut() uint64 {
+	if x != nil {
+		return x.ErrorsOut
+	}
+	return 0
+}
+
+func (x *NetworkDetail) GetDropsIn() uint64 {
+	if x != nil {
+		return x.DropsIn
+	}
+	return 0
+}
+
+func (x *NetworkDetail) GetDropsOut() uint64 {
+	if x != nil {
+		return x.DropsOut
+	}
+	return 0
+}
+
+func (x *NetworkDetail) GetActiveConnections() int32 {
+	if x != nil {
+		return x.ActiveConnections
+	}
+	return 0
+}
+
+func (x *NetworkDetail) GetListeningPorts() int32 {
+	if x != nil {
+		return x.ListeningPorts
+	}
+	return 0
+}
+
+type DetailedMetricsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Timestamp     int64                  `protobuf:"varint,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Cpu           *CPUDetail             `protobuf:"bytes,2,opt,name=cpu,proto3" json:"cpu,omitempty"`
+	Memory        *MemoryDetail          `protobuf:"bytes,3,opt,name=memory,proto3" json:"memory,omitempty"`
+	Disk          *DiskDetail            `protobuf:"bytes,4,opt,name=disk,proto3" json:"disk,omitempty"`
+	Network       *NetworkDetail         `protobuf:"bytes,5,opt,name=network,proto3" json:"network,omitempty"`
+	LoadAvg_1Min  float64                `protobuf:"fixed64,6,opt,name=load_avg_1min,json=loadAvg1min,proto3" json:"load_avg_1min,omitempty"`
+	LoadAvg_5Min  float64                `protobuf:"fixed64,7,opt,name=load_avg_5min,json=loadAvg5min,proto3" json:"load_avg_5min,omitempty"`
+	LoadAvg_15Min float64                `protobuf:"fixed64,8,opt,name=load_avg_15min,json=loadAvg15min,proto3" json:"load_avg_15min,omitempty"`
+	UptimeSeconds uint64                 `protobuf:"varint,9,opt,name=uptime_seconds,json=uptimeSeconds,proto3" json:"uptime_seconds,omitempty"`
+	ProcessCount  int32                  `protobuf:"varint,10,opt,name=process_count,json=processCount,proto3" json:"process_count,omitempty"`
+	ThreadCount   int32                  `protobuf:"varint,11,opt,name=thread_count,json=threadCount,proto3" json:"thread_count,omitempty"`
+	KernelVersion string                 `protobuf:"bytes,12,opt,name=kernel_version,json=kernelVersion,proto3" json:"kernel_version,omitempty"`
+	OsVersion     string                 `protobuf:"bytes,13,opt,name=os_version,json=osVersion,proto3" json:"os_version,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DetailedMetricsResponse) Reset() {
+	*x = DetailedMetricsResponse{}
+	mi := &file_proto_agent_proto_msgTypes[73]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DetailedMetricsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DetailedMetricsResponse) ProtoMessage() {}
+
+func (x *DetailedMetricsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[73]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DetailedMetricsResponse.ProtoReflect.Descriptor instead.
+func (*DetailedMetricsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{73}
+}
+
+func (x *DetailedMetricsResponse) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+func (x *DetailedMetricsResponse) GetCpu() *CPUDetail {
+	if x != nil {
+		return x.Cpu
+	}
+	return nil
+}
+
+func (x *DetailedMetricsResponse) GetMemory() *MemoryDetail {
+	if x != nil {
+		return x.Memory
+	}
+	return nil
+}
+
+func (x *DetailedMetricsResponse) GetDisk() *DiskDetail {
+	if x != nil {
+		return x.Disk
+	}
+	return nil
+}
+
+func (x *DetailedMetricsResponse) GetNetwork() *NetworkDetail {
+	if x != nil {
+		return x.Network
+	}
+	return nil
+}
+
+func (x *DetailedMetricsResponse) GetLoadAvg_1Min() float64 {
+	if x != nil {
+		return x.LoadAvg_1Min
+	}
+	return 0
+}
+
+func (x *DetailedMetricsResponse) GetLoadAvg_5Min() float64 {
+	if x != nil {
+		return x.LoadAvg_5Min
+	}
+	return 0
+}
+
+func (x *DetailedMetricsResponse) GetLoadAvg_15Min() float64 {
+	if x != nil {
+		return x.LoadAvg_15Min
+	}
+	return 0
+}
+
+func (x *DetailedMetricsResponse) GetUptimeSeconds() uint64 {
+	if x != nil {
+		return x.UptimeSeconds
+	}
+	return 0
+}
+
+func (x *DetailedMetricsResponse) GetProcessCount() int32 {
+	if x != nil {
+		return x.ProcessCount
+	}
+	return 0
+}
+
+func (x *DetailedMetricsResponse) GetThreadCount() int32 {
+	if x != nil {
+		return x.ThreadCount
+	}
+	return 0
+}
+
+func (x *DetailedMetricsResponse) GetKernelVersion() string {
+	if x != nil {
+		return x.KernelVersion
+	}
+	return ""
+}
+
+func (x *DetailedMetricsResponse) GetOsVersion() string {
+	if x != nil {
+		return x.OsVersion
+	}
+	return ""
+}
+
+type RecentLogsRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	MaxLines       int32                  `protobuf:"varint,1,opt,name=max_lines,json=maxLines,proto3" json:"max_lines,omitempty"`                   // Default 100
+	LevelFilter    string                 `protobuf:"bytes,2,opt,name=level_filter,json=levelFilter,proto3" json:"level_filter,omitempty"`           // error, warning, info, debug
+	SourceFilter   string                 `protobuf:"bytes,3,opt,name=source_filter,json=sourceFilter,proto3" json:"source_filter,omitempty"`        // Filter by source/service
+	SinceTimestamp int64                  `protobuf:"varint,4,opt,name=since_timestamp,json=sinceTimestamp,proto3" json:"since_timestamp,omitempty"` // Get logs since this timestamp
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *RecentLogsRequest) Reset() {
+	*x = RecentLogsRequest{}
+	mi := &file_proto_agent_proto_msgTypes[74]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecentLogsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecentLogsRequest) ProtoMessage() {}
+
+func (x *RecentLogsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[74]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecentLogsRequest.ProtoReflect.Descriptor instead.
+func (*RecentLogsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{74}
+}
+
+func (x *RecentLogsRequest) GetMaxLines() int32 {
+	if x != nil {
+		return x.MaxLines
+	}
+	return 0
+}
+
+func (x *RecentLogsRequest) GetLevelFilter() string {
+	if x != nil {
+		return x.LevelFilter
+	}
+	return ""
+}
+
+func (x *RecentLogsRequest) GetSourceFilter() string {
+	if x != nil {
+		return x.SourceFilter
+	}
+	return ""
+}
+
+func (x *RecentLogsRequest) GetSinceTimestamp() int64 {
+	if x != nil {
+		return x.SinceTimestamp
+	}
+	return 0
+}
+
+type RecentLogsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Logs          []*LogEntry            `protobuf:"bytes,1,rep,name=logs,proto3" json:"logs,omitempty"`
+	TotalCount    int32                  `protobuf:"varint,2,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	HasMore       bool                   `protobuf:"varint,3,opt,name=has_more,json=hasMore,proto3" json:"has_more,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RecentLogsResponse) Reset() {
+	*x = RecentLogsResponse{}
+	mi := &file_proto_agent_proto_msgTypes[75]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecentLogsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecentLogsResponse) ProtoMessage() {}
+
+func (x *RecentLogsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[75]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecentLogsResponse.ProtoReflect.Descriptor instead.
+func (*RecentLogsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{75}
+}
+
+func (x *RecentLogsResponse) GetLogs() []*LogEntry {
+	if x != nil {
+		return x.Logs
+	}
+	return nil
+}
+
+func (x *RecentLogsResponse) GetTotalCount() int32 {
+	if x != nil {
+		return x.TotalCount
+	}
+	return 0
+}
+
+func (x *RecentLogsResponse) GetHasMore() bool {
+	if x != nil {
+		return x.HasMore
+	}
+	return false
+}
+
+type ConnectionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StateFilter   string                 `protobuf:"bytes,1,opt,name=state_filter,json=stateFilter,proto3" json:"state_filter,omitempty"`     // ESTABLISHED, LISTEN, TIME_WAIT, etc
+	IncludeLocal  bool                   `protobuf:"varint,2,opt,name=include_local,json=includeLocal,proto3" json:"include_local,omitempty"` // Include localhost connections
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConnectionsRequest) Reset() {
+	*x = ConnectionsRequest{}
+	mi := &file_proto_agent_proto_msgTypes[76]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConnectionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConnectionsRequest) ProtoMessage() {}
+
+func (x *ConnectionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[76]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConnectionsRequest.ProtoReflect.Descriptor instead.
+func (*ConnectionsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{76}
+}
+
+func (x *ConnectionsRequest) GetStateFilter() string {
+	if x != nil {
+		return x.StateFilter
+	}
+	return ""
+}
+
+func (x *ConnectionsRequest) GetIncludeLocal() bool {
+	if x != nil {
+		return x.IncludeLocal
+	}
+	return false
+}
+
+type ConnectionInfo struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	LocalAddr     string                 `protobuf:"bytes,1,opt,name=local_addr,json=localAddr,proto3" json:"local_addr,omitempty"`
+	LocalPort     uint32                 `protobuf:"varint,2,opt,name=local_port,json=localPort,proto3" json:"local_port,omitempty"`
+	RemoteAddr    string                 `protobuf:"bytes,3,opt,name=remote_addr,json=remoteAddr,proto3" json:"remote_addr,omitempty"`
+	RemotePort    uint32                 `protobuf:"varint,4,opt,name=remote_port,json=remotePort,proto3" json:"remote_port,omitempty"`
+	State         string                 `protobuf:"bytes,5,opt,name=state,proto3" json:"state,omitempty"`
+	Pid           int32                  `protobuf:"varint,6,opt,name=pid,proto3" json:"pid,omitempty"`
+	ProcessName   string                 `protobuf:"bytes,7,opt,name=process_name,json=processName,proto3" json:"process_name,omitempty"`
+	BytesSent     uint64                 `protobuf:"varint,8,opt,name=bytes_sent,json=bytesSent,proto3" json:"bytes_sent,omitempty"`
+	BytesRecv     uint64                 `protobuf:"varint,9,opt,name=bytes_recv,json=bytesRecv,proto3" json:"bytes_recv,omitempty"`
+	EstablishedAt int64                  `protobuf:"varint,10,opt,name=established_at,json=establishedAt,proto3" json:"established_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConnectionInfo) Reset() {
+	*x = ConnectionInfo{}
+	mi := &file_proto_agent_proto_msgTypes[77]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConnectionInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConnectionInfo) ProtoMessage() {}
+
+func (x *ConnectionInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[77]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConnectionInfo.ProtoReflect.Descriptor instead.
+func (*ConnectionInfo) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{77}
+}
+
+func (x *ConnectionInfo) GetLocalAddr() string {
+	if x != nil {
+		return x.LocalAddr
+	}
+	return ""
+}
+
+func (x *ConnectionInfo) GetLocalPort() uint32 {
+	if x != nil {
+		return x.LocalPort
+	}
+	return 0
+}
+
+func (x *ConnectionInfo) GetRemoteAddr() string {
+	if x != nil {
+		return x.RemoteAddr
+	}
+	return ""
+}
+
+func (x *ConnectionInfo) GetRemotePort() uint32 {
+	if x != nil {
+		return x.RemotePort
+	}
+	return 0
+}
+
+func (x *ConnectionInfo) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
+func (x *ConnectionInfo) GetPid() int32 {
+	if x != nil {
+		return x.Pid
+	}
+	return 0
+}
+
+func (x *ConnectionInfo) GetProcessName() string {
+	if x != nil {
+		return x.ProcessName
+	}
+	return ""
+}
+
+func (x *ConnectionInfo) GetBytesSent() uint64 {
+	if x != nil {
+		return x.BytesSent
+	}
+	return 0
+}
+
+func (x *ConnectionInfo) GetBytesRecv() uint64 {
+	if x != nil {
+		return x.BytesRecv
+	}
+	return 0
+}
+
+func (x *ConnectionInfo) GetEstablishedAt() int64 {
+	if x != nil {
+		return x.EstablishedAt
+	}
+	return 0
+}
+
+type ConnectionsResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Connections      []*ConnectionInfo      `protobuf:"bytes,1,rep,name=connections,proto3" json:"connections,omitempty"`
+	TotalEstablished int32                  `protobuf:"varint,2,opt,name=total_established,json=totalEstablished,proto3" json:"total_established,omitempty"`
+	TotalListening   int32                  `protobuf:"varint,3,opt,name=total_listening,json=totalListening,proto3" json:"total_listening,omitempty"`
+	TotalTimeWait    int32                  `protobuf:"varint,4,opt,name=total_time_wait,json=totalTimeWait,proto3" json:"total_time_wait,omitempty"`
+	TotalAll         int32                  `protobuf:"varint,5,opt,name=total_all,json=totalAll,proto3" json:"total_all,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ConnectionsResponse) Reset() {
+	*x = ConnectionsResponse{}
+	mi := &file_proto_agent_proto_msgTypes[78]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConnectionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConnectionsResponse) ProtoMessage() {}
+
+func (x *ConnectionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[78]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConnectionsResponse.ProtoReflect.Descriptor instead.
+func (*ConnectionsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{78}
+}
+
+func (x *ConnectionsResponse) GetConnections() []*ConnectionInfo {
+	if x != nil {
+		return x.Connections
+	}
+	return nil
+}
+
+func (x *ConnectionsResponse) GetTotalEstablished() int32 {
+	if x != nil {
+		return x.TotalEstablished
+	}
+	return 0
+}
+
+func (x *ConnectionsResponse) GetTotalListening() int32 {
+	if x != nil {
+		return x.TotalListening
+	}
+	return 0
+}
+
+func (x *ConnectionsResponse) GetTotalTimeWait() int32 {
+	if x != nil {
+		return x.TotalTimeWait
+	}
+	return 0
+}
+
+func (x *ConnectionsResponse) GetTotalAll() int32 {
+	if x != nil {
+		return x.TotalAll
+	}
+	return 0
+}
+
+type SystemErrorsRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	MaxErrors       int32                  `protobuf:"varint,1,opt,name=max_errors,json=maxErrors,proto3" json:"max_errors,omitempty"` // Default 50
+	SinceTimestamp  int64                  `protobuf:"varint,2,opt,name=since_timestamp,json=sinceTimestamp,proto3" json:"since_timestamp,omitempty"`
+	IncludeWarnings bool                   `protobuf:"varint,3,opt,name=include_warnings,json=includeWarnings,proto3" json:"include_warnings,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *SystemErrorsRequest) Reset() {
+	*x = SystemErrorsRequest{}
+	mi := &file_proto_agent_proto_msgTypes[79]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SystemErrorsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SystemErrorsRequest) ProtoMessage() {}
+
+func (x *SystemErrorsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[79]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SystemErrorsRequest.ProtoReflect.Descriptor instead.
+func (*SystemErrorsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{79}
+}
+
+func (x *SystemErrorsRequest) GetMaxErrors() int32 {
+	if x != nil {
+		return x.MaxErrors
+	}
+	return 0
+}
+
+func (x *SystemErrorsRequest) GetSinceTimestamp() int64 {
+	if x != nil {
+		return x.SinceTimestamp
+	}
+	return 0
+}
+
+func (x *SystemErrorsRequest) GetIncludeWarnings() bool {
+	if x != nil {
+		return x.IncludeWarnings
+	}
+	return false
+}
+
+type SystemError struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Timestamp       int64                  `protobuf:"varint,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	Severity        string                 `protobuf:"bytes,2,opt,name=severity,proto3" json:"severity,omitempty"` // error, warning, critical
+	Source          string                 `protobuf:"bytes,3,opt,name=source,proto3" json:"source,omitempty"`
+	Message         string                 `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
+	StackTrace      string                 `protobuf:"bytes,5,opt,name=stack_trace,json=stackTrace,proto3" json:"stack_trace,omitempty"`
+	Context         map[string]string      `protobuf:"bytes,6,rep,name=context,proto3" json:"context,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	OccurrenceCount int32                  `protobuf:"varint,7,opt,name=occurrence_count,json=occurrenceCount,proto3" json:"occurrence_count,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *SystemError) Reset() {
+	*x = SystemError{}
+	mi := &file_proto_agent_proto_msgTypes[80]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SystemError) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SystemError) ProtoMessage() {}
+
+func (x *SystemError) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[80]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SystemError.ProtoReflect.Descriptor instead.
+func (*SystemError) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{80}
+}
+
+func (x *SystemError) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+func (x *SystemError) GetSeverity() string {
+	if x != nil {
+		return x.Severity
+	}
+	return ""
+}
+
+func (x *SystemError) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *SystemError) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *SystemError) GetStackTrace() string {
+	if x != nil {
+		return x.StackTrace
+	}
+	return ""
+}
+
+func (x *SystemError) GetContext() map[string]string {
+	if x != nil {
+		return x.Context
+	}
+	return nil
+}
+
+func (x *SystemError) GetOccurrenceCount() int32 {
+	if x != nil {
+		return x.OccurrenceCount
+	}
+	return 0
+}
+
+type SystemErrorsResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Errors          []*SystemError         `protobuf:"bytes,1,rep,name=errors,proto3" json:"errors,omitempty"`
+	TotalErrors     int32                  `protobuf:"varint,2,opt,name=total_errors,json=totalErrors,proto3" json:"total_errors,omitempty"`
+	TotalWarnings   int32                  `protobuf:"varint,3,opt,name=total_warnings,json=totalWarnings,proto3" json:"total_warnings,omitempty"`
+	MostCommonError string                 `protobuf:"bytes,4,opt,name=most_common_error,json=mostCommonError,proto3" json:"most_common_error,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *SystemErrorsResponse) Reset() {
+	*x = SystemErrorsResponse{}
+	mi := &file_proto_agent_proto_msgTypes[81]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SystemErrorsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SystemErrorsResponse) ProtoMessage() {}
+
+func (x *SystemErrorsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[81]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SystemErrorsResponse.ProtoReflect.Descriptor instead.
+func (*SystemErrorsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{81}
+}
+
+func (x *SystemErrorsResponse) GetErrors() []*SystemError {
+	if x != nil {
+		return x.Errors
+	}
+	return nil
+}
+
+func (x *SystemErrorsResponse) GetTotalErrors() int32 {
+	if x != nil {
+		return x.TotalErrors
+	}
+	return 0
+}
+
+func (x *SystemErrorsResponse) GetTotalWarnings() int32 {
+	if x != nil {
+		return x.TotalWarnings
+	}
+	return 0
+}
+
+func (x *SystemErrorsResponse) GetMostCommonError() string {
+	if x != nil {
+		return x.MostCommonError
+	}
+	return ""
+}
+
+type PerformanceHistoryRequest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	DurationMinutes int32                  `protobuf:"varint,1,opt,name=duration_minutes,json=durationMinutes,proto3" json:"duration_minutes,omitempty"` // Default 60
+	DataPoints      int32                  `protobuf:"varint,2,opt,name=data_points,json=dataPoints,proto3" json:"data_points,omitempty"`                // How many samples to return
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *PerformanceHistoryRequest) Reset() {
+	*x = PerformanceHistoryRequest{}
+	mi := &file_proto_agent_proto_msgTypes[82]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PerformanceHistoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PerformanceHistoryRequest) ProtoMessage() {}
+
+func (x *PerformanceHistoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[82]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PerformanceHistoryRequest.ProtoReflect.Descriptor instead.
+func (*PerformanceHistoryRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{82}
+}
+
+func (x *PerformanceHistoryRequest) GetDurationMinutes() int32 {
+	if x != nil {
+		return x.DurationMinutes
+	}
+	return 0
+}
+
+func (x *PerformanceHistoryRequest) GetDataPoints() int32 {
+	if x != nil {
+		return x.DataPoints
+	}
+	return 0
+}
+
+type PerformanceSnapshot struct {
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	Timestamp             int64                  `protobuf:"varint,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	CpuPercent            float64                `protobuf:"fixed64,2,opt,name=cpu_percent,json=cpuPercent,proto3" json:"cpu_percent,omitempty"`
+	MemoryPercent         float64                `protobuf:"fixed64,3,opt,name=memory_percent,json=memoryPercent,proto3" json:"memory_percent,omitempty"`
+	DiskPercent           float64                `protobuf:"fixed64,4,opt,name=disk_percent,json=diskPercent,proto3" json:"disk_percent,omitempty"`
+	NetworkThroughputMbps float64                `protobuf:"fixed64,5,opt,name=network_throughput_mbps,json=networkThroughputMbps,proto3" json:"network_throughput_mbps,omitempty"`
+	LoadAvg               float64                `protobuf:"fixed64,6,opt,name=load_avg,json=loadAvg,proto3" json:"load_avg,omitempty"`
+	ActiveConnections     int32                  `protobuf:"varint,7,opt,name=active_connections,json=activeConnections,proto3" json:"active_connections,omitempty"`
+	ProcessCount          int32                  `protobuf:"varint,8,opt,name=process_count,json=processCount,proto3" json:"process_count,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *PerformanceSnapshot) Reset() {
+	*x = PerformanceSnapshot{}
+	mi := &file_proto_agent_proto_msgTypes[83]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PerformanceSnapshot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PerformanceSnapshot) ProtoMessage() {}
+
+func (x *PerformanceSnapshot) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[83]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PerformanceSnapshot.ProtoReflect.Descriptor instead.
+func (*PerformanceSnapshot) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{83}
+}
+
+func (x *PerformanceSnapshot) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+func (x *PerformanceSnapshot) GetCpuPercent() float64 {
+	if x != nil {
+		return x.CpuPercent
+	}
+	return 0
+}
+
+func (x *PerformanceSnapshot) GetMemoryPercent() float64 {
+	if x != nil {
+		return x.MemoryPercent
+	}
+	return 0
+}
+
+func (x *PerformanceSnapshot) GetDiskPercent() float64 {
+	if x != nil {
+		return x.DiskPercent
+	}
+	return 0
+}
+
+func (x *PerformanceSnapshot) GetNetworkThroughputMbps() float64 {
+	if x != nil {
+		return x.NetworkThroughputMbps
+	}
+	return 0
+}
+
+func (x *PerformanceSnapshot) GetLoadAvg() float64 {
+	if x != nil {
+		return x.LoadAvg
+	}
+	return 0
+}
+
+func (x *PerformanceSnapshot) GetActiveConnections() int32 {
+	if x != nil {
+		return x.ActiveConnections
+	}
+	return 0
+}
+
+func (x *PerformanceSnapshot) GetProcessCount() int32 {
+	if x != nil {
+		return x.ProcessCount
+	}
+	return 0
+}
+
+type PerformanceHistoryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Snapshots     []*PerformanceSnapshot `protobuf:"bytes,1,rep,name=snapshots,proto3" json:"snapshots,omitempty"`
+	Avg           *PerformanceSnapshot   `protobuf:"bytes,2,opt,name=avg,proto3" json:"avg,omitempty"`
+	Min           *PerformanceSnapshot   `protobuf:"bytes,3,opt,name=min,proto3" json:"min,omitempty"`
+	Max           *PerformanceSnapshot   `protobuf:"bytes,4,opt,name=max,proto3" json:"max,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PerformanceHistoryResponse) Reset() {
+	*x = PerformanceHistoryResponse{}
+	mi := &file_proto_agent_proto_msgTypes[84]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PerformanceHistoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PerformanceHistoryResponse) ProtoMessage() {}
+
+func (x *PerformanceHistoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[84]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PerformanceHistoryResponse.ProtoReflect.Descriptor instead.
+func (*PerformanceHistoryResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{84}
+}
+
+func (x *PerformanceHistoryResponse) GetSnapshots() []*PerformanceSnapshot {
+	if x != nil {
+		return x.Snapshots
+	}
+	return nil
+}
+
+func (x *PerformanceHistoryResponse) GetAvg() *PerformanceSnapshot {
+	if x != nil {
+		return x.Avg
+	}
+	return nil
+}
+
+func (x *PerformanceHistoryResponse) GetMin() *PerformanceSnapshot {
+	if x != nil {
+		return x.Min
+	}
+	return nil
+}
+
+func (x *PerformanceHistoryResponse) GetMax() *PerformanceSnapshot {
+	if x != nil {
+		return x.Max
+	}
+	return nil
+}
+
+type HealthDiagnosticRequest struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	IncludeSuggestions bool                   `protobuf:"varint,1,opt,name=include_suggestions,json=includeSuggestions,proto3" json:"include_suggestions,omitempty"`
+	DeepCheck          bool                   `protobuf:"varint,2,opt,name=deep_check,json=deepCheck,proto3" json:"deep_check,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *HealthDiagnosticRequest) Reset() {
+	*x = HealthDiagnosticRequest{}
+	mi := &file_proto_agent_proto_msgTypes[85]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HealthDiagnosticRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HealthDiagnosticRequest) ProtoMessage() {}
+
+func (x *HealthDiagnosticRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[85]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HealthDiagnosticRequest.ProtoReflect.Descriptor instead.
+func (*HealthDiagnosticRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{85}
+}
+
+func (x *HealthDiagnosticRequest) GetIncludeSuggestions() bool {
+	if x != nil {
+		return x.IncludeSuggestions
+	}
+	return false
+}
+
+func (x *HealthDiagnosticRequest) GetDeepCheck() bool {
+	if x != nil {
+		return x.DeepCheck
+	}
+	return false
+}
+
+type HealthIssue struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Category      string                 `protobuf:"bytes,1,opt,name=category,proto3" json:"category,omitempty"` // cpu, memory, disk, network, process
+	Severity      string                 `protobuf:"bytes,2,opt,name=severity,proto3" json:"severity,omitempty"` // info, warning, critical
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	CurrentValue  string                 `protobuf:"bytes,4,opt,name=current_value,json=currentValue,proto3" json:"current_value,omitempty"`
+	Threshold     string                 `protobuf:"bytes,5,opt,name=threshold,proto3" json:"threshold,omitempty"`
+	Suggestions   []string               `protobuf:"bytes,6,rep,name=suggestions,proto3" json:"suggestions,omitempty"`
+	AutoFixable   bool                   `protobuf:"varint,7,opt,name=auto_fixable,json=autoFixable,proto3" json:"auto_fixable,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HealthIssue) Reset() {
+	*x = HealthIssue{}
+	mi := &file_proto_agent_proto_msgTypes[86]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HealthIssue) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HealthIssue) ProtoMessage() {}
+
+func (x *HealthIssue) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[86]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HealthIssue.ProtoReflect.Descriptor instead.
+func (*HealthIssue) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{86}
+}
+
+func (x *HealthIssue) GetCategory() string {
+	if x != nil {
+		return x.Category
+	}
+	return ""
+}
+
+func (x *HealthIssue) GetSeverity() string {
+	if x != nil {
+		return x.Severity
+	}
+	return ""
+}
+
+func (x *HealthIssue) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *HealthIssue) GetCurrentValue() string {
+	if x != nil {
+		return x.CurrentValue
+	}
+	return ""
+}
+
+func (x *HealthIssue) GetThreshold() string {
+	if x != nil {
+		return x.Threshold
+	}
+	return ""
+}
+
+func (x *HealthIssue) GetSuggestions() []string {
+	if x != nil {
+		return x.Suggestions
+	}
+	return nil
+}
+
+func (x *HealthIssue) GetAutoFixable() bool {
+	if x != nil {
+		return x.AutoFixable
+	}
+	return false
+}
+
+type HealthDiagnosticResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	OverallStatus  string                 `protobuf:"bytes,1,opt,name=overall_status,json=overallStatus,proto3" json:"overall_status,omitempty"` // healthy, degraded, unhealthy
+	HealthScore    int32                  `protobuf:"varint,2,opt,name=health_score,json=healthScore,proto3" json:"health_score,omitempty"`      // 0-100
+	Issues         []*HealthIssue         `protobuf:"bytes,3,rep,name=issues,proto3" json:"issues,omitempty"`
+	Summary        map[string]string      `protobuf:"bytes,4,rep,name=summary,proto3" json:"summary,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	CheckTimestamp int64                  `protobuf:"varint,5,opt,name=check_timestamp,json=checkTimestamp,proto3" json:"check_timestamp,omitempty"`
+	TotalWarnings  int32                  `protobuf:"varint,6,opt,name=total_warnings,json=totalWarnings,proto3" json:"total_warnings,omitempty"`
+	TotalErrors    int32                  `protobuf:"varint,7,opt,name=total_errors,json=totalErrors,proto3" json:"total_errors,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *HealthDiagnosticResponse) Reset() {
+	*x = HealthDiagnosticResponse{}
+	mi := &file_proto_agent_proto_msgTypes[87]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HealthDiagnosticResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HealthDiagnosticResponse) ProtoMessage() {}
+
+func (x *HealthDiagnosticResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[87]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HealthDiagnosticResponse.ProtoReflect.Descriptor instead.
+func (*HealthDiagnosticResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{87}
+}
+
+func (x *HealthDiagnosticResponse) GetOverallStatus() string {
+	if x != nil {
+		return x.OverallStatus
+	}
+	return ""
+}
+
+func (x *HealthDiagnosticResponse) GetHealthScore() int32 {
+	if x != nil {
+		return x.HealthScore
+	}
+	return 0
+}
+
+func (x *HealthDiagnosticResponse) GetIssues() []*HealthIssue {
+	if x != nil {
+		return x.Issues
+	}
+	return nil
+}
+
+func (x *HealthDiagnosticResponse) GetSummary() map[string]string {
+	if x != nil {
+		return x.Summary
+	}
+	return nil
+}
+
+func (x *HealthDiagnosticResponse) GetCheckTimestamp() int64 {
+	if x != nil {
+		return x.CheckTimestamp
+	}
+	return 0
+}
+
+func (x *HealthDiagnosticResponse) GetTotalWarnings() int32 {
+	if x != nil {
+		return x.TotalWarnings
+	}
+	return 0
+}
+
+func (x *HealthDiagnosticResponse) GetTotalErrors() int32 {
+	if x != nil {
+		return x.TotalErrors
+	}
+	return 0
+}
+
 var File_proto_agent_proto protoreflect.FileDescriptor
 
 const file_proto_agent_proto_rawDesc = "" +
@@ -4377,7 +6041,184 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\bseverity\x18\x06 \x01(\tR\bseverity\x1a;\n" +
 	"\rMetadataEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012\xa5\b\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x18\n" +
+	"\x16DetailedMetricsRequest\"\xfd\x01\n" +
+	"\tCPUDetail\x12\x1d\n" +
+	"\n" +
+	"core_count\x18\x01 \x01(\x05R\tcoreCount\x12$\n" +
+	"\x0eper_core_usage\x18\x02 \x03(\x01R\fperCoreUsage\x12\x1b\n" +
+	"\tuser_time\x18\x03 \x01(\x01R\buserTime\x12\x1f\n" +
+	"\vsystem_time\x18\x04 \x01(\x01R\n" +
+	"systemTime\x12\x1b\n" +
+	"\tidle_time\x18\x05 \x01(\x01R\bidleTime\x12\x1f\n" +
+	"\viowait_time\x18\x06 \x01(\x01R\n" +
+	"iowaitTime\x12\x1d\n" +
+	"\n" +
+	"model_name\x18\a \x01(\tR\tmodelName\x12\x10\n" +
+	"\x03mhz\x18\b \x01(\x01R\x03mhz\"\x95\x03\n" +
+	"\fMemoryDetail\x12\x1f\n" +
+	"\vtotal_bytes\x18\x01 \x01(\x04R\n" +
+	"totalBytes\x12'\n" +
+	"\x0favailable_bytes\x18\x02 \x01(\x04R\x0eavailableBytes\x12\x1d\n" +
+	"\n" +
+	"used_bytes\x18\x03 \x01(\x04R\tusedBytes\x12\x1d\n" +
+	"\n" +
+	"free_bytes\x18\x04 \x01(\x04R\tfreeBytes\x12!\n" +
+	"\fcached_bytes\x18\x05 \x01(\x04R\vcachedBytes\x12#\n" +
+	"\rbuffers_bytes\x18\x06 \x01(\x04R\fbuffersBytes\x12(\n" +
+	"\x10swap_total_bytes\x18\a \x01(\x04R\x0eswapTotalBytes\x12&\n" +
+	"\x0fswap_used_bytes\x18\b \x01(\x04R\rswapUsedBytes\x12&\n" +
+	"\x0fswap_free_bytes\x18\t \x01(\x04R\rswapFreeBytes\x12\x18\n" +
+	"\apercent\x18\n" +
+	" \x01(\x01R\apercent\x12!\n" +
+	"\fswap_percent\x18\v \x01(\x01R\vswapPercent\"\x9e\x02\n" +
+	"\n" +
+	"DiskDetail\x124\n" +
+	"\n" +
+	"partitions\x18\x01 \x03(\v2\x14.agent.DiskPartitionR\n" +
+	"partitions\x12(\n" +
+	"\x10read_bytes_total\x18\x02 \x01(\x04R\x0ereadBytesTotal\x12*\n" +
+	"\x11write_bytes_total\x18\x03 \x01(\x04R\x0fwriteBytesTotal\x12\x1d\n" +
+	"\n" +
+	"read_count\x18\x04 \x01(\x04R\treadCount\x12\x1f\n" +
+	"\vwrite_count\x18\x05 \x01(\x04R\n" +
+	"writeCount\x12 \n" +
+	"\fread_time_ms\x18\x06 \x01(\x04R\n" +
+	"readTimeMs\x12\"\n" +
+	"\rwrite_time_ms\x18\a \x01(\x04R\vwriteTimeMs\"\xc4\x03\n" +
+	"\rNetworkDetail\x127\n" +
+	"\n" +
+	"interfaces\x18\x01 \x03(\v2\x17.agent.NetworkInterfaceR\n" +
+	"interfaces\x12(\n" +
+	"\x10bytes_sent_total\x18\x02 \x01(\x04R\x0ebytesSentTotal\x12(\n" +
+	"\x10bytes_recv_total\x18\x03 \x01(\x04R\x0ebytesRecvTotal\x12,\n" +
+	"\x12packets_sent_total\x18\x04 \x01(\x04R\x10packetsSentTotal\x12,\n" +
+	"\x12packets_recv_total\x18\x05 \x01(\x04R\x10packetsRecvTotal\x12\x1b\n" +
+	"\terrors_in\x18\x06 \x01(\x04R\berrorsIn\x12\x1d\n" +
+	"\n" +
+	"errors_out\x18\a \x01(\x04R\terrorsOut\x12\x19\n" +
+	"\bdrops_in\x18\b \x01(\x04R\adropsIn\x12\x1b\n" +
+	"\tdrops_out\x18\t \x01(\x04R\bdropsOut\x12-\n" +
+	"\x12active_connections\x18\n" +
+	" \x01(\x05R\x11activeConnections\x12'\n" +
+	"\x0flistening_ports\x18\v \x01(\x05R\x0elisteningPorts\"\x82\x04\n" +
+	"\x17DetailedMetricsResponse\x12\x1c\n" +
+	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\x12\"\n" +
+	"\x03cpu\x18\x02 \x01(\v2\x10.agent.CPUDetailR\x03cpu\x12+\n" +
+	"\x06memory\x18\x03 \x01(\v2\x13.agent.MemoryDetailR\x06memory\x12%\n" +
+	"\x04disk\x18\x04 \x01(\v2\x11.agent.DiskDetailR\x04disk\x12.\n" +
+	"\anetwork\x18\x05 \x01(\v2\x14.agent.NetworkDetailR\anetwork\x12\"\n" +
+	"\rload_avg_1min\x18\x06 \x01(\x01R\vloadAvg1min\x12\"\n" +
+	"\rload_avg_5min\x18\a \x01(\x01R\vloadAvg5min\x12$\n" +
+	"\x0eload_avg_15min\x18\b \x01(\x01R\floadAvg15min\x12%\n" +
+	"\x0euptime_seconds\x18\t \x01(\x04R\ruptimeSeconds\x12#\n" +
+	"\rprocess_count\x18\n" +
+	" \x01(\x05R\fprocessCount\x12!\n" +
+	"\fthread_count\x18\v \x01(\x05R\vthreadCount\x12%\n" +
+	"\x0ekernel_version\x18\f \x01(\tR\rkernelVersion\x12\x1d\n" +
+	"\n" +
+	"os_version\x18\r \x01(\tR\tosVersion\"\xa1\x01\n" +
+	"\x11RecentLogsRequest\x12\x1b\n" +
+	"\tmax_lines\x18\x01 \x01(\x05R\bmaxLines\x12!\n" +
+	"\flevel_filter\x18\x02 \x01(\tR\vlevelFilter\x12#\n" +
+	"\rsource_filter\x18\x03 \x01(\tR\fsourceFilter\x12'\n" +
+	"\x0fsince_timestamp\x18\x04 \x01(\x03R\x0esinceTimestamp\"u\n" +
+	"\x12RecentLogsResponse\x12#\n" +
+	"\x04logs\x18\x01 \x03(\v2\x0f.agent.LogEntryR\x04logs\x12\x1f\n" +
+	"\vtotal_count\x18\x02 \x01(\x05R\n" +
+	"totalCount\x12\x19\n" +
+	"\bhas_more\x18\x03 \x01(\bR\ahasMore\"\\\n" +
+	"\x12ConnectionsRequest\x12!\n" +
+	"\fstate_filter\x18\x01 \x01(\tR\vstateFilter\x12#\n" +
+	"\rinclude_local\x18\x02 \x01(\bR\fincludeLocal\"\xc0\x02\n" +
+	"\x0eConnectionInfo\x12\x1d\n" +
+	"\n" +
+	"local_addr\x18\x01 \x01(\tR\tlocalAddr\x12\x1d\n" +
+	"\n" +
+	"local_port\x18\x02 \x01(\rR\tlocalPort\x12\x1f\n" +
+	"\vremote_addr\x18\x03 \x01(\tR\n" +
+	"remoteAddr\x12\x1f\n" +
+	"\vremote_port\x18\x04 \x01(\rR\n" +
+	"remotePort\x12\x14\n" +
+	"\x05state\x18\x05 \x01(\tR\x05state\x12\x10\n" +
+	"\x03pid\x18\x06 \x01(\x05R\x03pid\x12!\n" +
+	"\fprocess_name\x18\a \x01(\tR\vprocessName\x12\x1d\n" +
+	"\n" +
+	"bytes_sent\x18\b \x01(\x04R\tbytesSent\x12\x1d\n" +
+	"\n" +
+	"bytes_recv\x18\t \x01(\x04R\tbytesRecv\x12%\n" +
+	"\x0eestablished_at\x18\n" +
+	" \x01(\x03R\restablishedAt\"\xe9\x01\n" +
+	"\x13ConnectionsResponse\x127\n" +
+	"\vconnections\x18\x01 \x03(\v2\x15.agent.ConnectionInfoR\vconnections\x12+\n" +
+	"\x11total_established\x18\x02 \x01(\x05R\x10totalEstablished\x12'\n" +
+	"\x0ftotal_listening\x18\x03 \x01(\x05R\x0etotalListening\x12&\n" +
+	"\x0ftotal_time_wait\x18\x04 \x01(\x05R\rtotalTimeWait\x12\x1b\n" +
+	"\ttotal_all\x18\x05 \x01(\x05R\btotalAll\"\x88\x01\n" +
+	"\x13SystemErrorsRequest\x12\x1d\n" +
+	"\n" +
+	"max_errors\x18\x01 \x01(\x05R\tmaxErrors\x12'\n" +
+	"\x0fsince_timestamp\x18\x02 \x01(\x03R\x0esinceTimestamp\x12)\n" +
+	"\x10include_warnings\x18\x03 \x01(\bR\x0fincludeWarnings\"\xbc\x02\n" +
+	"\vSystemError\x12\x1c\n" +
+	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\x12\x1a\n" +
+	"\bseverity\x18\x02 \x01(\tR\bseverity\x12\x16\n" +
+	"\x06source\x18\x03 \x01(\tR\x06source\x12\x18\n" +
+	"\amessage\x18\x04 \x01(\tR\amessage\x12\x1f\n" +
+	"\vstack_trace\x18\x05 \x01(\tR\n" +
+	"stackTrace\x129\n" +
+	"\acontext\x18\x06 \x03(\v2\x1f.agent.SystemError.ContextEntryR\acontext\x12)\n" +
+	"\x10occurrence_count\x18\a \x01(\x05R\x0foccurrenceCount\x1a:\n" +
+	"\fContextEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xb8\x01\n" +
+	"\x14SystemErrorsResponse\x12*\n" +
+	"\x06errors\x18\x01 \x03(\v2\x12.agent.SystemErrorR\x06errors\x12!\n" +
+	"\ftotal_errors\x18\x02 \x01(\x05R\vtotalErrors\x12%\n" +
+	"\x0etotal_warnings\x18\x03 \x01(\x05R\rtotalWarnings\x12*\n" +
+	"\x11most_common_error\x18\x04 \x01(\tR\x0fmostCommonError\"g\n" +
+	"\x19PerformanceHistoryRequest\x12)\n" +
+	"\x10duration_minutes\x18\x01 \x01(\x05R\x0fdurationMinutes\x12\x1f\n" +
+	"\vdata_points\x18\x02 \x01(\x05R\n" +
+	"dataPoints\"\xc5\x02\n" +
+	"\x13PerformanceSnapshot\x12\x1c\n" +
+	"\ttimestamp\x18\x01 \x01(\x03R\ttimestamp\x12\x1f\n" +
+	"\vcpu_percent\x18\x02 \x01(\x01R\n" +
+	"cpuPercent\x12%\n" +
+	"\x0ememory_percent\x18\x03 \x01(\x01R\rmemoryPercent\x12!\n" +
+	"\fdisk_percent\x18\x04 \x01(\x01R\vdiskPercent\x126\n" +
+	"\x17network_throughput_mbps\x18\x05 \x01(\x01R\x15networkThroughputMbps\x12\x19\n" +
+	"\bload_avg\x18\x06 \x01(\x01R\aloadAvg\x12-\n" +
+	"\x12active_connections\x18\a \x01(\x05R\x11activeConnections\x12#\n" +
+	"\rprocess_count\x18\b \x01(\x05R\fprocessCount\"\xe0\x01\n" +
+	"\x1aPerformanceHistoryResponse\x128\n" +
+	"\tsnapshots\x18\x01 \x03(\v2\x1a.agent.PerformanceSnapshotR\tsnapshots\x12,\n" +
+	"\x03avg\x18\x02 \x01(\v2\x1a.agent.PerformanceSnapshotR\x03avg\x12,\n" +
+	"\x03min\x18\x03 \x01(\v2\x1a.agent.PerformanceSnapshotR\x03min\x12,\n" +
+	"\x03max\x18\x04 \x01(\v2\x1a.agent.PerformanceSnapshotR\x03max\"i\n" +
+	"\x17HealthDiagnosticRequest\x12/\n" +
+	"\x13include_suggestions\x18\x01 \x01(\bR\x12includeSuggestions\x12\x1d\n" +
+	"\n" +
+	"deep_check\x18\x02 \x01(\bR\tdeepCheck\"\xef\x01\n" +
+	"\vHealthIssue\x12\x1a\n" +
+	"\bcategory\x18\x01 \x01(\tR\bcategory\x12\x1a\n" +
+	"\bseverity\x18\x02 \x01(\tR\bseverity\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12#\n" +
+	"\rcurrent_value\x18\x04 \x01(\tR\fcurrentValue\x12\x1c\n" +
+	"\tthreshold\x18\x05 \x01(\tR\tthreshold\x12 \n" +
+	"\vsuggestions\x18\x06 \x03(\tR\vsuggestions\x12!\n" +
+	"\fauto_fixable\x18\a \x01(\bR\vautoFixable\"\x87\x03\n" +
+	"\x18HealthDiagnosticResponse\x12%\n" +
+	"\x0eoverall_status\x18\x01 \x01(\tR\roverallStatus\x12!\n" +
+	"\fhealth_score\x18\x02 \x01(\x05R\vhealthScore\x12*\n" +
+	"\x06issues\x18\x03 \x03(\v2\x12.agent.HealthIssueR\x06issues\x12F\n" +
+	"\asummary\x18\x04 \x03(\v2,.agent.HealthDiagnosticResponse.SummaryEntryR\asummary\x12'\n" +
+	"\x0fcheck_timestamp\x18\x05 \x01(\x03R\x0echeckTimestamp\x12%\n" +
+	"\x0etotal_warnings\x18\x06 \x01(\x05R\rtotalWarnings\x12!\n" +
+	"\ftotal_errors\x18\a \x01(\x05R\vtotalErrors\x1a:\n" +
+	"\fSummaryEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x012\x8c\f\n" +
 	"\x05Agent\x12D\n" +
 	"\vExecuteTask\x12\x19.agent.ExecuteTaskRequest\x1a\x1a.agent.ExecuteTaskResponse\x12E\n" +
 	"\n" +
@@ -4395,7 +6236,13 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\x12GetEnvironmentVars\x12\x15.agent.EnvVarsRequest\x1a\x16.agent.EnvVarsResponse\x12F\n" +
 	"\x11SetEnvironmentVar\x12\x17.agent.SetEnvVarRequest\x1a\x18.agent.SetEnvVarResponse\x12J\n" +
 	"\rInstallModule\x12\x1b.agent.InstallModuleRequest\x1a\x1c.agent.InstallModuleResponse\x12D\n" +
-	"\x13GetInstalledModules\x12\x15.agent.ModulesRequest\x1a\x16.agent.ModulesResponse2\xdb\t\n" +
+	"\x13GetInstalledModules\x12\x15.agent.ModulesRequest\x1a\x16.agent.ModulesResponse\x12S\n" +
+	"\x12GetDetailedMetrics\x12\x1d.agent.DetailedMetricsRequest\x1a\x1e.agent.DetailedMetricsResponse\x12D\n" +
+	"\rGetRecentLogs\x12\x18.agent.RecentLogsRequest\x1a\x19.agent.RecentLogsResponse\x12M\n" +
+	"\x14GetActiveConnections\x12\x19.agent.ConnectionsRequest\x1a\x1a.agent.ConnectionsResponse\x12J\n" +
+	"\x0fGetSystemErrors\x12\x1a.agent.SystemErrorsRequest\x1a\x1b.agent.SystemErrorsResponse\x12\\\n" +
+	"\x15GetPerformanceHistory\x12 .agent.PerformanceHistoryRequest\x1a!.agent.PerformanceHistoryResponse\x12Q\n" +
+	"\x0eDiagnoseHealth\x12\x1e.agent.HealthDiagnosticRequest\x1a\x1f.agent.HealthDiagnosticResponse2\xdb\t\n" +
 	"\rAgentRegistry\x12J\n" +
 	"\rRegisterAgent\x12\x1b.agent.RegisterAgentRequest\x1a\x1c.agent.RegisterAgentResponse\x12A\n" +
 	"\n" +
@@ -4427,7 +6274,7 @@ func file_proto_agent_proto_rawDescGZIP() []byte {
 	return file_proto_agent_proto_rawDescData
 }
 
-var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 74)
+var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 96)
 var file_proto_agent_proto_goTypes = []any{
 	(*ShutdownRequest)(nil),             // 0: agent.ShutdownRequest
 	(*ShutdownResponse)(nil),            // 1: agent.ShutdownResponse
@@ -4497,12 +6344,34 @@ var file_proto_agent_proto_goTypes = []any{
 	(*AggregatedMetricsResponse)(nil),   // 65: agent.AggregatedMetricsResponse
 	(*StreamEventsRequest)(nil),         // 66: agent.StreamEventsRequest
 	(*AgentEvent)(nil),                  // 67: agent.AgentEvent
-	nil,                                 // 68: agent.MetricsData.CustomMetricsEntry
-	nil,                                 // 69: agent.EnvVarsResponse.VariablesEntry
-	nil,                                 // 70: agent.CreateGroupRequest.TagsEntry
-	nil,                                 // 71: agent.AgentGroup.TagsEntry
-	nil,                                 // 72: agent.AggregatedMetricsResponse.CustomMetricsEntry
-	nil,                                 // 73: agent.AgentEvent.MetadataEntry
+	(*DetailedMetricsRequest)(nil),      // 68: agent.DetailedMetricsRequest
+	(*CPUDetail)(nil),                   // 69: agent.CPUDetail
+	(*MemoryDetail)(nil),                // 70: agent.MemoryDetail
+	(*DiskDetail)(nil),                  // 71: agent.DiskDetail
+	(*NetworkDetail)(nil),               // 72: agent.NetworkDetail
+	(*DetailedMetricsResponse)(nil),     // 73: agent.DetailedMetricsResponse
+	(*RecentLogsRequest)(nil),           // 74: agent.RecentLogsRequest
+	(*RecentLogsResponse)(nil),          // 75: agent.RecentLogsResponse
+	(*ConnectionsRequest)(nil),          // 76: agent.ConnectionsRequest
+	(*ConnectionInfo)(nil),              // 77: agent.ConnectionInfo
+	(*ConnectionsResponse)(nil),         // 78: agent.ConnectionsResponse
+	(*SystemErrorsRequest)(nil),         // 79: agent.SystemErrorsRequest
+	(*SystemError)(nil),                 // 80: agent.SystemError
+	(*SystemErrorsResponse)(nil),        // 81: agent.SystemErrorsResponse
+	(*PerformanceHistoryRequest)(nil),   // 82: agent.PerformanceHistoryRequest
+	(*PerformanceSnapshot)(nil),         // 83: agent.PerformanceSnapshot
+	(*PerformanceHistoryResponse)(nil),  // 84: agent.PerformanceHistoryResponse
+	(*HealthDiagnosticRequest)(nil),     // 85: agent.HealthDiagnosticRequest
+	(*HealthIssue)(nil),                 // 86: agent.HealthIssue
+	(*HealthDiagnosticResponse)(nil),    // 87: agent.HealthDiagnosticResponse
+	nil,                                 // 88: agent.MetricsData.CustomMetricsEntry
+	nil,                                 // 89: agent.EnvVarsResponse.VariablesEntry
+	nil,                                 // 90: agent.CreateGroupRequest.TagsEntry
+	nil,                                 // 91: agent.AgentGroup.TagsEntry
+	nil,                                 // 92: agent.AggregatedMetricsResponse.CustomMetricsEntry
+	nil,                                 // 93: agent.AgentEvent.MetadataEntry
+	nil,                                 // 94: agent.SystemError.ContextEntry
+	nil,                                 // 95: agent.HealthDiagnosticResponse.SummaryEntry
 }
 var file_proto_agent_proto_depIdxs = []int32{
 	8,  // 0: agent.ListAgentsResponse.agents:type_name -> agent.AgentInfo
@@ -4510,82 +6379,110 @@ var file_proto_agent_proto_depIdxs = []int32{
 	25, // 2: agent.ProcessListResponse.processes:type_name -> agent.ProcessInfo
 	28, // 3: agent.NetworkInfoResponse.interfaces:type_name -> agent.NetworkInterface
 	31, // 4: agent.DiskInfoResponse.partitions:type_name -> agent.DiskPartition
-	68, // 5: agent.MetricsData.custom_metrics:type_name -> agent.MetricsData.CustomMetricsEntry
-	69, // 6: agent.EnvVarsResponse.variables:type_name -> agent.EnvVarsResponse.VariablesEntry
+	88, // 5: agent.MetricsData.custom_metrics:type_name -> agent.MetricsData.CustomMetricsEntry
+	89, // 6: agent.EnvVarsResponse.variables:type_name -> agent.EnvVarsResponse.VariablesEntry
 	46, // 7: agent.ModulesResponse.modules:type_name -> agent.ModuleInfo
-	70, // 8: agent.CreateGroupRequest.tags:type_name -> agent.CreateGroupRequest.TagsEntry
-	71, // 9: agent.AgentGroup.tags:type_name -> agent.AgentGroup.TagsEntry
+	90, // 8: agent.CreateGroupRequest.tags:type_name -> agent.CreateGroupRequest.TagsEntry
+	91, // 9: agent.AgentGroup.tags:type_name -> agent.AgentGroup.TagsEntry
 	55, // 10: agent.ListGroupsResponse.groups:type_name -> agent.AgentGroup
 	62, // 11: agent.MultipleAgentStatusResponse.statuses:type_name -> agent.AgentStatusInfo
-	72, // 12: agent.AggregatedMetricsResponse.custom_metrics:type_name -> agent.AggregatedMetricsResponse.CustomMetricsEntry
-	73, // 13: agent.AgentEvent.metadata:type_name -> agent.AgentEvent.MetadataEntry
-	4,  // 14: agent.Agent.ExecuteTask:input_type -> agent.ExecuteTaskRequest
-	16, // 15: agent.Agent.RunCommand:input_type -> agent.RunCommandRequest
-	0,  // 16: agent.Agent.Shutdown:input_type -> agent.ShutdownRequest
-	2,  // 17: agent.Agent.UpdateAgent:input_type -> agent.UpdateAgentRequest
-	22, // 18: agent.Agent.GetResourceUsage:input_type -> agent.ResourceUsageRequest
-	24, // 19: agent.Agent.GetProcessList:input_type -> agent.ProcessListRequest
-	27, // 20: agent.Agent.GetNetworkInfo:input_type -> agent.NetworkInfoRequest
-	30, // 21: agent.Agent.GetDiskInfo:input_type -> agent.DiskInfoRequest
-	33, // 22: agent.Agent.StreamLogs:input_type -> agent.StreamLogsRequest
-	35, // 23: agent.Agent.StreamMetrics:input_type -> agent.StreamMetricsRequest
-	37, // 24: agent.Agent.RestartService:input_type -> agent.RestartServiceRequest
-	39, // 25: agent.Agent.GetEnvironmentVars:input_type -> agent.EnvVarsRequest
-	41, // 26: agent.Agent.SetEnvironmentVar:input_type -> agent.SetEnvVarRequest
-	43, // 27: agent.Agent.InstallModule:input_type -> agent.InstallModuleRequest
-	45, // 28: agent.Agent.GetInstalledModules:input_type -> agent.ModulesRequest
-	6,  // 29: agent.AgentRegistry.RegisterAgent:input_type -> agent.RegisterAgentRequest
-	9,  // 30: agent.AgentRegistry.ListAgents:input_type -> agent.ListAgentsRequest
-	11, // 31: agent.AgentRegistry.StopAgent:input_type -> agent.StopAgentRequest
-	13, // 32: agent.AgentRegistry.UnregisterAgent:input_type -> agent.UnregisterAgentRequest
-	15, // 33: agent.AgentRegistry.ExecuteCommand:input_type -> agent.ExecuteCommandRequest
-	18, // 34: agent.AgentRegistry.Heartbeat:input_type -> agent.HeartbeatRequest
-	20, // 35: agent.AgentRegistry.GetAgentInfo:input_type -> agent.GetAgentInfoRequest
-	48, // 36: agent.AgentRegistry.CreateAgentGroup:input_type -> agent.CreateGroupRequest
-	50, // 37: agent.AgentRegistry.AddAgentToGroup:input_type -> agent.AddToGroupRequest
-	52, // 38: agent.AgentRegistry.RemoveAgentFromGroup:input_type -> agent.RemoveFromGroupRequest
-	54, // 39: agent.AgentRegistry.ListAgentGroups:input_type -> agent.ListGroupsRequest
-	57, // 40: agent.AgentRegistry.DeleteAgentGroup:input_type -> agent.DeleteGroupRequest
-	59, // 41: agent.AgentRegistry.ExecuteOnMultipleAgents:input_type -> agent.BulkExecuteRequest
-	61, // 42: agent.AgentRegistry.GetMultipleAgentStatus:input_type -> agent.MultipleAgentStatusRequest
-	64, // 43: agent.AgentRegistry.GetAggregatedMetrics:input_type -> agent.AggregatedMetricsRequest
-	66, // 44: agent.AgentRegistry.StreamAgentEvents:input_type -> agent.StreamEventsRequest
-	5,  // 45: agent.Agent.ExecuteTask:output_type -> agent.ExecuteTaskResponse
-	17, // 46: agent.Agent.RunCommand:output_type -> agent.StreamOutputResponse
-	1,  // 47: agent.Agent.Shutdown:output_type -> agent.ShutdownResponse
-	3,  // 48: agent.Agent.UpdateAgent:output_type -> agent.UpdateAgentResponse
-	23, // 49: agent.Agent.GetResourceUsage:output_type -> agent.ResourceUsageResponse
-	26, // 50: agent.Agent.GetProcessList:output_type -> agent.ProcessListResponse
-	29, // 51: agent.Agent.GetNetworkInfo:output_type -> agent.NetworkInfoResponse
-	32, // 52: agent.Agent.GetDiskInfo:output_type -> agent.DiskInfoResponse
-	34, // 53: agent.Agent.StreamLogs:output_type -> agent.LogEntry
-	36, // 54: agent.Agent.StreamMetrics:output_type -> agent.MetricsData
-	38, // 55: agent.Agent.RestartService:output_type -> agent.RestartServiceResponse
-	40, // 56: agent.Agent.GetEnvironmentVars:output_type -> agent.EnvVarsResponse
-	42, // 57: agent.Agent.SetEnvironmentVar:output_type -> agent.SetEnvVarResponse
-	44, // 58: agent.Agent.InstallModule:output_type -> agent.InstallModuleResponse
-	47, // 59: agent.Agent.GetInstalledModules:output_type -> agent.ModulesResponse
-	7,  // 60: agent.AgentRegistry.RegisterAgent:output_type -> agent.RegisterAgentResponse
-	10, // 61: agent.AgentRegistry.ListAgents:output_type -> agent.ListAgentsResponse
-	12, // 62: agent.AgentRegistry.StopAgent:output_type -> agent.StopAgentResponse
-	14, // 63: agent.AgentRegistry.UnregisterAgent:output_type -> agent.UnregisterAgentResponse
-	17, // 64: agent.AgentRegistry.ExecuteCommand:output_type -> agent.StreamOutputResponse
-	19, // 65: agent.AgentRegistry.Heartbeat:output_type -> agent.HeartbeatResponse
-	21, // 66: agent.AgentRegistry.GetAgentInfo:output_type -> agent.GetAgentInfoResponse
-	49, // 67: agent.AgentRegistry.CreateAgentGroup:output_type -> agent.CreateGroupResponse
-	51, // 68: agent.AgentRegistry.AddAgentToGroup:output_type -> agent.AddToGroupResponse
-	53, // 69: agent.AgentRegistry.RemoveAgentFromGroup:output_type -> agent.RemoveFromGroupResponse
-	56, // 70: agent.AgentRegistry.ListAgentGroups:output_type -> agent.ListGroupsResponse
-	58, // 71: agent.AgentRegistry.DeleteAgentGroup:output_type -> agent.DeleteGroupResponse
-	60, // 72: agent.AgentRegistry.ExecuteOnMultipleAgents:output_type -> agent.BulkExecuteResponse
-	63, // 73: agent.AgentRegistry.GetMultipleAgentStatus:output_type -> agent.MultipleAgentStatusResponse
-	65, // 74: agent.AgentRegistry.GetAggregatedMetrics:output_type -> agent.AggregatedMetricsResponse
-	67, // 75: agent.AgentRegistry.StreamAgentEvents:output_type -> agent.AgentEvent
-	45, // [45:76] is the sub-list for method output_type
-	14, // [14:45] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	92, // 12: agent.AggregatedMetricsResponse.custom_metrics:type_name -> agent.AggregatedMetricsResponse.CustomMetricsEntry
+	93, // 13: agent.AgentEvent.metadata:type_name -> agent.AgentEvent.MetadataEntry
+	31, // 14: agent.DiskDetail.partitions:type_name -> agent.DiskPartition
+	28, // 15: agent.NetworkDetail.interfaces:type_name -> agent.NetworkInterface
+	69, // 16: agent.DetailedMetricsResponse.cpu:type_name -> agent.CPUDetail
+	70, // 17: agent.DetailedMetricsResponse.memory:type_name -> agent.MemoryDetail
+	71, // 18: agent.DetailedMetricsResponse.disk:type_name -> agent.DiskDetail
+	72, // 19: agent.DetailedMetricsResponse.network:type_name -> agent.NetworkDetail
+	34, // 20: agent.RecentLogsResponse.logs:type_name -> agent.LogEntry
+	77, // 21: agent.ConnectionsResponse.connections:type_name -> agent.ConnectionInfo
+	94, // 22: agent.SystemError.context:type_name -> agent.SystemError.ContextEntry
+	80, // 23: agent.SystemErrorsResponse.errors:type_name -> agent.SystemError
+	83, // 24: agent.PerformanceHistoryResponse.snapshots:type_name -> agent.PerformanceSnapshot
+	83, // 25: agent.PerformanceHistoryResponse.avg:type_name -> agent.PerformanceSnapshot
+	83, // 26: agent.PerformanceHistoryResponse.min:type_name -> agent.PerformanceSnapshot
+	83, // 27: agent.PerformanceHistoryResponse.max:type_name -> agent.PerformanceSnapshot
+	86, // 28: agent.HealthDiagnosticResponse.issues:type_name -> agent.HealthIssue
+	95, // 29: agent.HealthDiagnosticResponse.summary:type_name -> agent.HealthDiagnosticResponse.SummaryEntry
+	4,  // 30: agent.Agent.ExecuteTask:input_type -> agent.ExecuteTaskRequest
+	16, // 31: agent.Agent.RunCommand:input_type -> agent.RunCommandRequest
+	0,  // 32: agent.Agent.Shutdown:input_type -> agent.ShutdownRequest
+	2,  // 33: agent.Agent.UpdateAgent:input_type -> agent.UpdateAgentRequest
+	22, // 34: agent.Agent.GetResourceUsage:input_type -> agent.ResourceUsageRequest
+	24, // 35: agent.Agent.GetProcessList:input_type -> agent.ProcessListRequest
+	27, // 36: agent.Agent.GetNetworkInfo:input_type -> agent.NetworkInfoRequest
+	30, // 37: agent.Agent.GetDiskInfo:input_type -> agent.DiskInfoRequest
+	33, // 38: agent.Agent.StreamLogs:input_type -> agent.StreamLogsRequest
+	35, // 39: agent.Agent.StreamMetrics:input_type -> agent.StreamMetricsRequest
+	37, // 40: agent.Agent.RestartService:input_type -> agent.RestartServiceRequest
+	39, // 41: agent.Agent.GetEnvironmentVars:input_type -> agent.EnvVarsRequest
+	41, // 42: agent.Agent.SetEnvironmentVar:input_type -> agent.SetEnvVarRequest
+	43, // 43: agent.Agent.InstallModule:input_type -> agent.InstallModuleRequest
+	45, // 44: agent.Agent.GetInstalledModules:input_type -> agent.ModulesRequest
+	68, // 45: agent.Agent.GetDetailedMetrics:input_type -> agent.DetailedMetricsRequest
+	74, // 46: agent.Agent.GetRecentLogs:input_type -> agent.RecentLogsRequest
+	76, // 47: agent.Agent.GetActiveConnections:input_type -> agent.ConnectionsRequest
+	79, // 48: agent.Agent.GetSystemErrors:input_type -> agent.SystemErrorsRequest
+	82, // 49: agent.Agent.GetPerformanceHistory:input_type -> agent.PerformanceHistoryRequest
+	85, // 50: agent.Agent.DiagnoseHealth:input_type -> agent.HealthDiagnosticRequest
+	6,  // 51: agent.AgentRegistry.RegisterAgent:input_type -> agent.RegisterAgentRequest
+	9,  // 52: agent.AgentRegistry.ListAgents:input_type -> agent.ListAgentsRequest
+	11, // 53: agent.AgentRegistry.StopAgent:input_type -> agent.StopAgentRequest
+	13, // 54: agent.AgentRegistry.UnregisterAgent:input_type -> agent.UnregisterAgentRequest
+	15, // 55: agent.AgentRegistry.ExecuteCommand:input_type -> agent.ExecuteCommandRequest
+	18, // 56: agent.AgentRegistry.Heartbeat:input_type -> agent.HeartbeatRequest
+	20, // 57: agent.AgentRegistry.GetAgentInfo:input_type -> agent.GetAgentInfoRequest
+	48, // 58: agent.AgentRegistry.CreateAgentGroup:input_type -> agent.CreateGroupRequest
+	50, // 59: agent.AgentRegistry.AddAgentToGroup:input_type -> agent.AddToGroupRequest
+	52, // 60: agent.AgentRegistry.RemoveAgentFromGroup:input_type -> agent.RemoveFromGroupRequest
+	54, // 61: agent.AgentRegistry.ListAgentGroups:input_type -> agent.ListGroupsRequest
+	57, // 62: agent.AgentRegistry.DeleteAgentGroup:input_type -> agent.DeleteGroupRequest
+	59, // 63: agent.AgentRegistry.ExecuteOnMultipleAgents:input_type -> agent.BulkExecuteRequest
+	61, // 64: agent.AgentRegistry.GetMultipleAgentStatus:input_type -> agent.MultipleAgentStatusRequest
+	64, // 65: agent.AgentRegistry.GetAggregatedMetrics:input_type -> agent.AggregatedMetricsRequest
+	66, // 66: agent.AgentRegistry.StreamAgentEvents:input_type -> agent.StreamEventsRequest
+	5,  // 67: agent.Agent.ExecuteTask:output_type -> agent.ExecuteTaskResponse
+	17, // 68: agent.Agent.RunCommand:output_type -> agent.StreamOutputResponse
+	1,  // 69: agent.Agent.Shutdown:output_type -> agent.ShutdownResponse
+	3,  // 70: agent.Agent.UpdateAgent:output_type -> agent.UpdateAgentResponse
+	23, // 71: agent.Agent.GetResourceUsage:output_type -> agent.ResourceUsageResponse
+	26, // 72: agent.Agent.GetProcessList:output_type -> agent.ProcessListResponse
+	29, // 73: agent.Agent.GetNetworkInfo:output_type -> agent.NetworkInfoResponse
+	32, // 74: agent.Agent.GetDiskInfo:output_type -> agent.DiskInfoResponse
+	34, // 75: agent.Agent.StreamLogs:output_type -> agent.LogEntry
+	36, // 76: agent.Agent.StreamMetrics:output_type -> agent.MetricsData
+	38, // 77: agent.Agent.RestartService:output_type -> agent.RestartServiceResponse
+	40, // 78: agent.Agent.GetEnvironmentVars:output_type -> agent.EnvVarsResponse
+	42, // 79: agent.Agent.SetEnvironmentVar:output_type -> agent.SetEnvVarResponse
+	44, // 80: agent.Agent.InstallModule:output_type -> agent.InstallModuleResponse
+	47, // 81: agent.Agent.GetInstalledModules:output_type -> agent.ModulesResponse
+	73, // 82: agent.Agent.GetDetailedMetrics:output_type -> agent.DetailedMetricsResponse
+	75, // 83: agent.Agent.GetRecentLogs:output_type -> agent.RecentLogsResponse
+	78, // 84: agent.Agent.GetActiveConnections:output_type -> agent.ConnectionsResponse
+	81, // 85: agent.Agent.GetSystemErrors:output_type -> agent.SystemErrorsResponse
+	84, // 86: agent.Agent.GetPerformanceHistory:output_type -> agent.PerformanceHistoryResponse
+	87, // 87: agent.Agent.DiagnoseHealth:output_type -> agent.HealthDiagnosticResponse
+	7,  // 88: agent.AgentRegistry.RegisterAgent:output_type -> agent.RegisterAgentResponse
+	10, // 89: agent.AgentRegistry.ListAgents:output_type -> agent.ListAgentsResponse
+	12, // 90: agent.AgentRegistry.StopAgent:output_type -> agent.StopAgentResponse
+	14, // 91: agent.AgentRegistry.UnregisterAgent:output_type -> agent.UnregisterAgentResponse
+	17, // 92: agent.AgentRegistry.ExecuteCommand:output_type -> agent.StreamOutputResponse
+	19, // 93: agent.AgentRegistry.Heartbeat:output_type -> agent.HeartbeatResponse
+	21, // 94: agent.AgentRegistry.GetAgentInfo:output_type -> agent.GetAgentInfoResponse
+	49, // 95: agent.AgentRegistry.CreateAgentGroup:output_type -> agent.CreateGroupResponse
+	51, // 96: agent.AgentRegistry.AddAgentToGroup:output_type -> agent.AddToGroupResponse
+	53, // 97: agent.AgentRegistry.RemoveAgentFromGroup:output_type -> agent.RemoveFromGroupResponse
+	56, // 98: agent.AgentRegistry.ListAgentGroups:output_type -> agent.ListGroupsResponse
+	58, // 99: agent.AgentRegistry.DeleteAgentGroup:output_type -> agent.DeleteGroupResponse
+	60, // 100: agent.AgentRegistry.ExecuteOnMultipleAgents:output_type -> agent.BulkExecuteResponse
+	63, // 101: agent.AgentRegistry.GetMultipleAgentStatus:output_type -> agent.MultipleAgentStatusResponse
+	65, // 102: agent.AgentRegistry.GetAggregatedMetrics:output_type -> agent.AggregatedMetricsResponse
+	67, // 103: agent.AgentRegistry.StreamAgentEvents:output_type -> agent.AgentEvent
+	67, // [67:104] is the sub-list for method output_type
+	30, // [30:67] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_proto_agent_proto_init() }
@@ -4599,7 +6496,7 @@ func file_proto_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_agent_proto_rawDesc), len(file_proto_agent_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   74,
+			NumMessages:   96,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

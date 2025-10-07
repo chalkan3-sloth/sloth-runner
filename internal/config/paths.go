@@ -83,6 +83,11 @@ func GetStackDBPath() string {
 	return filepath.Join(GetDataDir(), "stacks.db")
 }
 
+// GetMetricsDBPath returns the full path to the metrics database
+func GetMetricsDBPath() string {
+	return filepath.Join(GetDataDir(), "metrics.db")
+}
+
 // EnsureDataDir creates the data directory if it doesn't exist
 func EnsureDataDir() error {
 	dir := GetDataDir()

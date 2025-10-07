@@ -185,11 +185,34 @@ func (h *AgentHandler) Delete(c *gin.Context) {
 // GetStats returns agent statistics
 func (h *AgentHandler) GetStats(c *gin.Context) {
 	ctx := c.Request.Context()
+	name := c.Param("name")
 
-	stats, err := h.db.GetStats(ctx)
+	// Get agent from database
+	agent, err := h.db.GetAgent(ctx, name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusNotFound, gin.H{"error": "Agent not found"})
 		return
+	}
+
+	// Get real resource usage via gRPC
+	resp, err := h.agentClient.GetResourceUsage(ctx, agent.Address)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to get stats: %v", err)})
+		return
+	}
+
+	// Return metrics in the format expected by the frontend
+	stats := gin.H{
+		"cpu_percent":      resp.CpuPercent,
+		"memory_percent":   resp.MemoryPercent,
+		"memory_used_bytes": resp.MemoryUsedBytes,
+		"memory_total_bytes": resp.MemoryTotalBytes,
+		"disk_percent":     resp.DiskPercent,
+		"disk_used_bytes":  resp.DiskUsedBytes,
+		"disk_total_bytes": resp.DiskTotalBytes,
+		"process_count":    resp.ProcessCount,
+		"load_avg":         []float64{resp.LoadAvg_1Min, resp.LoadAvg_5Min, resp.LoadAvg_15Min},
+		"uptime_seconds":   resp.UptimeSeconds,
 	}
 
 	c.JSON(http.StatusOK, stats)
