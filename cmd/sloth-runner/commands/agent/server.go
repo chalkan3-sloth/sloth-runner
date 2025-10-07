@@ -16,6 +16,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/chalkan3-sloth/sloth-runner/internal/core"
@@ -23,14 +24,34 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/internal/taskrunner"
 	"github.com/chalkan3-sloth/sloth-runner/internal/types"
 	pb "github.com/chalkan3-sloth/sloth-runner/proto"
+	"github.com/creack/pty"
 	"github.com/yuin/gopher-lua"
 	"google.golang.org/grpc"
 )
 
-// agentServer implements the gRPC agent server
+// agentServer implements the gRPC agent server with optimizations
 type agentServer struct {
 	pb.UnimplementedAgentServer
 	grpcServer *grpc.Server
+
+	// Optimizations: cached metrics
+	cachedMetrics     *CachedMetrics
+	metricsCache      sync.RWMutex
+	lastMetricsUpdate time.Time
+}
+
+// CachedMetrics holds cached resource usage data
+type CachedMetrics struct {
+	CPUPercent      float64
+	MemoryPercent   float64
+	MemoryUsedBytes uint64
+	MemoryTotal     uint64
+	DiskPercent     float64
+	DiskUsed        uint64
+	DiskTotal       uint64
+	LoadAvg         [3]float64
+	ProcessCount    uint32
+	Uptime          uint64
 }
 
 // RunCommand executes a shell command and streams output
@@ -598,37 +619,45 @@ func extractTarData(reader io.Reader, dest string) error {
 	}
 }
 
-// GetResourceUsage returns current resource usage of the agent
+// GetResourceUsage returns current resource usage of the agent (optimized with caching)
 func (s *agentServer) GetResourceUsage(ctx context.Context, in *pb.ResourceUsageRequest) (*pb.ResourceUsageResponse, error) {
-	// Get CPU usage
+	// Check cache first (30 second TTL)
+	s.metricsCache.RLock()
+	if time.Since(s.lastMetricsUpdate) < 30*time.Second && s.cachedMetrics != nil {
+		cached := s.cachedMetrics
+		s.metricsCache.RUnlock()
+
+		return &pb.ResourceUsageResponse{
+			CpuPercent:       cached.CPUPercent,
+			MemoryPercent:    cached.MemoryPercent,
+			MemoryUsedBytes:  cached.MemoryUsedBytes,
+			MemoryTotalBytes: cached.MemoryTotal,
+			DiskPercent:      cached.DiskPercent,
+			DiskUsedBytes:    cached.DiskUsed,
+			DiskTotalBytes:   cached.DiskTotal,
+			ProcessCount:     cached.ProcessCount,
+			LoadAvg_1Min:     cached.LoadAvg[0],
+			LoadAvg_5Min:     cached.LoadAvg[1],
+			LoadAvg_15Min:    cached.LoadAvg[2],
+			UptimeSeconds:    cached.Uptime,
+		}, nil
+	}
+	s.metricsCache.RUnlock()
+
+	// Update cache async (non-blocking for subsequent requests)
+	go s.updateMetricsCache()
+
+	// For first request or expired cache, get fresh data
 	cpuPercent := getCPUPercent()
-	
-	// Get memory usage
-	var m runtime.MemStats
-	runtime.ReadMemStats(&m)
-	memPercent := float64(m.Alloc) / float64(m.Sys) * 100
-	
-	// Get system memory info
-	memInfo, err := getMemoryInfo()
-	if err != nil {
-		slog.Warn("Failed to get memory info", "error", err)
-	}
-	
-	// Get disk usage
-	diskInfo, err := getDiskUsage("/")
-	if err != nil {
-		slog.Warn("Failed to get disk info", "error", err)
-	}
-	
-	// Get load average
+	memInfo, _ := getMemoryInfo()
+	diskInfo, _ := getDiskUsage("/")
 	loadAvg := getLoadAverage()
-	
-	// Get process count
 	processCount := getProcessCount()
-	
-	// Get uptime
 	uptime := getSystemUptime()
-	
+
+	// Calculate memory percent
+	memPercent := float64(memInfo.Used) / float64(memInfo.Total) * 100
+
 	response := &pb.ResourceUsageResponse{
 		CpuPercent:       cpuPercent,
 		MemoryPercent:    memPercent,
@@ -643,8 +672,40 @@ func (s *agentServer) GetResourceUsage(ctx context.Context, in *pb.ResourceUsage
 		LoadAvg_15Min:    loadAvg[2],
 		UptimeSeconds:    uptime,
 	}
-	
+
 	return response, nil
+}
+
+// updateMetricsCache updates the metrics cache asynchronously
+func (s *agentServer) updateMetricsCache() {
+	s.metricsCache.Lock()
+	defer s.metricsCache.Unlock()
+
+	// Get memory info using platform-independent function
+	memInfo, _ := getMemoryInfo()
+
+	// Update cache
+	s.cachedMetrics = &CachedMetrics{
+		CPUPercent:      getCPUPercent(),
+		MemoryPercent:   float64(memInfo.Used) / float64(memInfo.Total) * 100,
+		MemoryUsedBytes: memInfo.Used,
+		MemoryTotal:     memInfo.Total,
+		ProcessCount:    uint32(getProcessCount()),
+		Uptime:          getSystemUptime(),
+	}
+
+	// Get disk (optional, more expensive)
+	if diskInfo, err := getDiskUsage("/"); err == nil {
+		s.cachedMetrics.DiskPercent = diskInfo.UsedPercent
+		s.cachedMetrics.DiskUsed = diskInfo.Used
+		s.cachedMetrics.DiskTotal = diskInfo.Total
+	}
+
+	// Get load average
+	loadAvg := getLoadAverage()
+	s.cachedMetrics.LoadAvg = [3]float64{loadAvg[0], loadAvg[1], loadAvg[2]}
+
+	s.lastMetricsUpdate = time.Now()
 }
 
 // GetProcessList returns list of running processes
@@ -653,7 +714,7 @@ func (s *agentServer) GetProcessList(ctx context.Context, in *pb.ProcessListRequ
 	if err != nil {
 		return nil, fmt.Errorf("failed to get processes: %w", err)
 	}
-	
+
 	pbProcesses := make([]*pb.ProcessInfo, 0, len(processes))
 	for _, p := range processes {
 		pbProcesses = append(pbProcesses, &pb.ProcessInfo{
@@ -668,7 +729,7 @@ func (s *agentServer) GetProcessList(ctx context.Context, in *pb.ProcessListRequ
 			StartedAt:     p.StartedAt,
 		})
 	}
-	
+
 	return &pb.ProcessListResponse{Processes: pbProcesses}, nil
 }
 
@@ -1649,46 +1710,36 @@ func (s *agentServer) DiagnoseHealth(ctx context.Context, in *pb.HealthDiagnosti
 
 // InteractiveShell provides a bidirectional streaming shell interface with PTY
 func (s *agentServer) InteractiveShell(stream pb.Agent_InteractiveShellServer) error {
-	// Start a bash shell with login environment
-	cmd := exec.Command("/bin/bash", "--login")
+	slog.Info("Starting interactive shell session")
 
-	// Set environment variables for interactive shell
+	// Start a bash shell with PTY for proper interactive behavior
+	cmd := exec.Command("/bin/bash", "-i")
+
+	// Set environment variables for a nice interactive shell
 	cmd.Env = append(os.Environ(),
 		"TERM=xterm-256color",
-		"PS1=[\\u@\\h \\W]\\$ ",
+		"PS1=\\[\\033[01;32m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ ",
+		"HISTFILE=/dev/null", // Don't save history during remote sessions
 	)
 
-	// Create pipes for stdin, stdout, stderr
-	stdin, err := cmd.StdinPipe()
+	// Create a PTY using creack/pty library
+	ptmx, err := pty.Start(cmd)
 	if err != nil {
-		return fmt.Errorf("failed to create stdin pipe: %w", err)
+		return fmt.Errorf("failed to start shell with PTY: %w", err)
 	}
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("failed to create stdout pipe: %w", err)
-	}
-
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("failed to create stderr pipe: %w", err)
-	}
-
-	// Start the shell
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("failed to start shell: %w", err)
-	}
+	defer ptmx.Close()
 
 	// Channel to signal when to stop
 	done := make(chan struct{})
-	errChan := make(chan error, 3)
+	errChan := make(chan error, 2)
 
-	// Goroutine to read from client and write to shell stdin
+	// Goroutine to read from client and write to PTY
 	go func() {
-		defer stdin.Close()
 		for {
 			in, err := stream.Recv()
 			if err == io.EOF {
+				slog.Debug("Client closed stream")
+				close(done)
 				return
 			}
 			if err != nil {
@@ -1697,59 +1748,43 @@ func (s *agentServer) InteractiveShell(stream pb.Agent_InteractiveShellServer) e
 			}
 
 			if in.Terminate {
+				slog.Debug("Client requested termination")
 				close(done)
 				return
 			}
 
-			// Write any data received directly to stdin
+			// Write any data received directly to PTY
 			if len(in.StdinData) > 0 {
-				if _, err := stdin.Write(in.StdinData); err != nil {
-					errChan <- fmt.Errorf("failed to write stdin data: %w", err)
+				if _, err := ptmx.Write(in.StdinData); err != nil {
+					slog.Error("Failed to write to PTY", "error", err)
+					errChan <- fmt.Errorf("failed to write to PTY: %w", err)
 					return
 				}
 			}
 		}
 	}()
 
-	// Goroutine to read stdout and send to client
+	// Goroutine to read from PTY and send to client
 	go func() {
 		buf := make([]byte, 8192)
 		for {
-			n, err := stdout.Read(buf)
+			n, err := ptmx.Read(buf)
 			if n > 0 {
 				if err := stream.Send(&pb.ShellOutput{
 					Stdout: buf[:n],
 				}); err != nil {
-					errChan <- fmt.Errorf("failed to send stdout: %w", err)
+					slog.Debug("Failed to send output (client disconnected)", "error", err)
 					return
 				}
 			}
 			if err != nil {
-				if err != io.EOF {
-					errChan <- fmt.Errorf("stdout read error: %w", err)
+				// EOF or I/O error on PTY means shell exited normally
+				if err == io.EOF {
+					slog.Debug("Shell exited (EOF)")
+				} else {
+					slog.Debug("Shell exited (PTY closed)", "error", err)
 				}
-				return
-			}
-		}
-	}()
-
-	// Goroutine to read stderr and send to client
-	go func() {
-		buf := make([]byte, 8192)
-		for {
-			n, err := stderr.Read(buf)
-			if n > 0 {
-				if err := stream.Send(&pb.ShellOutput{
-					Stderr: buf[:n],
-				}); err != nil {
-					errChan <- fmt.Errorf("failed to send stderr: %w", err)
-					return
-				}
-			}
-			if err != nil {
-				if err != io.EOF {
-					errChan <- fmt.Errorf("stderr read error: %w", err)
-				}
+				close(done)
 				return
 			}
 		}
@@ -1758,23 +1793,26 @@ func (s *agentServer) InteractiveShell(stream pb.Agent_InteractiveShellServer) e
 	// Wait for shell to exit or error
 	select {
 	case err := <-errChan:
+		slog.Info("Shell session ended with error", "error", err)
 		if cmd.Process != nil {
 			cmd.Process.Kill()
 		}
 		return err
 	case <-done:
-		// Client requested termination
+		slog.Info("Shell session ended normally")
+		// Client requested termination or shell exited
 		if cmd.Process != nil {
 			cmd.Process.Kill()
 		}
 	}
 
-	// Wait for process to exit and send exit code
+	// Wait for process to exit
 	exitCode := 0
 	if err := cmd.Wait(); err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			exitCode = exitErr.ExitCode()
 		}
+		slog.Debug("Shell process exited", "error", err)
 	}
 
 	return stream.Send(&pb.ShellOutput{

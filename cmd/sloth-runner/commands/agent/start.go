@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"syscall"
@@ -22,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
 // NewStartCommand creates the agent start command
@@ -57,6 +59,9 @@ func NewStartCommand(ctx *commands.AppContext) *cobra.Command {
 }
 
 func startAgent(ctx *commands.AppContext, port int, masterAddr, agentName string, daemon bool, bindAddress, reportAddress string, telemetryEnabled bool, metricsPort int) error {
+	// Apply runtime optimizations for reduced resource usage
+	configureAgentRuntimeOptimizations()
+
 	if daemon {
 		pidFile := filepath.Join("/tmp", fmt.Sprintf("sloth-runner-agent-%s.pid", agentName))
 		if _, err := os.Stat(pidFile); err == nil {
@@ -151,14 +156,53 @@ func startAgent(ctx *commands.AppContext, port int, masterAddr, agentName string
 		}
 	}
 
-	s := grpc.NewServer()
-	server := &agentServer{grpcServer: s}
+	// Create optimized gRPC server
+	opts := []grpc.ServerOption{
+		grpc.MaxConcurrentStreams(10),     // Limit concurrent streams
+		grpc.ReadBufferSize(8192),         // 8KB read buffer (vs 32KB default)
+		grpc.WriteBufferSize(8192),        // 8KB write buffer (vs 32KB default)
+		grpc.MaxRecvMsgSize(4 * 1024 * 1024), // 4MB max message
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			MaxConnectionIdle:     15 * time.Second, // Close idle connections faster
+			MaxConnectionAge:      30 * time.Second, // Recycle connections
+			MaxConnectionAgeGrace: 5 * time.Second,
+			Time:                  10 * time.Second, // Ping every 10s
+			Timeout:               3 * time.Second,
+		}),
+	}
+
+	s := grpc.NewServer(opts...)
+	server := &agentServer{
+		grpcServer:    s,
+		cachedMetrics: &CachedMetrics{},
+	}
 	pb.RegisterAgentServer(s, server)
+
+	pterm.Success.Printf("✓ Agent '%s' listening at %v\n", agentName, lis.Addr())
+	pterm.Info.Println("Optimizations enabled: 30s metrics cache, batched DB writes, process list caching")
+
 	slog.Info(fmt.Sprintf("Agent listening at %v", lis.Addr()))
 	if err := s.Serve(lis); err != nil {
 		return fmt.Errorf("failed to serve: %v", err)
 	}
 	return nil
+}
+
+// configureAgentRuntimeOptimizations applies Go runtime optimizations for agents
+func configureAgentRuntimeOptimizations() {
+	// Limit to 2 CPU cores for agent (reduces CPU usage)
+	runtime.GOMAXPROCS(2)
+
+	// More aggressive GC (50% vs 100% default)
+	debug.SetGCPercent(50)
+
+	// Set memory limit to 100MB (agents should stay well under this)
+	debug.SetMemoryLimit(100 * 1024 * 1024)
+
+	slog.Info("Agent runtime optimizations applied",
+		"max_procs", 2,
+		"gc_percent", 50,
+		"memory_limit_mb", 100)
 }
 
 func startMasterConnection(ctx *commands.AppContext, masterAddr, agentName, agentReportAddress string) {

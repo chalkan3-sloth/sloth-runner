@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sync"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -22,12 +23,24 @@ type MetricPoint struct {
 	ProcessCount    int     `json:"process_count"`
 }
 
-// MetricsDB handles storage and retrieval of historical metrics
+// MetricsDB handles storage and retrieval of historical metrics with optimizations
 type MetricsDB struct {
 	db *sql.DB
+
+	// Optimizations: batch writes
+	batchMu     sync.Mutex
+	batchBuffer []batchMetric
+	batchSize   int
+	flushTimer  *time.Timer
 }
 
-// NewMetricsDB creates a new metrics database
+// batchMetric holds a metric waiting to be batch-inserted
+type batchMetric struct {
+	AgentName string
+	Metric    MetricPoint
+}
+
+// NewMetricsDB creates a new metrics database with optimizations
 func NewMetricsDB(dbPath string) (*MetricsDB, error) {
 	// Log database path for debugging
 	fmt.Printf("📊 Opening metrics database at: %s\n", dbPath)
@@ -37,8 +50,13 @@ func NewMetricsDB(dbPath string) (*MetricsDB, error) {
 		return nil, fmt.Errorf("failed to open metrics database: %w", err)
 	}
 
-	// Create schema
+	// Optimizations: WAL mode, pragmas
 	schema := `
+	PRAGMA journal_mode = WAL;
+	PRAGMA synchronous = NORMAL;
+	PRAGMA cache_size = 10000;
+	PRAGMA temp_store = MEMORY;
+
 	CREATE TABLE IF NOT EXISTS agent_metrics (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		agent_name TEXT NOT NULL,
@@ -62,32 +80,103 @@ func NewMetricsDB(dbPath string) (*MetricsDB, error) {
 		return nil, fmt.Errorf("failed to create schema: %w", err)
 	}
 
-	return &MetricsDB{db: db}, nil
+	metricsDB := &MetricsDB{
+		db:          db,
+		batchBuffer: make([]batchMetric, 0, 10),
+		batchSize:   10, // Batch write every 10 metrics
+	}
+
+	// Start auto-flush timer (5 seconds)
+	metricsDB.startAutoFlush()
+
+	return metricsDB, nil
 }
 
-// StoreMetric stores a metric point for an agent
+// startAutoFlush starts a timer to flush batch periodically
+func (m *MetricsDB) startAutoFlush() {
+	m.flushTimer = time.AfterFunc(5*time.Second, func() {
+		m.flushBatch()
+		m.startAutoFlush() // Restart timer
+	})
+}
+
+// StoreMetric stores a metric point for an agent (optimized with batching)
 func (m *MetricsDB) StoreMetric(ctx context.Context, agentName string, metric MetricPoint) error {
-	query := `
+	m.batchMu.Lock()
+	defer m.batchMu.Unlock()
+
+	// Add to batch buffer
+	m.batchBuffer = append(m.batchBuffer, batchMetric{
+		AgentName: agentName,
+		Metric:    metric,
+	})
+
+	// Flush if batch is full
+	if len(m.batchBuffer) >= m.batchSize {
+		return m.flushBatchLocked()
+	}
+
+	return nil
+}
+
+// flushBatch flushes the batch buffer to database
+func (m *MetricsDB) flushBatch() error {
+	m.batchMu.Lock()
+	defer m.batchMu.Unlock()
+	return m.flushBatchLocked()
+}
+
+// flushBatchLocked flushes with lock already held
+func (m *MetricsDB) flushBatchLocked() error {
+	if len(m.batchBuffer) == 0 {
+		return nil
+	}
+
+	// Begin transaction for batch insert
+	tx, err := m.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(`
 		INSERT INTO agent_metrics (
 			agent_name, timestamp, cpu_percent, memory_percent, memory_used_bytes,
 			disk_percent, load_avg_1min, load_avg_5min, load_avg_15min, process_count
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`
+	`)
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
 
-	_, err := m.db.ExecContext(ctx, query,
-		agentName,
-		metric.Timestamp,
-		metric.CPUPercent,
-		metric.MemoryPercent,
-		metric.MemoryUsedBytes,
-		metric.DiskPercent,
-		metric.LoadAvg1Min,
-		metric.LoadAvg5Min,
-		metric.LoadAvg15Min,
-		metric.ProcessCount,
-	)
+	// Insert all batched metrics
+	for _, bm := range m.batchBuffer {
+		_, err := stmt.Exec(
+			bm.AgentName,
+			bm.Metric.Timestamp,
+			bm.Metric.CPUPercent,
+			bm.Metric.MemoryPercent,
+			bm.Metric.MemoryUsedBytes,
+			bm.Metric.DiskPercent,
+			bm.Metric.LoadAvg1Min,
+			bm.Metric.LoadAvg5Min,
+			bm.Metric.LoadAvg15Min,
+			bm.Metric.ProcessCount,
+		)
+		if err != nil {
+			return err
+		}
+	}
 
-	return err
+	// Commit transaction
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	// Clear buffer
+	m.batchBuffer = m.batchBuffer[:0]
+	return nil
 }
 
 // GetMetricsHistory returns metrics for an agent within a time range
@@ -218,5 +307,13 @@ func (m *MetricsDB) GetAgentNames(ctx context.Context) ([]string, error) {
 
 // Close closes the database connection
 func (m *MetricsDB) Close() error {
+	// Stop flush timer
+	if m.flushTimer != nil {
+		m.flushTimer.Stop()
+	}
+
+	// Flush any remaining metrics
+	m.flushBatch()
+
 	return m.db.Close()
 }

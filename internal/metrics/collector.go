@@ -9,7 +9,7 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/internal/webui/services"
 )
 
-// Collector periodically collects metrics from agents
+// Collector periodically collects metrics from agents with optimizations
 type Collector struct {
 	metricsDB     *MetricsDB
 	agentClient   *services.AgentClient
@@ -19,6 +19,13 @@ type Collector struct {
 	running       bool
 	stopCh        chan struct{}
 	wg            sync.WaitGroup
+
+	// Optimizations
+	batchSize     int
+	timeout       time.Duration
+	lastAgents    []AgentInfo
+	lastCheck     time.Time
+	agentCache    sync.RWMutex
 }
 
 // CollectorConfig holds configuration for the metrics collector
@@ -27,15 +34,23 @@ type CollectorConfig struct {
 	AgentClient   *services.AgentClient
 	Interval      time.Duration // How often to collect metrics
 	RetentionDays int           // How long to keep metrics
+	BatchSize     int           // How many agents to collect in parallel
+	Timeout       time.Duration // Timeout per agent request
 }
 
-// NewCollector creates a new metrics collector
+// NewCollector creates a new metrics collector with optimizations
 func NewCollector(cfg CollectorConfig) *Collector {
 	if cfg.Interval == 0 {
-		cfg.Interval = 30 * time.Second // Default: collect every 30 seconds
+		cfg.Interval = 60 * time.Second // Optimized: collect every 60 seconds (was 30s)
 	}
 	if cfg.RetentionDays == 0 {
 		cfg.RetentionDays = 7 // Default: keep 7 days of metrics
+	}
+	if cfg.BatchSize == 0 {
+		cfg.BatchSize = 5 // Process 5 agents at a time
+	}
+	if cfg.Timeout == 0 {
+		cfg.Timeout = 2 * time.Second // 2s timeout per agent
 	}
 
 	return &Collector{
@@ -43,6 +58,8 @@ func NewCollector(cfg CollectorConfig) *Collector {
 		agentClient:   cfg.AgentClient,
 		interval:      cfg.Interval,
 		retentionDays: cfg.RetentionDays,
+		batchSize:     cfg.BatchSize,
+		timeout:       cfg.Timeout,
 		stopCh:        make(chan struct{}),
 	}
 }
@@ -109,24 +126,59 @@ type AgentInfo struct {
 	Address string
 }
 
-// collectAllMetrics collects metrics from all agents
+// collectAllMetrics collects metrics from all agents (optimized with batching)
 func (c *Collector) collectAllMetrics(ctx context.Context, agents []AgentInfo) {
 	if len(agents) == 0 {
 		slog.Debug("No agents found for metrics collection")
 		return
 	}
 
-	slog.Info("Collecting metrics from agents", "count", len(agents))
-
-	var wg sync.WaitGroup
-	for _, agent := range agents {
-		wg.Add(1)
-		go func(a AgentInfo) {
-			defer wg.Done()
-			c.collectAgentMetrics(ctx, a)
-		}(agent)
+	// Cache agent list for 5 minutes to avoid redundant checks
+	c.agentCache.RLock()
+	if time.Since(c.lastCheck) < 5*time.Minute && len(c.lastAgents) == len(agents) {
+		// Use cached agent list
+		agents = c.lastAgents
 	}
-	wg.Wait()
+	c.agentCache.RUnlock()
+
+	slog.Info("Collecting metrics from agents", "count", len(agents), "batch_size", c.batchSize)
+
+	// Batch processing: collect from N agents at a time
+	for i := 0; i < len(agents); i += c.batchSize {
+		end := i + c.batchSize
+		if end > len(agents) {
+			end = len(agents)
+		}
+
+		batch := agents[i:end]
+		var wg sync.WaitGroup
+
+		for _, agent := range batch {
+			wg.Add(1)
+			go func(a AgentInfo) {
+				defer wg.Done()
+
+				// Create timeout context
+				timeoutCtx, cancel := context.WithTimeout(ctx, c.timeout)
+				defer cancel()
+
+				c.collectAgentMetrics(timeoutCtx, a)
+			}(agent)
+		}
+
+		wg.Wait()
+
+		// Small delay between batches to avoid overwhelming the system
+		if end < len(agents) {
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+
+	// Update cache
+	c.agentCache.Lock()
+	c.lastAgents = agents
+	c.lastCheck = time.Now()
+	c.agentCache.Unlock()
 }
 
 // collectAgentMetrics collects metrics from a single agent

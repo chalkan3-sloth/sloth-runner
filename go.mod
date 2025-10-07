@@ -48,6 +48,7 @@ require (
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/cloudwego/base64x v0.1.6 // indirect
 	github.com/containerd/console v1.0.5 // indirect
+	github.com/creack/pty v1.1.24 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.11.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
