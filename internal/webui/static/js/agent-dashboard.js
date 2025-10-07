@@ -1,497 +1,461 @@
-// Agent Dashboard JavaScript
-let currentAgent = null;
-let agentCharts = {};
-let ws = null;
+// Individual Agent Dashboard JavaScript
+let agentName = null;
+let metricsChart = null;
+let distributionChart = null;
+let refreshInterval = null;
 
-// Initialize
+// Get agent name from URL parameter
+function getAgentFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('agent');
+}
+
+// Initialize dashboard
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadAgents();
-    setupWebSocket();
+    agentName = getAgentFromURL();
 
-    // Auto-refresh every 10 seconds
-    setInterval(() => {
-        if (currentAgent) {
-            refreshAgentData(currentAgent);
-        }
-    }, 10000);
-});
-
-async function loadAgents() {
-    try {
-        const data = await API.get('/agents');
-        const agentPills = document.getElementById('agentPills');
-
-        if (!data.agents || data.agents.length === 0) {
-            agentPills.innerHTML = `
-                <li class="nav-item">
-                    <span class="nav-link disabled">No agents available</span>
-                </li>
-            `;
-            return;
-        }
-
-        agentPills.innerHTML = data.agents.map((agent, index) => {
-            const statusClass = agent.status === 'connected' ? 'success' : 'secondary';
-            const active = index === 0 ? 'active' : '';
-
-            return `
-                <li class="nav-item">
-                    <button class="nav-link ${active}"
-                            data-agent="${agent.name}"
-                            onclick="selectAgent('${agent.name}')">
-                        <i class="bi bi-circle-fill text-${statusClass}"></i>
-                        ${agent.name}
-                    </button>
-                </li>
-            `;
-        }).join('');
-
-        // Auto-select first agent
-        if (data.agents.length > 0) {
-            await selectAgent(data.agents[0].name);
-        }
-    } catch (error) {
-        notify.error('Failed to load agents');
-        console.error(error);
-    }
-}
-
-async function selectAgent(agentName) {
-    currentAgent = agentName;
-
-    // Update active pill
-    document.querySelectorAll('#agentPills .nav-link').forEach(link => {
-        link.classList.remove('active');
-        if (link.dataset.agent === agentName) {
-            link.classList.add('active');
-        }
-    });
-
-    // Check if dashboard already exists
-    let dashboard = document.getElementById(`agent-${agentName}`);
-
-    if (!dashboard) {
-        // Create new dashboard from template
-        dashboard = createAgentDashboard(agentName);
-        document.getElementById('agentTabContent').appendChild(dashboard);
+    if (!agentName) {
+        document.body.innerHTML = '<div class="container mt-5"><div class="alert alert-danger">No agent specified</div></div>';
+        return;
     }
 
-    // Hide all dashboards
-    document.querySelectorAll('#agentTabContent .tab-pane').forEach(pane => {
-        pane.classList.remove('show', 'active');
-    });
+    // Set agent name in header
+    document.getElementById('agent-name').textContent = agentName;
 
-    // Show selected dashboard
-    dashboard.classList.add('show', 'active');
+    // Load initial data
+    await loadAgentData();
+    await loadHistoricalMetrics();
 
-    // Load agent data
-    await refreshAgentData(agentName);
-}
-
-function createAgentDashboard(agentName) {
-    const template = document.getElementById('agent-dashboard-template');
-    const clone = template.content.cloneNode(true);
-    const dashboard = clone.querySelector('.tab-pane');
-
-    dashboard.id = `agent-${agentName}`;
-    dashboard.dataset.agent = agentName;
+    // Auto-refresh every 5 seconds
+    refreshInterval = setInterval(async () => {
+        await loadAgentData();
+    }, 5000);
 
     // Setup tab switching
-    const tabButtons = dashboard.querySelectorAll('.nav-link[data-tab]');
-    tabButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const tabName = button.dataset.tab;
-            switchAgentTab(agentName, tabName);
-        });
-    });
-
-    // Setup refresh buttons
-    dashboard.querySelector('.refresh-logs')?.addEventListener('click', () => {
-        refreshAgentLogs(agentName);
-    });
-
-    dashboard.querySelector('.download-logs')?.addEventListener('click', () => {
-        downloadAgentLogs(agentName);
-    });
-
-    return dashboard;
-}
-
-function switchAgentTab(agentName, tabName) {
-    const dashboard = document.getElementById(`agent-${agentName}`);
-
-    // Update tab buttons
-    dashboard.querySelectorAll('.nav-link[data-tab]').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.tab === tabName) {
-            btn.classList.add('active');
-        }
-    });
-
-    // Update tab content
-    dashboard.querySelectorAll('.agent-sub-tab').forEach(tab => {
-        tab.classList.remove('active');
-        if (tab.dataset.tab === tabName) {
-            tab.classList.add('active');
-        }
-    });
-
-    // Load data for the tab
-    switch(tabName) {
-        case 'logs':
-            refreshAgentLogs(agentName);
-            break;
-        case 'modules':
-            refreshAgentModules(agentName);
-            break;
-        case 'info':
-            refreshAgentInfo(agentName);
-            break;
-    }
-}
-
-async function refreshAgentData(agentName) {
-    try {
-        const data = await API.get(`/agents/${agentName}`);
-        const dashboard = document.getElementById(`agent-${agentName}`);
-
-        if (!dashboard) return;
-
-        // Update overview stats
-        const statusBadge = data.status === 'connected'
-            ? '<span class="badge bg-success">Connected</span>'
-            : '<span class="badge bg-secondary">Offline</span>';
-
-        dashboard.querySelector('.agent-status').innerHTML = statusBadge;
-        dashboard.querySelector('.agent-cpu').textContent = (data.cpu_percent || 0).toFixed(1) + '%';
-        dashboard.querySelector('.agent-memory').textContent = (data.memory_percent || 0).toFixed(1) + '%';
-        dashboard.querySelector('.agent-tasks').textContent = data.tasks_running || 0;
-        dashboard.querySelector('.agent-tasks-detail').textContent =
-            `${data.tasks_running || 0} / ${data.tasks_completed || 0}`;
-
-        // Update charts
-        updateAgentCharts(agentName, data);
-
-    } catch (error) {
-        console.error('Failed to refresh agent data:', error);
-    }
-}
-
-function updateAgentCharts(agentName, data) {
-    const dashboard = document.getElementById(`agent-${agentName}`);
-    if (!dashboard) return;
-
-    const chartKey = `agent-${agentName}`;
-
-    // Line chart for CPU/Memory over time
-    if (!agentCharts[chartKey + '-line']) {
-        const ctx = dashboard.querySelector('.agent-chart');
-        agentCharts[chartKey + '-line'] = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: [],
-                datasets: [{
-                    label: 'CPU %',
-                    data: [],
-                    borderColor: 'rgb(124, 179, 66)',
-                    backgroundColor: 'rgba(124, 179, 66, 0.1)',
-                    tension: 0.4
-                }, {
-                    label: 'Memory %',
-                    data: [],
-                    borderColor: 'rgb(139, 115, 85)',
-                    backgroundColor: 'rgba(139, 115, 85, 0.1)',
-                    tension: 0.4
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true, max: 100 }
-                }
+    document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function (e) {
+            const target = e.target.getAttribute('href');
+            if (target === '#processes') {
+                loadProcesses();
+            } else if (target === '#network') {
+                loadNetwork();
+            } else if (target === '#disk') {
+                loadDisk();
+            } else if (target === '#system') {
+                loadSystemInfo();
             }
         });
+    });
+
+    // Load processes tab initially
+    await loadProcesses();
+});
+
+// Load agent data
+async function loadAgentData() {
+    try {
+        const response = await fetch(`/api/v1/agents/${agentName}`);
+        const data = await response.json();
+
+        // Update status
+        const statusBadge = document.getElementById('agent-status');
+        const addressSpan = document.getElementById('agent-address');
+
+        if (data.status === 'active' || data.last_heartbeat) {
+            statusBadge.className = 'badge bg-success';
+            statusBadge.textContent = 'Active';
+        } else {
+            statusBadge.className = 'badge bg-secondary';
+            statusBadge.textContent = 'Inactive';
+        }
+
+        addressSpan.textContent = data.address || '';
+
+        // Parse system_info if available
+        let systemInfo = {};
+        if (data.system_info) {
+            try {
+                systemInfo = JSON.parse(data.system_info);
+            } catch (e) {
+                console.error('Failed to parse system_info:', e);
+            }
+        }
+
+        // Update metric cards
+        updateMetricCard('cpu', systemInfo.cpu);
+        updateMetricCard('memory', systemInfo.memory);
+        updateMetricCard('disk', systemInfo.disk);
+        updateMetricCard('load', systemInfo.load_average);
+
+        // Update distribution chart
+        updateDistributionChart(systemInfo);
+
+    } catch (error) {
+        console.error('Failed to load agent data:', error);
+    }
+}
+
+// Update metric card
+function updateMetricCard(type, data) {
+    if (!data) return;
+
+    const valueEl = document.getElementById(`${type}-value`);
+    const progressEl = document.getElementById(`${type}-progress`);
+
+    switch (type) {
+        case 'cpu':
+            const cpuPercent = data.usage_percent || 0;
+            valueEl.textContent = cpuPercent.toFixed(1) + '%';
+            progressEl.style.width = cpuPercent + '%';
+            break;
+
+        case 'memory':
+            const memPercent = data.used_percent || 0;
+            valueEl.textContent = memPercent.toFixed(1) + '%';
+            progressEl.style.width = memPercent + '%';
+            break;
+
+        case 'disk':
+            if (data.partitions && data.partitions.length > 0) {
+                const avgPercent = data.partitions.reduce((sum, p) => sum + (p.percent || 0), 0) / data.partitions.length;
+                valueEl.textContent = avgPercent.toFixed(1) + '%';
+                progressEl.style.width = avgPercent + '%';
+            }
+            break;
+
+        case 'load':
+            const load1 = data['1min'] || 0;
+            valueEl.textContent = load1.toFixed(2);
+            const loadDetails = document.getElementById('load-details');
+            if (loadDetails) {
+                loadDetails.textContent = `${(data['1min'] || 0).toFixed(2)} / ${(data['5min'] || 0).toFixed(2)} / ${(data['15min'] || 0).toFixed(2)}`;
+            }
+            break;
+    }
+}
+
+// Load historical metrics
+async function loadHistoricalMetrics() {
+    try {
+        const response = await fetch(`/api/v1/agents/${agentName}/metrics/history?limit=50`);
+        const data = await response.json();
+
+        const history = data.history || [];
+        history.sort((a, b) => a.timestamp - b.timestamp);
+
+        const labels = history.map(h => {
+            const date = new Date(h.timestamp * 1000);
+            return date.toLocaleTimeString();
+        });
+
+        const cpuData = history.map(h => h.cpu_percent || 0);
+        const memoryData = history.map(h => h.memory_percent || 0);
+        const diskData = history.map(h => h.disk_percent || 0);
+
+        // Create or update historical metrics chart
+        const ctx = document.getElementById('history-chart');
+        if (metricsChart) {
+            metricsChart.data.labels = labels;
+            metricsChart.data.datasets[0].data = cpuData;
+            metricsChart.data.datasets[1].data = memoryData;
+            metricsChart.data.datasets[2].data = diskData;
+            metricsChart.update();
+        } else {
+            metricsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'CPU %',
+                            data: cpuData,
+                            borderColor: 'rgb(13, 110, 253)',
+                            backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Memory %',
+                            data: memoryData,
+                            borderColor: 'rgb(25, 135, 84)',
+                            backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Disk %',
+                            data: diskData,
+                            borderColor: 'rgb(255, 193, 7)',
+                            backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        }
+    } catch (error) {
+        console.error('Failed to load historical metrics:', error);
+    }
+}
+
+// Update distribution chart
+function updateDistributionChart(systemInfo) {
+    const cpuPercent = systemInfo.cpu?.usage_percent || 0;
+    const memPercent = systemInfo.memory?.used_percent || 0;
+
+    let diskPercent = 0;
+    if (systemInfo.disk?.partitions && systemInfo.disk.partitions.length > 0) {
+        diskPercent = systemInfo.disk.partitions.reduce((sum, p) => sum + (p.percent || 0), 0) / systemInfo.disk.partitions.length;
     }
 
-    // Update line chart
-    const lineChart = agentCharts[chartKey + '-line'];
-    const now = new Date().toLocaleTimeString();
-    lineChart.data.labels.push(now);
-    lineChart.data.datasets[0].data.push(data.cpu_percent || 0);
-    lineChart.data.datasets[1].data.push(data.memory_percent || 0);
+    const ctx = document.getElementById('distribution-chart');
 
-    if (lineChart.data.labels.length > 20) {
-        lineChart.data.labels.shift();
-        lineChart.data.datasets[0].data.shift();
-        lineChart.data.datasets[1].data.shift();
-    }
-
-    lineChart.update('none');
-
-    // Pie chart for current usage
-    if (!agentCharts[chartKey + '-pie']) {
-        const ctx = dashboard.querySelector('.agent-pie-chart');
-        agentCharts[chartKey + '-pie'] = new Chart(ctx, {
+    if (distributionChart) {
+        distributionChart.data.datasets[0].data = [cpuPercent, memPercent, diskPercent];
+        distributionChart.update();
+    } else {
+        distributionChart = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Used', 'Free'],
+                labels: ['CPU Usage', 'Memory Usage', 'Disk Usage'],
                 datasets: [{
-                    data: [0, 100],
+                    data: [cpuPercent, memPercent, diskPercent],
                     backgroundColor: [
-                        'rgba(124, 179, 66, 0.8)',
-                        'rgba(200, 178, 153, 0.3)'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false
-            }
-        });
-    }
-
-    // Update pie chart with average usage
-    const avgUsage = ((data.cpu_percent || 0) + (data.memory_percent || 0)) / 2;
-    const pieChart = agentCharts[chartKey + '-pie'];
-    pieChart.data.datasets[0].data = [avgUsage, 100 - avgUsage];
-    pieChart.update();
-
-    // Task history bar chart
-    if (!agentCharts[chartKey + '-tasks']) {
-        const ctx = dashboard.querySelector('.agent-task-chart');
-        agentCharts[chartKey + '-tasks'] = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Running', 'Completed', 'Failed'],
-                datasets: [{
-                    label: 'Tasks',
-                    data: [0, 0, 0],
-                    backgroundColor: [
-                        'rgba(41, 182, 246, 0.8)',
-                        'rgba(124, 179, 66, 0.8)',
-                        'rgba(239, 83, 80, 0.8)'
-                    ]
+                        'rgba(13, 110, 253, 0.8)',
+                        'rgba(25, 135, 84, 0.8)',
+                        'rgba(255, 193, 7, 0.8)'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true }
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom'
+                    }
                 }
             }
         });
     }
-
-    // Update task chart
-    const taskChart = agentCharts[chartKey + '-tasks'];
-    taskChart.data.datasets[0].data = [
-        data.tasks_running || 0,
-        data.tasks_completed || 0,
-        data.tasks_failed || 0
-    ];
-    taskChart.update();
 }
 
-async function refreshAgentLogs(agentName) {
-    const dashboard = document.getElementById(`agent-${agentName}`);
-    if (!dashboard) return;
-
-    const logsContainer = dashboard.querySelector('.agent-logs');
-    logsContainer.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-success"></div><p class="mt-3">Loading logs...</p></div>';
+// Load processes
+async function loadProcesses() {
+    const container = document.getElementById('processes-content');
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
 
     try {
-        // Try to get agent-specific logs
-        const logFile = `${agentName}.log`;
-        const data = await API.get(`/logs/${logFile}?tail=100`);
+        const response = await fetch(`/api/v1/agents/${agentName}/processes`);
+        const data = await response.json();
 
-        if (data.content && data.content.trim()) {
-            const lines = data.content.split('\n').filter(l => l.trim());
-            logsContainer.innerHTML = lines.map(line => {
-                let color = '#7CB342'; // default green
-
-                if (line.includes('ERROR') || line.includes('FATAL')) {
-                    color = '#EF5350';
-                } else if (line.includes('WARN')) {
-                    color = '#FFA726';
-                } else if (line.includes('INFO')) {
-                    color = '#29B6F6';
-                }
-
-                return `<div style="color: ${color}; margin-bottom: 2px;">${escapeHtml(line)}</div>`;
-            }).join('');
+        if (data.processes && data.processes.length > 0) {
+            const table = `
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>PID</th>
+                            <th>Name</th>
+                            <th>CPU %</th>
+                            <th>Memory %</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.processes.slice(0, 20).map(p => `
+                            <tr>
+                                <td>${p.pid}</td>
+                                <td>${p.name || '-'}</td>
+                                <td>${(p.cpu_percent || 0).toFixed(1)}%</td>
+                                <td>${(p.memory_percent || 0).toFixed(1)}%</td>
+                                <td><span class="badge bg-success">${p.status || 'running'}</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            container.innerHTML = table;
         } else {
-            logsContainer.innerHTML = '<div class="text-muted text-center py-5">No logs available for this agent</div>';
+            container.innerHTML = '<div class="text-muted text-center py-4">No process data available</div>';
         }
-
-        // Auto-scroll to bottom
-        logsContainer.scrollTop = logsContainer.scrollHeight;
     } catch (error) {
-        logsContainer.innerHTML = `
-            <div class="alert alert-warning m-3">
-                <i class="bi bi-exclamation-triangle"></i>
-                Unable to load logs for this agent. The log file may not exist yet.
-            </div>
-        `;
+        container.innerHTML = '<div class="alert alert-warning m-3">Failed to load processes</div>';
     }
 }
 
-async function refreshAgentModules(agentName) {
-    const dashboard = document.getElementById(`agent-${agentName}`);
-    if (!dashboard) return;
-
-    const modulesContainer = dashboard.querySelector('.agent-modules');
-    modulesContainer.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-3">Checking modules...</p></div>';
+// Load network info
+async function loadNetwork() {
+    const container = document.getElementById('network-content');
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
 
     try {
-        // This would call the agent modules check endpoint
-        const modules = [
-            { name: 'exec', available: true, version: '1.0' },
-            { name: 'fs', available: true, version: '1.0' },
-            { name: 'net', available: true, version: '1.0' },
-            { name: 'pkg', available: true, version: '1.0' },
-            { name: 'docker', available: false, version: '-' },
-            { name: 'git', available: true, version: '1.0' },
-        ];
+        const response = await fetch(`/api/v1/agents/${agentName}/network`);
+        const data = await response.json();
 
-        modulesContainer.innerHTML = `
-            <div class="row g-3">
-                ${modules.map(mod => {
-                    const statusClass = mod.available ? 'success' : 'secondary';
-                    const statusIcon = mod.available ? 'check-circle' : 'x-circle';
+        if (data.interfaces && data.interfaces.length > 0) {
+            const cards = data.interfaces.map(iface => `
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">${iface.name}</h6>
+                            <p class="mb-1"><strong>IP:</strong> ${iface.ip || '-'}</p>
+                            <p class="mb-1"><strong>MAC:</strong> ${iface.mac || '-'}</p>
+                            <p class="mb-0"><strong>Sent:</strong> ${formatBytes(iface.bytes_sent || 0)} | <strong>Received:</strong> ${formatBytes(iface.bytes_recv || 0)}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
 
-                    return `
-                        <div class="col-md-4 col-lg-3">
-                            <div class="card">
-                                <div class="card-body text-center">
-                                    <i class="bi bi-${statusIcon} fs-2 text-${statusClass}"></i>
-                                    <h6 class="mt-2 mb-1">${mod.name}</h6>
-                                    <small class="text-muted">v${mod.version}</small>
+            container.innerHTML = `<div class="row">${cards}</div>`;
+        } else {
+            container.innerHTML = '<div class="text-muted text-center py-4">No network data available</div>';
+        }
+    } catch (error) {
+        container.innerHTML = '<div class="alert alert-warning m-3">Failed to load network info</div>';
+    }
+}
+
+// Load disk info
+async function loadDisk() {
+    const container = document.getElementById('disk-content');
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+
+    try {
+        const response = await fetch(`/api/v1/agents/${agentName}/disk`);
+        const data = await response.json();
+
+        if (data.partitions && data.partitions.length > 0) {
+            const cards = data.partitions.map(part => `
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">${part.mountpoint || part.device}</h6>
+                            <div class="progress mb-2" style="height: 20px;">
+                                <div class="progress-bar" role="progressbar" style="width: ${part.percent}%"
+                                     aria-valuenow="${part.percent}" aria-valuemin="0" aria-valuemax="100">
+                                    ${part.percent.toFixed(1)}%
                                 </div>
                             </div>
+                            <p class="mb-0">
+                                <strong>Used:</strong> ${formatBytes(part.used || 0)} / ${formatBytes(part.total || 0)}
+                                <strong class="ms-3">Free:</strong> ${formatBytes(part.free || 0)}
+                            </p>
                         </div>
-                    `;
-                }).join('')}
-            </div>
-        `;
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = `<div class="row">${cards}</div>`;
+        } else {
+            container.innerHTML = '<div class="text-muted text-center py-4">No disk data available</div>';
+        }
     } catch (error) {
-        modulesContainer.innerHTML = `
-            <div class="alert alert-danger">
-                Failed to check modules: ${error.message}
-            </div>
-        `;
+        container.innerHTML = '<div class="alert alert-warning m-3">Failed to load disk info</div>';
     }
 }
 
-async function refreshAgentInfo(agentName) {
-    const dashboard = document.getElementById(`agent-${agentName}`);
-    if (!dashboard) return;
+// Load system info
+async function loadSystemInfo() {
+    const container = document.getElementById('system-content');
+    container.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
 
     try {
-        const data = await API.get(`/agents/${agentName}`);
+        const response = await fetch(`/api/v1/agents/${agentName}`);
+        const data = await response.json();
 
-        const infoContainer = dashboard.querySelector('.agent-info');
-        infoContainer.innerHTML = `
-            <table class="table table-borderless">
+        let systemInfo = {};
+        if (data.system_info) {
+            try {
+                systemInfo = JSON.parse(data.system_info);
+            } catch (e) {
+                console.error('Failed to parse system_info:', e);
+            }
+        }
+
+        const table = `
+            <table class="table table-bordered">
                 <tbody>
                     <tr>
-                        <th width="40%">Name:</th>
+                        <th width="30%">Agent Name</th>
                         <td>${data.name || '-'}</td>
                     </tr>
                     <tr>
-                        <th>Status:</th>
-                        <td><span class="badge bg-${data.status === 'connected' ? 'success' : 'secondary'}">${data.status || '-'}</span></td>
-                    </tr>
-                    <tr>
-                        <th>Address:</th>
-                        <td><code>${data.address || '-'}</code></td>
-                    </tr>
-                    <tr>
-                        <th>Version:</th>
+                        <th>Version</th>
                         <td>${data.version || '-'}</td>
                     </tr>
                     <tr>
-                        <th>Registered:</th>
-                        <td>${data.registered_at ? formatDate(data.registered_at) : '-'}</td>
+                        <th>Address</th>
+                        <td>${data.address || '-'}</td>
                     </tr>
                     <tr>
-                        <th>Last Heartbeat:</th>
-                        <td>${data.last_heartbeat ? timeAgo(data.last_heartbeat) : '-'}</td>
+                        <th>Platform</th>
+                        <td>${systemInfo.platform || '-'}</td>
                     </tr>
                     <tr>
-                        <th>Platform:</th>
-                        <td>${data.platform || '-'}</td>
+                        <th>Architecture</th>
+                        <td>${systemInfo.arch || '-'}</td>
                     </tr>
                     <tr>
-                        <th>Architecture:</th>
-                        <td>${data.arch || '-'}</td>
+                        <th>CPU Cores</th>
+                        <td>${systemInfo.cpu?.cores || '-'}</td>
+                    </tr>
+                    <tr>
+                        <th>Total Memory</th>
+                        <td>${formatBytes(systemInfo.memory?.total || 0)}</td>
+                    </tr>
+                    <tr>
+                        <th>Hostname</th>
+                        <td>${systemInfo.hostname || '-'}</td>
+                    </tr>
+                    <tr>
+                        <th>Last Heartbeat</th>
+                        <td>${data.last_heartbeat || '-'}</td>
                     </tr>
                 </tbody>
             </table>
         `;
 
-        const historyContainer = dashboard.querySelector('.agent-history');
-        historyContainer.innerHTML = `
-            <div class="timeline">
-                <div class="timeline-item">
-                    <i class="bi bi-circle-fill text-success"></i>
-                    <div>
-                        <strong>Connected</strong>
-                        <small class="text-muted d-block">${data.last_heartbeat ? timeAgo(data.last_heartbeat) : 'Recently'}</small>
-                    </div>
-                </div>
-                <div class="timeline-item">
-                    <i class="bi bi-circle-fill text-info"></i>
-                    <div>
-                        <strong>Registered</strong>
-                        <small class="text-muted d-block">${data.registered_at ? formatDate(data.registered_at) : 'Unknown'}</small>
-                    </div>
-                </div>
-            </div>
-
-            <style>
-                .timeline { position: relative; padding: 20px 0 20px 30px; }
-                .timeline-item { position: relative; padding-bottom: 20px; }
-                .timeline-item i { position: absolute; left: -30px; top: 5px; font-size: 10px; }
-                .timeline-item:not(:last-child)::before {
-                    content: '';
-                    position: absolute;
-                    left: -26px;
-                    top: 15px;
-                    width: 2px;
-                    height: 100%;
-                    background: var(--border-color);
-                }
-            </style>
-        `;
+        container.innerHTML = table;
     } catch (error) {
-        console.error('Failed to load agent info:', error);
+        container.innerHTML = '<div class="alert alert-warning m-3">Failed to load system info</div>';
     }
 }
 
-function downloadAgentLogs(agentName) {
-    const dashboard = document.getElementById(`agent-${agentName}`);
-    if (!dashboard) return;
-
-    const logsContainer = dashboard.querySelector('.agent-logs');
-    const logs = Array.from(logsContainer.children).map(div => div.textContent).join('\n');
-
-    downloadFile(logs, `${agentName}-logs.txt`, 'text/plain');
-    notify.success('Logs downloaded!', 2000);
+// Format bytes
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-function setupWebSocket() {
-    ws = new WebSocketManager();
-    ws.onMessage((data) => {
-        if (data.type === 'agent_update' && currentAgent === data.agent_name) {
-            refreshAgentData(currentAgent);
-        }
-    });
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+    if (metricsChart) {
+        metricsChart.destroy();
+    }
+    if (distributionChart) {
+        distributionChart.destroy();
+    }
+});

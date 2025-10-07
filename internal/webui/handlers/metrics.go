@@ -2,10 +2,16 @@ package handlers
 
 import (
 	"net/http"
+	"os"
 	"runtime"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v3/host"
+	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/shirou/gopsutil/v3/net"
 )
 
 // MetricsHandler handles system metrics
@@ -18,6 +24,9 @@ type SystemMetrics struct {
 	Timestamp       int64              `json:"timestamp"`
 	CPU             CPUMetrics         `json:"cpu"`
 	Memory          MemoryMetrics      `json:"memory"`
+	Disk            DiskMetrics        `json:"disk"`
+	Network         NetworkMetrics     `json:"network"`
+	HostInfo        HostInfo           `json:"host_info"`
 	Goroutines      int                `json:"goroutines"`
 	AgentMetrics    []AgentMetric      `json:"agent_metrics"`
 	WorkflowMetrics WorkflowMetrics    `json:"workflow_metrics"`
@@ -33,12 +42,38 @@ type CPUMetrics struct {
 
 // MemoryMetrics represents memory metrics
 type MemoryMetrics struct {
-	Alloc      uint64  `json:"alloc"`
-	TotalAlloc uint64  `json:"total_alloc"`
-	Sys        uint64  `json:"sys"`
-	NumGC      uint32  `json:"num_gc"`
-	UsedMB     float64 `json:"used_mb"`
-	TotalMB    float64 `json:"total_mb"`
+	Alloc        uint64  `json:"alloc"`
+	TotalAlloc   uint64  `json:"total_alloc"`
+	Sys          uint64  `json:"sys"`
+	NumGC        uint32  `json:"num_gc"`
+	Used         uint64  `json:"used"`
+	Total        uint64  `json:"total"`
+	UsedPercent  float64 `json:"used_percent"`
+}
+
+// DiskMetrics represents disk metrics
+type DiskMetrics struct {
+	Used        uint64  `json:"used"`
+	Total       uint64  `json:"total"`
+	Free        uint64  `json:"free"`
+	UsedPercent float64 `json:"used_percent"`
+}
+
+// NetworkMetrics represents network metrics
+type NetworkMetrics struct {
+	BytesSent   uint64 `json:"bytes_sent"`
+	BytesRecv   uint64 `json:"bytes_recv"`
+	PacketsSent uint64 `json:"packets_sent"`
+	PacketsRecv uint64 `json:"packets_recv"`
+}
+
+// HostInfo represents host information
+type HostInfo struct {
+	Hostname        string `json:"hostname"`
+	OS              string `json:"os"`
+	Platform        string `json:"platform"`
+	PlatformVersion string `json:"platform_version"`
+	Uptime          uint64 `json:"uptime"`
 }
 
 // AgentMetric represents metrics for a single agent
@@ -105,21 +140,95 @@ func (h *MetricsHandler) collectMetrics() *SystemMetrics {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
-	return &SystemMetrics{
-		Timestamp: time.Now().Unix(),
-		CPU: CPUMetrics{
-			UsagePercent: 0, // TODO: Implement CPU usage calculation
-			Cores:        runtime.NumCPU(),
-		},
-		Memory: MemoryMetrics{
+	// Collect CPU metrics
+	cpuPercent, _ := cpu.Percent(time.Second, false)
+	var cpuUsage float64
+	if len(cpuPercent) > 0 {
+		cpuUsage = cpuPercent[0]
+	}
+
+	// Collect Memory metrics
+	vmStat, _ := mem.VirtualMemory()
+
+	// Collect Disk metrics
+	diskStat, _ := disk.Usage("/")
+
+	// Collect Network metrics
+	netStats, _ := net.IOCounters(false)
+	var networkMetrics NetworkMetrics
+	if len(netStats) > 0 {
+		networkMetrics = NetworkMetrics{
+			BytesSent:   netStats[0].BytesSent,
+			BytesRecv:   netStats[0].BytesRecv,
+			PacketsSent: netStats[0].PacketsSent,
+			PacketsRecv: netStats[0].PacketsRecv,
+		}
+	}
+
+	// Collect Host info
+	hostInfo, _ := host.Info()
+	hostname, _ := os.Hostname()
+
+	var hostData HostInfo
+	if hostInfo != nil {
+		hostData = HostInfo{
+			Hostname:        hostname,
+			OS:              hostInfo.OS,
+			Platform:        hostInfo.Platform,
+			PlatformVersion: hostInfo.PlatformVersion,
+			Uptime:          hostInfo.Uptime,
+		}
+	} else {
+		hostData = HostInfo{
+			Hostname: hostname,
+			OS:       runtime.GOOS,
+			Platform: runtime.GOARCH,
+		}
+	}
+
+	var memMetrics MemoryMetrics
+	if vmStat != nil {
+		memMetrics = MemoryMetrics{
+			Alloc:        m.Alloc,
+			TotalAlloc:   m.TotalAlloc,
+			Sys:          m.Sys,
+			NumGC:        m.NumGC,
+			Used:         vmStat.Used,
+			Total:        vmStat.Total,
+			UsedPercent:  vmStat.UsedPercent,
+		}
+	} else {
+		memMetrics = MemoryMetrics{
 			Alloc:      m.Alloc,
 			TotalAlloc: m.TotalAlloc,
 			Sys:        m.Sys,
 			NumGC:      m.NumGC,
-			UsedMB:     float64(m.Alloc) / 1024 / 1024,
-			TotalMB:    float64(m.Sys) / 1024 / 1024,
+			Used:       m.Alloc,
+			Total:      m.Sys,
+		}
+	}
+
+	var diskMetrics DiskMetrics
+	if diskStat != nil {
+		diskMetrics = DiskMetrics{
+			Used:        diskStat.Used,
+			Total:       diskStat.Total,
+			Free:        diskStat.Free,
+			UsedPercent: diskStat.UsedPercent,
+		}
+	}
+
+	return &SystemMetrics{
+		Timestamp: time.Now().Unix(),
+		CPU: CPUMetrics{
+			UsagePercent: cpuUsage,
+			Cores:        runtime.NumCPU(),
 		},
-		Goroutines: runtime.NumGoroutine(),
+		Memory:      memMetrics,
+		Disk:        diskMetrics,
+		Network:     networkMetrics,
+		HostInfo:    hostData,
+		Goroutines:  runtime.NumGoroutine(),
 		AgentMetrics: []AgentMetric{},
 		WorkflowMetrics: WorkflowMetrics{
 			TotalExecutions:      0,

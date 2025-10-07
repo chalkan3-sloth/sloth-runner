@@ -79,6 +79,29 @@ func (adb *AgentDB) initSchema() error {
 		return err
 	}
 
+	// Create metrics history table
+	metricsSchema := `
+	CREATE TABLE IF NOT EXISTS agent_metrics_history (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		agent_name TEXT NOT NULL,
+		timestamp INTEGER NOT NULL,
+		cpu_percent REAL,
+		memory_percent REAL,
+		disk_percent REAL,
+		load_avg_1min REAL,
+		load_avg_5min REAL,
+		load_avg_15min REAL,
+		FOREIGN KEY (agent_name) REFERENCES agents(name)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_metrics_agent_time ON agent_metrics_history(agent_name, timestamp DESC);
+	`
+
+	_, err = adb.db.Exec(metricsSchema)
+	if err != nil {
+		return fmt.Errorf("failed to create metrics history table: %w", err)
+	}
+
 	// Migration: Add new columns if they don't exist (for existing databases)
 	migrations := []string{
 		`ALTER TABLE agents ADD COLUMN last_info_collected INTEGER DEFAULT 0`,
@@ -356,4 +379,75 @@ func (adb *AgentDB) GetStats() (map[string]interface{}, error) {
 	stats["inactive_agents"] = totalAgents - activeAgents
 
 	return stats, nil
+}
+
+// SaveMetrics saves agent metrics to history
+func (adb *AgentDB) SaveMetrics(agentName string, cpuPercent, memoryPercent, diskPercent, loadAvg1, loadAvg5, loadAvg15 float64) error {
+	query := `INSERT INTO agent_metrics_history
+		(agent_name, timestamp, cpu_percent, memory_percent, disk_percent, load_avg_1min, load_avg_5min, load_avg_15min)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+
+	_, err := adb.db.Exec(query, agentName, time.Now().Unix(), cpuPercent, memoryPercent, diskPercent, loadAvg1, loadAvg5, loadAvg15)
+	if err != nil {
+		return fmt.Errorf("failed to save metrics: %w", err)
+	}
+
+	return nil
+}
+
+// GetMetricsHistory retrieves metrics history for an agent
+func (adb *AgentDB) GetMetricsHistory(agentName string, limit int) ([]map[string]interface{}, error) {
+	query := `SELECT timestamp, cpu_percent, memory_percent, disk_percent, load_avg_1min, load_avg_5min, load_avg_15min
+		FROM agent_metrics_history
+		WHERE agent_name = ?
+		ORDER BY timestamp DESC
+		LIMIT ?`
+
+	rows, err := adb.db.Query(query, agentName, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query metrics history: %w", err)
+	}
+	defer rows.Close()
+
+	var history []map[string]interface{}
+	for rows.Next() {
+		var timestamp int64
+		var cpu, memory, disk, load1, load5, load15 float64
+
+		err := rows.Scan(&timestamp, &cpu, &memory, &disk, &load1, &load5, &load15)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan metrics row: %w", err)
+		}
+
+		history = append(history, map[string]interface{}{
+			"timestamp":      timestamp,
+			"cpu_percent":    cpu,
+			"memory_percent": memory,
+			"disk_percent":   disk,
+			"load_avg_1min":  load1,
+			"load_avg_5min":  load5,
+			"load_avg_15min": load15,
+		})
+	}
+
+	return history, nil
+}
+
+// CleanupOldMetrics removes metrics older than specified days
+func (adb *AgentDB) CleanupOldMetrics(daysToKeep int) (int, error) {
+	cutoff := time.Now().Unix() - int64(daysToKeep*24*3600)
+
+	query := `DELETE FROM agent_metrics_history WHERE timestamp < ?`
+
+	result, err := adb.db.Exec(query, cutoff)
+	if err != nil {
+		return 0, fmt.Errorf("failed to cleanup old metrics: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to check affected rows: %w", err)
+	}
+
+	return int(rowsAffected), nil
 }

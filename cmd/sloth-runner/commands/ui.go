@@ -6,9 +6,9 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 
+	"github.com/chalkan3-sloth/sloth-runner/internal/config"
 	"github.com/chalkan3-sloth/sloth-runner/internal/webui"
 	"github.com/spf13/cobra"
 )
@@ -69,14 +69,18 @@ func runUIServer(port int, debug bool, enableAuth bool, username string, passwor
 		return fmt.Errorf("password is required when authentication is enabled")
 	}
 
-	// Get database paths
-	agentDBPath := filepath.Join(".sloth-cache", "agents.db")
-	slothDBPath := "/etc/sloth-runner/sloths.db"
-	hookDBPath := filepath.Join(".sloth-cache", "hooks.db")
+	// Ensure data directory exists
+	if err := config.EnsureDataDir(); err != nil {
+		return fmt.Errorf("failed to create data directory: %w", err)
+	}
 
-	homeDir, _ := os.UserHomeDir()
-	secretsDBPath := filepath.Join(homeDir, ".sloth-runner", "secrets.db")
-	sshDBPath := filepath.Join(homeDir, ".sloth-runner", "ssh_profiles.db")
+	// Get database paths
+	agentDBPath := config.GetAgentDBPath()
+	slothDBPath := config.GetSlothDBPath()
+	hookDBPath := config.GetHookDBPath()
+	secretsDBPath := config.GetSecretsDBPath()
+	sshDBPath := config.GetSSHDBPath()
+	stackDBPath := config.GetStackDBPath()
 
 	// Create server config
 	cfg := &webui.Config{
@@ -87,6 +91,7 @@ func runUIServer(port int, debug bool, enableAuth bool, username string, passwor
 		HookDBPath:    hookDBPath,
 		SecretsDBPath: secretsDBPath,
 		SSHDBPath:     sshDBPath,
+		StackDBPath:   stackDBPath,
 		EnableAuth:    enableAuth,
 		Username:      username,
 		Password:      password,
