@@ -1,3 +1,5 @@
+//go:build darwin
+// +build darwin
 package agent
 
 import (
@@ -226,7 +228,7 @@ func getSystemUptime() uint64 {
 
 // getProcesses returns list of running processes
 func getProcesses() ([]ProcessInfo, error) {
-	// Use ps command to get process list
+	// Use ps command (optimized version is in process_linux.go for Linux)
 	cmd := exec.Command("ps", "aux")
 	output, err := cmd.Output()
 	if err != nil {
