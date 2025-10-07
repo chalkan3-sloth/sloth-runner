@@ -1,0 +1,434 @@
+/* Mobile Responsive Styles for Sloth Runner */
+
+/* Tablet and below */
+@media (max-width: 992px) {
+    /* Adjust container padding */
+    .container-fluid {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    /* Stack stat cards */
+    .stat-card {
+        margin-bottom: 1rem;
+    }
+
+    /* Adjust font sizes */
+    h1 {
+        font-size: 1.75rem;
+    }
+
+    h2 {
+        font-size: 1.5rem;
+    }
+
+    /* Make buttons full width in small screens */
+    .btn-group-responsive {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .btn-group-responsive .btn {
+        width: 100%;
+    }
+
+    /* Adjust chart heights */
+    .chart-container {
+        height: 250px !important;
+    }
+
+    /* Make tables scrollable */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Reduce card padding */
+    .card-body {
+        padding: 1rem;
+    }
+
+    /* Stack action buttons */
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 1rem;
+    }
+
+    .d-flex.justify-content-between > div {
+        width: 100%;
+    }
+
+    .d-flex.justify-content-between .btn {
+        width: 100%;
+    }
+}
+
+/* Mobile phones */
+@media (max-width: 576px) {
+    /* Further reduce font sizes */
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    h2 {
+        font-size: 1.25rem;
+    }
+
+    h3 {
+        font-size: 1.1rem;
+    }
+
+    /* Reduce padding */
+    .container-fluid {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    /* Make stat cards take full width */
+    .stat-card .stat-icon {
+        width: 50px;
+        height: 50px;
+        font-size: 1.5rem;
+    }
+
+    .stat-card h2 {
+        font-size: 1.5rem;
+    }
+
+    .stat-card h6 {
+        font-size: 0.75rem;
+    }
+
+    /* Adjust navbar */
+    .navbar {
+        padding: 0.5rem 1rem;
+    }
+
+    .navbar-brand {
+        font-size: 1rem;
+    }
+
+    /* Make modals full screen on mobile */
+    .modal-dialog {
+        margin: 0;
+        max-width: 100%;
+        height: 100%;
+    }
+
+    .modal-content {
+        height: 100%;
+        border: none;
+        border-radius: 0;
+    }
+
+    /* Adjust breadcrumbs */
+    .breadcrumb {
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+    }
+
+    .breadcrumb-item + .breadcrumb-item::before {
+        padding-right: 0.25rem;
+        padding-left: 0.25rem;
+    }
+
+    /* Hide long text in breadcrumbs */
+    .breadcrumb-item {
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Adjust agent cards */
+    .agent-card .card-body {
+        padding: 0.75rem;
+    }
+
+    .agent-card h5 {
+        font-size: 1rem;
+    }
+
+    /* Make badges smaller */
+    .badge {
+        font-size: 0.7rem;
+        padding: 0.25em 0.5em;
+    }
+
+    /* Adjust activity feed */
+    .activity-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 0.875rem;
+    }
+
+    .activity-item {
+        font-size: 0.875rem;
+    }
+
+    .activity-time {
+        font-size: 0.75rem;
+    }
+
+    /* Reduce chart heights on mobile */
+    .chart-container {
+        height: 200px !important;
+    }
+
+    /* Make toast notifications narrower */
+    .toast-container {
+        width: calc(100% - 2rem);
+        left: 1rem;
+        right: 1rem;
+    }
+
+    .toast {
+        max-width: 100%;
+    }
+
+    /* Adjust glass card effects */
+    .glass-card {
+        backdrop-filter: blur(5px);
+    }
+
+    /* Hide secondary information in tight spaces */
+    .mobile-hide {
+        display: none !important;
+    }
+
+    /* Simplify gradients for performance */
+    .gradient-animated {
+        animation: none;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    /* Reduce animation complexity */
+    .hover-lift,
+    .hover-grow,
+    .hover-glow {
+        transform: none !important;
+    }
+
+    /* Disable some animations on mobile */
+    .pulse,
+    .spin,
+    .float {
+        animation: none;
+    }
+}
+
+/* Extra small devices */
+@media (max-width: 375px) {
+    /* Ultra compact mode */
+    .stat-card h2 {
+        font-size: 1.25rem;
+    }
+
+    .card-body {
+        padding: 0.5rem;
+    }
+
+    /* Make buttons smaller */
+    .btn {
+        font-size: 0.875rem;
+        padding: 0.375rem 0.75rem;
+    }
+
+    .btn-sm {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    /* Reduce icon sizes */
+    .bi {
+        font-size: 0.875rem;
+    }
+
+    .fs-1 {
+        font-size: 1.5rem !important;
+    }
+}
+
+/* Landscape orientation on mobile */
+@media (max-height: 600px) and (orientation: landscape) {
+    /* Reduce vertical spacing */
+    .mb-4 {
+        margin-bottom: 1rem !important;
+    }
+
+    .mb-3 {
+        margin-bottom: 0.75rem !important;
+    }
+
+    .mt-4 {
+        margin-top: 1rem !important;
+    }
+
+    /* Make modals scrollable */
+    .modal-body {
+        max-height: 60vh;
+        overflow-y: auto;
+    }
+}
+
+/* Touch-friendly enhancements */
+@media (hover: none) and (pointer: coarse) {
+    /* Increase touch targets */
+    .btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .nav-link {
+        padding: 0.75rem 1rem;
+    }
+
+    /* Larger form controls */
+    .form-control,
+    .form-select {
+        min-height: 44px;
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+
+    /* Remove hover effects on touch devices */
+    .hover-lift:hover,
+    .hover-grow:hover,
+    .hover-glow:hover {
+        transform: none;
+    }
+
+    /* Add active states instead */
+    .hover-lift:active {
+        transform: translateY(-2px);
+    }
+
+    .hover-grow:active {
+        transform: scale(1.02);
+    }
+
+    /* Increase spacing between clickable elements */
+    .btn-group .btn {
+        margin: 0.25rem;
+    }
+
+    /* Make close buttons easier to tap */
+    .btn-close {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 1rem;
+    }
+
+    /* Improve table usability */
+    .table td,
+    .table th {
+        padding: 0.75rem;
+    }
+
+    /* Make dropdowns easier to use */
+    .dropdown-item {
+        padding: 0.75rem 1.5rem;
+    }
+}
+
+/* Prevent horizontal scroll */
+@media (max-width: 992px) {
+    body {
+        overflow-x: hidden;
+    }
+
+    .row {
+        margin-left: -0.5rem;
+        margin-right: -0.5rem;
+    }
+
+    .row > * {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+}
+
+/* Loading states optimization for mobile */
+@media (max-width: 576px) {
+    /* Simpler skeleton animations */
+    .skeleton {
+        animation-duration: 2s;
+    }
+
+    /* Reduce confetti particles on mobile */
+    .confetti-canvas {
+        display: none;
+    }
+}
+
+/* Print styles */
+@media print {
+    /* Hide unnecessary elements */
+    .navbar,
+    .breadcrumb-container,
+    .btn,
+    .toast-container {
+        display: none !important;
+    }
+
+    /* Optimize for print */
+    .card {
+        page-break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #ddd;
+    }
+
+    /* Expand containers */
+    .container-fluid {
+        width: 100%;
+        max-width: none;
+    }
+
+    /* Remove backgrounds */
+    body,
+    .card,
+    .table {
+        background: white !important;
+        color: black !important;
+    }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+    /* Disable animations */
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    /* Remove problematic effects */
+    .pulse,
+    .spin,
+    .bounce,
+    .float,
+    .wiggle {
+        animation: none !important;
+    }
+
+    .gradient-animated {
+        animation: none !important;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .glass-card {
+        background: var(--card-bg);
+        backdrop-filter: none;
+        border: 2px solid var(--border-color);
+    }
+
+    .text-muted {
+        color: var(--text-primary) !important;
+        opacity: 0.8;
+    }
+}

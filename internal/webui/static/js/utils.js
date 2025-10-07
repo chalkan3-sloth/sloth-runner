@@ -1,4 +1,9 @@
 // Utility functions and notification system
+// Prevent duplicate loading
+if (typeof window.SLOTH_UTILS_LOADED !== 'undefined') {
+    console.warn('Utils.js already loaded, skipping...');
+} else {
+    window.SLOTH_UTILS_LOADED = true;
 
 // Theme Management
 class ThemeManager {
@@ -289,3 +294,5 @@ window.copyToClipboard = copyToClipboard;
 window.downloadFile = downloadFile;
 window.confirmAction = confirmAction;
 window.debounce = debounce;
+
+} // End of SLOTH_UTILS_LOADED check

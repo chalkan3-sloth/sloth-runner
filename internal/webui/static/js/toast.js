@@ -254,6 +254,10 @@ class ToastManager {
 // Create global instance
 const toastManager = new ToastManager();
 
+// Export as global
+window.toastManager = toastManager;
+window.ToastManager = ToastManager;
+
 // Export for module systems
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = ToastManager;

@@ -8,74 +8,22 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/sloth-theme.css">
-    <!-- Highlight.js for Lua syntax highlighting -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
-    <!-- Chart.js -->
+    <link rel="stylesheet" href="/static/css/theme.css">
+    <!-- Modern UI Styles -->
+    <link rel="stylesheet" href="/static/css/toast.css">
+    <link rel="stylesheet" href="/static/css/skeletons.css">
+    <link rel="stylesheet" href="/static/css/animations.css">
+    <link rel="stylesheet" href="/static/css/glassmorphism.css">
+    <link rel="stylesheet" href="/static/css/dark-mode.css">
+    <link rel="stylesheet" href="/static/css/mobile.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <style>
-        .editor-container {
-            position: relative;
-            width: 100%;
-            height: 400px;
-            border: 1px solid #3e4451;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        #code-editor-textarea {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
-            font-size: 14px;
-            line-height: 1.5;
-            tab-size: 4;
-            background-color: #282c34;
-            color: transparent;
-            caret-color: #abb2bf;
-            border: none;
-            padding: 12px;
-            resize: none;
-            overflow: auto;
-            z-index: 2;
-        }
-
-        #code-highlight {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            padding: 12px;
-            margin: 0;
-            background-color: #282c34;
-            overflow: auto;
-            pointer-events: none;
-            z-index: 1;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
-            font-size: 14px;
-            line-height: 1.5;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-
-        #code-highlight code {
-            font-family: inherit;
-            font-size: inherit;
-            line-height: inherit;
-        }
-
-        #code-editor-textarea:focus {
-            outline: none;
-        }
-
-        .editor-container:focus-within {
-            border-color: #528bff;
-            box-shadow: 0 0 0 3px rgba(82, 139, 255, 0.1);
-        }
-    </style>
+    <!-- Initialize theme early to prevent flash -->
+    <!-- Code Editor for Sloth DSL -->
+    <link rel="stylesheet" href="/static/css/code-editor.css">
+    <link rel="stylesheet" href="/static/css/page-transitions.css">
+    <link rel="stylesheet" href="/static/css/micro-interactions.css">
+    <link rel="stylesheet" href="/static/css/navbar-search.css">
+    <link rel="stylesheet" href="/static/css/drag-drop.css">
 </head>
 <body>
     <!-- Navbar will be injected here by navbar.js -->
@@ -252,15 +200,9 @@
                                     <button type="button" class="btn btn-outline-secondary" onclick="insertTemplate('advanced'); return false;">
                                         <i class="bi bi-layers"></i> Advanced Template
                                     </button>
-                                    <button type="button" class="btn btn-outline-secondary" onclick="formatCode(); return false;">
-                                        <i class="bi bi-brush"></i> Format
-                                    </button>
                                 </div>
                             </div>
-                            <div class="editor-container">
-                                <pre id="code-highlight"><code class="language-lua"></code></pre>
-                                <textarea id="code-editor-textarea" spellcheck="false"></textarea>
-                            </div>
+                            <div id="workflow-code-editor"></div>
                         </div>
 
                         <div class="row">
@@ -462,10 +404,17 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Highlight.js for syntax highlighting -->
-    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/languages/lua.min.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <!-- Modern UI Scripts -->
+    <script src="/static/js/toast.js"></script>
+    <script src="/static/js/confetti.js"></script>
+    <script src="/static/js/skeletons.js"></script>
+    <script src="/static/js/breadcrumbs.js"></script>
+    <script src="/static/js/advanced-charts.js"></script>
+    <script src="/static/js/code-editor.js"></script>
     <script src="/static/js/navbar.js"></script>
     <script src="/static/js/workflows.js"></script>
+    <script src="/static/js/micro-interactions.js"></script>
+    <script src="/static/js/drag-drop.js"></script>
 </body>
 </html>

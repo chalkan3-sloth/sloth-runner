@@ -1,0 +1,209 @@
+/* ===================================
+   Drag & Drop File Upload Styling
+   =================================== */
+
+.drag-drop-zone {
+    position: relative;
+    min-height: 200px;
+    border: 2px dashed var(--border-color);
+    border-radius: 12px;
+    background: var(--bg-secondary);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+}
+
+.drag-drop-zone:hover {
+    border-color: #4F46E5;
+    background: var(--bg-hover);
+    transform: scale(1.01);
+}
+
+.drag-drop-zone.drag-over {
+    border-color: #4F46E5;
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.1), rgba(124, 58, 237, 0.1));
+    border-style: solid;
+    transform: scale(1.02);
+    box-shadow: 0 8px 30px rgba(79, 70, 229, 0.2);
+}
+
+.drag-drop-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    text-align: center;
+}
+
+.drag-drop-icon {
+    font-size: 4rem;
+    color: #4F46E5;
+    margin-bottom: 1rem;
+    animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+.drag-drop-text strong {
+    display: block;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.drag-drop-text span {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.drag-drop-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* File Preview */
+.drag-drop-preview {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    padding: 0 1rem;
+}
+
+.drag-drop-preview.show {
+    max-height: 500px;
+    opacity: 1;
+    padding: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.file-preview-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: var(--bg-primary);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.2s ease;
+}
+
+.file-preview-item:hover {
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.file-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.file-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.file-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-primary);
+}
+
+.file-size {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.file-progress {
+    flex: 0 0 150px;
+}
+
+.file-progress .progress {
+    height: 6px;
+    background: var(--bg-secondary);
+}
+
+.file-remove {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.25rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.file-remove:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
+    transform: scale(1.1);
+}
+
+/* Compact variant */
+.drag-drop-zone.compact {
+    min-height: 120px;
+}
+
+.drag-drop-zone.compact .drag-drop-content {
+    padding: 1.5rem;
+}
+
+.drag-drop-zone.compact .drag-drop-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .drag-drop-zone {
+        min-height: 150px;
+    }
+
+    .drag-drop-content {
+        padding: 2rem 1rem;
+    }
+
+    .drag-drop-icon {
+        font-size: 3rem;
+    }
+
+    .file-progress {
+        flex: 0 0 100px;
+    }
+
+    .file-preview-item {
+        flex-wrap: wrap;
+    }
+
+    .file-progress {
+        flex: 1 1 100%;
+        margin-top: 0.5rem;
+    }
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .drag-drop-zone.drag-over {
+    background: linear-gradient(135deg, rgba(79, 70, 229, 0.2), rgba(124, 58, 237, 0.2));
+}

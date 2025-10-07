@@ -4,6 +4,7 @@ let currentFilter = 'all';
 let executionTrendsChart = null;
 let statusDistributionChart = null;
 let currentExecutionId = null;
+let workflowCodeEditor = null;
 
 // API Helper
 const API = {
@@ -47,64 +48,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadWorkflows();
     await loadStatistics();
 
+    // Initialize Code Editor
+    if (typeof CodeEditor !== 'undefined') {
+        workflowCodeEditor = new CodeEditor('#workflow-code-editor', {
+            language: 'yaml',
+            theme: 'sloth',
+            lineNumbers: true,
+            readOnly: false,
+            value: getBasicTemplate(),
+            onChange: (value) => {
+                // Optional: handle changes
+            }
+        });
+    }
+
     // Setup modal event listeners
     document.getElementById('addWorkflowModal').addEventListener('shown.bs.modal', () => {
-        const textarea = document.getElementById('code-editor-textarea');
-        const highlight = document.querySelector('#code-highlight code');
-
-        if (textarea && !textarea.value) {
-            textarea.value = getBasicTemplate();
-
-            // Update syntax highlighting
-            if (highlight) {
-                highlight.textContent = textarea.value;
-                hljs.highlightElement(highlight);
-            }
+        if (workflowCodeEditor && !workflowCodeEditor.getValue()) {
+            workflowCodeEditor.setValue(getBasicTemplate());
         }
     });
 
     document.getElementById('runWorkflowModal').addEventListener('shown.bs.modal', () => {
         loadAgentSelectionList();
     });
-
-    // Setup Tab key and syntax highlighting for textarea
-    const textarea = document.getElementById('code-editor-textarea');
-    const highlight = document.querySelector('#code-highlight code');
-
-    if (textarea && highlight) {
-        // Update syntax highlighting
-        function updateHighlight() {
-            const text = textarea.value;
-            highlight.textContent = text;
-            hljs.highlightElement(highlight);
-        }
-
-        // Sync scrolling
-        function syncScroll() {
-            const highlightPre = document.getElementById('code-highlight');
-            highlightPre.scrollTop = textarea.scrollTop;
-            highlightPre.scrollLeft = textarea.scrollLeft;
-        }
-
-        // Event listeners
-        textarea.addEventListener('input', updateHighlight);
-        textarea.addEventListener('scroll', syncScroll);
-
-        // Tab key support
-        textarea.addEventListener('keydown', function(e) {
-            if (e.key === 'Tab') {
-                e.preventDefault();
-                const start = this.selectionStart;
-                const end = this.selectionEnd;
-                this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
-                this.selectionStart = this.selectionEnd = start + 4;
-                updateHighlight();
-            }
-        });
-
-        // Initial highlight
-        updateHighlight();
-    }
 });
 
 // ============= CHARTS INITIALIZATION =============
@@ -413,10 +380,9 @@ function showAddWorkflowModal() {
     document.getElementById('addWorkflowForm').reset();
     document.getElementById('modal-title-text').textContent = 'Create New Workflow';
 
-    // Set basic template
-    const textarea = document.getElementById('code-editor-textarea');
-    if (textarea) {
-        textarea.value = getBasicTemplate();
+    // Set basic template in code editor
+    if (workflowCodeEditor) {
+        workflowCodeEditor.setValue(getBasicTemplate());
     }
 
     modal.show();
@@ -545,88 +511,72 @@ workflow
 }
 
 function insertTemplate(type) {
-    const textarea = document.getElementById('code-editor-textarea');
-    const highlight = document.querySelector('#code-highlight code');
-    if (!textarea) return;
-
-    const template = type === 'basic' ? getBasicTemplate() : getAdvancedTemplate();
-    textarea.value = template;
-
-    // Update syntax highlighting
-    if (highlight) {
-        highlight.textContent = template;
-        hljs.highlightElement(highlight);
-    }
-
-    showSuccess(`${type === 'basic' ? 'Basic' : 'Advanced'} template loaded`);
-}
-
-function formatCode() {
-    const textarea = document.getElementById('code-editor-textarea');
-    if (!textarea) return;
-
-    // Basic Lua formatting - indent properly
-    const code = textarea.value;
-    const lines = code.split('\n');
-    let indentLevel = 0;
-    const formatted = lines.map(line => {
-        const trimmed = line.trim();
-        if (!trimmed) return '';
-
-        // Decrease indent for end, }, etc
-        if (trimmed.match(/^(end|})/) && indentLevel > 0) {
-            indentLevel--;
-        }
-
-        const indented = '    '.repeat(indentLevel) + trimmed;
-
-        // Increase indent after {, function, if, for, while, etc
-        if (trimmed.match(/(function|{|then|do)$/)) {
-            indentLevel++;
-        }
-
-        return indented;
-    }).join('\n');
-
-    textarea.value = formatted;
-    showSuccess('Code formatted');
-}
-
-async function validateWorkflow() {
-    const textarea = document.getElementById('code-editor-textarea');
-    if (!textarea) {
-        showError('Code editor not found');
+    if (!workflowCodeEditor) {
+        console.error('Code editor not initialized');
         return;
     }
 
-    const code = textarea.value;
+    const template = type === 'basic' ? getBasicTemplate() : getAdvancedTemplate();
+    workflowCodeEditor.setValue(template);
 
-    // Basic Lua syntax validation
+    if (window.toastManager) {
+        toastManager.success(`${type === 'basic' ? 'Basic' : 'Advanced'} template loaded`);
+    }
+}
+
+function formatCode() {
+    if (!workflowCodeEditor) {
+        console.error('Code editor not initialized');
+        return;
+    }
+
+    // Use the code editor's built-in format function
+    workflowCodeEditor.format();
+}
+
+async function validateWorkflow() {
+    if (!workflowCodeEditor) {
+        if (window.toastManager) {
+            toastManager.error('Code editor not initialized');
+        }
+        return;
+    }
+
+    const code = workflowCodeEditor.getValue();
+
+    // Basic YAML/Sloth DSL validation
     try {
-        // Check for basic syntax issues
         const issues = [];
 
-        // Check for unmatched braces/parentheses
-        const openBraces = (code.match(/{/g) || []).length;
-        const closeBraces = (code.match(/}/g) || []).length;
-        if (openBraces !== closeBraces) {
-            issues.push('Unmatched braces');
-        }
+        // Check for basic YAML structure
+        const lines = code.split('\n');
+        let indentStack = [0];
 
-        // Check for unmatched function/end
-        const functionCount = (code.match(/\bfunction\b/g) || []).length;
-        const endCount = (code.match(/\bend\b/g) || []).length;
-        if (functionCount > endCount) {
-            issues.push('Missing "end" keyword(s)');
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (!line.trim() || line.trim().startsWith('#')) continue;
+
+            const indent = line.match(/^\s*/)[0].length;
+
+            // Check for valid indentation (must be multiple of 2)
+            if (indent % 2 !== 0) {
+                issues.push(`Line ${i + 1}: Invalid indentation (must be multiple of 2 spaces)`);
+            }
         }
 
         if (issues.length > 0) {
-            showError('Validation issues: ' + issues.join(', '));
+            if (window.toastManager) {
+                toastManager.warning('Validation issues found:\n' + issues.join('\n'));
+            }
         } else {
-            showSuccess('Workflow syntax is valid ✓');
+            if (window.toastManager) {
+                toastManager.success('Workflow syntax is valid ✓');
+            }
         }
     } catch (error) {
-        showError('Validation error: ' + error.message);
+        if (window.toastManager) {
+            toastManager.error('Validation error: ' + error.message);
+        }
     }
 }
 
@@ -638,17 +588,20 @@ async function saveWorkflow() {
     const isActive = document.getElementById('addWorkflowActive').checked;
 
     if (!name || !path) {
-        showError('Name and path are required');
+        if (window.toastManager) {
+            toastManager.error('Name and path are required');
+        }
         return;
     }
 
-    const textarea = document.getElementById('code-editor-textarea');
-    if (!textarea) {
-        showError('Code editor not found');
+    if (!workflowCodeEditor) {
+        if (window.toastManager) {
+            toastManager.error('Code editor not initialized');
+        }
         return;
     }
 
-    const content = textarea.value;
+    const content = workflowCodeEditor.getValue();
 
     try {
         await API.post('/api/v1/sloths', {
@@ -876,10 +829,9 @@ async function editWorkflow(name) {
         document.getElementById('addWorkflowActive').checked = sloth.is_active;
         document.getElementById('modal-title-text').textContent = 'Edit Workflow';
 
-        // Set content in textarea
-        const textarea = document.getElementById('code-editor-textarea');
-        if (textarea) {
-            textarea.value = sloth.content || '';
+        // Set content in code editor
+        if (workflowCodeEditor) {
+            workflowCodeEditor.setValue(sloth.content || '');
         }
 
         const modal = new bootstrap.Modal(document.getElementById('addWorkflowModal'));
