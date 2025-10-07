@@ -190,19 +190,33 @@ func startAgent(ctx *commands.AppContext, port int, masterAddr, agentName string
 
 // configureAgentRuntimeOptimizations applies Go runtime optimizations for agents
 func configureAgentRuntimeOptimizations() {
-	// Limit to 2 CPU cores for agent (reduces CPU usage)
-	runtime.GOMAXPROCS(2)
+	// ULTRA EXTREME optimization: Single-threaded agent (agent operations are mostly I/O bound)
+	runtime.GOMAXPROCS(1)
 
-	// More aggressive GC (50% vs 100% default)
-	debug.SetGCPercent(50)
+	// ULTRA aggressive GC (20% vs 100% default) - maximum memory pressure
+	debug.SetGCPercent(20)
 
-	// Set memory limit to 100MB (agents should stay well under this)
-	debug.SetMemoryLimit(100 * 1024 * 1024)
+	// ULTRA STRICT memory limit to 35MB (force very aggressive collection)
+	debug.SetMemoryLimit(35 * 1024 * 1024)
 
-	slog.Info("Agent runtime optimizations applied",
-		"max_procs", 2,
-		"gc_percent", 50,
-		"memory_limit_mb", 100)
+	// Force immediate GC to start with clean slate
+	runtime.GC()
+
+	// Start background GC ticker to maintain low memory
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			runtime.GC()
+			debug.FreeOSMemory()
+		}
+	}()
+
+	slog.Info("Agent runtime optimizations applied (ULTRA EXTREME mode)",
+		"max_procs", 1,
+		"gc_percent", 20,
+		"memory_limit_mb", 35,
+		"periodic_gc", "30s")
 }
 
 func startMasterConnection(ctx *commands.AppContext, masterAddr, agentName, agentReportAddress string) {

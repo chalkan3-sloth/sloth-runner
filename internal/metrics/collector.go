@@ -181,16 +181,17 @@ func (c *Collector) collectAllMetrics(ctx context.Context, agents []AgentInfo) {
 	c.agentCache.Unlock()
 }
 
-// collectAgentMetrics collects metrics from a single agent
+// collectAgentMetrics collects metrics from a single agent (optimized)
 func (c *Collector) collectAgentMetrics(ctx context.Context, agent AgentInfo) {
 	// Get resource usage from agent
+	// Note: Connection pooling happens at gRPC layer automatically
 	resp, err := c.agentClient.GetResourceUsage(ctx, agent.Address)
 	if err != nil {
 		slog.Warn("Failed to collect metrics from agent", "agent", agent.Name, "address", agent.Address, "error", err)
 		return
 	}
 
-	slog.Info("Got metrics from agent", "agent", agent.Name, "cpu", resp.CpuPercent, "memory", resp.MemoryPercent)
+	slog.Debug("Got metrics from agent", "agent", agent.Name, "cpu", resp.CpuPercent, "memory", resp.MemoryPercent)
 
 	// Create metric point
 	metric := MetricPoint{
@@ -205,13 +206,13 @@ func (c *Collector) collectAgentMetrics(ctx context.Context, agent AgentInfo) {
 		ProcessCount:    int(resp.ProcessCount),
 	}
 
-	// Store in database
+	// Store in database (batched)
 	if err := c.metricsDB.StoreMetric(ctx, agent.Name, metric); err != nil {
 		slog.Error("Failed to store metric", "agent", agent.Name, "error", err)
 		return
 	}
 
-	slog.Info("✅ Stored metric in database", "agent", agent.Name,
+	slog.Debug("✅ Stored metric in database", "agent", agent.Name,
 		"cpu", resp.CpuPercent, "memory", resp.MemoryPercent)
 }
 
