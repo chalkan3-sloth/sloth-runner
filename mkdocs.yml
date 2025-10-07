@@ -160,6 +160,11 @@ nav:
     - '🗂️ Stack Management': 'en/stack-management'
     - '🎯 Advanced Features': 'en/advanced-features'
     - '⚡ Performance & Optimization 🔥': 'en/performance'
+    - '📖 Documentação Completa (PT) 🇧🇷':
+      - '🎯 Todas as Funcionalidades': 'pt/funcionalidades-completas'
+      - '📋 Referência CLI': 'pt/referencia-cli'
+      - '🔧 Todos os Módulos': 'pt/modulos-completos'
+      - '🎨 Web UI': 'pt/web-ui-completo'
   - '🏗️ Architecture':
     - '📐 System Architecture 🔥': 'architecture/sloth-runner-architecture'
     - '⚡ Hooks & Events System 🔥': 'architecture/hooks-events-system'
@@ -230,6 +235,11 @@ nav:
     - 'Installation': 'en/getting-started'
     - 'Core Concepts': 'en/core-concepts'
     - 'Quick Start': 'en/quick-start'
+    - '📚 Complete Documentation 🔥':
+      - '🎯 All Features': 'en/features-complete'
+      - '📋 CLI Reference': 'en/cli-reference'
+      - '🔧 All Modules': 'en/modules-complete'
+      - '🎨 Web UI Guide': 'en/web-ui-complete'
     - 'AI Features': 'en/ai-features'
     - 'GitOps': 'en/gitops-features'
     - 'Enterprise': 'en/enterprise-features'
@@ -245,6 +255,11 @@ nav:
   - '🇧🇷 Português':
     - 'Instalação': 'pt/getting-started'
     - 'Conceitos': 'pt/core-concepts'
+    - '📚 Documentação Completa 🔥':
+      - '🎯 Todas as Funcionalidades': 'pt/funcionalidades-completas'
+      - '📋 Referência CLI Completa': 'pt/referencia-cli'
+      - '🔧 Todos os Módulos': 'pt/modulos-completos'
+      - '🎨 Web UI Completo': 'pt/web-ui-completo'
     - 'CLI': 'pt/CLI'
     - 'REPL': 'pt/repl'
     - 'Avançado': 'pt/advanced-features'
@@ -260,6 +275,11 @@ nav:
   - '🇨🇳 中文':
     - '安装': 'zh/getting-started'
     - '核心概念': 'zh/core-concepts'
+    - '📚 完整文档 🔥':
+      - '🎯 所有功能': 'zh/features-complete'
+      - '📋 CLI 参考': 'zh/cli-reference'
+      - '🔧 所有模块': 'zh/modules-complete'
+      - '🎨 Web UI 指南': 'zh/web-ui-complete'
     - 'CLI': 'zh/CLI'
     - 'REPL': 'zh/repl'
     - '高级功能': 'zh/advanced-features'

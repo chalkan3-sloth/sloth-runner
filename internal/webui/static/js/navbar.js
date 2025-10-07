@@ -16,6 +16,16 @@ const SlothNavbar = {
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
+                    <!-- Search Bar -->
+                    <div class="navbar-search mx-3">
+                        <div class="search-container">
+                            <i class="bi bi-search search-icon"></i>
+                            <input type="search" id="navbar-search" class="form-control" placeholder="Search... (Ctrl+K)" autocomplete="off">
+                            <kbd class="search-shortcut">⌘K</kbd>
+                        </div>
+                        <div id="search-results" class="search-results"></div>
+                    </div>
+
                     <ul class="navbar-nav me-auto">
                         <li class="nav-item">
                             <a class="nav-link" href="/" data-page="index">
@@ -126,12 +136,97 @@ const SlothNavbar = {
                 }
             }
         }
+    },
+
+    // Initialize search functionality
+    initSearch: function() {
+        const searchInput = document.getElementById('navbar-search');
+        const searchResults = document.getElementById('search-results');
+
+        if (!searchInput) return;
+
+        // Search index
+        const searchIndex = [
+            { title: 'Dashboard', url: '/', icon: 'speedometer2', description: 'Overview and system status' },
+            { title: 'Agents', url: '/agents', icon: 'hdd-network', description: 'Manage remote agents' },
+            { title: 'Agent Control', url: '/agent-control', icon: 'gear', description: 'Control and monitor agents' },
+            { title: 'Workflows', url: '/workflows', icon: 'diagram-3', description: 'Manage workflows and tasks' },
+            { title: 'Stacks', url: '/stacks', icon: 'layers', description: 'Infrastructure stacks' },
+            { title: 'Hooks', url: '/hooks', icon: 'hook', description: 'Event hooks and triggers' },
+            { title: 'Events', url: '/events', icon: 'bell', description: 'System events log' },
+            { title: 'Secrets', url: '/secrets', icon: 'shield-lock', description: 'Manage secrets and credentials' },
+            { title: 'SSH Profiles', url: '/ssh', icon: 'key', description: 'SSH connection profiles' },
+            { title: 'Executions', url: '/executions', icon: 'play-circle', description: 'Workflow executions history' },
+            { title: 'Scheduler', url: '/scheduler', icon: 'calendar-event', description: 'Schedule tasks and workflows' },
+            { title: 'Terminal', url: '/terminal', icon: 'terminal', description: 'Web-based terminal' },
+            { title: 'Metrics', url: '/metrics', icon: 'speedometer', description: 'System metrics and monitoring' },
+            { title: 'Logs', url: '/logs', icon: 'file-text', description: 'Application logs' },
+            { title: 'Backup', url: '/backup', icon: 'server', description: 'Backup and restore' }
+        ];
+
+        // Search function
+        const performSearch = window.debounce((query) => {
+            if (!query || query.length < 2) {
+                searchResults.classList.remove('show');
+                return;
+            }
+
+            const results = searchIndex.filter(item =>
+                item.title.toLowerCase().includes(query.toLowerCase()) ||
+                item.description.toLowerCase().includes(query.toLowerCase())
+            ).slice(0, 5);
+
+            if (results.length === 0) {
+                searchResults.innerHTML = '<div class="search-no-results">No results found</div>';
+            } else {
+                searchResults.innerHTML = results.map(item => `
+                    <a href="${item.url}" class="search-result-item">
+                        <i class="bi bi-${item.icon}"></i>
+                        <div class="search-result-content">
+                            <div class="search-result-title">${item.title}</div>
+                            <div class="search-result-description">${item.description}</div>
+                        </div>
+                    </a>
+                `).join('');
+            }
+
+            searchResults.classList.add('show');
+        }, 300);
+
+        // Event listeners
+        searchInput.addEventListener('input', (e) => performSearch(e.target.value));
+
+        searchInput.addEventListener('focus', () => {
+            if (searchInput.value.length >= 2) {
+                searchResults.classList.add('show');
+            }
+        });
+
+        // Close on click outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.navbar-search')) {
+                searchResults.classList.remove('show');
+            }
+        });
+
+        // Keyboard navigation
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                searchResults.classList.remove('show');
+                searchInput.blur();
+            }
+        });
     }
 };
 
 // Auto-initialize when DOM is ready
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => SlothNavbar.init());
+    document.addEventListener('DOMContentLoaded', () => {
+        SlothNavbar.init();
+        setTimeout(() => SlothNavbar.initSearch(), 100);
+    });
 } else {
     SlothNavbar.init();
+    setTimeout(() => SlothNavbar.initSearch(), 100);
 }
+

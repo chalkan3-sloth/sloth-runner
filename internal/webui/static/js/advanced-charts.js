@@ -558,3 +558,6 @@ const advancedCharts = new AdvancedCharts();
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = AdvancedCharts;
 }
+
+// Export globally
+window.advancedCharts = advancedCharts;

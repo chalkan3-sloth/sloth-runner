@@ -1,0 +1,233 @@
+/* ===================================
+   Activity Feed Styling
+   =================================== */
+
+.activity-feed {
+    background: var(--bg-primary);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.activity-feed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.activity-feed-header h6 {
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-primary);
+}
+
+.activity-feed-header h6 i {
+    color: #4F46E5;
+}
+
+.activity-feed-controls {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.activity-feed-controls .btn {
+    padding: 0.25rem 0.5rem;
+    color: var(--text-muted);
+}
+
+.activity-feed-controls .btn:hover {
+    color: var(--text-primary);
+}
+
+.activity-feed-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.activity-feed-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.activity-feed-list::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+.activity-feed-list::-webkit-scrollbar-thumb {
+    background: var(--text-muted);
+    border-radius: 3px;
+}
+
+.activity-feed-list::-webkit-scrollbar-thumb:hover {
+    background: var(--text-primary);
+}
+
+.activity-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    animation: slideInRight 0.3s ease;
+    border-left: 3px solid transparent;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.activity-item:hover {
+    background: var(--bg-hover);
+    transform: translateX(4px);
+}
+
+.activity-item.activity-success {
+    border-left-color: #10b981;
+}
+
+.activity-item.activity-error {
+    border-left-color: #ef4444;
+}
+
+.activity-item.activity-warning {
+    border-left-color: #f59e0b;
+}
+
+.activity-item.activity-info {
+    border-left-color: #48dbfb;
+}
+
+.activity-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1rem;
+}
+
+.activity-icon-success {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+}
+
+.activity-icon-error {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.activity-icon-warning {
+    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+}
+
+.activity-icon-info {
+    background: rgba(72, 219, 251, 0.1);
+    color: #48dbfb;
+}
+
+.activity-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.activity-message {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+    line-height: 1.4;
+}
+
+.activity-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.activity-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    padding: 0.25rem;
+    border-radius: 4px;
+}
+
+.activity-link:hover {
+    color: #4F46E5;
+    background: rgba(79, 70, 229, 0.1);
+}
+
+.activity-feed-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-muted);
+}
+
+.activity-feed-empty i {
+    font-size: 3rem;
+    opacity: 0.3;
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.activity-feed-footer {
+    padding: 0.75rem 1.25rem;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+}
+
+/* Compact variant */
+.activity-feed.compact .activity-item {
+    padding: 0.5rem;
+}
+
+.activity-feed.compact .activity-icon {
+    width: 24px;
+    height: 24px;
+    font-size: 0.85rem;
+}
+
+.activity-feed.compact .activity-message {
+    font-size: 0.85rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .activity-feed-header h6 {
+        font-size: 0.9rem;
+    }
+
+    .activity-item {
+        padding: 0.5rem;
+    }
+
+    .activity-icon {
+        width: 28px;
+        height: 28px;
+    }
+
+    .activity-message {
+        font-size: 0.85rem;
+    }
+}

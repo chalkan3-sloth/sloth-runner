@@ -1,0 +1,275 @@
+/* Dark Mode Styles for Sloth Runner */
+
+:root {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #e9ecef;
+    --text-primary: #212529;
+    --text-secondary: #6c757d;
+    --text-muted: #adb5bd;
+    --border-color: #dee2e6;
+    --card-bg: #ffffff;
+    --card-shadow: rgba(0, 0, 0, 0.1);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.3);
+}
+
+[data-theme="dark"] {
+    --bg-primary: #1a1d23;
+    --bg-secondary: #242830;
+    --bg-tertiary: #2d3139;
+    --text-primary: #e9ecef;
+    --text-secondary: #adb5bd;
+    --text-muted: #6c757d;
+    --border-color: #3d4149;
+    --card-bg: #242830;
+    --card-shadow: rgba(0, 0, 0, 0.3);
+    --glass-bg: rgba(36, 40, 48, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+/* Apply theme colors */
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.card,
+.modal-content {
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.card-header {
+    background-color: var(--card-bg);
+    border-bottom-color: var(--border-color);
+}
+
+.table {
+    color: var(--text-primary);
+}
+
+.table > :not(caption) > * > * {
+    background-color: transparent;
+    border-bottom-color: var(--border-color);
+}
+
+.table-hover > tbody > tr:hover {
+    --bs-table-hover-bg: var(--bg-tertiary);
+}
+
+/* Glass cards in dark mode */
+[data-theme="dark"] .glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+}
+
+/* Text colors */
+.text-muted {
+    color: var(--text-secondary) !important;
+}
+
+/* Form controls */
+.form-control,
+.form-select {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Dropdown menus */
+.dropdown-menu {
+    background-color: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+.dropdown-item {
+    color: var(--text-primary);
+}
+
+.dropdown-item:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+/* Alerts */
+[data-theme="dark"] .alert-info {
+    background-color: rgba(13, 202, 240, 0.1);
+    border-color: rgba(13, 202, 240, 0.2);
+    color: #6edff6;
+}
+
+/* Breadcrumbs */
+.breadcrumb {
+    background-color: var(--bg-secondary);
+}
+
+.breadcrumb-item a {
+    color: var(--text-secondary);
+}
+
+.breadcrumb-item.active {
+    color: var(--text-primary);
+}
+
+/* Code blocks */
+pre,
+code {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+/* Empty state */
+.empty-state {
+    color: var(--text-secondary);
+}
+
+.empty-state i {
+    color: var(--text-muted);
+}
+
+/* Activity items */
+.activity-item {
+    border-bottom-color: var(--border-color);
+}
+
+/* Modals */
+.modal-header,
+.modal-footer {
+    border-color: var(--border-color);
+}
+
+/* Navbar */
+.navbar {
+    background-color: var(--card-bg) !important;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Theme toggle button */
+.theme-toggle {
+    position: relative;
+    width: 50px;
+    height: 26px;
+    background-color: var(--bg-tertiary);
+    border-radius: 50px;
+    border: 2px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.theme-toggle::before {
+    content: '☀️';
+    position: absolute;
+    top: 50%;
+    left: 3px;
+    transform: translateY(-50%);
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+[data-theme="dark"] .theme-toggle::before {
+    content: '🌙';
+    left: calc(100% - 22px);
+}
+
+.theme-toggle:hover {
+    background-color: var(--bg-secondary);
+}
+
+/* Skeleton loaders in dark mode */
+[data-theme="dark"] .skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--bg-tertiary) 25%,
+        var(--bg-secondary) 50%,
+        var(--bg-tertiary) 75%
+    );
+    background-size: 200% 100%;
+}
+
+/* Toast notifications in dark mode */
+[data-theme="dark"] .toast-container .toast {
+    background-color: var(--card-bg);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+/* Stat cards shadows */
+.stat-card {
+    box-shadow: 0 2px 8px var(--card-shadow);
+}
+
+/* Borders */
+hr {
+    border-color: var(--border-color);
+    opacity: 1;
+}
+
+/* Input placeholders */
+.form-control::placeholder,
+.form-select::placeholder {
+    color: var(--text-muted);
+}
+
+/* Agent cards */
+.agent-card {
+    border-left-color: var(--bs-primary);
+}
+
+.agent-card.inactive {
+    border-left-color: var(--text-muted);
+}
+
+/* Scroll bar in dark mode */
+[data-theme="dark"]::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+[data-theme="dark"]::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"]::-webkit-scrollbar-thumb {
+    background: var(--bg-tertiary);
+    border-radius: 5px;
+}
+
+[data-theme="dark"]::-webkit-scrollbar-thumb:hover {
+    background: #3d4149;
+}
+
+/* Chart.js dark mode */
+[data-theme="dark"] canvas {
+    filter: brightness(0.9);
+}
+
+/* Badge adjustments for dark mode */
+[data-theme="dark"] .badge {
+    border: 1px solid var(--border-color);
+}
+
+/* Smooth theme transitions */
+* {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+}
+
+/* Prevent flash of wrong theme */
+html:not([data-theme]) {
+    visibility: hidden;
+}
+
+html[data-theme] {
+    visibility: visible;
+}
