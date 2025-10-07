@@ -27,7 +27,7 @@ type agentRegistryServer struct {
 // newAgentRegistryServer creates a new agentRegistryServer.
 func newAgentRegistryServer() *agentRegistryServer {
 	// Create SQLite database for agents
-	dbPath := filepath.Join(".", ".sloth-cache", "agents.db")
+	dbPath := filepath.Join(GetSlothRunnerDataDir(), "agents.db")
 	db, err := NewAgentDB(dbPath)
 	if err != nil {
 		pterm.Error.Printf("Failed to initialize agent database: %v\n", err)
@@ -42,15 +42,14 @@ func newAgentRegistryServer() *agentRegistryServer {
 		}
 	}
 
-	// Initialize hook dispatcher
+	// Initialize global hook dispatcher and wire up event system
 	var dispatcher *hooks.Dispatcher
-	hookRepo, err := hooks.NewRepository()
-	if err != nil {
-		pterm.Error.Printf("Failed to initialize hook repository: %v\n", err)
+	if err := InitializeHookSystem(); err != nil {
+		pterm.Error.Printf("Failed to initialize hook system: %v\n", err)
 		pterm.Info.Println("Hooks will be disabled")
 	} else {
-		dispatcher = hooks.NewDispatcher(hookRepo)
-		pterm.Success.Println("Hook dispatcher initialized")
+		dispatcher = hooks.GetGlobalDispatcher()
+		pterm.Success.Println("Hook system initialized")
 	}
 
 	return &agentRegistryServer{

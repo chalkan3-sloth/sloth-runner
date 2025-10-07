@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/chalkan3-sloth/sloth-runner/internal/hooks"
@@ -109,6 +110,53 @@ func (w *AgentDBWrapper) GetStats(ctx context.Context) (map[string]interface{}, 
 	stats["total"] = total
 
 	return stats, nil
+}
+
+// SaveMetrics saves agent metrics to history
+func (w *AgentDBWrapper) SaveMetrics(ctx context.Context, agentName string, cpuPercent, memoryPercent, diskPercent, loadAvg1, loadAvg5, loadAvg15 float64) error {
+	query := `INSERT INTO agent_metrics_history
+		(agent_name, timestamp, cpu_percent, memory_percent, disk_percent, load_avg_1min, load_avg_5min, load_avg_15min)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+
+	_, err := w.db.ExecContext(ctx, query, agentName, time.Now().Unix(), cpuPercent, memoryPercent, diskPercent, loadAvg1, loadAvg5, loadAvg15)
+	return err
+}
+
+// GetMetricsHistory retrieves metrics history for an agent
+func (w *AgentDBWrapper) GetMetricsHistory(ctx context.Context, agentName string, limit int) ([]map[string]interface{}, error) {
+	query := `SELECT timestamp, cpu_percent, memory_percent, disk_percent, load_avg_1min, load_avg_5min, load_avg_15min
+		FROM agent_metrics_history
+		WHERE agent_name = ?
+		ORDER BY timestamp DESC
+		LIMIT ?`
+
+	rows, err := w.db.QueryContext(ctx, query, agentName, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var history []map[string]interface{}
+	for rows.Next() {
+		var timestamp int64
+		var cpu, memory, disk, load1, load5, load15 float64
+
+		if err := rows.Scan(&timestamp, &cpu, &memory, &disk, &load1, &load5, &load15); err != nil {
+			return nil, err
+		}
+
+		history = append(history, map[string]interface{}{
+			"timestamp":      timestamp,
+			"cpu_percent":    cpu,
+			"memory_percent": memory,
+			"disk_percent":   disk,
+			"load_avg_1min":  load1,
+			"load_avg_5min":  load5,
+			"load_avg_15min": load15,
+		})
+	}
+
+	return history, nil
 }
 
 // Close closes the database connection

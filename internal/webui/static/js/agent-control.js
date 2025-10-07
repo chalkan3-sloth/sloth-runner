@@ -10,11 +10,56 @@ document.addEventListener('DOMContentLoaded', () => {
     initWebSocket();
     loadAgents();
     setInterval(loadAgents, 5000); // Refresh every 5 seconds
+
+    // Add tab event listeners
+    setupTabListeners();
 });
+
+function setupTabListeners() {
+    // Wait for modal to be in DOM
+    setTimeout(() => {
+        const processesTab = document.getElementById('processes-tab-btn');
+        const networkTab = document.getElementById('network-tab-btn');
+        const diskTab = document.getElementById('disk-tab-btn');
+        const logsTab = document.getElementById('logs-tab-btn');
+
+        if (processesTab) {
+            processesTab.addEventListener('shown.bs.tab', () => {
+                if (currentAgentName) {
+                    loadAgentProcesses(currentAgentName);
+                }
+            });
+        }
+
+        if (networkTab) {
+            networkTab.addEventListener('shown.bs.tab', () => {
+                if (currentAgentName) {
+                    loadAgentNetwork(currentAgentName);
+                }
+            });
+        }
+
+        if (diskTab) {
+            diskTab.addEventListener('shown.bs.tab', () => {
+                if (currentAgentName) {
+                    loadAgentDisk(currentAgentName);
+                }
+            });
+        }
+
+        if (logsTab) {
+            logsTab.addEventListener('shown.bs.tab', () => {
+                if (currentAgentName) {
+                    loadAgentLogs(currentAgentName);
+                }
+            });
+        }
+    }, 100);
+}
 
 function initWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+    ws = new WebSocket(`${protocol}//${window.location.host}/api/v1/ws`);
 
     ws.onopen = () => {
         console.log('WebSocket connected');
@@ -68,8 +113,8 @@ function renderAgents() {
     let filteredAgents = agents;
     if (currentFilter !== 'all') {
         filteredAgents = agents.filter(agent => {
-            if (currentFilter === 'online') return agent.status === 'connected';
-            if (currentFilter === 'offline') return agent.status !== 'connected';
+            if (currentFilter === 'online') return agent.status === 'Active' || agent.status === 'connected';
+            if (currentFilter === 'offline') return agent.status !== 'Active' && agent.status !== 'connected';
             if (currentFilter === 'warning') return agent.cpu_percent > 70 || agent.memory_percent > 70;
             if (currentFilter === 'error') return agent.cpu_percent > 90 || agent.memory_percent > 90;
             return true;
@@ -90,7 +135,7 @@ function renderAgents() {
 }
 
 function renderAgentCard(agent) {
-    const isOnline = agent.status === 'connected';
+    const isOnline = agent.status === 'Active' || agent.status === 'connected';
     const cpuPercent = agent.cpu_percent || 0;
     const memoryPercent = agent.memory_percent || 0;
     const isSelected = selectedAgents.has(agent.name);
@@ -166,6 +211,10 @@ function renderAgentCard(agent) {
                 ` : ''}
 
                 <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-primary agent-action-btn flex-fill"
+                            onclick="window.location.href='/agent-dashboard?agent=${agent.name}'" ${!isOnline ? 'disabled' : ''}>
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </button>
                     <button class="btn btn-sm btn-primary agent-action-btn flex-fill"
                             onclick="openAgentDetail('${agent.name}')" ${!isOnline ? 'disabled' : ''}>
                         <i class="bi bi-eye"></i> Details
@@ -421,8 +470,8 @@ async function loadAgentOverview(agentName) {
             }
         });
 
-        // Generate mock history data for demonstration
-        const historyData = generateMockHistory(data);
+        // Load real historical data from API
+        const historyData = await loadMetricsHistory(agentName);
 
         const historyChart = new Chart(document.getElementById('history-chart'), {
             type: 'line',
@@ -495,6 +544,46 @@ async function loadAgentOverview(agentName) {
         if (content) {
             content.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
         }
+    }
+}
+
+async function loadMetricsHistory(agentName) {
+    try {
+        const response = await fetch(`/api/v1/agents/${agentName}/metrics/history?limit=50`);
+        if (!response.ok) {
+            console.warn('Could not load metrics history, using mock data');
+            return generateMockHistory({ cpu_percent: 0, memory_percent: 0, disk_percent: 0 });
+        }
+
+        const data = await response.json();
+        const history = data.history || [];
+
+        // If no history data, generate mock data
+        if (history.length === 0) {
+            console.warn('No metrics history available, using mock data');
+            return generateMockHistory({ cpu_percent: 0, memory_percent: 0, disk_percent: 0 });
+        }
+
+        // Sort by timestamp ascending (oldest first)
+        history.sort((a, b) => a.timestamp - b.timestamp);
+
+        const labels = [];
+        const cpu = [];
+        const memory = [];
+        const disk = [];
+
+        history.forEach(point => {
+            const date = new Date(point.timestamp * 1000);
+            labels.push(date.toLocaleTimeString());
+            cpu.push(point.cpu_percent || 0);
+            memory.push(point.memory_percent || 0);
+            disk.push(point.disk_percent || 0);
+        });
+
+        return { labels, cpu, memory, disk };
+    } catch (error) {
+        console.error('Error loading metrics history:', error);
+        return generateMockHistory({ cpu_percent: 0, memory_percent: 0, disk_percent: 0 });
     }
 }
 
@@ -752,4 +841,259 @@ function appendLogEntry(log) {
         logsStream.innerHTML += `[${timestamp}] [${log.level}] ${log.message}\n`;
         logsStream.scrollTop = logsStream.scrollHeight;
     }
+}
+
+// Load agent processes when Processes tab is clicked
+async function loadAgentProcesses(agentName) {
+    try {
+        const response = await fetch(`/api/v1/agents/${agentName}/processes`);
+        const data = await response.json();
+
+        const content = document.getElementById('agent-processes-content');
+
+        if (!data.processes || data.processes.length === 0) {
+            content.innerHTML = '<div class="alert alert-info">No processes found</div>';
+            return;
+        }
+
+        content.innerHTML = `
+            <table class="table table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>PID</th>
+                        <th>Name</th>
+                        <th>CPU %</th>
+                        <th>Memory %</th>
+                        <th>Status</th>
+                        <th>User</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.processes.map(proc => `
+                        <tr>
+                            <td>${proc.pid}</td>
+                            <td><code>${proc.name || 'N/A'}</code></td>
+                            <td>${proc.cpu_percent?.toFixed(1) || '0.0'}%</td>
+                            <td>${proc.memory_percent?.toFixed(1) || '0.0'}%</td>
+                            <td><span class="badge bg-success">${proc.status || 'running'}</span></td>
+                            <td>${proc.username || 'N/A'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } catch (error) {
+        console.error('Error loading processes:', error);
+        document.getElementById('agent-processes-content').innerHTML =
+            `<div class="alert alert-danger">Error loading processes: ${error.message}</div>`;
+    }
+}
+
+// Load agent network info when Network tab is clicked
+async function loadAgentNetwork(agentName) {
+    try {
+        const response = await fetch(`/api/v1/agents/${agentName}/network`);
+        const data = await response.json();
+
+        const content = document.getElementById('agent-network-content');
+
+        if (!data.interfaces || data.interfaces.length === 0) {
+            content.innerHTML = '<div class="alert alert-info">No network interfaces found</div>';
+            return;
+        }
+
+        content.innerHTML = `
+            <div class="row">
+                <div class="col-12">
+                    <h6>Network Interfaces</h6>
+                    ${data.interfaces.map(iface => `
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h6>${iface.name}</h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <table class="table table-sm">
+                                            <tr>
+                                                <td>IP Address:</td>
+                                                <td><strong>${iface.addrs?.join(', ') || 'N/A'}</strong></td>
+                                            </tr>
+                                            <tr>
+                                                <td>MAC Address:</td>
+                                                <td><code>${iface.hardware_addr || 'N/A'}</code></td>
+                                            </tr>
+                                            <tr>
+                                                <td>MTU:</td>
+                                                <td>${iface.mtu || 'N/A'}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Status:</td>
+                                                <td><span class="badge bg-${iface.flags?.includes('up') ? 'success' : 'secondary'}">${iface.flags?.join(', ') || 'N/A'}</span></td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <table class="table table-sm">
+                                            <tr>
+                                                <td>Bytes Sent:</td>
+                                                <td><strong>${formatBytes(iface.bytes_sent)}</strong></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Bytes Received:</td>
+                                                <td><strong>${formatBytes(iface.bytes_recv)}</strong></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Packets Sent:</td>
+                                                <td>${iface.packets_sent || 0}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Packets Received:</td>
+                                                <td>${iface.packets_recv || 0}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error loading network info:', error);
+        document.getElementById('agent-network-content').innerHTML =
+            `<div class="alert alert-danger">Error loading network info: ${error.message}</div>`;
+    }
+}
+
+// Load agent disk info when Disk tab is clicked
+async function loadAgentDisk(agentName) {
+    try {
+        const response = await fetch(`/api/v1/agents/${agentName}/disk`);
+        const data = await response.json();
+
+        const content = document.getElementById('agent-disk-content');
+
+        if (!data.partitions || data.partitions.length === 0) {
+            content.innerHTML = '<div class="alert alert-info">No disk partitions found</div>';
+            return;
+        }
+
+        content.innerHTML = `
+            <div class="row">
+                ${data.partitions.map(partition => {
+                    const usedPercent = partition.usage?.percent || 0;
+                    const usedClass = usedPercent > 80 ? 'danger' : usedPercent > 60 ? 'warning' : 'success';
+
+                    return `
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6><i class="bi bi-hdd"></i> ${partition.mountpoint}</h6>
+                                    <table class="table table-sm">
+                                        <tr>
+                                            <td>Device:</td>
+                                            <td><code>${partition.device || 'N/A'}</code></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Filesystem:</td>
+                                            <td>${partition.fstype || 'N/A'}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Total:</td>
+                                            <td><strong>${formatBytes(partition.usage?.total)}</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Used:</td>
+                                            <td><strong>${formatBytes(partition.usage?.used)}</strong></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Free:</td>
+                                            <td><strong>${formatBytes(partition.usage?.free)}</strong></td>
+                                        </tr>
+                                    </table>
+                                    <div class="progress" style="height: 25px;">
+                                        <div class="progress-bar bg-${usedClass}" style="width: ${usedPercent}%">
+                                            ${usedPercent.toFixed(1)}%
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error loading disk info:', error);
+        document.getElementById('agent-disk-content').innerHTML =
+            `<div class="alert alert-danger">Error loading disk info: ${error.message}</div>`;
+    }
+}
+
+// Load agent logs when Logs tab is clicked
+async function loadAgentLogs(agentName) {
+    const logsStream = document.getElementById('logs-stream');
+    logsStream.textContent = '📡 Connecting to log stream...\n\n';
+
+    try {
+        // Close previous EventSource if exists
+        if (window.agentLogStreams && window.agentLogStreams[agentName]) {
+            window.agentLogStreams[agentName].close();
+        }
+
+        const url = `/api/v1/agents/${agentName}/logs/stream`;
+        const eventSource = new EventSource(url);
+
+        eventSource.onopen = () => {
+            logsStream.innerHTML += '✅ Connected to log stream. Waiting for logs...\n\n';
+        };
+
+        eventSource.onmessage = (event) => {
+            try {
+                const log = JSON.parse(event.data);
+                const timestamp = new Date(log.timestamp * 1000).toLocaleTimeString();
+                const levelColors = {
+                    'ERROR': '#EF4444',
+                    'WARN': '#F59E0B',
+                    'INFO': '#10B981',
+                    'DEBUG': '#3B82F6'
+                };
+                const color = levelColors[log.level] || '#9CA3AF';
+                logsStream.innerHTML += `<span style="color: #6B7280;">[${timestamp}]</span> <span style="color: ${color}; font-weight: bold;">[${log.level}]</span> ${escapeHtml(log.message)}\n`;
+                logsStream.scrollTop = logsStream.scrollHeight;
+            } catch (e) {
+                // If not JSON, just append as plain text
+                logsStream.innerHTML += escapeHtml(event.data) + '\n';
+                logsStream.scrollTop = logsStream.scrollHeight;
+            }
+        };
+
+        eventSource.onerror = (error) => {
+            console.error('EventSource error:', error);
+            logsStream.innerHTML += '\n❌ Log stream error or disconnected\n';
+            eventSource.close();
+        };
+
+        // Store EventSource reference
+        if (!window.agentLogStreams) {
+            window.agentLogStreams = {};
+        }
+        window.agentLogStreams[agentName] = eventSource;
+
+    } catch (error) {
+        console.error('Error loading logs:', error);
+        logsStream.textContent = `Error loading logs: ${error.message}`;
+    }
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
 }

@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands"
+	"github.com/chalkan3-sloth/sloth-runner/internal/config"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 	_ "github.com/mattn/go-sqlite3"
@@ -69,7 +69,7 @@ func NewListCommand(ctx *commands.AppContext) *cobra.Command {
 // listAgentsFromLocalDB reads agents directly from the local SQLite database
 func listAgentsFromLocalDB(debug bool) error {
 	// Database path
-	dbPath := filepath.Join(".", ".sloth-cache", "agents.db")
+	dbPath := config.GetAgentDBPath()
 
 	// Check if database exists
 	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
