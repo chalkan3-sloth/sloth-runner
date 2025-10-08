@@ -1,0 +1,64 @@
+-- Test 01: File Watcher - Created, Changed, Deleted
+-- Este teste valida que file watchers detectam criação, modificação e deleção de arquivos
+
+workflow("file_watcher_test")
+    :description("Test file watcher with create, change, delete events")
+    :tasks({
+        task("setup_and_test")
+            :delegate_to("lady-guica")
+            :shell([[
+                echo "🧪 Test 01: File Watcher - Create/Change/Delete"
+                echo "=============================================="
+
+                # Limpar arquivo de teste se existir
+                rm -f /tmp/watcher_test_file.txt
+
+                echo "✓ Setup complete"
+            ]])
+            :on_complete(function()
+                print("📝 Registering file watcher...")
+
+                -- Registrar watcher para o arquivo de teste
+                local watcher_id = watcher.register.file({
+                    file_path = '/tmp/watcher_test_file.txt',
+                    when = {'created', 'changed', 'deleted'},
+                    check_hash = true,
+                    interval = '2s'
+                })
+
+                print("✓ File watcher registered: " .. watcher_id)
+                print("⏳ Watcher will monitor: /tmp/watcher_test_file.txt")
+                print("⏳ Checking every 2 seconds for: created, changed, deleted")
+            end),
+
+        task("trigger_events")
+            :delegate_to("lady-guica")
+            :depends_on("setup_and_test")
+            :shell([[
+                echo ""
+                echo "🔄 Triggering file events..."
+                echo "----------------------------"
+
+                # Esperar watchers serem registrados
+                sleep 3
+
+                # Evento 1: CREATE
+                echo "1️⃣  Creating file..."
+                echo "Initial content" > /tmp/watcher_test_file.txt
+                sleep 3
+
+                # Evento 2: CHANGE
+                echo "2️⃣  Modifying file..."
+                echo "Modified content" >> /tmp/watcher_test_file.txt
+                sleep 3
+
+                # Evento 3: DELETE
+                echo "3️⃣  Deleting file..."
+                rm -f /tmp/watcher_test_file.txt
+                sleep 3
+
+                echo ""
+                echo "✅ All file events triggered"
+                echo "⏳ Wait 10 seconds and check agent logs for events"
+            ]])
+    })

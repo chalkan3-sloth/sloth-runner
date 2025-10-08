@@ -178,10 +178,41 @@ func startAgent(ctx *commands.AppContext, port int, masterAddr, agentName string
 	}
 	pb.RegisterAgentServer(s, server)
 
+	// Initialize event worker to send events to master
+	var eventWorker *agentInternal.EventWorker
+	var watcherManager *agentInternal.EventWatcherManager
+	if masterAddr != "" {
+		eventWorker = agentInternal.NewEventWorker(agentInternal.EventWorkerConfig{
+			AgentName:     agentName,
+			MasterAddr:    masterAddr,
+			BatchSize:     50,
+			FlushInterval: 10 * time.Second,
+		})
+
+		if err := eventWorker.Start(); err != nil {
+			pterm.Warning.Printf("⚠ Failed to start event worker: %v\n", err)
+			slog.Warn("Event worker initialization failed", "error", err)
+		} else {
+			// Start system event monitoring (every 60 seconds)
+			eventWorker.MonitorSystemEvents(60 * time.Second)
+			pterm.Success.Println("✓ Event worker started - monitoring system events")
+
+			// Initialize watcher manager
+			watcherManager = agentInternal.NewEventWatcherManager(eventWorker)
+			pterm.Success.Println("✓ Event watcher manager initialized")
+			slog.Info("Event watcher manager ready to accept watchers")
+		}
+	}
+
 	pterm.Success.Printf("✓ Agent '%s' listening at %v\n", agentName, lis.Addr())
 	pterm.Info.Println("Optimizations enabled: 30s metrics cache, batched DB writes, process list caching")
 
 	slog.Info(fmt.Sprintf("Agent listening at %v", lis.Addr()))
+
+	// Store event worker and watcher manager in server for graceful shutdown
+	server.eventWorker = eventWorker
+	server.watcherManager = watcherManager
+
 	if err := s.Serve(lis); err != nil {
 		return fmt.Errorf("failed to serve: %v", err)
 	}

@@ -1269,3 +1269,441 @@ function populateMemoryDetails(statsData) {
         </div>
     `;
 }
+
+// ========== EVENTS TAB ==========
+async function loadAgentEvents() {
+    const currentAgentName = agentName || getAgentFromURL();
+    if (!currentAgentName) return;
+
+    const typeFilter = document.getElementById('event-type-filter')?.value || '';
+    const statusFilter = document.getElementById('event-status-filter')?.value || '';
+    const limit = document.getElementById('event-limit')?.value || '100';
+
+    try {
+        const params = new URLSearchParams({
+            agent: currentAgentName,
+            limit: limit
+        });
+
+        if (typeFilter) params.append('type', typeFilter);
+        if (statusFilter) params.append('status', statusFilter);
+
+        const response = await fetch(`/api/v1/events/by-agent?${params}`);
+        const data = await response.json();
+
+        // Update statistics
+        updateEventStats(data.stats || {});
+
+        // Render events
+        renderEvents(data.events || []);
+    } catch (error) {
+        console.error('Failed to load events:', error);
+        document.getElementById('events-content').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i>
+                Failed to load events: ${error.message}
+            </div>
+        `;
+    }
+}
+
+function updateEventStats(stats) {
+    document.getElementById('events-total').textContent = stats.total || 0;
+    document.getElementById('events-pending').textContent = stats.pending || 0;
+    document.getElementById('events-completed').textContent = stats.completed || 0;
+    document.getElementById('events-failed').textContent = stats.failed || 0;
+
+    // Update badge
+    const badge = document.getElementById('events-badge');
+    if (stats.total > 0) {
+        badge.textContent = stats.total;
+        badge.style.display = 'inline';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function renderEvents(events) {
+    const container = document.getElementById('events-content');
+
+    if (!events || events.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-bell-slash fs-1"></i>
+                <p class="mt-2">No events found for this agent</p>
+            </div>
+        `;
+        return;
+    }
+
+    const html = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Stack</th>
+                        <th>Run ID</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${events.map(event => renderEventRow(event)).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    container.innerHTML = html;
+}
+
+function renderEventRow(event) {
+    const status = event.status || 'unknown';
+    const statusBadge = getStatusBadge(status);
+    const typeBadge = getEventTypeBadge(event.type);
+    const timestamp = event.created_at ? new Date(event.created_at).toLocaleString() : '-';
+
+    return `
+        <tr>
+            <td><small>${timestamp}</small></td>
+            <td>${typeBadge}</td>
+            <td>${statusBadge}</td>
+            <td><code class="small">${event.stack || '-'}</code></td>
+            <td><small class="text-muted">${event.run_id ? event.run_id.substring(0, 8) : '-'}</small></td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="viewEventDetails('${event.id}')" title="View Details">
+                    <i class="bi bi-eye"></i>
+                </button>
+                ${status === 'failed' ? `
+                    <button class="btn btn-sm btn-outline-warning" onclick="retryEvent('${event.id}')" title="Retry">
+                        <i class="bi bi-arrow-clockwise"></i>
+                    </button>
+                ` : ''}
+            </td>
+        </tr>
+    `;
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        'pending': '<span class="badge bg-secondary">Pending</span>',
+        'processing': '<span class="badge bg-info">Processing</span>',
+        'completed': '<span class="badge bg-success">Completed</span>',
+        'failed': '<span class="badge bg-danger">Failed</span>'
+    };
+    return badges[status] || `<span class="badge bg-secondary">${status}</span>`;
+}
+
+function getEventTypeBadge(type) {
+    const icons = {
+        'task.started': '<i class="bi bi-play-circle text-primary"></i>',
+        'task.completed': '<i class="bi bi-check-circle text-success"></i>',
+        'task.failed': '<i class="bi bi-x-circle text-danger"></i>',
+        'file.created': '<i class="bi bi-file-plus text-success"></i>',
+        'file.changed': '<i class="bi bi-file-text text-warning"></i>',
+        'file.deleted': '<i class="bi bi-file-minus text-danger"></i>',
+        'process.started': '<i class="bi bi-play-fill text-info"></i>',
+        'process.stopped': '<i class="bi bi-stop-fill text-warning"></i>'
+    };
+
+    const icon = icons[type] || '<i class="bi bi-bell"></i>';
+    return `${icon} <span class="ms-1">${type}</span>`;
+}
+
+async function viewEventDetails(eventId) {
+    try {
+        const response = await fetch(`/api/v1/events/${eventId}`);
+        const event = await response.json();
+
+        // Show modal with event details
+        const modalHtml = `
+            <div class="modal fade" id="eventDetailsModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Event Details</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <dl class="row">
+                                <dt class="col-sm-3">ID</dt>
+                                <dd class="col-sm-9"><code>${event.id}</code></dd>
+
+                                <dt class="col-sm-3">Type</dt>
+                                <dd class="col-sm-9">${getEventTypeBadge(event.type)}</dd>
+
+                                <dt class="col-sm-3">Status</dt>
+                                <dd class="col-sm-9">${getStatusBadge(event.status)}</dd>
+
+                                <dt class="col-sm-3">Agent</dt>
+                                <dd class="col-sm-9">${event.agent || '-'}</dd>
+
+                                <dt class="col-sm-3">Stack</dt>
+                                <dd class="col-sm-9"><code>${event.stack || '-'}</code></dd>
+
+                                <dt class="col-sm-3">Run ID</dt>
+                                <dd class="col-sm-9"><code>${event.run_id || '-'}</code></dd>
+
+                                <dt class="col-sm-3">Created At</dt>
+                                <dd class="col-sm-9">${new Date(event.created_at).toLocaleString()}</dd>
+
+                                ${event.processed_at ? `
+                                    <dt class="col-sm-3">Processed At</dt>
+                                    <dd class="col-sm-9">${new Date(event.processed_at).toLocaleString()}</dd>
+                                ` : ''}
+
+                                ${event.error ? `
+                                    <dt class="col-sm-3">Error</dt>
+                                    <dd class="col-sm-9"><span class="text-danger">${event.error}</span></dd>
+                                ` : ''}
+
+                                <dt class="col-sm-3">Data</dt>
+                                <dd class="col-sm-9"><pre class="bg-light p-2 rounded">${JSON.stringify(event.data, null, 2)}</pre></dd>
+                            </dl>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Remove existing modal if any
+        const existingModal = document.getElementById('eventDetailsModal');
+        if (existingModal) existingModal.remove();
+
+        // Add modal to DOM
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('eventDetailsModal'));
+        modal.show();
+    } catch (error) {
+        console.error('Failed to load event details:', error);
+        alert('Failed to load event details');
+    }
+}
+
+async function retryEvent(eventId) {
+    if (!confirm('Are you sure you want to retry this event?')) return;
+
+    try {
+        const response = await fetch(`/api/v1/events/${eventId}/retry`, {
+            method: 'POST'
+        });
+
+        if (response.ok) {
+            showToast('Event queued for retry', 'success');
+            await loadAgentEvents();
+        } else {
+            throw new Error('Failed to retry event');
+        }
+    } catch (error) {
+        console.error('Failed to retry event:', error);
+        showToast('Failed to retry event', 'error');
+    }
+}
+
+function refreshEvents() {
+    loadAgentEvents();
+}
+
+// =============================================================================
+// HOOKS TAB
+// =============================================================================
+
+async function loadAgentHooks() {
+    const currentAgentName = agentName || getAgentFromURL();
+    if (!currentAgentName) return;
+
+    try {
+        const limit = document.getElementById('hook-limit')?.value || 100;
+        const params = new URLSearchParams({
+            agent: currentAgentName,
+            limit: limit
+        });
+
+        const response = await fetch(`/api/v1/events/hook-executions/by-agent?${params}`);
+        const data = await response.json();
+
+        // Update statistics
+        updateHookStats(data.stats || {});
+
+        // Render hooks
+        renderHooks(data.executions || []);
+
+        // Update badge
+        const badge = document.getElementById('hooks-badge');
+        if (badge && data.stats && data.stats.total > 0) {
+            badge.textContent = data.stats.total;
+            badge.style.display = 'inline';
+        }
+    } catch (error) {
+        console.error('Failed to load hooks:', error);
+        document.getElementById('hooks-content').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-triangle"></i> Failed to load hooks: ${error.message}
+            </div>
+        `;
+    }
+}
+
+function updateHookStats(stats) {
+    document.getElementById('hooks-total').textContent = stats.total || 0;
+    document.getElementById('hooks-success').textContent = stats.success || 0;
+    document.getElementById('hooks-failed').textContent = stats.failed || 0;
+}
+
+function renderHooks(hooks) {
+    const container = document.getElementById('hooks-content');
+
+    if (hooks.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-lightning-charge fs-1"></i>
+                <p class="mt-2">No hook executions found for this agent</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '<div class="table-responsive"><table class="table table-sm table-hover">';
+    html += `
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Hook Name</th>
+                <th>Event Type</th>
+                <th>Status</th>
+                <th>Duration</th>
+                <th>Stack</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
+
+    hooks.forEach(hook => {
+        const status = hook.success ?
+            '<span class="badge bg-success">Success</span>' :
+            '<span class="badge bg-danger">Failed</span>';
+
+        const durationMs = hook.duration / 1000000; // Convert nanoseconds to milliseconds
+        const duration = durationMs < 1000 ?
+            `${durationMs.toFixed(2)}ms` :
+            `${(durationMs / 1000).toFixed(2)}s`;
+
+        const time = new Date(hook.executed_at).toLocaleString();
+
+        html += `
+            <tr>
+                <td><small class="text-muted">${time}</small></td>
+                <td>
+                    <strong>${hook.hook_name}</strong><br>
+                    <small class="text-muted">${hook.hook_id.substring(0, 8)}</small>
+                </td>
+                <td>
+                    <span class="badge bg-info">${hook.event_type || 'N/A'}</span><br>
+                    <small class="text-muted">${hook.event_id.substring(0, 8)}</small>
+                </td>
+                <td>${status}</td>
+                <td><code>${duration}</code></td>
+                <td><small class="text-muted">${hook.event_stack || '-'}</small></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="viewHookDetails('${hook.id}', '${hook.event_id}')">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
+async function viewHookDetails(hookExecId, eventId) {
+    try {
+        // Fetch the event details to get more context
+        const response = await fetch(`/api/v1/events/${eventId}`);
+        const event = await response.json();
+
+        // Show modal with details
+        const modalHtml = `
+            <div class="modal fade" id="hookDetailsModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="bi bi-lightning-charge"></i> Hook Execution Details
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <h6>Event Information</h6>
+                            <dl class="row">
+                                <dt class="col-sm-3">Event ID</dt>
+                                <dd class="col-sm-9"><code>${eventId}</code></dd>
+
+                                <dt class="col-sm-3">Event Type</dt>
+                                <dd class="col-sm-9"><span class="badge bg-info">${event.type}</span></dd>
+
+                                <dt class="col-sm-3">Timestamp</dt>
+                                <dd class="col-sm-9">${new Date(event.timestamp).toLocaleString()}</dd>
+
+                                <dt class="col-sm-3">Stack</dt>
+                                <dd class="col-sm-9">${event.stack || '-'}</dd>
+
+                                <dt class="col-sm-3">Run ID</dt>
+                                <dd class="col-sm-9"><code>${event.run_id || '-'}</code></dd>
+                            </dl>
+
+                            <hr>
+
+                            <h6>Event Data</h6>
+                            <pre class="bg-light p-3 rounded"><code>${JSON.stringify(event.data, null, 2)}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Remove any existing modal
+        document.getElementById('hookDetailsModal')?.remove();
+
+        // Add new modal
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('hookDetailsModal'));
+        modal.show();
+    } catch (error) {
+        console.error('Failed to load hook details:', error);
+        showToast('Failed to load hook details', 'error');
+    }
+}
+
+function refreshHooks() {
+    loadAgentHooks();
+}
+
+// Add event listeners when hooks tab is shown
+document.getElementById('hooks-tab')?.addEventListener('shown.bs.tab', function() {
+    loadAgentHooks();
+});
+
+// Add event listeners for filters
+document.getElementById('hook-limit')?.addEventListener('change', loadAgentHooks);
+
+// Add event listeners when events tab is shown
+document.getElementById('events-tab')?.addEventListener('shown.bs.tab', function() {
+    loadAgentEvents();
+});
+
+// Add event listeners for filters
+document.getElementById('event-type-filter')?.addEventListener('change', loadAgentEvents);
+document.getElementById('event-status-filter')?.addEventListener('change', loadAgentEvents);
+document.getElementById('event-limit')?.addEventListener('change', loadAgentEvents);

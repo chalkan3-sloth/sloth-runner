@@ -38,16 +38,25 @@ func NewListCommand(ctx *commands.AppContext) *cobra.Command {
 			// Get master address (supports both names and addresses)
 			masterAddr := getMasterAddress(cmd)
 
+			// If no master address, use local database
+			if masterAddr == "" {
+				if debug {
+					slog.Debug("No master address configured, using local database")
+				}
+				return listAgentsFromLocalDB(debug)
+			}
+
 			// Try master server first, fallback to local DB if it fails
 			ctx := context.Background()
 
-			// Create connection factory and get client
+			// Create connection factory and get client with timeout
 			factory := NewDefaultConnectionFactory()
 			client, cleanup, err := factory.CreateRegistryClient(masterAddr)
 			if err != nil {
 				if debug {
 					slog.Debug("Failed to connect to master, falling back to local database", "error", err)
 				}
+				pterm.Warning.Printf("Could not connect to master at %s, using local database\n", masterAddr)
 				return listAgentsFromLocalDB(debug)
 			}
 			defer cleanup()

@@ -162,6 +162,11 @@ type Event struct {
 	Error     string                 `json:"error,omitempty"`
 	CreatedAt time.Time              `json:"created_at"`
 	ProcessedAt *time.Time           `json:"processed_at,omitempty"`
+
+	// Execution context
+	Stack  string `json:"stack,omitempty"`   // Stack name being executed
+	Agent  string `json:"agent,omitempty"`   // Agent executing the workflow
+	RunID  string `json:"run_id,omitempty"`  // Unique run identifier
 }
 
 // AgentEvent contains agent-specific event data
@@ -181,6 +186,10 @@ type TaskEvent struct {
 	ExitCode   int32  `json:"exit_code,omitempty"`
 	Error      string `json:"error,omitempty"`
 	Duration   string `json:"duration"`
+
+	// Execution context
+	Stack  string `json:"stack,omitempty"`   // Stack name being executed
+	RunID  string `json:"run_id,omitempty"`  // Unique run identifier
 }
 
 // HookResult represents the result of hook execution
@@ -204,6 +213,12 @@ type EventHookExecution struct {
 	Error      string        `json:"error,omitempty"`
 	Duration   time.Duration `json:"duration"`
 	ExecutedAt time.Time     `json:"executed_at"`
+
+	// Additional event info (populated when querying by agent)
+	EventType  string `json:"event_type,omitempty"`
+	EventAgent string `json:"event_agent,omitempty"`
+	EventStack string `json:"event_stack,omitempty"`
+	EventRunID string `json:"event_run_id,omitempty"`
 }
 
 // FileEvent contains file system event data

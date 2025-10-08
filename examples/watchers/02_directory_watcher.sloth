@@ -1,0 +1,49 @@
+-- Directory Watcher Example
+-- Monitors a directory for file changes
+
+local register_watcher = task("register_directory_watcher")
+    :description("Register directory watcher for /tmp/watch-dir")
+    :command(function(this, params)
+        log.info("📂 Registering directory watcher")
+
+        -- Create directory first
+        exec.run("mkdir -p /tmp/watch-dir")
+
+        local watcher_id = event.register.directory({
+            directory_path = "/tmp/watch-dir",
+            when = {'created', 'deleted'},
+            pattern = "*.txt",
+            interval = "3s"
+        })
+
+        log.info("✓ Directory watcher registered", {watcher_id = watcher_id})
+        return true, "Watcher ID: " .. watcher_id
+    end)
+    :build()
+
+local add_files = task("add_files")
+    :description("Add files to directory")
+    :command(function(this, params)
+        log.info("➕ Adding files to /tmp/watch-dir")
+        exec.run("touch /tmp/watch-dir/file1.txt /tmp/watch-dir/file2.txt")
+        log.info("Waiting 4s for watcher...")
+        exec.run("sleep 4")
+        return true, "Files added"
+    end)
+    :build()
+
+local remove_files = task("remove_files")
+    :description("Remove files from directory")
+    :command(function(this, params)
+        log.info("➖ Removing files")
+        exec.run("rm -f /tmp/watch-dir/file1.txt")
+        log.info("Waiting 4s for watcher...")
+        exec.run("sleep 4")
+        return true, "Files removed"
+    end)
+    :build()
+
+workflow.define("directory_watcher_test")
+    :description("Test directory watcher functionality")
+    :tasks({register_watcher, add_files, remove_files})
+    :build()

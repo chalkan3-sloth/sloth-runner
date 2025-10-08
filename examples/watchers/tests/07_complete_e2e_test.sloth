@@ -1,0 +1,224 @@
+-- Test 07: Complete End-to-End Watcher System Test
+-- Este teste valida todo o fluxo: watcher -> event -> hook -> action
+
+workflow("complete_e2e_test")
+    :description("Complete end-to-end test of watcher system")
+    :tasks({
+        task("setup_complete_environment")
+            :delegate_to("lady-guica")
+            :shell([[
+                echo "🧪 Test 07: Complete End-to-End System Test"
+                echo "==========================================="
+                echo ""
+                echo "This test validates:"
+                echo "  1. Multiple watcher types registration"
+                echo "  2. Event generation from watchers"
+                echo "  3. Hook execution from events"
+                echo "  4. Event queue processing"
+                echo "  5. Watcher lifecycle management"
+                echo ""
+
+                # Criar estrutura de diretórios
+                mkdir -p /tmp/e2e_test
+                mkdir -p /etc/sloth-runner/hooks
+
+                # Criar hook comprehensivo
+                cat > /etc/sloth-runner/hooks/e2e_monitor.lua << 'EOF'
+-- Comprehensive E2E Monitoring Hook
+
+-- Counter para eventos
+local event_count = 0
+
+-- File events
+hook.on({
+    event_type = "file_created"
+}):execute(function(event)
+    event_count = event_count + 1
+    print("📄 FILE CREATED: " .. (event.data.file_path or "unknown"))
+
+    local f = io.open("/tmp/e2e_test/events.log", "a")
+    if f then
+        f:write(os.date("%H:%M:%S") .. " - FILE_CREATED: " .. (event.data.file_path or "?") .. "\n")
+        f:close()
+    end
+    return true
+end)
+
+hook.on({
+    event_type = "file_changed"
+}):execute(function(event)
+    event_count = event_count + 1
+    print("📝 FILE CHANGED: " .. (event.data.file_path or "unknown"))
+
+    local f = io.open("/tmp/e2e_test/events.log", "a")
+    if f then
+        f:write(os.date("%H:%M:%S") .. " - FILE_CHANGED: " .. (event.data.file_path or "?") .. "\n")
+        f:close()
+    end
+    return true
+end)
+
+-- Process events
+hook.on({
+    event_type = "process_started"
+}):execute(function(event)
+    event_count = event_count + 1
+    print("🚀 PROCESS STARTED: " .. (event.data.process_name or "unknown"))
+
+    local f = io.open("/tmp/e2e_test/events.log", "a")
+    if f then
+        f:write(os.date("%H:%M:%S") .. " - PROCESS_STARTED: " .. (event.data.process_name or "?") .. "\n")
+        f:close()
+    end
+    return true
+end)
+
+-- CPU events
+hook.on({
+    event_type = "cpu_above_threshold"
+}):execute(function(event)
+    event_count = event_count + 1
+    local usage = event.data.cpu_usage or 0
+    print("💻 CPU HIGH: " .. string.format("%.1f%%", usage))
+
+    local f = io.open("/tmp/e2e_test/events.log", "a")
+    if f then
+        f:write(os.date("%H:%M:%S") .. " - CPU_HIGH: " .. string.format("%.1f%%", usage) .. "\n")
+        f:close()
+    end
+    return true
+end)
+
+EOF
+
+                # Limpar logs e arquivos de teste
+                rm -f /tmp/e2e_test/*.log
+                rm -f /tmp/e2e_test/test_file.txt
+                pkill -f "e2e_test_process" 2>/dev/null || true
+
+                echo "✓ Environment setup complete"
+            ]])
+            :on_complete(function()
+                print("")
+                print("📝 Registering multiple watchers...")
+                print("----------------------------------")
+
+                -- Watcher 1: File
+                local file_watcher_id = watcher.register.file({
+                    file_path = '/tmp/e2e_test/test_file.txt',
+                    when = {'created', 'changed', 'deleted'},
+                    check_hash = true,
+                    interval = '2s'
+                })
+                print("✓ File watcher: " .. file_watcher_id)
+
+                -- Watcher 2: Process
+                local process_watcher_id = watcher.register.process({
+                    process_name = 'sleep',
+                    when = {'created'},
+                    interval = '3s'
+                })
+                print("✓ Process watcher: " .. process_watcher_id)
+
+                -- Watcher 3: CPU
+                local cpu_watcher_id = watcher.register.cpu({
+                    threshold = 25,
+                    when = {'above'},
+                    interval = '5s'
+                })
+                print("✓ CPU watcher: " .. cpu_watcher_id)
+
+                print("")
+                print("✅ All watchers registered successfully")
+            end),
+
+        task("execute_e2e_scenario")
+            :delegate_to("lady-guica")
+            :depends_on("setup_complete_environment")
+            :shell([[
+                echo ""
+                echo "🔄 Executing E2E test scenario..."
+                echo "==================================="
+
+                # Esperar watchers serem registrados
+                sleep 4
+
+                # Scenario 1: File operations
+                echo ""
+                echo "📋 Scenario 1: File Operations"
+                echo "1️⃣  Creating file..."
+                echo "Test content" > /tmp/e2e_test/test_file.txt
+                sleep 3
+
+                echo "2️⃣  Modifying file..."
+                echo "More content" >> /tmp/e2e_test/test_file.txt
+                sleep 3
+
+                # Scenario 2: Process operations
+                echo ""
+                echo "📋 Scenario 2: Process Operations"
+                echo "3️⃣  Starting test process..."
+                sleep 999 &
+                TEST_PID=$!
+                sleep 4
+                echo "4️⃣  Stopping test process..."
+                kill $TEST_PID 2>/dev/null || true
+                sleep 3
+
+                # Scenario 3: CPU load
+                echo ""
+                echo "📋 Scenario 3: CPU Load Generation"
+                echo "5️⃣  Generating CPU load (15 seconds)..."
+                timeout 15 sh -c 'while true; do dd if=/dev/zero of=/dev/null bs=1M count=50 2>/dev/null; done' &
+                sleep 18
+                pkill -f "dd if=/dev/zero" 2>/dev/null || true
+
+                # Aguardar processamento final
+                echo ""
+                echo "⏳ Waiting for final event processing..."
+                sleep 5
+
+                # Apresentar resultados
+                echo ""
+                echo "📊 E2E Test Results"
+                echo "===================="
+                echo ""
+
+                if [ -f /tmp/e2e_test/events.log ]; then
+                    TOTAL_EVENTS=$(wc -l < /tmp/e2e_test/events.log)
+                    echo "✅ Events captured: $TOTAL_EVENTS"
+                    echo ""
+                    echo "Event log:"
+                    echo "----------"
+                    cat /tmp/e2e_test/events.log
+                    echo ""
+
+                    # Verificar tipos de eventos
+                    FILE_EVENTS=$(grep -c FILE /tmp/e2e_test/events.log 2>/dev/null || echo 0)
+                    PROCESS_EVENTS=$(grep -c PROCESS /tmp/e2e_test/events.log 2>/dev/null || echo 0)
+                    CPU_EVENTS=$(grep -c CPU /tmp/e2e_test/events.log 2>/dev/null || echo 0)
+
+                    echo "Event breakdown:"
+                    echo "  📄 File events: $FILE_EVENTS"
+                    echo "  🚀 Process events: $PROCESS_EVENTS"
+                    echo "  💻 CPU events: $CPU_EVENTS"
+                    echo ""
+
+                    if [ $TOTAL_EVENTS -gt 0 ]; then
+                        echo "✅ E2E TEST PASSED!"
+                        echo "   Complete flow validated: Watcher → Event → Hook → Action"
+                    else
+                        echo "⚠️  No events captured"
+                    fi
+                else
+                    echo "❌ No event log found"
+                    echo "   Hook may not have executed"
+                fi
+
+                echo ""
+                echo "🎯 Test Complete"
+                echo "💡 For detailed analysis, check:"
+                echo "   - Agent logs: /tmp/agent.log"
+                echo "   - Event log: /tmp/e2e_test/events.log"
+            ]])
+    })

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -371,12 +372,183 @@ func (s *agentRegistryServer) GetAgentInfo(ctx context.Context, req *pb.GetAgent
 func (s *agentRegistryServer) GetAgentAddress(agentName string) (string, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	if s.db != nil {
 		return s.db.GetAgentAddress(agentName)
 	}
-	
+
 	return "", fmt.Errorf("database not available")
+}
+
+// SendEvent receives an event from an agent and dispatches it through the global event system
+func (s *agentRegistryServer) SendEvent(ctx context.Context, req *pb.SendEventRequest) (*pb.SendEventResponse, error) {
+	if req.Event == nil {
+		return &pb.SendEventResponse{
+			Success: false,
+			Message: "Event data is required",
+		}, nil
+	}
+
+	// Check if dispatcher is available
+	if s.dispatcher == nil {
+		slog.Warn("Event dispatcher not available, event will be dropped",
+			"event_type", req.Event.EventType,
+			"agent", req.Event.AgentName)
+		return &pb.SendEventResponse{
+			Success: false,
+			Message: "Event dispatcher not initialized on master",
+			EventId: req.Event.EventId,
+		}, nil
+	}
+
+	// Convert protobuf EventData to internal hooks.Event format
+	event := &hooks.Event{
+		ID:        req.Event.EventId,
+		Type:      hooks.EventType(req.Event.EventType),
+		Timestamp: time.Unix(req.Event.Timestamp, 0),
+		Stack:     req.Event.Stack,
+		Agent:     req.Event.AgentName,
+		RunID:     req.Event.RunId,
+		Status:    hooks.EventStatusPending,
+		CreatedAt: time.Now(),
+	}
+
+	// Handle event data - prefer JSON format if available
+	if req.Event.DataJson != "" {
+		// Parse JSON string into Data map
+		var data map[string]interface{}
+		if err := json.Unmarshal([]byte(req.Event.DataJson), &data); err == nil {
+			event.Data = data
+		}
+	} else if len(req.Event.Data) > 0 {
+		// Convert protobuf map to interface{} map
+		event.Data = make(map[string]interface{})
+		for k, v := range req.Event.Data {
+			event.Data[k] = v
+		}
+	}
+
+	// Dispatch the event through the global dispatcher
+	if err := s.dispatcher.Dispatch(event); err != nil {
+		slog.Error("Failed to dispatch agent event",
+			"event_id", event.ID,
+			"event_type", event.Type,
+			"agent", event.Agent,
+			"error", err)
+		return &pb.SendEventResponse{
+			Success: false,
+			Message: fmt.Sprintf("Failed to dispatch event: %v", err),
+			EventId: event.ID,
+		}, nil
+	}
+
+	slog.Debug("Event received from agent and dispatched",
+		"event_id", event.ID,
+		"event_type", event.Type,
+		"agent", event.Agent,
+		"stack", event.Stack,
+		"run_id", event.RunID)
+
+	return &pb.SendEventResponse{
+		Success: true,
+		Message: "Event received and dispatched successfully",
+		EventId: event.ID,
+	}, nil
+}
+
+// SendEventBatch receives multiple events from an agent and dispatches them through the global event system
+func (s *agentRegistryServer) SendEventBatch(ctx context.Context, req *pb.SendEventBatchRequest) (*pb.SendEventBatchResponse, error) {
+	if len(req.Events) == 0 {
+		return &pb.SendEventBatchResponse{
+			Success:          false,
+			Message:          "No events provided",
+			EventsReceived:   0,
+			EventsProcessed:  0,
+			FailedEventIds:   []string{},
+		}, nil
+	}
+
+	// Check if dispatcher is available
+	if s.dispatcher == nil {
+		slog.Warn("Event dispatcher not available, batch events will be dropped",
+			"event_count", len(req.Events))
+
+		failedIds := make([]string, len(req.Events))
+		for i, evt := range req.Events {
+			failedIds[i] = evt.EventId
+		}
+
+		return &pb.SendEventBatchResponse{
+			Success:          false,
+			Message:          "Event dispatcher not initialized on master",
+			EventsReceived:   int32(len(req.Events)),
+			EventsProcessed:  0,
+			FailedEventIds:   failedIds,
+		}, nil
+	}
+
+	var processedCount int32
+	var failedEventIds []string
+
+	slog.Info("Processing event batch from agent",
+		"batch_size", len(req.Events),
+		"requested_batch_size", req.BatchSize)
+
+	// Process each event in the batch
+	for _, pbEvent := range req.Events {
+		// Convert protobuf EventData to internal hooks.Event format
+		event := &hooks.Event{
+			ID:        pbEvent.EventId,
+			Type:      hooks.EventType(pbEvent.EventType),
+			Timestamp: time.Unix(pbEvent.Timestamp, 0),
+			Stack:     pbEvent.Stack,
+			Agent:     pbEvent.AgentName,
+			RunID:     pbEvent.RunId,
+			Status:    hooks.EventStatusPending,
+			CreatedAt: time.Now(),
+		}
+
+		// Handle event data
+		if pbEvent.DataJson != "" {
+			// Parse JSON string into Data map
+			var data map[string]interface{}
+			if err := json.Unmarshal([]byte(pbEvent.DataJson), &data); err == nil {
+				event.Data = data
+			}
+		} else if len(pbEvent.Data) > 0 {
+			event.Data = make(map[string]interface{})
+			for k, v := range pbEvent.Data {
+				event.Data[k] = v
+			}
+		}
+
+		// Dispatch the event
+		if err := s.dispatcher.Dispatch(event); err != nil {
+			slog.Error("Failed to dispatch event in batch",
+				"event_id", event.ID,
+				"event_type", event.Type,
+				"agent", event.Agent,
+				"error", err)
+			failedEventIds = append(failedEventIds, event.ID)
+		} else {
+			processedCount++
+		}
+	}
+
+	successRate := float64(processedCount) / float64(len(req.Events)) * 100
+	slog.Info("Event batch processed",
+		"total", len(req.Events),
+		"processed", processedCount,
+		"failed", len(failedEventIds),
+		"success_rate", fmt.Sprintf("%.1f%%", successRate))
+
+	return &pb.SendEventBatchResponse{
+		Success:          processedCount > 0,
+		Message:          fmt.Sprintf("Processed %d/%d events successfully", processedCount, len(req.Events)),
+		EventsReceived:   int32(len(req.Events)),
+		EventsProcessed:  processedCount,
+		FailedEventIds:   failedEventIds,
+	}, nil
 }
 
 // Start starts the agent registry server.

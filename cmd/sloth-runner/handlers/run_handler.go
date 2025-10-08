@@ -40,6 +40,7 @@ type RunConfig struct {
 	Context          context.Context
 	Writer           io.Writer
 	AgentRegistry    interface{} // Will be properly typed later
+	RunID            string       // Unique run identifier for event tracking
 }
 
 // RunHandler handles the run command logic
@@ -406,6 +407,10 @@ func (h *RunHandler) executeTasks(
 	}
 
 	runner := taskrunner.NewTaskRunner(L, taskGroups, "", nil, false, h.config.Interactive, &taskrunner.DefaultSurveyAsker{}, string(luaScriptContent))
+
+	// Set execution context for event tracking
+	runner.Stack = h.config.StackName
+	runner.RunID = h.config.RunID
 
 	// Configure agent resolver
 	h.configureAgentResolver(runner)

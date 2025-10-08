@@ -1,0 +1,55 @@
+-- Test 02: CPU Watcher - Above Threshold
+-- Este teste valida que CPU watchers detectam quando uso ultrapassa threshold
+
+workflow("cpu_watcher_test")
+    :description("Test CPU watcher with above threshold detection")
+    :tasks({
+        task("setup_cpu_monitor")
+            :delegate_to("lady-guica")
+            :shell([[
+                echo "🧪 Test 02: CPU Watcher - Threshold Detection"
+                echo "=============================================="
+                echo "✓ Setup complete"
+            ]])
+            :on_complete(function()
+                print("📝 Registering CPU watcher...")
+
+                -- Registrar watcher com threshold baixo para garantir trigger
+                local watcher_id = watcher.register.cpu({
+                    threshold = 30,  -- 30% - baixo para garantir detecção
+                    when = {'above'},
+                    interval = '5s'
+                })
+
+                print("✓ CPU watcher registered: " .. watcher_id)
+                print("⏳ Monitoring CPU > 30% every 5 seconds")
+            end),
+
+        task("generate_cpu_load")
+            :delegate_to("lady-guica")
+            :depends_on("setup_cpu_monitor")
+            :shell([[
+                echo ""
+                echo "🔄 Generating CPU load..."
+                echo "-------------------------"
+
+                # Esperar watcher ser registrado
+                sleep 3
+
+                echo "1️⃣  Starting CPU stress test (20 seconds)..."
+
+                # Gerar carga de CPU por 20 segundos
+                # Usar dd para gerar carga
+                timeout 20 sh -c 'while true; do dd if=/dev/zero of=/dev/null bs=1M count=100 2>/dev/null; done' &
+
+                # Esperar eventos serem gerados
+                sleep 25
+
+                # Matar processo de stress se ainda existir
+                pkill -f "dd if=/dev/zero" 2>/dev/null || true
+
+                echo ""
+                echo "✅ CPU load test complete"
+                echo "⏳ Check agent logs for CPU threshold events"
+            ]])
+    })

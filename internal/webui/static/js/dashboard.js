@@ -32,7 +32,16 @@ function updateStats(stats) {
     document.getElementById('stat-hooks-enabled').textContent = stats.hooks.enabled;
     document.getElementById('stat-hooks-total').textContent = stats.hooks.total;
 
-    document.getElementById('stat-events-pending').textContent = stats.events.pending;
+    // Update event stats with real data
+    const eventsPending = stats.events.pending || 0;
+    const eventsTotal = stats.events.total || 0;
+    document.getElementById('stat-events-pending').textContent = eventsPending;
+
+    // Update small text to show total events if element exists
+    const eventsTotalElem = document.getElementById('stat-events-total');
+    if (eventsTotalElem) {
+        eventsTotalElem.textContent = eventsTotal;
+    }
 }
 
 // Load recent events
@@ -49,23 +58,42 @@ async function loadRecentEvents() {
         }
 
         tbody.innerHTML = data.events.map(event => {
-            const statusClass = getEventStatusClass(event.status);
-            const createdDate = new Date(event.created_at * 1000).toLocaleString();
-            const processedDate = event.processed_at ? new Date(event.processed_at * 1000).toLocaleString() : '-';
+            // Support both Go struct (capitalized) and JSON (lowercase) field names
+            const eventId = (event.ID || event.id || 'N/A').substring(0, 8);
+            const eventType = event.Type || event.type || event.event_type || 'unknown';
+            const eventStatus = event.Status || event.status || 'unknown';
+            const createdAt = event.CreatedAt || event.created_at;
+            const processedAt = event.ProcessedAt || event.processed_at;
+
+            const statusClass = getEventStatusClass(eventStatus);
+
+            // Format timestamps
+            const formatTimestamp = (ts) => {
+                if (!ts) return '-';
+                try {
+                    return new Date(ts).toLocaleString();
+                } catch {
+                    return ts;
+                }
+            };
 
             return `
                 <tr>
-                    <td>${event.id}</td>
-                    <td><code>${event.event_type}</code></td>
-                    <td><span class="badge bg-${statusClass}">${event.status}</span></td>
-                    <td>${event.hook_id || '-'}</td>
-                    <td>${createdDate}</td>
-                    <td>${processedDate}</td>
+                    <td><code class="small">${eventId}</code></td>
+                    <td><code class="small">${eventType}</code></td>
+                    <td><span class="badge bg-${statusClass}">${eventStatus}</span></td>
+                    <td>-</td>
+                    <td><small>${formatTimestamp(createdAt)}</small></td>
+                    <td><small>${formatTimestamp(processedAt)}</small></td>
                 </tr>
             `;
         }).join('');
     } catch (error) {
         console.error('Error loading events:', error);
+        const tbody = document.getElementById('events-list');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error loading events</td></tr>';
+        }
     }
 }
 

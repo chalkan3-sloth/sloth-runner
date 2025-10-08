@@ -1,0 +1,59 @@
+-- Test 03: Memory Watcher - Above Threshold
+-- Este teste valida que memory watchers detectam quando uso ultrapassa threshold
+
+workflow("memory_watcher_test")
+    :description("Test memory watcher with above threshold detection")
+    :tasks({
+        task("setup_memory_monitor")
+            :delegate_to("lady-guica")
+            :shell([[
+                echo "🧪 Test 03: Memory Watcher - Threshold Detection"
+                echo "==============================================="
+
+                # Mostrar uso atual de memória
+                echo "Current memory usage:"
+                free -h | grep Mem
+
+                echo "✓ Setup complete"
+            ]])
+            :on_complete(function()
+                print("📝 Registering memory watcher...")
+
+                -- Registrar watcher com threshold baixo
+                local watcher_id = watcher.register.memory({
+                    threshold = 40,  -- 40% - baixo para garantir detecção
+                    when = {'above'},
+                    interval = '5s'
+                })
+
+                print("✓ Memory watcher registered: " .. watcher_id)
+                print("⏳ Monitoring Memory > 40% every 5 seconds")
+            end),
+
+        task("check_memory_status")
+            :delegate_to("lady-guica")
+            :depends_on("setup_memory_monitor")
+            :shell([[
+                echo ""
+                echo "🔄 Checking memory status..."
+                echo "---------------------------"
+
+                # Esperar watcher ser registrado
+                sleep 3
+
+                # Verificar uso de memória por 20 segundos
+                for i in {1..4}; do
+                    echo ""
+                    echo "Check $i/4:"
+                    free -h | grep Mem
+                    sleep 5
+                done
+
+                echo ""
+                echo "✅ Memory monitoring complete"
+                echo "⏳ Check agent logs for memory threshold events"
+                echo ""
+                echo "💡 If no events generated, memory usage is below 40%"
+                echo "   This is normal for a healthy system"
+            ]])
+    })

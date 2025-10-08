@@ -70,7 +70,23 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 
 	// Get event queue stats
 	eventQueue := h.hookRepo.GetEventQueue()
-	pendingEvents, _ := eventQueue.GetPendingEvents(100)
+	pendingEvents, _ := eventQueue.GetPendingEvents(1000)
+	allEvents, _ := eventQueue.ListEvents("", "", 1000)
+
+	// Count events by status
+	completedEvents := 0
+	failedEvents := 0
+	processingEvents := 0
+	for _, event := range allEvents {
+		switch event.Status {
+		case "completed":
+			completedEvents++
+		case "failed":
+			failedEvents++
+		case "processing":
+			processingEvents++
+		}
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"agents": gin.H{
@@ -86,7 +102,11 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 			"enabled": enabledHooks,
 		},
 		"events": gin.H{
-			"pending": len(pendingEvents),
+			"total":      len(allEvents),
+			"pending":    len(pendingEvents),
+			"processing": processingEvents,
+			"completed":  completedEvents,
+			"failed":     failedEvents,
 		},
 	})
 }

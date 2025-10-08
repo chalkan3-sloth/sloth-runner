@@ -1,0 +1,41 @@
+-- Command Watcher Example
+-- Monitors command output and thresholds
+
+local register_watcher = task("register_command_watcher")
+    :description("Register command watcher for disk usage")
+    :command(function(this, params)
+        log.info("⚙️  Registering command watcher")
+
+        -- Watch disk usage of /tmp
+        local watcher_id = event.register.command({
+            command = "df /tmp | tail -1 | awk '{print $5}' | tr -d '%'",
+            threshold = 80,  -- Alert if > 80%
+            when = {'above'},
+            interval = "10s"
+        })
+
+        log.info("✓ Command watcher registered", {watcher_id = watcher_id})
+        log.info("  Monitoring: df /tmp")
+        log.info("  Threshold: > 80%")
+        return true, "Watcher ID: " .. watcher_id
+    end)
+    :build()
+
+local check_status = task("check_disk_status")
+    :description("Check current disk usage")
+    :command(function(this, params)
+        log.info("📊 Checking current disk usage")
+        local output, error, failed = exec.run("df -h /tmp | tail -1")
+        if not failed then
+            log.info("Current usage: " .. output)
+        end
+        log.info("Waiting 11s for watcher to run...")
+        exec.run("sleep 11")
+        return true, "Status checked"
+    end)
+    :build()
+
+workflow.define("command_watcher_test")
+    :description("Test command watcher functionality")
+    :tasks({register_watcher, check_status})
+    :build()

@@ -1,0 +1,19 @@
+-- Simplified File Watcher Test
+-- Tests file watcher on lady-guica with delegate_to
+
+-- Register watcher first
+print("🧪 Test: File Watcher on lady-guica")
+
+local watcher_id = watcher.register.file({
+    file_path = '/tmp/test_file_simple.txt',
+    when = {'created', 'changed', 'deleted'},
+    check_hash = true,
+    interval = '2s'
+})
+
+print("✓ Watcher registered: " .. watcher_id)
+print("⏳ Monitoring /tmp/test_file_simple.txt on lady-guica")
+
+-- Create a simple workflow
+workflow("simple_file_test")
+    :description("Simple file watcher test with delegate_to")

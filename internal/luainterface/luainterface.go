@@ -441,6 +441,13 @@ func registerAllModulesInternal(L *lua.LState, agentClient interface{}) {
 	log.Open(L)
 	workdir.Open(L)
 
+	// Register event module for dispatching events
+	eventModule := coremodules.NewEventModule()
+	eventModule.Open(L)
+
+	// Register watcher module for event watchers
+	RegisterWatcherModule(L)
+
 	// Register extended modules from other files
 	RegisterGitModule(L)  // Use new git module with table-based API
 	OpenPython(L)
