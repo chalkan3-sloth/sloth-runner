@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 // GetDataDir returns the directory for sloth-runner data files
@@ -114,11 +115,12 @@ func GetMasterAddress() string {
 	// Then check config file (legacy support)
 	configPath := filepath.Join(GetDataDir(), "master.conf")
 	if data, err := os.ReadFile(configPath); err == nil && len(data) > 0 {
-		return string(data)
+		return strings.TrimSpace(string(data))
 	}
 
-	// Default to localhost
-	return "localhost:50051"
+	// No master configured - return empty string
+	// Commands should fallback to local database when empty
+	return ""
 }
 
 // GetMasterAddressOrName returns the master address, resolving names to addresses

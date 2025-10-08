@@ -1,0 +1,374 @@
+-- Comprehensive Watcher Test
+-- Tests all watcher types systematically
+
+-- ========== FILE WATCHER TEST ==========
+local register_file_watcher = task("register_file_watcher")
+    :description("Register file watcher")
+    :command(function(this, params)
+        log.info("📁 Registering file watcher")
+
+        local watcher_id = watcher.register.file({
+            file_path = "/tmp/watcher-test.txt",
+            when = {'created', 'changed', 'deleted'},
+            check_hash = true,
+            interval = "2s"
+        })
+
+        log.info("✓ File watcher registered", {watcher_id = watcher_id})
+        return true
+    end)
+    :build()
+
+local create_test_file = task("create_test_file")
+    :description("Create test file")
+    :command(function(this, params)
+        log.info("📝 Creating test file")
+        exec.run("echo 'Initial content' > /tmp/watcher-test.txt")
+        exec.run("sleep 5")
+        log.info("✓ File created, waited 5s")
+        return true
+    end)
+    :build()
+
+local modify_test_file = task("modify_test_file")
+    :description("Modify test file")
+    :command(function(this, params)
+        log.info("✏️  Modifying test file")
+        exec.run("echo 'Modified content' >> /tmp/watcher-test.txt")
+        exec.run("sleep 5")
+        log.info("✓ File modified, waited 5s")
+        return true
+    end)
+    :build()
+
+local delete_test_file = task("delete_test_file")
+    :description("Delete test file")
+    :command(function(this, params)
+        log.info("🗑️  Deleting test file")
+        exec.run("rm -f /tmp/watcher-test.txt")
+        exec.run("sleep 5")
+        log.info("✓ File deleted, waited 5s")
+        return true
+    end)
+    :build()
+
+-- ========== DIRECTORY WATCHER TEST ==========
+local register_dir_watcher = task("register_dir_watcher")
+    :description("Register directory watcher")
+    :command(function(this, params)
+        log.info("📂 Registering directory watcher")
+
+        exec.run("mkdir -p /tmp/watcher-dir")
+
+        local watcher_id = watcher.register.directory({
+            directory_path = "/tmp/watcher-dir",
+            when = {'created', 'deleted'},
+            pattern = "*.txt",
+            interval = "2s"
+        })
+
+        log.info("✓ Directory watcher registered", {watcher_id = watcher_id})
+        return true
+    end)
+    :build()
+
+local create_dir_files = task("create_dir_files")
+    :description("Create files in watched directory")
+    :command(function(this, params)
+        log.info("📝 Creating files in directory")
+        for i = 1, 3 do
+            exec.run("echo 'File " .. i .. "' > /tmp/watcher-dir/file" .. i .. ".txt")
+            exec.run("sleep 3")
+        end
+        log.info("✓ Created 3 files")
+        return true
+    end)
+    :build()
+
+local delete_dir_files = task("delete_dir_files")
+    :description("Delete files from watched directory")
+    :command(function(this, params)
+        log.info("🗑️  Deleting files from directory")
+        for i = 1, 3 do
+            exec.run("rm -f /tmp/watcher-dir/file" .. i .. ".txt")
+            exec.run("sleep 3")
+        end
+        log.info("✓ Deleted 3 files")
+        return true
+    end)
+    :build()
+
+-- ========== PROCESS WATCHER TEST ==========
+local register_process_watcher = task("register_process_watcher")
+    :description("Register process watcher")
+    :command(function(this, params)
+        log.info("⚙️  Registering process watcher")
+
+        -- Kill any existing sleep process
+        exec.run("pkill -f 'sleep 300' || true")
+        exec.run("sleep 2")
+
+        local watcher_id = watcher.register.process({
+            process_name = "sleep",
+            when = {'created', 'deleted'},
+            interval = "2s"
+        })
+
+        log.info("✓ Process watcher registered", {watcher_id = watcher_id})
+        return true
+    end)
+    :build()
+
+local start_test_process = task("start_test_process")
+    :description("Start test process")
+    :command(function(this, params)
+        log.info("▶️  Starting test process")
+        exec.run("sleep 300 &")
+        exec.run("sleep 5")
+        log.info("✓ Process started, waited 5s")
+        return true
+    end)
+    :build()
+
+local stop_test_process = task("stop_test_process")
+    :description("Stop test process")
+    :command(function(this, params)
+        log.info("⏹️  Stopping test process")
+        exec.run("pkill -f 'sleep 300'")
+        exec.run("sleep 5")
+        log.info("✓ Process stopped, waited 5s")
+        return true
+    end)
+    :build()
+
+-- ========== LOG WATCHER TEST ==========
+local register_log_watcher = task("register_log_watcher")
+    :description("Register log watcher")
+    :command(function(this, params)
+        log.info("📋 Registering log watcher")
+
+        exec.run("rm -f /tmp/watcher-test.log")
+        exec.run("touch /tmp/watcher-test.log")
+
+        local watcher_id = watcher.register.log({
+            log_path = "/tmp/watcher-test.log",
+            pattern = "ERROR|CRITICAL|FATAL",
+            when = {'matches'},
+            follow = true,
+            interval = "2s"
+        })
+
+        log.info("✓ Log watcher registered", {watcher_id = watcher_id})
+        return true
+    end)
+    :build()
+
+local write_error_logs = task("write_error_logs")
+    :description("Write error logs")
+    :command(function(this, params)
+        log.info("📝 Writing error logs")
+
+        exec.run("echo '[2025-10-08 09:00:00] ERROR: Test error message' >> /tmp/watcher-test.log")
+        exec.run("sleep 3")
+
+        exec.run("echo '[2025-10-08 09:01:00] CRITICAL: Test critical message' >> /tmp/watcher-test.log")
+        exec.run("sleep 3")
+
+        exec.run("echo '[2025-10-08 09:02:00] FATAL: Test fatal message' >> /tmp/watcher-test.log")
+        exec.run("sleep 3")
+
+        log.info("✓ Wrote 3 error logs")
+        return true
+    end)
+    :build()
+
+-- ========== PORT WATCHER TEST ==========
+local register_port_watcher = task("register_port_watcher")
+    :description("Register port watcher")
+    :command(function(this, params)
+        log.info("🔌 Registering port watcher")
+
+        -- Kill any process using port 19999
+        exec.run("lsof -ti:19999 | xargs kill -9 2>/dev/null || true")
+        exec.run("sleep 2")
+
+        local watcher_id = watcher.register.port({
+            port = 19999,
+            when = {'created', 'deleted'},
+            interval = "2s"
+        })
+
+        log.info("✓ Port watcher registered", {watcher_id = watcher_id})
+        return true
+    end)
+    :build()
+
+local open_test_port = task("open_test_port")
+    :description("Open test port")
+    :command(function(this, params)
+        log.info("🔌 Opening port 19999")
+        exec.run("nc -l 19999 </dev/null >/dev/null 2>&1 &")
+        exec.run("sleep 5")
+        log.info("✓ Port opened, waited 5s")
+        return true
+    end)
+    :build()
+
+local close_test_port = task("close_test_port")
+    :description("Close test port")
+    :command(function(this, params)
+        log.info("🔌 Closing port 19999")
+        exec.run("lsof -ti:19999 | xargs kill -9 2>/dev/null || true")
+        exec.run("sleep 5")
+        log.info("✓ Port closed, waited 5s")
+        return true
+    end)
+    :build()
+
+-- ========== CPU WATCHER TEST ==========
+local register_cpu_watcher = task("register_cpu_watcher")
+    :description("Register CPU watcher")
+    :command(function(this, params)
+        log.info("💻 Registering CPU watcher")
+
+        local watcher_id = watcher.register.cpu({
+            threshold = 5,
+            when = {'above'},
+            interval = "3s"
+        })
+
+        log.info("✓ CPU watcher registered with 5% threshold", {watcher_id = watcher_id})
+        return true
+    end)
+    :build()
+
+local stress_cpu = task("stress_cpu")
+    :description("Generate CPU load")
+    :command(function(this, params)
+        log.info("💻 Generating CPU load")
+        exec.run("yes > /dev/null &")
+        exec.run("sleep 8")
+        exec.run("pkill -f 'yes'")
+        exec.run("sleep 3")
+        log.info("✓ CPU stress completed")
+        return true
+    end)
+    :build()
+
+-- ========== MEMORY WATCHER TEST ==========
+local register_memory_watcher = task("register_memory_watcher")
+    :description("Register memory watcher")
+    :command(function(this, params)
+        log.info("🧠 Registering memory watcher")
+
+        local watcher_id = watcher.register.memory({
+            threshold = 5,
+            when = {'above'},
+            interval = "3s"
+        })
+
+        log.info("✓ Memory watcher registered with 5% threshold", {watcher_id = watcher_id})
+        exec.run("sleep 5")
+        return true
+    end)
+    :build()
+
+-- ========== COMMAND WATCHER TEST ==========
+local register_command_watcher = task("register_command_watcher")
+    :description("Register command watcher")
+    :command(function(this, params)
+        log.info("⚡ Registering command watcher")
+
+        local watcher_id = watcher.register.command({
+            command = "df /tmp | tail -1 | awk '{print $5}' | tr -d '%'",
+            threshold = 1,
+            when = {'above'},
+            interval = "5s"
+        })
+
+        log.info("✓ Command watcher registered", {watcher_id = watcher_id})
+        exec.run("sleep 8")
+        return true
+    end)
+    :build()
+
+-- ========== FINAL VERIFICATION ==========
+local verify_events = task("verify_all_events")
+    :description("Verify all events were generated")
+    :command(function(this, params)
+        log.info("🔍 Verifying All Events Generated")
+        log.info("=" .. string.rep("=", 70))
+
+        -- Wait for final events to be sent
+        exec.run("sleep 5")
+
+        log.info("✅ All watcher tests completed successfully!")
+        log.info("")
+        log.info("📊 Expected Events:")
+        log.info("  • file.created (1)")
+        log.info("  • file.changed (1)")
+        log.info("  • file.deleted (1)")
+        log.info("  • directory.file_created (3)")
+        log.info("  • directory.file_deleted (3)")
+        log.info("  • process.started (1)")
+        log.info("  • process.stopped (1)")
+        log.info("  • log.pattern_matched (3)")
+        log.info("  • port.opened (1)")
+        log.info("  • port.closed (1)")
+        log.info("  • cpu.high_usage (1+)")
+        log.info("  • memory.high_usage (1+)")
+        log.info("  • command.threshold_exceeded (1+)")
+        log.info("")
+        log.info("🔍 Check events with:")
+        log.info("  curl -s 'http://localhost:3030/api/v1/events/by-agent?agent=lady-guica&limit=50'")
+        log.info("")
+        log.info("🌐 View in UI:")
+        log.info("  http://localhost:3030/agent-dashboard?agent=lady-guica")
+        log.info("=" .. string.rep("=", 70))
+
+        return true
+    end)
+    :build()
+
+-- Define workflow with all test tasks in sequence
+workflow.define("comprehensive_watcher_test")
+    :description("Comprehensive test of all watcher types")
+    :tasks({
+        -- File watcher tests
+        register_file_watcher,
+        create_test_file,
+        modify_test_file,
+        delete_test_file,
+
+        -- Directory watcher tests
+        register_dir_watcher,
+        create_dir_files,
+        delete_dir_files,
+
+        -- Process watcher tests
+        register_process_watcher,
+        start_test_process,
+        stop_test_process,
+
+        -- Log watcher tests
+        register_log_watcher,
+        write_error_logs,
+
+        -- Port watcher tests
+        register_port_watcher,
+        open_test_port,
+        close_test_port,
+
+        -- CPU watcher test
+        register_cpu_watcher,
+        stress_cpu,
+
+        -- Memory watcher test
+        register_memory_watcher,
+
+        -- Command watcher test
+        register_command_watcher,
+
+        -- Final verification
+        verify_events
+    })

@@ -199,6 +199,18 @@
                                     <i class="bi bi-activity"></i> Performance
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="events-tab" data-bs-toggle="tab" href="#events" role="tab">
+                                    <i class="bi bi-bell"></i> Events
+                                    <span id="events-badge" class="badge bg-info ms-1" style="display: none;">0</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="hooks-tab" data-bs-toggle="tab" href="#hooks" role="tab">
+                                    <i class="bi bi-lightning-charge"></i> Hooks
+                                    <span id="hooks-badge" class="badge bg-success ms-1" style="display: none;">0</span>
+                                </a>
+                            </li>
                         </ul>
                     </div>
                     <div class="card-body">
@@ -451,6 +463,145 @@
                             <!-- Performance Tab -->
                             <div class="tab-pane fade" id="performance" role="tabpanel">
                                 <div id="performance-chart-container" style="height: 400px; padding: 20px;">
+                                    <div class="text-center py-4">
+                                        <div class="spinner-border text-primary" role="status"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Events Tab -->
+                            <div class="tab-pane fade" id="events" role="tabpanel">
+                                <div class="row mb-3">
+                                    <div class="col-auto">
+                                        <select id="event-type-filter" class="form-select form-select-sm">
+                                            <option value="">All Types</option>
+                                            <option value="task.started">Task Started</option>
+                                            <option value="task.completed">Task Completed</option>
+                                            <option value="task.failed">Task Failed</option>
+                                            <option value="file.created">File Created</option>
+                                            <option value="file.changed">File Changed</option>
+                                            <option value="file.deleted">File Deleted</option>
+                                            <option value="process.started">Process Started</option>
+                                            <option value="process.stopped">Process Stopped</option>
+                                            <option value="custom">Custom Event</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <select id="event-status-filter" class="form-select form-select-sm">
+                                            <option value="">All Status</option>
+                                            <option value="pending">Pending</option>
+                                            <option value="processing">Processing</option>
+                                            <option value="completed">Completed</option>
+                                            <option value="failed">Failed</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto">
+                                        <select id="event-limit" class="form-select form-select-sm">
+                                            <option value="50">50 events</option>
+                                            <option value="100" selected>100 events</option>
+                                            <option value="200">200 events</option>
+                                            <option value="500">500 events</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto ms-auto">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="refreshEvents()">
+                                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Event Statistics -->
+                                <div id="event-stats" class="row mb-3">
+                                    <div class="col-md-3">
+                                        <div class="card bg-light">
+                                            <div class="card-body py-2">
+                                                <small class="text-muted">Total Events</small>
+                                                <h5 id="events-total" class="mb-0">-</h5>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card bg-light">
+                                            <div class="card-body py-2">
+                                                <small class="text-muted">Pending</small>
+                                                <h5 id="events-pending" class="mb-0">-</h5>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card bg-light">
+                                            <div class="card-body py-2">
+                                                <small class="text-muted">Completed</small>
+                                                <h5 id="events-completed" class="mb-0">-</h5>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card bg-light">
+                                            <div class="card-body py-2">
+                                                <small class="text-muted">Failed</small>
+                                                <h5 id="events-failed" class="mb-0">-</h5>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Events List -->
+                                <div id="events-content" style="max-height: 500px; overflow-y: auto;">
+                                    <div class="text-center py-4">
+                                        <div class="spinner-border text-primary" role="status"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Hooks Tab -->
+                            <div class="tab-pane fade" id="hooks" role="tabpanel">
+                                <div class="row mb-3">
+                                    <div class="col-auto">
+                                        <select id="hook-limit" class="form-select form-select-sm">
+                                            <option value="50">50 executions</option>
+                                            <option value="100" selected>100 executions</option>
+                                            <option value="200">200 executions</option>
+                                            <option value="500">500 executions</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-auto ms-auto">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="refreshHooks()">
+                                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Hook Statistics -->
+                                <div id="hook-stats" class="row mb-3">
+                                    <div class="col-md-4">
+                                        <div class="card bg-light">
+                                            <div class="card-body py-2">
+                                                <small class="text-muted">Total Executions</small>
+                                                <h5 id="hooks-total" class="mb-0">-</h5>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card bg-light">
+                                            <div class="card-body py-2">
+                                                <small class="text-muted">Successful</small>
+                                                <h5 id="hooks-success" class="mb-0 text-success">-</h5>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card bg-light">
+                                            <div class="card-body py-2">
+                                                <small class="text-muted">Failed</small>
+                                                <h5 id="hooks-failed" class="mb-0 text-danger">-</h5>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Hooks List -->
+                                <div id="hooks-content" style="max-height: 500px; overflow-y: auto;">
                                     <div class="text-center py-4">
                                         <div class="spinner-border text-primary" role="status"></div>
                                     </div>

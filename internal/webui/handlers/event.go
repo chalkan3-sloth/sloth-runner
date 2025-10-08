@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/chalkan3-sloth/sloth-runner/internal/hooks"
 	"github.com/gin-gonic/gin"
 )
 
@@ -62,6 +63,54 @@ func (h *EventHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, event)
 }
 
+// ListByAgent returns events for a specific agent
+func (h *EventHandler) ListByAgent(c *gin.Context) {
+	agent := c.Query("agent")
+	if agent == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "agent parameter is required"})
+		return
+	}
+
+	eventType := c.DefaultQuery("type", "")
+	status := c.DefaultQuery("status", "")
+	limitStr := c.DefaultQuery("limit", "100")
+	limit, _ := strconv.Atoi(limitStr)
+
+	eventQueue := h.hookRepo.GetEventQueue()
+	events, err := eventQueue.ListEventsByAgent(agent, hooks.EventType(eventType), hooks.EventStatus(status), limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Calculate statistics
+	stats := map[string]int{
+		"total":      len(events),
+		"pending":    0,
+		"processing": 0,
+		"completed":  0,
+		"failed":     0,
+	}
+
+	for _, event := range events {
+		switch event.Status {
+		case "pending":
+			stats["pending"]++
+		case "processing":
+			stats["processing"]++
+		case "completed":
+			stats["completed"]++
+		case "failed":
+			stats["failed"]++
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"events": events,
+		"stats":  stats,
+	})
+}
+
 // Retry retries a failed event
 func (h *EventHandler) Retry(c *gin.Context) {
 	id := c.Param("id")
@@ -74,4 +123,43 @@ func (h *EventHandler) Retry(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Event queued for retry"})
+}
+
+// ListHookExecutionsByAgent returns hook executions for a specific agent
+func (h *EventHandler) ListHookExecutionsByAgent(c *gin.Context) {
+	agent := c.Query("agent")
+	if agent == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "agent parameter is required"})
+		return
+	}
+
+	limitStr := c.DefaultQuery("limit", "100")
+	limit, _ := strconv.Atoi(limitStr)
+
+	eventQueue := h.hookRepo.GetEventQueue()
+	executions, err := eventQueue.GetHookExecutionsByAgent(agent, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Calculate statistics
+	stats := map[string]int{
+		"total":     len(executions),
+		"success":   0,
+		"failed":    0,
+	}
+
+	for _, exec := range executions {
+		if exec.Success {
+			stats["success"]++
+		} else {
+			stats["failed"]++
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"executions": executions,
+		"stats":      stats,
+	})
 }

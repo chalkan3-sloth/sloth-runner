@@ -41,6 +41,10 @@ const (
 	Agent_GetPerformanceHistory_FullMethodName = "/agent.Agent/GetPerformanceHistory"
 	Agent_DiagnoseHealth_FullMethodName        = "/agent.Agent/DiagnoseHealth"
 	Agent_InteractiveShell_FullMethodName      = "/agent.Agent/InteractiveShell"
+	Agent_RegisterWatcher_FullMethodName       = "/agent.Agent/RegisterWatcher"
+	Agent_ListWatchers_FullMethodName          = "/agent.Agent/ListWatchers"
+	Agent_GetWatcher_FullMethodName            = "/agent.Agent/GetWatcher"
+	Agent_RemoveWatcher_FullMethodName         = "/agent.Agent/RemoveWatcher"
 )
 
 // AgentClient is the client API for Agent service.
@@ -72,6 +76,11 @@ type AgentClient interface {
 	DiagnoseHealth(ctx context.Context, in *HealthDiagnosticRequest, opts ...grpc.CallOption) (*HealthDiagnosticResponse, error)
 	// Interactive Shell RPC
 	InteractiveShell(ctx context.Context, opts ...grpc.CallOption) (grpc.BidiStreamingClient[ShellInput, ShellOutput], error)
+	// Watcher Management RPCs
+	RegisterWatcher(ctx context.Context, in *RegisterWatcherRequest, opts ...grpc.CallOption) (*RegisterWatcherResponse, error)
+	ListWatchers(ctx context.Context, in *ListWatchersRequest, opts ...grpc.CallOption) (*ListWatchersResponse, error)
+	GetWatcher(ctx context.Context, in *GetWatcherRequest, opts ...grpc.CallOption) (*GetWatcherResponse, error)
+	RemoveWatcher(ctx context.Context, in *RemoveWatcherRequest, opts ...grpc.CallOption) (*RemoveWatcherResponse, error)
 }
 
 type agentClient struct {
@@ -332,6 +341,46 @@ func (c *agentClient) InteractiveShell(ctx context.Context, opts ...grpc.CallOpt
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Agent_InteractiveShellClient = grpc.BidiStreamingClient[ShellInput, ShellOutput]
 
+func (c *agentClient) RegisterWatcher(ctx context.Context, in *RegisterWatcherRequest, opts ...grpc.CallOption) (*RegisterWatcherResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RegisterWatcherResponse)
+	err := c.cc.Invoke(ctx, Agent_RegisterWatcher_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) ListWatchers(ctx context.Context, in *ListWatchersRequest, opts ...grpc.CallOption) (*ListWatchersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListWatchersResponse)
+	err := c.cc.Invoke(ctx, Agent_ListWatchers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) GetWatcher(ctx context.Context, in *GetWatcherRequest, opts ...grpc.CallOption) (*GetWatcherResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetWatcherResponse)
+	err := c.cc.Invoke(ctx, Agent_GetWatcher_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentClient) RemoveWatcher(ctx context.Context, in *RemoveWatcherRequest, opts ...grpc.CallOption) (*RemoveWatcherResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveWatcherResponse)
+	err := c.cc.Invoke(ctx, Agent_RemoveWatcher_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AgentServer is the server API for Agent service.
 // All implementations must embed UnimplementedAgentServer
 // for forward compatibility.
@@ -361,6 +410,11 @@ type AgentServer interface {
 	DiagnoseHealth(context.Context, *HealthDiagnosticRequest) (*HealthDiagnosticResponse, error)
 	// Interactive Shell RPC
 	InteractiveShell(grpc.BidiStreamingServer[ShellInput, ShellOutput]) error
+	// Watcher Management RPCs
+	RegisterWatcher(context.Context, *RegisterWatcherRequest) (*RegisterWatcherResponse, error)
+	ListWatchers(context.Context, *ListWatchersRequest) (*ListWatchersResponse, error)
+	GetWatcher(context.Context, *GetWatcherRequest) (*GetWatcherResponse, error)
+	RemoveWatcher(context.Context, *RemoveWatcherRequest) (*RemoveWatcherResponse, error)
 	mustEmbedUnimplementedAgentServer()
 }
 
@@ -436,6 +490,18 @@ func (UnimplementedAgentServer) DiagnoseHealth(context.Context, *HealthDiagnosti
 }
 func (UnimplementedAgentServer) InteractiveShell(grpc.BidiStreamingServer[ShellInput, ShellOutput]) error {
 	return status.Errorf(codes.Unimplemented, "method InteractiveShell not implemented")
+}
+func (UnimplementedAgentServer) RegisterWatcher(context.Context, *RegisterWatcherRequest) (*RegisterWatcherResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterWatcher not implemented")
+}
+func (UnimplementedAgentServer) ListWatchers(context.Context, *ListWatchersRequest) (*ListWatchersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListWatchers not implemented")
+}
+func (UnimplementedAgentServer) GetWatcher(context.Context, *GetWatcherRequest) (*GetWatcherResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetWatcher not implemented")
+}
+func (UnimplementedAgentServer) RemoveWatcher(context.Context, *RemoveWatcherRequest) (*RemoveWatcherResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveWatcher not implemented")
 }
 func (UnimplementedAgentServer) mustEmbedUnimplementedAgentServer() {}
 func (UnimplementedAgentServer) testEmbeddedByValue()               {}
@@ -822,6 +888,78 @@ func _Agent_InteractiveShell_Handler(srv interface{}, stream grpc.ServerStream) 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Agent_InteractiveShellServer = grpc.BidiStreamingServer[ShellInput, ShellOutput]
 
+func _Agent_RegisterWatcher_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterWatcherRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).RegisterWatcher(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_RegisterWatcher_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).RegisterWatcher(ctx, req.(*RegisterWatcherRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Agent_ListWatchers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWatchersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).ListWatchers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_ListWatchers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).ListWatchers(ctx, req.(*ListWatchersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Agent_GetWatcher_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetWatcherRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).GetWatcher(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_GetWatcher_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).GetWatcher(ctx, req.(*GetWatcherRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Agent_RemoveWatcher_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveWatcherRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentServer).RemoveWatcher(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Agent_RemoveWatcher_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentServer).RemoveWatcher(ctx, req.(*RemoveWatcherRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Agent_ServiceDesc is the grpc.ServiceDesc for Agent service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -901,6 +1039,22 @@ var Agent_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "DiagnoseHealth",
 			Handler:    _Agent_DiagnoseHealth_Handler,
 		},
+		{
+			MethodName: "RegisterWatcher",
+			Handler:    _Agent_RegisterWatcher_Handler,
+		},
+		{
+			MethodName: "ListWatchers",
+			Handler:    _Agent_ListWatchers_Handler,
+		},
+		{
+			MethodName: "GetWatcher",
+			Handler:    _Agent_GetWatcher_Handler,
+		},
+		{
+			MethodName: "RemoveWatcher",
+			Handler:    _Agent_RemoveWatcher_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -945,6 +1099,8 @@ const (
 	AgentRegistry_GetMultipleAgentStatus_FullMethodName  = "/agent.AgentRegistry/GetMultipleAgentStatus"
 	AgentRegistry_GetAggregatedMetrics_FullMethodName    = "/agent.AgentRegistry/GetAggregatedMetrics"
 	AgentRegistry_StreamAgentEvents_FullMethodName       = "/agent.AgentRegistry/StreamAgentEvents"
+	AgentRegistry_SendEvent_FullMethodName               = "/agent.AgentRegistry/SendEvent"
+	AgentRegistry_SendEventBatch_FullMethodName          = "/agent.AgentRegistry/SendEventBatch"
 )
 
 // AgentRegistryClient is the client API for AgentRegistry service.
@@ -970,6 +1126,9 @@ type AgentRegistryClient interface {
 	// Health & Monitoring
 	GetAggregatedMetrics(ctx context.Context, in *AggregatedMetricsRequest, opts ...grpc.CallOption) (*AggregatedMetricsResponse, error)
 	StreamAgentEvents(ctx context.Context, in *StreamEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[AgentEvent], error)
+	// Event Reporting - Agents send events to master
+	SendEvent(ctx context.Context, in *SendEventRequest, opts ...grpc.CallOption) (*SendEventResponse, error)
+	SendEventBatch(ctx context.Context, in *SendEventBatchRequest, opts ...grpc.CallOption) (*SendEventBatchResponse, error)
 }
 
 type agentRegistryClient struct {
@@ -1167,6 +1326,26 @@ func (c *agentRegistryClient) StreamAgentEvents(ctx context.Context, in *StreamE
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type AgentRegistry_StreamAgentEventsClient = grpc.ServerStreamingClient[AgentEvent]
 
+func (c *agentRegistryClient) SendEvent(ctx context.Context, in *SendEventRequest, opts ...grpc.CallOption) (*SendEventResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendEventResponse)
+	err := c.cc.Invoke(ctx, AgentRegistry_SendEvent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *agentRegistryClient) SendEventBatch(ctx context.Context, in *SendEventBatchRequest, opts ...grpc.CallOption) (*SendEventBatchResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendEventBatchResponse)
+	err := c.cc.Invoke(ctx, AgentRegistry_SendEventBatch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AgentRegistryServer is the server API for AgentRegistry service.
 // All implementations must embed UnimplementedAgentRegistryServer
 // for forward compatibility.
@@ -1190,6 +1369,9 @@ type AgentRegistryServer interface {
 	// Health & Monitoring
 	GetAggregatedMetrics(context.Context, *AggregatedMetricsRequest) (*AggregatedMetricsResponse, error)
 	StreamAgentEvents(*StreamEventsRequest, grpc.ServerStreamingServer[AgentEvent]) error
+	// Event Reporting - Agents send events to master
+	SendEvent(context.Context, *SendEventRequest) (*SendEventResponse, error)
+	SendEventBatch(context.Context, *SendEventBatchRequest) (*SendEventBatchResponse, error)
 	mustEmbedUnimplementedAgentRegistryServer()
 }
 
@@ -1247,6 +1429,12 @@ func (UnimplementedAgentRegistryServer) GetAggregatedMetrics(context.Context, *A
 }
 func (UnimplementedAgentRegistryServer) StreamAgentEvents(*StreamEventsRequest, grpc.ServerStreamingServer[AgentEvent]) error {
 	return status.Errorf(codes.Unimplemented, "method StreamAgentEvents not implemented")
+}
+func (UnimplementedAgentRegistryServer) SendEvent(context.Context, *SendEventRequest) (*SendEventResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendEvent not implemented")
+}
+func (UnimplementedAgentRegistryServer) SendEventBatch(context.Context, *SendEventBatchRequest) (*SendEventBatchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SendEventBatch not implemented")
 }
 func (UnimplementedAgentRegistryServer) mustEmbedUnimplementedAgentRegistryServer() {}
 func (UnimplementedAgentRegistryServer) testEmbeddedByValue()                       {}
@@ -1536,6 +1724,42 @@ func _AgentRegistry_StreamAgentEvents_Handler(srv interface{}, stream grpc.Serve
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type AgentRegistry_StreamAgentEventsServer = grpc.ServerStreamingServer[AgentEvent]
 
+func _AgentRegistry_SendEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentRegistryServer).SendEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentRegistry_SendEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentRegistryServer).SendEvent(ctx, req.(*SendEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AgentRegistry_SendEventBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendEventBatchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentRegistryServer).SendEventBatch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentRegistry_SendEventBatch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentRegistryServer).SendEventBatch(ctx, req.(*SendEventBatchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AgentRegistry_ServiceDesc is the grpc.ServiceDesc for AgentRegistry service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1594,6 +1818,14 @@ var AgentRegistry_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAggregatedMetrics",
 			Handler:    _AgentRegistry_GetAggregatedMetrics_Handler,
+		},
+		{
+			MethodName: "SendEvent",
+			Handler:    _AgentRegistry_SendEvent_Handler,
+		},
+		{
+			MethodName: "SendEventBatch",
+			Handler:    _AgentRegistry_SendEventBatch_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

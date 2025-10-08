@@ -1,0 +1,59 @@
+-- Test 04: Process Watcher - Created and Deleted
+-- Este teste valida que process watchers detectam início e fim de processos
+
+workflow("process_watcher_test")
+    :description("Test process watcher with start/stop detection")
+    :tasks({
+        task("setup_process_monitor")
+            :delegate_to("lady-guica")
+            :shell([[
+                echo "🧪 Test 04: Process Watcher - Start/Stop Detection"
+                echo "================================================="
+
+                # Limpar processos de teste anteriores
+                pkill -f "sleep 999999" 2>/dev/null || true
+
+                echo "✓ Setup complete"
+            ]])
+            :on_complete(function()
+                print("📝 Registering process watcher...")
+
+                -- Registrar watcher para processos sleep
+                local watcher_id = watcher.register.process({
+                    process_name = 'sleep',
+                    when = {'created', 'deleted'},
+                    interval = '3s'
+                })
+
+                print("✓ Process watcher registered: " .. watcher_id)
+                print("⏳ Monitoring 'sleep' process every 3 seconds")
+            end),
+
+        task("trigger_process_events")
+            :delegate_to("lady-guica")
+            :depends_on("setup_process_monitor")
+            :shell([[
+                echo ""
+                echo "🔄 Triggering process events..."
+                echo "-------------------------------"
+
+                # Esperar watcher ser registrado
+                sleep 4
+
+                # Evento 1: CREATE (process started)
+                echo "1️⃣  Starting test process (sleep 999999)..."
+                sleep 999999 &
+                TEST_PID=$!
+                echo "   Process PID: $TEST_PID"
+                sleep 5
+
+                # Evento 2: DELETE (process killed)
+                echo "2️⃣  Killing test process..."
+                kill $TEST_PID 2>/dev/null || true
+                sleep 5
+
+                echo ""
+                echo "✅ Process events triggered"
+                echo "⏳ Check agent logs for process start/stop events"
+            ]])
+    })

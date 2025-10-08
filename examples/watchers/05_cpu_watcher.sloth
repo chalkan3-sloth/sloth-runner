@@ -1,0 +1,36 @@
+-- CPU Watcher Example
+-- Monitors CPU usage above threshold
+
+local register_watcher = task("register_cpu_watcher")
+    :description("Register CPU watcher for load > 1.0")
+    :command(function(this, params)
+        log.info("💻 Registering CPU watcher")
+
+        local watcher_id = event.register.cpu({
+            threshold = 50,  -- 50% CPU usage
+            when = {'above'},
+            interval = "5s"
+        })
+
+        log.info("✓ CPU watcher registered", {watcher_id = watcher_id})
+        return true, "Watcher ID: " .. watcher_id
+    end)
+    :build()
+
+local simulate_load = task("simulate_cpu_load")
+    :description("Simulate CPU load")
+    :command(function(this, params)
+        log.info("🔥 Simulating CPU load (15 seconds)")
+        -- Create CPU load using dd and /dev/zero
+        exec.run("timeout 15 dd if=/dev/zero of=/dev/null &")
+        exec.run("timeout 15 dd if=/dev/zero of=/dev/null &")
+        log.info("Waiting 6s for watcher to detect high CPU...")
+        exec.run("sleep 6")
+        return true, "CPU load simulated - should trigger event if CPU > 50%"
+    end)
+    :build()
+
+workflow.define("cpu_watcher_test")
+    :description("Test CPU watcher functionality")
+    :tasks({register_watcher, simulate_load})
+    :build()

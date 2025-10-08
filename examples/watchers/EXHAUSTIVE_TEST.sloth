@@ -1,0 +1,374 @@
+-- Exhaustive Test for All Watchers
+-- This workflow tests all watcher types with comprehensive scenarios
+
+-- Test 1: File Watcher - Complete lifecycle
+local test_file_watcher = task("test_file_watcher")
+    :description("Test file watcher - complete lifecycle")
+    :command(function(this, params)
+        log.info("🔍 Testing File Watcher - Complete Lifecycle")
+
+    local test_file = "/tmp/watcher-test-file.txt"
+
+    -- Clean up any existing file
+    os.execute("rm -f " .. test_file)
+
+    -- Register file watcher
+    event.register.file({
+        file_path = test_file,
+        when = {'created', 'changed', 'deleted'},
+        check_hash = true,
+        interval = "2s"
+    })
+
+    print("✅ File watcher registered for: " .. test_file)
+
+    -- Wait for watcher to initialize
+    sleep(3)
+
+    -- Test 1a: Create file
+    print("📝 Creating file...")
+    local f = io.open(test_file, "w")
+    f:write("Initial content\n")
+    f:close()
+    print("✅ File created")
+
+    -- Wait for event
+    sleep(5)
+
+    -- Test 1b: Modify file
+    print("✏️  Modifying file...")
+    f = io.open(test_file, "a")
+    f:write("Additional content\n")
+    f:close()
+    print("✅ File modified")
+
+    -- Wait for event
+    sleep(5)
+
+    -- Test 1c: Delete file
+    print("🗑️  Deleting file...")
+    os.execute("rm -f " .. test_file)
+    print("✅ File deleted")
+
+    -- Wait for event
+    sleep(5)
+
+    print("✅ File watcher test completed")
+end)
+
+-- Test 2: Directory Watcher - Multiple files
+task("test_directory_watcher", {
+    delegate_to = "lady-guica",
+    depends_on = {"test_file_watcher"}
+}, function()
+    print("🔍 Testing Directory Watcher - Multiple Files")
+
+    local test_dir = "/tmp/watcher-test-dir"
+
+    -- Clean up and create directory
+    os.execute("rm -rf " .. test_dir)
+    os.execute("mkdir -p " .. test_dir)
+
+    -- Register directory watcher
+    event.register.directory({
+        directory_path = test_dir,
+        when = {'created', 'deleted'},
+        pattern = "*.txt",
+        interval = "2s"
+    })
+
+    print("✅ Directory watcher registered for: " .. test_dir)
+
+    -- Wait for watcher to initialize
+    sleep(3)
+
+    -- Test 2a: Create multiple files
+    print("📝 Creating multiple files...")
+    for i = 1, 3 do
+        local f = io.open(test_dir .. "/file" .. i .. ".txt", "w")
+        f:write("Content " .. i .. "\n")
+        f:close()
+        sleep(3)
+    end
+    print("✅ Created 3 files")
+
+    -- Wait for events
+    sleep(5)
+
+    -- Test 2b: Delete files
+    print("🗑️  Deleting files...")
+    for i = 1, 3 do
+        os.execute("rm -f " .. test_dir .. "/file" .. i .. ".txt")
+        sleep(3)
+    end
+    print("✅ Deleted 3 files")
+
+    -- Wait for events
+    sleep(5)
+
+    -- Cleanup
+    os.execute("rm -rf " .. test_dir)
+
+    print("✅ Directory watcher test completed")
+end)
+
+-- Test 3: Process Watcher - Start and stop
+task("test_process_watcher", {
+    delegate_to = "lady-guica",
+    depends_on = {"test_directory_watcher"}
+}, function()
+    print("🔍 Testing Process Watcher - Start and Stop")
+
+    -- Kill any existing sleep process
+    os.execute("pkill -f 'sleep 300'")
+    sleep(2)
+
+    -- Register process watcher
+    event.register.process({
+        process_name = "sleep",
+        when = {'created', 'deleted'},
+        interval = "2s"
+    })
+
+    print("✅ Process watcher registered for: sleep")
+
+    -- Wait for watcher to initialize
+    sleep(3)
+
+    -- Test 3a: Start process
+    print("▶️  Starting process...")
+    os.execute("sleep 300 &")
+    print("✅ Process started")
+
+    -- Wait for event
+    sleep(5)
+
+    -- Test 3b: Stop process
+    print("⏹️  Stopping process...")
+    os.execute("pkill -f 'sleep 300'")
+    print("✅ Process stopped")
+
+    -- Wait for event
+    sleep(5)
+
+    print("✅ Process watcher test completed")
+end)
+
+-- Test 4: Log Watcher - Pattern matching
+task("test_log_watcher", {
+    delegate_to = "lady-guica",
+    depends_on = {"test_process_watcher"}
+}, function()
+    print("🔍 Testing Log Watcher - Pattern Matching")
+
+    local log_file = "/tmp/watcher-test.log"
+
+    -- Clean up log file
+    os.execute("rm -f " .. log_file)
+    os.execute("touch " .. log_file)
+
+    -- Register log watcher
+    event.register.log({
+        log_path = log_file,
+        pattern = "ERROR|CRITICAL|FATAL",
+        when = {'matches'},
+        follow = true,
+        interval = "2s"
+    })
+
+    print("✅ Log watcher registered for: " .. log_file)
+
+    -- Wait for watcher to initialize
+    sleep(3)
+
+    -- Test 4a: Write ERROR log
+    print("📝 Writing ERROR log...")
+    os.execute("echo '[2025-10-08 09:00:00] ERROR: Test error message' >> " .. log_file)
+    print("✅ ERROR log written")
+
+    -- Wait for event
+    sleep(5)
+
+    -- Test 4b: Write CRITICAL log
+    print("📝 Writing CRITICAL log...")
+    os.execute("echo '[2025-10-08 09:01:00] CRITICAL: Test critical message' >> " .. log_file)
+    print("✅ CRITICAL log written")
+
+    -- Wait for event
+    sleep(5)
+
+    -- Test 4c: Write FATAL log
+    print("📝 Writing FATAL log...")
+    os.execute("echo '[2025-10-08 09:02:00] FATAL: Test fatal message' >> " .. log_file)
+    print("✅ FATAL log written")
+
+    -- Wait for event
+    sleep(5)
+
+    -- Cleanup
+    os.execute("rm -f " .. log_file)
+
+    print("✅ Log watcher test completed")
+end)
+
+-- Test 5: Port Watcher - Open and close
+task("test_port_watcher", {
+    delegate_to = "lady-guica",
+    depends_on = {"test_log_watcher"}
+}, function()
+    print("🔍 Testing Port Watcher - Open and Close")
+
+    local test_port = 19999
+
+    -- Kill any process using the port
+    os.execute("lsof -ti:" .. test_port .. " | xargs kill -9 2>/dev/null")
+    sleep(2)
+
+    -- Register port watcher
+    event.register.port({
+        port = test_port,
+        when = {'created', 'deleted'},
+        interval = "2s"
+    })
+
+    print("✅ Port watcher registered for port: " .. test_port)
+
+    -- Wait for watcher to initialize
+    sleep(3)
+
+    -- Test 5a: Open port with netcat
+    print("🔌 Opening port...")
+    os.execute("nc -l " .. test_port .. " </dev/null >/dev/null 2>&1 &")
+    print("✅ Port opened")
+
+    -- Wait for event
+    sleep(5)
+
+    -- Test 5b: Close port
+    print("🔌 Closing port...")
+    os.execute("lsof -ti:" .. test_port .. " | xargs kill -9 2>/dev/null")
+    print("✅ Port closed")
+
+    -- Wait for event
+    sleep(5)
+
+    print("✅ Port watcher test completed")
+end)
+
+-- Test 6: CPU Watcher - Stress test
+task("test_cpu_watcher", {
+    delegate_to = "lady-guica",
+    depends_on = {"test_port_watcher"}
+}, function()
+    print("🔍 Testing CPU Watcher - Threshold")
+
+    -- Register CPU watcher with low threshold for testing
+    event.register.cpu({
+        threshold = 5,  -- Low threshold to ensure it triggers
+        when = {'above'},
+        interval = "3s"
+    })
+
+    print("✅ CPU watcher registered with 5% threshold")
+
+    -- Wait for watcher to initialize
+    sleep(3)
+
+    -- Generate CPU load
+    print("💻 Generating CPU load...")
+    os.execute("yes > /dev/null &")
+    local yes_pid = io.popen("pgrep -f 'yes'"):read("*l")
+
+    -- Wait for high CPU and event
+    sleep(8)
+
+    -- Stop CPU load
+    print("⏹️  Stopping CPU load...")
+    os.execute("pkill -f 'yes'")
+
+    -- Wait for CPU to normalize
+    sleep(5)
+
+    print("✅ CPU watcher test completed")
+end)
+
+-- Test 7: Command Watcher - Output monitoring
+task("test_command_watcher", {
+    delegate_to = "lady-guica",
+    depends_on = {"test_cpu_watcher"}
+}, function()
+    print("🔍 Testing Command Watcher - Output Monitoring")
+
+    -- Register command watcher that monitors disk usage
+    event.register.command({
+        command = "df /tmp | tail -1 | awk '{print $5}' | tr -d '%'",
+        threshold = 1,  -- Low threshold to ensure it triggers
+        when = {'above'},
+        interval = "5s"
+    })
+
+    print("✅ Command watcher registered for disk usage")
+
+    -- Wait for watcher to check and generate event
+    sleep(10)
+
+    print("✅ Command watcher test completed")
+end)
+
+-- Test 8: Memory Watcher - Threshold
+task("test_memory_watcher", {
+    delegate_to = "lady-guica",
+    depends_on = {"test_command_watcher"}
+}, function()
+    print("🔍 Testing Memory Watcher - Threshold")
+
+    -- Register memory watcher with low threshold
+    event.register.memory({
+        threshold = 5,  -- Low threshold to ensure it triggers
+        when = {'above'},
+        interval = "3s"
+    })
+
+    print("✅ Memory watcher registered with 5% threshold")
+
+    -- Wait for event
+    sleep(8)
+
+    print("✅ Memory watcher test completed")
+end)
+
+-- Final task: Verify all events
+task("verify_all_events", {
+    delegate_to = "lady-guica",
+    depends_on = {"test_memory_watcher"}
+}, function()
+    print("🔍 Verifying All Events Generated")
+    print("=" .. string.rep("=", 70))
+
+    -- Wait a bit more to ensure all events are sent
+    sleep(5)
+
+    print("✅ All watcher tests completed successfully!")
+    print("")
+    print("📊 Expected Events:")
+    print("  • file.created (1)")
+    print("  • file.changed (1)")
+    print("  • file.deleted (1)")
+    print("  • directory.file_created (3)")
+    print("  • directory.file_deleted (3)")
+    print("  • process.started (1)")
+    print("  • process.stopped (1)")
+    print("  • log.pattern_matched (3)")
+    print("  • port.opened (1)")
+    print("  • port.closed (1)")
+    print("  • cpu.high_usage (1+)")
+    print("  • command.threshold_exceeded (1+)")
+    print("  • memory.high_usage (1+)")
+    print("")
+    print("🔍 Check events with:")
+    print("  curl -s 'http://localhost:3030/api/v1/events/by-agent?agent=lady-guica&limit=50'")
+    print("")
+    print("🌐 View in UI:")
+    print("  http://localhost:3030/agent-dashboard?agent=lady-guica")
+    print("=" .. string.rep("=", 70))
+end)

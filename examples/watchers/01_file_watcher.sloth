@@ -1,0 +1,56 @@
+-- File Watcher Example
+-- Monitors a file for creation, modification, and deletion
+
+local register_watcher = task("register_file_watcher")
+    :description("Register file watcher for /tmp/watch-test.txt")
+    :command(function(this, params)
+        log.info("📁 Registering file watcher")
+
+        local watcher_id = watcher.register.file({
+            file_path = "/tmp/watch-test.txt",
+            when = {'created', 'changed', 'deleted'},
+            check_hash = true,
+            interval = "3s"
+        })
+
+        log.info("✓ File watcher registered", {watcher_id = watcher_id})
+        return true, "Watcher ID: " .. watcher_id
+    end)
+    :build()
+
+local create_file = task("create_test_file")
+    :description("Create test file")
+    :command(function(this, params)
+        log.info("📝 Creating /tmp/watch-test.txt")
+        exec.run("echo 'Initial content' > /tmp/watch-test.txt")
+        log.info("Waiting 4s for watcher to detect...")
+        exec.run("sleep 4")
+        return true, "File created"
+    end)
+    :build()
+
+local modify_file = task("modify_test_file")
+    :description("Modify test file")
+    :command(function(this, params)
+        log.info("✏️  Modifying file")
+        exec.run("echo 'Modified at " .. os.time() .. "' >> /tmp/watch-test.txt")
+        log.info("Waiting 4s for watcher to detect...")
+        exec.run("sleep 4")
+        return true, "File modified"
+    end)
+    :build()
+
+local delete_file = task("delete_test_file")
+    :description("Delete test file")
+    :command(function(this, params)
+        log.info("🗑️  Deleting file")
+        exec.run("rm -f /tmp/watch-test.txt")
+        log.info("Waiting 4s for watcher to detect...")
+        exec.run("sleep 4")
+        return true, "File deleted"
+    end)
+    :build()
+
+workflow.define("file_watcher_test")
+    :description("Test file watcher functionality")
+    :tasks({register_watcher, create_file, modify_file, delete_file})

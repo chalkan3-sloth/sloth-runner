@@ -4,10 +4,9 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
+	"github.com/chalkan3-sloth/sloth-runner/internal/config"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -20,13 +19,12 @@ type Repository struct {
 
 // NewRepository creates a new hook repository
 func NewRepository() (*Repository, error) {
-	// Create .sloth-cache directory if it doesn't exist
-	cacheDir := filepath.Join(".", ".sloth-cache")
-	if err := os.MkdirAll(cacheDir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create cache directory: %w", err)
+	// Use centralized data directory (/etc/sloth-runner/ or $HOME/.sloth-runner)
+	if err := config.EnsureDataDir(); err != nil {
+		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}
 
-	dbPath := filepath.Join(cacheDir, "hooks.db")
+	dbPath := config.GetHookDBPath()
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)

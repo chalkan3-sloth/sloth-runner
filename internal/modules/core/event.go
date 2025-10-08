@@ -13,10 +13,24 @@ type EventDispatcher func(eventType string, data map[string]interface{}) error
 
 var globalEventDispatcher EventDispatcher
 
+// Execution context for events
+var (
+	globalStack  string
+	globalAgent  string
+	globalRunID  string
+)
+
 // SetGlobalEventDispatcher sets the global event dispatcher
 // This should be called at application startup
 func SetGlobalEventDispatcher(dispatcher EventDispatcher) {
 	globalEventDispatcher = dispatcher
+}
+
+// SetExecutionContext sets the global execution context for events
+func SetExecutionContext(stack, agent, runID string) {
+	globalStack = stack
+	globalAgent = agent
+	globalRunID = runID
 }
 
 // EventModule provides event dispatching functionality for workflows
@@ -170,6 +184,14 @@ func (e *EventModule) luaDispatchFile(L *lua.LState) int {
 
 	L.Push(lua.LBool(true))
 	return 1
+}
+
+// Open registers the event module and loads it globally
+func (e *EventModule) Open(L *lua.LState) {
+	L.PreloadModule("event", e.Loader)
+	if err := L.DoString(`event = require("event")`); err != nil {
+		panic(err)
+	}
 }
 
 // luaValueToGo converts a Lua value to a Go value

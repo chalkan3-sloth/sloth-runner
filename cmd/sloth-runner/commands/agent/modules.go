@@ -18,13 +18,13 @@ func NewModulesCommand(ctx *commands.AppContext) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			agentName := args[0]
-			masterAddr, _ := cmd.Flags().GetString("master")
+			masterAddr := getMasterAddress(cmd)
 
 			return checkAgentModules(agentName, masterAddr)
 		},
 	}
 
-	cmd.Flags().String("master", "localhost:50051", "Master server address")
+	addMasterFlag(cmd)
 
 	return cmd
 }
