@@ -2564,6 +2564,674 @@ For optimal performance in production:
 
 ---
 
+## ⚡ **Hooks & Events System**
+
+SlothRunner provides a powerful event-driven automation system that allows you to react to system events in real-time. This system combines **Watchers** (monitoring resources) with **Hooks** (automated responses) to create sophisticated automation workflows.
+
+### 🎯 Quick Start
+
+```bash
+# 1. Create a watcher to monitor a file
+sloth-runner agent watcher create my-agent \
+  --type file \
+  --path /var/log/app.log \
+  --when changed \
+  --interval 5s \
+  --check-hash
+
+# 2. Add a hook to respond to file changes
+sloth-runner hook add log_alert \
+  --file examples/hooks/file_changed_alert.lua \
+  --event file.modified \
+  --description "Alert when log file changes"
+
+# 3. View hook execution logs
+sloth-runner hook logs log_alert --output
+```
+
+### 🏗️ Architecture
+
+The event system follows this flow:
+
+```mermaid
+graph LR
+    A[Watcher] -->|Detects Change| B[Event Generator]
+    B -->|file.modified| C[Event Worker]
+    C -->|Batch Events| D[gRPC]
+    D -->|SendEventBatch| E[Master Registry]
+    E -->|Dispatch| F[Event Dispatcher]
+    F -->|Match Event Type| G[Hook Repository]
+    G -->|Find Hooks| H[Hook Executor]
+    H -->|Execute Lua Script| I[Hook Results]
+    I -->|Record| J[Execution History]
+
+    style A fill:#90EE90
+    style H fill:#FFD700
+    style I fill:#87CEEB
+```
+
+**Key Components:**
+
+- **Watchers**: Monitor resources (files, CPU, memory, processes, ports, services)
+- **Event Generator**: Creates events when watchers detect changes
+- **Event Worker**: Batches events for efficient transmission (max 50 events or 10s flush)
+- **Master Registry**: Receives events via gRPC `SendEventBatch`
+- **Dispatcher**: Routes events to matching hooks (100 workers, 1000-event buffer)
+- **Hook Executor**: Runs Lua scripts with event context
+- **Repository**: Persists hooks and execution history in SQLite
+
+**Performance:**
+- ⚡ Sub-millisecond event processing latency
+- 📦 Batched event transmission reduces network overhead
+- 🔄 100 concurrent hook execution workers
+- 💾 SQLite persistence for reliability
+
+### 📡 Event Types
+
+SlothRunner supports 80+ event types across multiple categories:
+
+#### System Events
+```
+system.cpu_high           - CPU usage above threshold
+system.memory_low         - Available memory below threshold
+system.disk_full          - Disk usage above threshold
+system.load_high          - System load above threshold
+```
+
+#### Agent Events
+```
+agent.registered          - New agent registered with master
+agent.disconnected        - Agent lost connection
+agent.heartbeat_failed    - Agent missed heartbeat
+agent.updated             - Agent updated to new version
+```
+
+#### Task Events
+```
+task.started              - Task execution started
+task.completed            - Task completed successfully
+task.failed               - Task execution failed
+task.timeout              - Task exceeded timeout
+```
+
+#### File Events
+```
+file.created              - File was created
+file.modified             - File content changed
+file.deleted              - File was deleted
+file.renamed              - File was renamed
+```
+
+#### Workflow Events
+```
+workflow.started          - Workflow execution began
+workflow.completed        - Workflow finished successfully
+workflow.failed           - Workflow encountered error
+```
+
+#### Custom Events
+You can define custom event types in your watchers and hooks!
+
+### 👁️ Watchers
+
+Watchers continuously monitor resources and generate events when conditions are met.
+
+#### File Watcher
+```bash
+# Monitor file for changes
+sloth-runner agent watcher create my-agent \
+  --type file \
+  --path /etc/nginx/nginx.conf \
+  --when changed \
+  --interval 10s \
+  --check-hash
+
+# Monitor directory for new files
+sloth-runner agent watcher create my-agent \
+  --type file \
+  --path /var/log/ \
+  --when created \
+  --interval 30s
+```
+
+#### CPU Watcher
+```bash
+# Alert on high CPU usage
+sloth-runner agent watcher create my-agent \
+  --type cpu \
+  --threshold 80 \
+  --interval 15s
+```
+
+#### Memory Watcher
+```bash
+# Monitor memory usage
+sloth-runner agent watcher create my-agent \
+  --type memory \
+  --threshold 90 \
+  --interval 30s
+```
+
+#### Process Watcher
+```bash
+# Monitor process state
+sloth-runner agent watcher create my-agent \
+  --type process \
+  --name nginx \
+  --when stopped \
+  --interval 10s
+```
+
+#### Port Watcher
+```bash
+# Monitor port availability
+sloth-runner agent watcher create my-agent \
+  --type port \
+  --port 8080 \
+  --when closed \
+  --interval 5s
+```
+
+#### Service Watcher
+```bash
+# Monitor systemd service
+sloth-runner agent watcher create my-agent \
+  --type service \
+  --name docker \
+  --when failed \
+  --interval 20s
+```
+
+**List and manage watchers:**
+```bash
+# List all watchers on an agent
+sloth-runner agent watcher list my-agent
+
+# Get details of a specific watcher
+sloth-runner agent watcher get my-agent watcher-123
+
+# Delete a watcher
+sloth-runner agent watcher delete my-agent watcher-123
+```
+
+### 🪝 Writing Hooks
+
+Hooks are Lua scripts that execute when events match their criteria.
+
+#### Basic Hook Structure
+
+```lua
+-- examples/hooks/my_hook.lua
+return {
+    name = "my_hook",
+    description = "Description of what this hook does",
+    event_types = {"file.modified", "file.created"},
+    enabled = true,
+
+    execute = function(event)
+        -- Access event data
+        local event_type = event.type
+        local agent_name = event.agent_name
+        local timestamp = event.timestamp
+        local data = event.data
+
+        -- Log information
+        log.info("Hook triggered by: " .. event_type)
+        log.info("Agent: " .. agent_name)
+
+        -- Access event-specific data
+        if event.type == "file.modified" then
+            local path = event.data.path
+            local old_size = event.data.old_size
+            local new_size = event.data.new_size
+
+            log.info("File changed: " .. path)
+            log.info("Size: " .. old_size .. " -> " .. new_size)
+        end
+
+        -- Return true on success
+        return true
+    end
+}
+```
+
+#### Available Lua Modules
+
+Hooks have access to powerful Lua modules:
+
+```lua
+-- Logging
+log.info("Information message")
+log.warn("Warning message")
+log.error("Error message")
+log.debug("Debug message")
+
+-- HTTP requests
+http.get("https://api.example.com/status")
+http.post("https://api.example.com/webhook", {body = "{...}"})
+
+-- File operations
+file.read("/path/to/file")
+file.write("/path/to/file", "content")
+file.exists("/path/to/file")
+
+-- JSON handling
+json.encode({key = "value"})
+json.decode('{"key":"value"}')
+
+-- Sloth operations
+sloth.run("task_name", {param = "value"})
+sloth.get("my-sloth")
+sloth.list()
+```
+
+#### Example: Auto-Deploy Hook
+
+```lua
+-- examples/hooks/auto_deploy.lua
+return {
+    name = "auto_deploy",
+    description = "Deploy application when config changes",
+    event_types = {"file.modified"},
+    enabled = true,
+
+    execute = function(event)
+        local path = event.data.path or ""
+
+        -- Only deploy if config file changed
+        if not path:match("/config/app%.yaml$") then
+            return true
+        end
+
+        log.info("Config changed, triggering deployment...")
+
+        -- Trigger deployment sloth
+        local result = sloth.run("deploy_app", {
+            environment = "production",
+            reason = "config_change"
+        })
+
+        if result.success then
+            log.info("Deployment successful!")
+
+            -- Send notification
+            http.post("https://slack.com/webhook", {
+                body = json.encode({
+                    text = "✅ Deployment completed: " .. path
+                })
+            })
+        else
+            log.error("Deployment failed: " .. result.error)
+        end
+
+        return result.success
+    end
+}
+```
+
+#### Example: Incident Response Hook
+
+```lua
+-- examples/hooks/incident_response.lua
+return {
+    name = "incident_response",
+    description = "Respond to system incidents",
+    event_types = {"system.cpu_high", "system.memory_low", "system.disk_full"},
+    enabled = true,
+
+    execute = function(event)
+        local incident_type = event.type
+        local agent = event.agent_name
+        local threshold = event.data.threshold
+        local current = event.data.current_value
+
+        log.warn("INCIDENT: " .. incident_type .. " on " .. agent)
+        log.warn("Threshold: " .. threshold .. "%, Current: " .. current .. "%")
+
+        -- Send alert to PagerDuty
+        http.post("https://api.pagerduty.com/incidents", {
+            headers = {
+                ["Authorization"] = "Token token=YOUR_TOKEN",
+                ["Content-Type"] = "application/json"
+            },
+            body = json.encode({
+                incident = {
+                    type = "incident",
+                    title = incident_type .. " on " .. agent,
+                    service = {id = "SERVICE_ID"},
+                    urgency = "high",
+                    body = {
+                        type = "incident_body",
+                        details = "Current value: " .. current .. "%, Threshold: " .. threshold .. "%"
+                    }
+                }
+            })
+        })
+
+        -- Execute remediation based on incident type
+        if incident_type == "system.memory_low" then
+            log.info("Restarting memory-intensive services...")
+            sloth.run("restart_services", {
+                services = {"cache", "worker"}
+            })
+        elseif incident_type == "system.disk_full" then
+            log.info("Cleaning up old logs...")
+            sloth.run("cleanup_logs", {
+                older_than = "7d"
+            })
+        end
+
+        return true
+    end
+}
+```
+
+### 🛠️ Hook CLI Commands
+
+Manage hooks using the comprehensive CLI:
+
+#### Add Hook
+```bash
+sloth-runner hook add my_hook \
+  --file hooks/my_hook.lua \
+  --event file.modified \
+  --description "My hook description"
+```
+
+#### List Hooks
+```bash
+# List all hooks
+sloth-runner hook list
+
+# JSON output
+sloth-runner hook list --format json
+```
+
+#### Get Hook Details
+```bash
+sloth-runner hook get my_hook
+
+# JSON output
+sloth-runner hook get my_hook --format json
+```
+
+#### View Hook Source
+```bash
+sloth-runner hook show my_hook
+```
+
+#### Enable/Disable Hooks
+```bash
+# Disable a hook
+sloth-runner hook disable my_hook
+
+# Enable a hook
+sloth-runner hook enable my_hook
+```
+
+#### View Execution Logs
+```bash
+# Show last 20 executions
+sloth-runner hook logs my_hook
+
+# Show last 50 executions
+sloth-runner hook logs my_hook --limit 50
+
+# Show executions with output
+sloth-runner hook logs my_hook --output
+
+# Show executions with errors
+sloth-runner hook logs my_hook --error
+
+# Show only failed executions
+sloth-runner hook logs my_hook --only-failed
+
+# JSON format
+sloth-runner hook logs my_hook --format json
+
+# Full details (output + errors)
+sloth-runner hook logs my_hook --output --error
+```
+
+#### Test Hook
+```bash
+# Test hook with sample event
+sloth-runner hook test my_hook
+
+# Test with custom event data
+sloth-runner hook test my_hook --event-type file.modified --data '{"path":"/test"}'
+```
+
+#### Delete Hook
+```bash
+sloth-runner hook delete my_hook
+```
+
+#### View Documentation
+```bash
+# Open hooks documentation
+sloth-runner hook docs
+```
+
+### 📊 Real-World Examples
+
+#### Example 1: Configuration Drift Detection
+
+Monitor configuration files and alert when they change:
+
+```lua
+-- hooks/config_drift_alert.lua
+return {
+    name = "config_drift_alert",
+    description = "Alert on configuration changes",
+    event_types = {"file.modified"},
+    enabled = true,
+
+    execute = function(event)
+        local path = event.data.path or ""
+
+        -- Check if it's a config file
+        if not (path:match("%.conf$") or path:match("%.yaml$") or path:match("%.json$")) then
+            return true
+        end
+
+        log.warn("Configuration file changed: " .. path)
+
+        -- Get file content
+        local content = file.read(path)
+
+        -- Send to audit system
+        http.post("https://audit.example.com/config-changes", {
+            body = json.encode({
+                agent = event.agent_name,
+                path = path,
+                timestamp = event.timestamp,
+                old_hash = event.data.old_hash,
+                new_hash = event.data.new_hash,
+                content = content
+            })
+        })
+
+        log.info("Configuration change recorded in audit system")
+        return true
+    end
+}
+```
+
+**Setup:**
+```bash
+# 1. Add the hook
+sloth-runner hook add config_drift_alert \
+  --file hooks/config_drift_alert.lua \
+  --event file.modified
+
+# 2. Create watchers for config files
+sloth-runner agent watcher create my-agent \
+  --type file \
+  --path /etc/nginx/ \
+  --when changed \
+  --interval 30s \
+  --check-hash
+```
+
+#### Example 2: Auto-Scaling Based on CPU
+
+Automatically scale services when CPU usage is high:
+
+```lua
+-- hooks/auto_scale.lua
+return {
+    name = "auto_scale",
+    description = "Scale services on high CPU",
+    event_types = {"system.cpu_high"},
+    enabled = true,
+
+    execute = function(event)
+        local agent = event.agent_name
+        local cpu = event.data.current_value
+
+        log.info("High CPU detected on " .. agent .. ": " .. cpu .. "%")
+
+        -- Check if we already scaled recently
+        local last_scale = file.read("/tmp/last_scale_" .. agent) or "0"
+        local current_time = os.time()
+
+        if tonumber(current_time) - tonumber(last_scale) < 300 then
+            log.info("Scaled recently, skipping...")
+            return true
+        end
+
+        -- Trigger scaling
+        log.info("Triggering auto-scale...")
+        sloth.run("scale_services", {
+            agent = agent,
+            scale_up = true,
+            reason = "cpu_high"
+        })
+
+        -- Record scale time
+        file.write("/tmp/last_scale_" .. agent, tostring(current_time))
+
+        return true
+    end
+}
+```
+
+#### Example 3: Service Health Monitoring
+
+Monitor service health and restart if needed:
+
+```lua
+-- hooks/service_health.lua
+return {
+    name = "service_health",
+    description = "Monitor and restart unhealthy services",
+    event_types = {"service.status_changed", "process.stopped"},
+    enabled = true,
+
+    execute = function(event)
+        local service = event.data.service_name or event.data.process_name
+        local status = event.data.status or "stopped"
+
+        if status == "failed" or status == "stopped" then
+            log.warn("Service " .. service .. " is " .. status)
+
+            -- Restart service
+            log.info("Attempting to restart " .. service)
+            sloth.run("restart_service", {
+                service = service,
+                agent = event.agent_name
+            })
+
+            -- Send alert
+            http.post("https://slack.com/webhook", {
+                body = json.encode({
+                    text = "⚠️ Service " .. service .. " restarted on " .. event.agent_name
+                })
+            })
+        end
+
+        return true
+    end
+}
+```
+
+### 🔧 Best Practices
+
+1. **Event Type Specificity**: Use specific event types (`file.modified` not `file.changed`)
+2. **Error Handling**: Always handle errors gracefully in hooks
+3. **Idempotency**: Design hooks to be safely re-executed
+4. **Logging**: Use appropriate log levels (info, warn, error, debug)
+5. **Performance**: Keep hook execution fast (< 1s when possible)
+6. **Rate Limiting**: Prevent hooks from executing too frequently
+7. **Testing**: Test hooks with `sloth-runner hook test` before deploying
+8. **Monitoring**: Regularly check hook logs with `sloth-runner hook logs`
+
+### 🐛 Troubleshooting
+
+#### Hooks Not Executing
+
+```bash
+# 1. Check if hook is enabled
+sloth-runner hook get my_hook
+
+# 2. Verify event type matches
+sloth-runner hook show my_hook
+
+# 3. Check execution logs
+sloth-runner hook logs my_hook --error
+
+# 4. Test hook manually
+sloth-runner hook test my_hook
+```
+
+#### Events Not Reaching Master
+
+```bash
+# 1. Check agent connection
+sloth-runner agent list
+
+# 2. Verify watcher is running
+sloth-runner agent watcher list my-agent
+
+# 3. Check master logs
+tail -f /tmp/master.log | grep "event"
+
+# 4. Check agent logs
+ssh agent-host "journalctl -u sloth-runner-agent -f"
+```
+
+#### High Hook Failure Rate
+
+```bash
+# 1. View failed executions
+sloth-runner hook logs my_hook --only-failed
+
+# 2. Check error messages
+sloth-runner hook logs my_hook --error
+
+# 3. Review hook source
+sloth-runner hook show my_hook
+
+# 4. Test with sample data
+sloth-runner hook test my_hook
+```
+
+### 📚 Full Documentation
+
+For comprehensive documentation including:
+- Advanced hook patterns
+- Custom Lua modules
+- Event payload schemas
+- Performance tuning
+- Security considerations
+
+See: **[Complete Hooks & Events Guide](./docs/hooks-guide.md)**
+
+**Web Documentation**: [https://chalkan3.github.io/sloth-runner/en/hooks-events/](https://chalkan3.github.io/sloth-runner/en/architecture/hooks-events-system/)
+
+---
+
 ## 🤝 **Contributing**
 
 We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for:
