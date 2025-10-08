@@ -1,11 +1,11 @@
 -- Hook: File Changed Alert
 -- Triggers when a file watcher detects changes
--- Event type: file.changed
+-- Event type: file.modified
 
 return {
     name = "file_changed_alert",
     description = "Alert when monitored files change",
-    event_types = {"file.changed"},
+    event_types = {"file.modified"},
     enabled = true,
 
     execute = function(event)
