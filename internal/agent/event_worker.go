@@ -106,9 +106,12 @@ func (w *EventWorker) Stop() error {
 
 // SendEvent sends a single event to the master (adds to buffer)
 func (w *EventWorker) SendEvent(eventType, stack, runID string, data map[string]interface{}) error {
+	slog.Info("📨 EventWorker.SendEvent CALLED", "event_type", eventType, "agent", w.agentName, "data", data)
+
 	// Convert data to JSON
 	dataJSON, err := json.Marshal(data)
 	if err != nil {
+		slog.Error("❌ Failed to marshal event data", "error", err)
 		return fmt.Errorf("failed to marshal event data: %w", err)
 	}
 
@@ -127,11 +130,15 @@ func (w *EventWorker) SendEvent(eventType, stack, runID string, data map[string]
 	// Add to buffer
 	w.mu.Lock()
 	w.events = append(w.events, event)
-	shouldFlush := len(w.events) >= w.batchSize
+	bufferSize := len(w.events)
+	shouldFlush := bufferSize >= w.batchSize
 	w.mu.Unlock()
+
+	slog.Info("📬 Event added to buffer", "buffer_size", bufferSize, "batch_size", w.batchSize, "should_flush", shouldFlush)
 
 	// Flush if batch is full
 	if shouldFlush {
+		slog.Info("🚀 Flushing events (batch full)", "count", bufferSize)
 		return w.flush()
 	}
 
@@ -175,8 +182,12 @@ func (w *EventWorker) SendEventWithSeverity(eventType, stack, runID string, data
 // flush sends all buffered events to master
 func (w *EventWorker) flush() error {
 	w.mu.Lock()
-	if len(w.events) == 0 {
+	eventCount := len(w.events)
+	slog.Info("🚿 Flush called", "buffer_size", eventCount, "agent", w.agentName)
+
+	if eventCount == 0 {
 		w.mu.Unlock()
+		slog.Debug("⏭️ Flush skipped - buffer empty")
 		return nil
 	}
 
@@ -185,6 +196,8 @@ func (w *EventWorker) flush() error {
 	copy(events, w.events)
 	w.events = w.events[:0]
 	w.mu.Unlock()
+
+	slog.Info("📤 Sending batch to master", "count", eventCount, "agent", w.agentName)
 
 	// Send batch to master
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -213,7 +226,7 @@ func (w *EventWorker) flush() error {
 			"failed", len(resp.FailedEventIds),
 			"message", resp.Message)
 	} else {
-		slog.Debug("Event batch sent successfully",
+		slog.Info("✅ Event batch sent successfully",
 			"batch_size", len(events),
 			"processed", resp.EventsProcessed)
 	}

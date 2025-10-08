@@ -454,6 +454,13 @@ func (m *EventWatcherManager) runWatcher(w *Watcher) {
 
 // check performs the watcher check
 func (w *Watcher) check(eventWorker *EventWorker) {
+	slog.Debug("🔍 Watcher check starting", "id", w.config.ID, "type", w.config.Type, "path", w.config.FilePath)
+
+	if eventWorker == nil {
+		slog.Error("❌ EVENT WORKER IS NIL!", "watcher_id", w.config.ID)
+		return
+	}
+
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -517,12 +524,17 @@ func (w *Watcher) initFileState() error {
 
 // checkFile checks for file changes
 func (w *Watcher) checkFile(eventWorker *EventWorker) {
+	slog.Debug("📂 Checking file", "path", w.config.FilePath, "watcher_id", w.config.ID)
+
 	stat, err := os.Stat(w.config.FilePath)
 	currentExists := err == nil
+
+	slog.Debug("📊 File stat", "exists", currentExists, "last_exists", w.state.LastExists, "path", w.config.FilePath)
 
 	// Check for deletion
 	if w.state.LastExists && !currentExists {
 		if w.hasCondition(ConditionDeleted) {
+			slog.Info("🗑️ File deleted - sending event", "path", w.config.FilePath)
 			eventWorker.SendEvent("file.deleted", w.config.Stack, w.config.RunID, map[string]interface{}{
 				"path":       w.config.FilePath,
 				"watcher_id": w.config.ID,
@@ -555,11 +567,14 @@ func (w *Watcher) checkFile(eventWorker *EventWorker) {
 			"watcher_id": w.config.ID,
 		}
 
+		slog.Debug("🔎 Checking for changes", "path", w.config.FilePath, "current_size", stat.Size(), "last_size", w.state.LastSize)
+
 		// Check size change
 		if stat.Size() != w.state.LastSize {
 			changed = true
 			changeDetails["old_size"] = w.state.LastSize
 			changeDetails["new_size"] = stat.Size()
+			slog.Info("📏 Size changed", "path", w.config.FilePath, "old", w.state.LastSize, "new", stat.Size())
 			w.state.LastSize = stat.Size()
 		}
 
@@ -568,6 +583,7 @@ func (w *Watcher) checkFile(eventWorker *EventWorker) {
 			changed = true
 			changeDetails["old_mtime"] = w.state.LastModTime.Unix()
 			changeDetails["new_mtime"] = stat.ModTime().Unix()
+			slog.Info("⏰ ModTime changed", "path", w.config.FilePath)
 			w.state.LastModTime = stat.ModTime()
 		}
 
@@ -578,12 +594,17 @@ func (w *Watcher) checkFile(eventWorker *EventWorker) {
 				changed = true
 				changeDetails["old_hash"] = w.state.LastHash
 				changeDetails["new_hash"] = hash
+				slog.Info("🔐 Hash changed", "path", w.config.FilePath)
 				w.state.LastHash = hash
 			}
 		}
 
 		if changed {
-			eventWorker.SendEvent("file.changed", w.config.Stack, w.config.RunID, changeDetails)
+			slog.Info("📤 FILE CHANGED - Sending event", "path", w.config.FilePath, "details", changeDetails)
+			eventWorker.SendEvent("file.modified", w.config.Stack, w.config.RunID, changeDetails)
+			slog.Info("✅ Event sent to worker", "event_type", "file.modified")
+		} else {
+			slog.Debug("⏭️ No changes detected", "path", w.config.FilePath)
 		}
 	}
 
