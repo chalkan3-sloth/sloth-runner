@@ -41,16 +41,16 @@ type CollectorConfig struct {
 // NewCollector creates a new metrics collector with optimizations
 func NewCollector(cfg CollectorConfig) *Collector {
 	if cfg.Interval == 0 {
-		cfg.Interval = 60 * time.Second // Optimized: collect every 60 seconds (was 30s)
+		cfg.Interval = 120 * time.Second // Ultra-optimized: collect every 2 minutes (was 60s)
 	}
 	if cfg.RetentionDays == 0 {
 		cfg.RetentionDays = 7 // Default: keep 7 days of metrics
 	}
 	if cfg.BatchSize == 0 {
-		cfg.BatchSize = 5 // Process 5 agents at a time
+		cfg.BatchSize = 10 // Process 10 agents at a time (increased from 5)
 	}
 	if cfg.Timeout == 0 {
-		cfg.Timeout = 2 * time.Second // 2s timeout per agent
+		cfg.Timeout = 3 * time.Second // 3s timeout per agent (increased from 2s)
 	}
 
 	return &Collector{
@@ -133,9 +133,9 @@ func (c *Collector) collectAllMetrics(ctx context.Context, agents []AgentInfo) {
 		return
 	}
 
-	// Cache agent list for 5 minutes to avoid redundant checks
+	// Cache agent list for 10 minutes to avoid redundant checks (increased from 5)
 	c.agentCache.RLock()
-	if time.Since(c.lastCheck) < 5*time.Minute && len(c.lastAgents) == len(agents) {
+	if time.Since(c.lastCheck) < 10*time.Minute && len(c.lastAgents) == len(agents) {
 		// Use cached agent list
 		agents = c.lastAgents
 	}
@@ -152,9 +152,9 @@ func (c *Collector) collectAllMetrics(ctx context.Context, agents []AgentInfo) {
 
 		batch := agents[i:end]
 		var wg sync.WaitGroup
+		wg.Add(len(batch)) // Pre-allocate wait group count
 
 		for _, agent := range batch {
-			wg.Add(1)
 			go func(a AgentInfo) {
 				defer wg.Done()
 
@@ -168,9 +168,9 @@ func (c *Collector) collectAllMetrics(ctx context.Context, agents []AgentInfo) {
 
 		wg.Wait()
 
-		// Small delay between batches to avoid overwhelming the system
+		// Increased delay between batches to reduce CPU spikes (was 100ms, now 200ms)
 		if end < len(agents) {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(200 * time.Millisecond)
 		}
 	}
 
@@ -204,6 +204,8 @@ func (c *Collector) collectAgentMetrics(ctx context.Context, agent AgentInfo) {
 		LoadAvg5Min:     resp.LoadAvg_5Min,
 		LoadAvg15Min:    resp.LoadAvg_15Min,
 		ProcessCount:    int(resp.ProcessCount),
+		NetworkRxBytes:  resp.NetworkRxBytes,
+		NetworkTxBytes:  resp.NetworkTxBytes,
 	}
 
 	// Store in database (batched)

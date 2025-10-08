@@ -204,6 +204,8 @@ message ResourceUsageResponse {
   double load_avg_5min = 10;
   double load_avg_15min = 11;
   uint64 uptime_seconds = 12;
+  uint64 network_rx_bytes = 13;
+  uint64 network_tx_bytes = 14;
 }
 
 message ProcessListRequest {

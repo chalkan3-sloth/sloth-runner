@@ -428,3 +428,19 @@ func collectLogs(logChan chan LogEntry) {
 		}
 	}
 }
+
+// getNetworkBytes returns total network RX and TX bytes across all interfaces
+func getNetworkBytes() (uint64, uint64) {
+	interfaces, err := getNetworkInterfaces()
+	if err != nil {
+		return 0, 0
+	}
+
+	var totalRx, totalTx uint64
+	for _, iface := range interfaces {
+		totalRx += iface.BytesRecv
+		totalTx += iface.BytesSent
+	}
+
+	return totalRx, totalTx
+}
