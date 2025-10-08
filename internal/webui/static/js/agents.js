@@ -2,6 +2,18 @@
 
 let currentAgentName = null;
 
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
 // Load all agents
 async function loadAgents() {
     const container = document.getElementById('agents-container');
@@ -188,10 +200,18 @@ function createAgentCard(agent, index = 1) {
                         </div>
                     </div>
 
-                    <div class="mt-3 d-grid gap-2">
-                        <button class="btn btn-sm btn-primary hover-grow btn-ripple" onclick="showAgentDetails('${agent.name}')">
-                            <i class="bi bi-info-circle"></i> View Details
-                        </button>
+                    <div class="mt-3">
+                        <div class="btn-group w-100" role="group">
+                            <button class="btn btn-sm btn-primary hover-grow btn-ripple" onclick="viewAgentDashboard('${agent.name.replace(/'/g, "\\'")}')" title="View agent dashboard">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </button>
+                            <button class="btn btn-sm btn-info hover-grow btn-ripple" onclick="showAgentDetails('${agent.name.replace(/'/g, "\\'")}')" title="View agent details">
+                                <i class="bi bi-info-circle"></i> Details
+                            </button>
+                            <button class="btn btn-sm btn-secondary hover-grow btn-ripple" onclick="viewAgentLogs('${agent.name.replace(/'/g, "\\'")}')" title="View agent logs">
+                                <i class="bi bi-file-text"></i> Logs
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

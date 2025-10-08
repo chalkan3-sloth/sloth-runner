@@ -58,7 +58,7 @@
                             <h6 class="card-subtitle text-muted mb-0">CPU Usage</h6>
                             <i class="bi bi-cpu text-primary fs-4"></i>
                         </div>
-                        <h3 class="mb-0" id="cpu-value">--</h3>
+                        <h1 class="mb-0 display-4" id="cpu-value">--</h1>
                         <div class="progress mt-2" style="height: 6px;">
                             <div id="cpu-progress" class="progress-bar bg-primary" role="progressbar" style="width: 0%"></div>
                         </div>
@@ -72,7 +72,7 @@
                             <h6 class="card-subtitle text-muted mb-0">Memory Usage</h6>
                             <i class="bi bi-memory text-success fs-4"></i>
                         </div>
-                        <h3 class="mb-0" id="memory-value">--</h3>
+                        <h1 class="mb-0 display-4" id="memory-value">--</h1>
                         <div class="progress mt-2" style="height: 6px;">
                             <div id="memory-progress" class="progress-bar bg-success" role="progressbar" style="width: 0%"></div>
                         </div>
@@ -86,7 +86,7 @@
                             <h6 class="card-subtitle text-muted mb-0">Disk Usage</h6>
                             <i class="bi bi-hdd text-warning fs-4"></i>
                         </div>
-                        <h3 class="mb-0" id="disk-value">--</h3>
+                        <h1 class="mb-0 display-4" id="disk-value">--</h1>
                         <div class="progress mt-2" style="height: 6px;">
                             <div id="disk-progress" class="progress-bar bg-warning" role="progressbar" style="width: 0%"></div>
                         </div>
@@ -100,7 +100,7 @@
                             <h6 class="card-subtitle text-muted mb-0">Load Average</h6>
                             <i class="bi bi-speedometer2 text-info fs-4"></i>
                         </div>
-                        <h3 class="mb-0" id="load-value">--</h3>
+                        <h1 class="mb-0 display-4" id="load-value">--</h1>
                         <small class="text-muted" id="load-details">1m / 5m / 15m</small>
                     </div>
                 </div>
@@ -436,8 +436,90 @@
                             <!-- Network Tab -->
                             <div class="tab-pane fade" id="network" role="tabpanel">
                                 <div id="network-content">
-                                    <div class="text-center py-4">
-                                        <div class="spinner-border text-primary" role="status"></div>
+                                    <!-- Network Summary Cards -->
+                                    <div class="row mb-3">
+                                        <div class="col-md-3">
+                                            <div class="card bg-primary text-white">
+                                                <div class="card-body">
+                                                    <h6 class="card-subtitle mb-2">Total Download</h6>
+                                                    <h2 class="mb-0" id="net-total-rx">-</h2>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="card bg-success text-white">
+                                                <div class="card-body">
+                                                    <h6 class="card-subtitle mb-2">Total Upload</h6>
+                                                    <h2 class="mb-0" id="net-total-tx">-</h2>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="card bg-info text-white">
+                                                <div class="card-body">
+                                                    <h6 class="card-subtitle mb-2">Bandwidth RX</h6>
+                                                    <h2 class="mb-0" id="net-bandwidth-rx">-</h2>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="card bg-warning text-white">
+                                                <div class="card-body">
+                                                    <h6 class="card-subtitle mb-2">Bandwidth TX</h6>
+                                                    <h2 class="mb-0" id="net-bandwidth-tx">-</h2>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Network Traffic Chart -->
+                                    <div class="row mb-3">
+                                        <div class="col-12">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h6 class="mb-0"><i class="bi bi-graph-up"></i> Network Traffic (Real-time)</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <canvas id="network-traffic-chart" style="height: 250px;"></canvas>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Network Interfaces -->
+                                    <div class="row">
+                                        <div class="col-12">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h6 class="mb-0"><i class="bi bi-ethernet"></i> Network Interfaces</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Interface</th>
+                                                                    <th>Status</th>
+                                                                    <th>IP Addresses</th>
+                                                                    <th>MAC Address</th>
+                                                                    <th>RX (Down)</th>
+                                                                    <th>TX (Up)</th>
+                                                                    <th>Packets RX</th>
+                                                                    <th>Packets TX</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody id="network-interfaces-table">
+                                                                <tr>
+                                                                    <td colspan="8" class="text-center">
+                                                                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                                                                    </td>
+                                                                </tr>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

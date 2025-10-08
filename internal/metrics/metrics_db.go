@@ -21,6 +21,8 @@ type MetricPoint struct {
 	LoadAvg5Min     float64 `json:"load_avg_5min"`
 	LoadAvg15Min    float64 `json:"load_avg_15min"`
 	ProcessCount    int     `json:"process_count"`
+	NetworkRxBytes  uint64  `json:"network_rx_bytes"`
+	NetworkTxBytes  uint64  `json:"network_tx_bytes"`
 }
 
 // MetricsDB handles storage and retrieval of historical metrics with optimizations
@@ -32,6 +34,12 @@ type MetricsDB struct {
 	batchBuffer []batchMetric
 	batchSize   int
 	flushTimer  *time.Timer
+
+	// Prepared statement caching for better performance
+	stmtCache     map[string]*sql.Stmt
+	stmtCacheMu   sync.RWMutex
+	insertStmt    *sql.Stmt
+	insertStmtMu  sync.Mutex
 }
 
 // batchMetric holds a metric waiting to be batch-inserted
@@ -69,6 +77,8 @@ func NewMetricsDB(dbPath string) (*MetricsDB, error) {
 		load_avg_5min REAL,
 		load_avg_15min REAL,
 		process_count INTEGER,
+		network_rx_bytes INTEGER DEFAULT 0,
+		network_tx_bytes INTEGER DEFAULT 0,
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 	);
 
@@ -80,10 +90,21 @@ func NewMetricsDB(dbPath string) (*MetricsDB, error) {
 		return nil, fmt.Errorf("failed to create schema: %w", err)
 	}
 
+	// Migration: Add network columns if they don't exist
+	migrations := []string{
+		`ALTER TABLE agent_metrics ADD COLUMN network_rx_bytes INTEGER DEFAULT 0`,
+		`ALTER TABLE agent_metrics ADD COLUMN network_tx_bytes INTEGER DEFAULT 0`,
+	}
+	for _, migration := range migrations {
+		// Ignore errors if columns already exist
+		db.Exec(migration)
+	}
+
 	metricsDB := &MetricsDB{
 		db:          db,
-		batchBuffer: make([]batchMetric, 0, 10),
-		batchSize:   10, // Batch write every 10 metrics
+		batchBuffer: make([]batchMetric, 0, 50), // Increased from 10 to 50
+		batchSize:   50, // Batch write every 50 metrics (reduced DB load)
+		stmtCache:   make(map[string]*sql.Stmt),
 	}
 
 	// Start auto-flush timer (5 seconds)
@@ -142,8 +163,9 @@ func (m *MetricsDB) flushBatchLocked() error {
 	stmt, err := tx.Prepare(`
 		INSERT INTO agent_metrics (
 			agent_name, timestamp, cpu_percent, memory_percent, memory_used_bytes,
-			disk_percent, load_avg_1min, load_avg_5min, load_avg_15min, process_count
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			disk_percent, load_avg_1min, load_avg_5min, load_avg_15min, process_count,
+			network_rx_bytes, network_tx_bytes
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		return err
@@ -163,6 +185,8 @@ func (m *MetricsDB) flushBatchLocked() error {
 			bm.Metric.LoadAvg5Min,
 			bm.Metric.LoadAvg15Min,
 			bm.Metric.ProcessCount,
+			bm.Metric.NetworkRxBytes,
+			bm.Metric.NetworkTxBytes,
 		)
 		if err != nil {
 			return err
@@ -183,7 +207,8 @@ func (m *MetricsDB) flushBatchLocked() error {
 func (m *MetricsDB) GetMetricsHistory(ctx context.Context, agentName string, startTime, endTime int64, maxPoints int) ([]MetricPoint, error) {
 	query := `
 		SELECT timestamp, cpu_percent, memory_percent, memory_used_bytes, disk_percent,
-		       load_avg_1min, load_avg_5min, load_avg_15min, process_count
+		       load_avg_1min, load_avg_5min, load_avg_15min, process_count,
+		       COALESCE(network_rx_bytes, 0), COALESCE(network_tx_bytes, 0)
 		FROM agent_metrics
 		WHERE agent_name = ? AND timestamp BETWEEN ? AND ?
 		ORDER BY timestamp ASC
@@ -203,7 +228,8 @@ func (m *MetricsDB) GetMetricsHistory(ctx context.Context, agentName string, sta
 			interval := totalPoints / maxPoints
 			query = fmt.Sprintf(`
 				SELECT timestamp, cpu_percent, memory_percent, memory_used_bytes, disk_percent,
-				       load_avg_1min, load_avg_5min, load_avg_15min, process_count
+				       load_avg_1min, load_avg_5min, load_avg_15min, process_count,
+				       COALESCE(network_rx_bytes, 0), COALESCE(network_tx_bytes, 0)
 				FROM (
 					SELECT *, ROW_NUMBER() OVER (ORDER BY timestamp) as rn
 					FROM agent_metrics
@@ -234,6 +260,8 @@ func (m *MetricsDB) GetMetricsHistory(ctx context.Context, agentName string, sta
 			&mp.LoadAvg5Min,
 			&mp.LoadAvg15Min,
 			&mp.ProcessCount,
+			&mp.NetworkRxBytes,
+			&mp.NetworkTxBytes,
 		)
 		if err != nil {
 			return nil, err
@@ -248,7 +276,8 @@ func (m *MetricsDB) GetMetricsHistory(ctx context.Context, agentName string, sta
 func (m *MetricsDB) GetLatestMetric(ctx context.Context, agentName string) (*MetricPoint, error) {
 	query := `
 		SELECT timestamp, cpu_percent, memory_percent, memory_used_bytes, disk_percent,
-		       load_avg_1min, load_avg_5min, load_avg_15min, process_count
+		       load_avg_1min, load_avg_5min, load_avg_15min, process_count,
+		       COALESCE(network_rx_bytes, 0), COALESCE(network_tx_bytes, 0)
 		FROM agent_metrics
 		WHERE agent_name = ?
 		ORDER BY timestamp DESC
@@ -266,6 +295,8 @@ func (m *MetricsDB) GetLatestMetric(ctx context.Context, agentName string) (*Met
 		&mp.LoadAvg5Min,
 		&mp.LoadAvg15Min,
 		&mp.ProcessCount,
+		&mp.NetworkRxBytes,
+		&mp.NetworkTxBytes,
 	)
 
 	if err == sql.ErrNoRows {
@@ -314,6 +345,17 @@ func (m *MetricsDB) Close() error {
 
 	// Flush any remaining metrics
 	m.flushBatch()
+
+	// Close cached prepared statements
+	m.stmtCacheMu.Lock()
+	for _, stmt := range m.stmtCache {
+		stmt.Close()
+	}
+	m.stmtCacheMu.Unlock()
+
+	if m.insertStmt != nil {
+		m.insertStmt.Close()
+	}
 
 	return m.db.Close()
 }

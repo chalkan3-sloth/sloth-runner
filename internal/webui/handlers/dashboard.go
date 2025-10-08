@@ -1,24 +1,29 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 
+	"github.com/chalkan3-sloth/sloth-runner/internal/webui/services"
 	"github.com/gin-gonic/gin"
+	pb "github.com/chalkan3-sloth/sloth-runner/proto"
 )
 
 // DashboardHandler handles dashboard operations
 type DashboardHandler struct {
-	agentDB   *AgentDBWrapper
-	slothRepo *SlothRepoWrapper
-	hookRepo  *HookRepoWrapper
+	agentDB     *AgentDBWrapper
+	slothRepo   *SlothRepoWrapper
+	hookRepo    *HookRepoWrapper
+	agentClient *services.AgentClient
 }
 
 // NewDashboardHandler creates a new dashboard handler
-func NewDashboardHandler(agentDB *AgentDBWrapper, slothRepo *SlothRepoWrapper, hookRepo *HookRepoWrapper) *DashboardHandler {
+func NewDashboardHandler(agentDB *AgentDBWrapper, slothRepo *SlothRepoWrapper, hookRepo *HookRepoWrapper, agentClient *services.AgentClient) *DashboardHandler {
 	return &DashboardHandler{
-		agentDB:   agentDB,
-		slothRepo: slothRepo,
-		hookRepo:  hookRepo,
+		agentDB:     agentDB,
+		slothRepo:   slothRepo,
+		hookRepo:    hookRepo,
+		agentClient: agentClient,
 	}
 }
 
@@ -88,6 +93,33 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 		}
 	}
 
+	// Get watcher stats from all agents
+	totalWatchers := 0
+	watchersByType := make(map[string]int)
+	for _, agent := range agents {
+		// Get agent client
+		client, err := h.agentClient.GetClient(ctx, agent.Address)
+		if err != nil {
+			continue // Skip agents that can't be reached
+		}
+
+		resp, err := client.ListWatchers(context.Background(), &pb.ListWatchersRequest{})
+		if err != nil {
+			continue
+		}
+
+		totalWatchers += len(resp.Watchers)
+		for _, w := range resp.Watchers {
+			watchersByType[w.Type]++
+		}
+	}
+
+	// Calculate hook execution stats
+	totalHookRuns := int64(0)
+	for _, hook := range hooks {
+		totalHookRuns += hook.RunCount
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"agents": gin.H{
 			"total":  len(agents),
@@ -98,8 +130,9 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 			"active": activeSloths,
 		},
 		"hooks": gin.H{
-			"total":   len(hooks),
-			"enabled": enabledHooks,
+			"total":       len(hooks),
+			"enabled":     enabledHooks,
+			"total_runs":  totalHookRuns,
 		},
 		"events": gin.H{
 			"total":      len(allEvents),
@@ -107,6 +140,10 @@ func (h *DashboardHandler) GetStats(c *gin.Context) {
 			"processing": processingEvents,
 			"completed":  completedEvents,
 			"failed":     failedEvents,
+		},
+		"watchers": gin.H{
+			"total":   totalWatchers,
+			"by_type": watchersByType,
 		},
 	})
 }

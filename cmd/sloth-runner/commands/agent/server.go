@@ -67,6 +67,8 @@ type CachedMetrics struct {
 	LoadAvg         [3]float64
 	ProcessCount    uint32
 	Uptime          uint64
+	NetworkRxBytes  uint64
+	NetworkTxBytes  uint64
 }
 
 // RunCommand executes a shell command and streams output
@@ -751,9 +753,9 @@ func extractTarData(reader io.Reader, dest string) error {
 
 // GetResourceUsage returns current resource usage of the agent (optimized with caching)
 func (s *agentServer) GetResourceUsage(ctx context.Context, in *pb.ResourceUsageRequest) (*pb.ResourceUsageResponse, error) {
-	// Check cache first (30 second TTL)
+	// Check cache first (60 second TTL - increased from 30s for better performance)
 	s.metricsCache.RLock()
-	if time.Since(s.lastMetricsUpdate) < 30*time.Second && s.cachedMetrics != nil {
+	if time.Since(s.lastMetricsUpdate) < 60*time.Second && s.cachedMetrics != nil {
 		cached := s.cachedMetrics
 		s.metricsCache.RUnlock()
 
@@ -770,6 +772,8 @@ func (s *agentServer) GetResourceUsage(ctx context.Context, in *pb.ResourceUsage
 			LoadAvg_5Min:     cached.LoadAvg[1],
 			LoadAvg_15Min:    cached.LoadAvg[2],
 			UptimeSeconds:    cached.Uptime,
+			NetworkRxBytes:   cached.NetworkRxBytes,
+			NetworkTxBytes:   cached.NetworkTxBytes,
 		}, nil
 	}
 	s.metricsCache.RUnlock()
@@ -784,6 +788,7 @@ func (s *agentServer) GetResourceUsage(ctx context.Context, in *pb.ResourceUsage
 	loadAvg := getLoadAverage()
 	processCount := getProcessCount()
 	uptime := getSystemUptime()
+	networkRx, networkTx := getNetworkBytes()
 
 	// Calculate memory percent
 	memPercent := float64(memInfo.Used) / float64(memInfo.Total) * 100
@@ -801,6 +806,8 @@ func (s *agentServer) GetResourceUsage(ctx context.Context, in *pb.ResourceUsage
 		LoadAvg_5Min:     loadAvg[1],
 		LoadAvg_15Min:    loadAvg[2],
 		UptimeSeconds:    uptime,
+		NetworkRxBytes:   networkRx,
+		NetworkTxBytes:   networkTx,
 	}
 
 	return response, nil
@@ -835,6 +842,11 @@ func (s *agentServer) updateMetricsCache() {
 	loadAvg := getLoadAverage()
 	s.cachedMetrics.LoadAvg = [3]float64{loadAvg[0], loadAvg[1], loadAvg[2]}
 
+	// Get network bytes
+	networkRx, networkTx := getNetworkBytes()
+	s.cachedMetrics.NetworkRxBytes = networkRx
+	s.cachedMetrics.NetworkTxBytes = networkTx
+
 	s.lastMetricsUpdate = time.Now()
 }
 
@@ -845,9 +857,10 @@ func (s *agentServer) GetProcessList(ctx context.Context, in *pb.ProcessListRequ
 		return nil, fmt.Errorf("failed to get processes: %w", err)
 	}
 
-	pbProcesses := make([]*pb.ProcessInfo, 0, len(processes))
-	for _, p := range processes {
-		pbProcesses = append(pbProcesses, &pb.ProcessInfo{
+	// Pre-allocate exact size to avoid re-allocations
+	pbProcesses := make([]*pb.ProcessInfo, len(processes))
+	for i, p := range processes {
+		pbProcesses[i] = &pb.ProcessInfo{
 			Pid:           int32(p.PID),
 			Name:          p.Name,
 			Status:        p.Status,
@@ -857,17 +870,17 @@ func (s *agentServer) GetProcessList(ctx context.Context, in *pb.ProcessListRequ
 			User:          p.User,
 			Command:       p.Command,
 			StartedAt:     p.StartedAt,
-		})
+		}
 	}
 
 	return &pb.ProcessListResponse{Processes: pbProcesses}, nil
 }
 
-// GetNetworkInfo returns network interface information (with 60s cache)
+// GetNetworkInfo returns network interface information (with 120s cache)
 func (s *agentServer) GetNetworkInfo(ctx context.Context, in *pb.NetworkInfoRequest) (*pb.NetworkInfoResponse, error) {
-	// Check cache first (60 second TTL - network info changes rarely)
+	// Check cache first (120 second TTL - network info changes rarely, increased from 60s)
 	s.networkCache.RLock()
-	if s.cachedNetwork != nil && time.Since(s.lastNetworkUpdate) < 60*time.Second {
+	if s.cachedNetwork != nil && time.Since(s.lastNetworkUpdate) < 120*time.Second {
 		interfaces := s.cachedNetwork
 		s.networkCache.RUnlock()
 
@@ -923,11 +936,11 @@ func (s *agentServer) GetNetworkInfo(ctx context.Context, in *pb.NetworkInfoRequ
 	}, nil
 }
 
-// GetDiskInfo returns disk partition information (with 60s cache)
+// GetDiskInfo returns disk partition information (with 300s cache)
 func (s *agentServer) GetDiskInfo(ctx context.Context, in *pb.DiskInfoRequest) (*pb.DiskInfoResponse, error) {
-	// Check cache first (60 second TTL - disk info changes rarely)
+	// Check cache first (300 second TTL - disk info changes very rarely, increased from 60s)
 	s.diskCache.RLock()
-	if s.cachedDisk != nil && time.Since(s.lastDiskUpdate) < 60*time.Second {
+	if s.cachedDisk != nil && time.Since(s.lastDiskUpdate) < 300*time.Second {
 		partitions := s.cachedDisk
 		s.diskCache.RUnlock()
 
@@ -1020,7 +1033,8 @@ func (s *agentServer) StreamLogs(in *pb.StreamLogsRequest, stream pb.Agent_Strea
 
 // StreamMetrics streams real-time metrics
 func (s *agentServer) StreamMetrics(in *pb.StreamMetricsRequest, stream pb.Agent_StreamMetricsServer) error {
-	ticker := time.NewTicker(2 * time.Second)
+	// Increased from 2s to 5s to reduce CPU/bandwidth usage
+	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 	
 	for {

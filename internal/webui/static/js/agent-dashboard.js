@@ -672,6 +672,18 @@ function formatBytes(bytes) {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+// Escape HTML
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return String(text).replace(/[&<>"']/g, m => map[m]);
+}
+
 // Load connections
 async function loadConnections() {
     const container = document.getElementById('connections-content');
@@ -1707,3 +1719,199 @@ document.getElementById('events-tab')?.addEventListener('shown.bs.tab', function
 document.getElementById('event-type-filter')?.addEventListener('change', loadAgentEvents);
 document.getElementById('event-status-filter')?.addEventListener('change', loadAgentEvents);
 document.getElementById('event-limit')?.addEventListener('change', loadAgentEvents);
+
+// ==================== NETWORK METRICS ====================
+
+let networkTrafficChart = null;
+let networkHistory = [];
+const MAX_NETWORK_HISTORY = 60; // 5 minutes at 5s intervals
+let lastNetworkBytes = null;
+
+// Load network metrics
+async function loadNetworkMetrics() {
+    if (!agentName) return;
+
+    try {
+        const response = await fetch(`/api/v1/network/agent/${agentName}`);
+        if (!response.ok) throw new Error('Failed to fetch network metrics');
+
+        const data = await response.json();
+
+        // Update summary cards
+        document.getElementById('net-total-rx').textContent = formatBytes(data.total_rx_bytes || 0);
+        document.getElementById('net-total-tx').textContent = formatBytes(data.total_tx_bytes || 0);
+
+        // Calculate bandwidth (MB/s) if we have previous data
+        if (lastNetworkBytes) {
+            const timeDiff = 5; // 5 seconds between updates
+            const rxDiff = data.total_rx_bytes - lastNetworkBytes.rx;
+            const txDiff = data.total_tx_bytes - lastNetworkBytes.tx;
+
+            const rxBandwidth = (rxDiff / timeDiff) / 1024 / 1024; // MB/s
+            const txBandwidth = (txDiff / timeDiff) / 1024 / 1024; // MB/s
+
+            document.getElementById('net-bandwidth-rx').textContent = rxBandwidth.toFixed(2) + ' MB/s';
+            document.getElementById('net-bandwidth-tx').textContent = txBandwidth.toFixed(2) + ' MB/s';
+
+            // Add to history for chart
+            networkHistory.push({
+                timestamp: new Date(),
+                rx: rxBandwidth,
+                tx: txBandwidth
+            });
+
+            // Keep only recent history
+            if (networkHistory.length > MAX_NETWORK_HISTORY) {
+                networkHistory.shift();
+            }
+
+            // Update chart
+            updateNetworkTrafficChart();
+        } else {
+            document.getElementById('net-bandwidth-rx').textContent = '0.00 MB/s';
+            document.getElementById('net-bandwidth-tx').textContent = '0.00 MB/s';
+        }
+
+        // Store current values for next calculation
+        lastNetworkBytes = {
+            rx: data.total_rx_bytes,
+            tx: data.total_tx_bytes
+        };
+
+        // Update interfaces table
+        updateNetworkInterfacesTable(data.interfaces || []);
+
+    } catch (error) {
+        console.error('Error loading network metrics:', error);
+    }
+}
+
+// Update network traffic chart
+function updateNetworkTrafficChart() {
+    const canvas = document.getElementById('network-traffic-chart');
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+
+    const labels = networkHistory.map(h => h.timestamp.toLocaleTimeString());
+    const rxData = networkHistory.map(h => h.rx);
+    const txData = networkHistory.map(h => h.tx);
+
+    if (networkTrafficChart) {
+        networkTrafficChart.destroy();
+    }
+
+    networkTrafficChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Download (MB/s)',
+                    data: rxData,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 2
+                },
+                {
+                    label: 'Upload (MB/s)',
+                    data: txData,
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toFixed(2) + ' MB/s';
+                        }
+                    }
+                },
+                x: {
+                    ticks: {
+                        maxTicksLimit: 10
+                    }
+                }
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            }
+        }
+    });
+}
+
+// Update network interfaces table
+function updateNetworkInterfacesTable(interfaces) {
+    const tbody = document.getElementById('network-interfaces-table');
+    if (!tbody) return;
+
+    if (interfaces.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No network interfaces found</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = interfaces.map(iface => `
+        <tr>
+            <td><strong>${escapeHtml(iface.name)}</strong></td>
+            <td>
+                ${iface.is_up ?
+                    '<span class="badge bg-success">UP</span>' :
+                    '<span class="badge bg-secondary">DOWN</span>'}
+            </td>
+            <td>
+                ${iface.ip_addresses && iface.ip_addresses.length > 0 ?
+                    iface.ip_addresses.map(ip => `<span class="badge bg-info me-1">${escapeHtml(ip)}</span>`).join('') :
+                    '<span class="text-muted">-</span>'}
+            </td>
+            <td><small class="font-monospace">${escapeHtml(iface.mac_address || '-')}</small></td>
+            <td><span class="text-success">${formatBytes(iface.bytes_recv || 0)}</span></td>
+            <td><span class="text-primary">${formatBytes(iface.bytes_sent || 0)}</span></td>
+            <td>${(iface.packets_recv || 0).toLocaleString()}</td>
+            <td>${(iface.packets_sent || 0).toLocaleString()}</td>
+        </tr>
+    `).join('');
+}
+
+// Add network tab listener
+document.getElementById('network-tab')?.addEventListener('shown.bs.tab', function() {
+    console.log('Network tab shown, loading metrics...');
+    loadNetworkMetrics();
+
+    // Start auto-refresh for network tab
+    if (window.networkRefreshInterval) {
+        clearInterval(window.networkRefreshInterval);
+    }
+    window.networkRefreshInterval = setInterval(loadNetworkMetrics, 5000);
+});
+
+// Stop network refresh when tab is hidden
+document.getElementById('network-tab')?.addEventListener('hidden.bs.tab', function() {
+    if (window.networkRefreshInterval) {
+        clearInterval(window.networkRefreshInterval);
+        window.networkRefreshInterval = null;
+    }
+});
+

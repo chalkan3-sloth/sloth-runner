@@ -158,7 +158,7 @@ func (s *Server) setupRoutes(cfg *Config) {
 	api := s.router.Group("/api/v1")
 	{
 		// Dashboard
-		dashboard := handlers.NewDashboardHandler(s.agentDB, s.slothRepo, s.hookRepo)
+		dashboard := handlers.NewDashboardHandler(s.agentDB, s.slothRepo, s.hookRepo, s.agentClient)
 		api.GET("/dashboard", dashboard.GetStats)
 
 		// Agents
@@ -232,6 +232,9 @@ func (s *Server) setupRoutes(cfg *Config) {
 		hooks := api.Group("/hooks")
 		{
 			hooks.GET("", hookHandler.List)
+			hooks.GET("/stats", hookHandler.GetStatistics)
+			hooks.GET("/by-event-type", hookHandler.ListByEventType)
+			hooks.GET("/by-stack", hookHandler.ListByStack)
 			hooks.GET("/:id", hookHandler.Get)
 			hooks.POST("", hookHandler.Create)
 			hooks.PUT("/:id", hookHandler.Update)
@@ -239,6 +242,7 @@ func (s *Server) setupRoutes(cfg *Config) {
 			hooks.POST("/:id/enable", hookHandler.Enable)
 			hooks.POST("/:id/disable", hookHandler.Disable)
 			hooks.GET("/:id/history", hookHandler.GetHistory)
+			hooks.GET("/:id/execution-stats", hookHandler.GetExecutionStats)
 		}
 
 		// Events
@@ -246,11 +250,39 @@ func (s *Server) setupRoutes(cfg *Config) {
 		events := api.Group("/events")
 		{
 			events.GET("", eventHandler.List)
+			events.GET("/stats", eventHandler.GetStatistics)
+			events.GET("/recent", eventHandler.GetRecentActivity)
 			events.GET("/pending", eventHandler.ListPending)
+			events.GET("/by-type", eventHandler.ListByType)
+			events.GET("/by-status", eventHandler.ListByStatus)
 			events.GET("/by-agent", eventHandler.ListByAgent)
 			events.GET("/hook-executions/by-agent", eventHandler.ListHookExecutionsByAgent)
 			events.GET("/:id", eventHandler.Get)
 			events.POST("/:id/retry", eventHandler.Retry)
+		}
+
+		// Watchers
+		watcherHandler := handlers.NewWatcherHandler(s.agentDB, s.agentClient)
+		watchers := api.Group("/watchers")
+		{
+			watchers.GET("", watcherHandler.ListAllWatchers)
+			watchers.GET("/stats", watcherHandler.GetStatistics)
+			watchers.GET("/agent/:agent", watcherHandler.ListByAgent)
+			watchers.GET("/agent/:agent/:id", watcherHandler.GetByAgent)
+			watchers.POST("/agent/:agent", watcherHandler.CreateForAgent)
+			watchers.DELETE("/agent/:agent/:id", watcherHandler.DeleteFromAgent)
+		}
+
+		// Network Metrics
+		networkHandler := handlers.NewNetworkHandler(s.agentDB, s.agentClient)
+		network := api.Group("/network")
+		{
+			network.GET("/summary", networkHandler.GetNetworkSummary)
+			network.GET("/all", networkHandler.GetAllNetworkStats)
+			network.GET("/topology", networkHandler.GetNetworkTopology)
+			network.GET("/top", networkHandler.GetTopAgentsByNetwork)
+			network.GET("/agent/:agent", networkHandler.GetNetworkStats)
+			network.GET("/agent/:agent/interface/:interface", networkHandler.GetInterfaceDetails)
 		}
 
 		// Secrets
@@ -363,6 +395,9 @@ func (s *Server) setupRoutes(cfg *Config) {
 	s.router.GET("/stacks", s.servePage("stacks.html"))
 	s.router.GET("/hooks", s.servePage("hooks.html"))
 	s.router.GET("/events", s.servePage("events.html"))
+	s.router.GET("/watchers", s.servePage("watchers.html"))
+	s.router.GET("/network", s.servePage("network.html"))
+	s.router.GET("/network/topology", s.servePage("network-topology.html"))
 	s.router.GET("/secrets", s.servePage("secrets.html"))
 	s.router.GET("/ssh", s.servePage("ssh.html"))
 	s.router.GET("/executions", s.servePage("executions.html"))
