@@ -26,6 +26,7 @@ func NewHookCommand(ctx *commands.AppContext) *cobra.Command {
 		NewEnableCommand(ctx),
 		NewDisableCommand(ctx),
 		NewTestCommand(ctx),
+		NewLogsCommand(ctx),
 		NewDocsCommand(ctx),
 	)
 
