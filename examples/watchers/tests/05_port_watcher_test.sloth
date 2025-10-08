@@ -1,0 +1,60 @@
+-- Test 05: Port Watcher - Listening Port Detection
+-- Este teste valida que port watchers detectam quando portas são abertas
+
+workflow("port_watcher_test")
+    :description("Test port watcher with listening port detection")
+    :tasks({
+        task("setup_port_monitor")
+            :delegate_to("lady-guica")
+            :shell([[
+                echo "🧪 Test 05: Port Watcher - Listening Port Detection"
+                echo "=================================================="
+
+                # Limpar processos nc anteriores
+                pkill -f "nc -l" 2>/dev/null || true
+
+                echo "✓ Setup complete"
+            ]])
+            :on_complete(function()
+                print("📝 Registering port watcher...")
+
+                -- Registrar watcher para porta 9999
+                local watcher_id = watcher.register.port({
+                    port = 9999,
+                    protocol = 'tcp',
+                    when = {'listening'},
+                    interval = '3s'
+                })
+
+                print("✓ Port watcher registered: " .. watcher_id)
+                print("⏳ Monitoring port 9999 (TCP) every 3 seconds")
+            end),
+
+        task("trigger_port_events")
+            :delegate_to("lady-guica")
+            :depends_on("setup_port_monitor")
+            :shell([[
+                echo ""
+                echo "🔄 Triggering port events..."
+                echo "---------------------------"
+
+                # Esperar watcher ser registrado
+                sleep 4
+
+                # Evento 1: Port LISTENING
+                echo "1️⃣  Opening port 9999 with netcat..."
+                nc -l 9999 &
+                NC_PID=$!
+                echo "   Netcat PID: $NC_PID"
+                sleep 6
+
+                # Evento 2: Port CLOSED
+                echo "2️⃣  Closing port 9999..."
+                kill $NC_PID 2>/dev/null || true
+                sleep 4
+
+                echo ""
+                echo "✅ Port events triggered"
+                echo "⏳ Check agent logs for port listening events"
+            ]])
+    })

@@ -5831,6 +5831,873 @@ func (x *ShellOutput) GetError() string {
 	return ""
 }
 
+// Event Reporting Messages - Agents push events to master
+type EventData struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	EventId       string                 `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`                                                      // Unique event ID
+	EventType     string                 `protobuf:"bytes,2,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`                                                // Type of event (task.started, file.created, etc)
+	AgentName     string                 `protobuf:"bytes,3,opt,name=agent_name,json=agentName,proto3" json:"agent_name,omitempty"`                                                // Agent that generated the event
+	Timestamp     int64                  `protobuf:"varint,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`                                                                // Unix timestamp
+	Stack         string                 `protobuf:"bytes,5,opt,name=stack,proto3" json:"stack,omitempty"`                                                                         // Stack name if applicable
+	RunId         string                 `protobuf:"bytes,6,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`                                                            // Run ID if applicable
+	Data          map[string]string      `protobuf:"bytes,7,rep,name=data,proto3" json:"data,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // Event data as key-value pairs
+	DataJson      string                 `protobuf:"bytes,8,opt,name=data_json,json=dataJson,proto3" json:"data_json,omitempty"`                                                   // Optional: full JSON data
+	Severity      string                 `protobuf:"bytes,9,opt,name=severity,proto3" json:"severity,omitempty"`                                                                   // info, warning, error, critical
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EventData) Reset() {
+	*x = EventData{}
+	mi := &file_proto_agent_proto_msgTypes[90]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EventData) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EventData) ProtoMessage() {}
+
+func (x *EventData) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[90]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EventData.ProtoReflect.Descriptor instead.
+func (*EventData) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{90}
+}
+
+func (x *EventData) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *EventData) GetEventType() string {
+	if x != nil {
+		return x.EventType
+	}
+	return ""
+}
+
+func (x *EventData) GetAgentName() string {
+	if x != nil {
+		return x.AgentName
+	}
+	return ""
+}
+
+func (x *EventData) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+func (x *EventData) GetStack() string {
+	if x != nil {
+		return x.Stack
+	}
+	return ""
+}
+
+func (x *EventData) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *EventData) GetData() map[string]string {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+func (x *EventData) GetDataJson() string {
+	if x != nil {
+		return x.DataJson
+	}
+	return ""
+}
+
+func (x *EventData) GetSeverity() string {
+	if x != nil {
+		return x.Severity
+	}
+	return ""
+}
+
+type SendEventRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Event         *EventData             `protobuf:"bytes,1,opt,name=event,proto3" json:"event,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendEventRequest) Reset() {
+	*x = SendEventRequest{}
+	mi := &file_proto_agent_proto_msgTypes[91]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendEventRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendEventRequest) ProtoMessage() {}
+
+func (x *SendEventRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[91]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendEventRequest.ProtoReflect.Descriptor instead.
+func (*SendEventRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{91}
+}
+
+func (x *SendEventRequest) GetEvent() *EventData {
+	if x != nil {
+		return x.Event
+	}
+	return nil
+}
+
+type SendEventResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	EventId       string                 `protobuf:"bytes,3,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"` // Confirmed event ID
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendEventResponse) Reset() {
+	*x = SendEventResponse{}
+	mi := &file_proto_agent_proto_msgTypes[92]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendEventResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendEventResponse) ProtoMessage() {}
+
+func (x *SendEventResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[92]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendEventResponse.ProtoReflect.Descriptor instead.
+func (*SendEventResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{92}
+}
+
+func (x *SendEventResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *SendEventResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *SendEventResponse) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+type SendEventBatchRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Events        []*EventData           `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
+	BatchSize     int32                  `protobuf:"varint,2,opt,name=batch_size,json=batchSize,proto3" json:"batch_size,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendEventBatchRequest) Reset() {
+	*x = SendEventBatchRequest{}
+	mi := &file_proto_agent_proto_msgTypes[93]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendEventBatchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendEventBatchRequest) ProtoMessage() {}
+
+func (x *SendEventBatchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[93]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendEventBatchRequest.ProtoReflect.Descriptor instead.
+func (*SendEventBatchRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{93}
+}
+
+func (x *SendEventBatchRequest) GetEvents() []*EventData {
+	if x != nil {
+		return x.Events
+	}
+	return nil
+}
+
+func (x *SendEventBatchRequest) GetBatchSize() int32 {
+	if x != nil {
+		return x.BatchSize
+	}
+	return 0
+}
+
+type SendEventBatchResponse struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Success         bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message         string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	EventsReceived  int32                  `protobuf:"varint,3,opt,name=events_received,json=eventsReceived,proto3" json:"events_received,omitempty"`
+	EventsProcessed int32                  `protobuf:"varint,4,opt,name=events_processed,json=eventsProcessed,proto3" json:"events_processed,omitempty"`
+	FailedEventIds  []string               `protobuf:"bytes,5,rep,name=failed_event_ids,json=failedEventIds,proto3" json:"failed_event_ids,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *SendEventBatchResponse) Reset() {
+	*x = SendEventBatchResponse{}
+	mi := &file_proto_agent_proto_msgTypes[94]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendEventBatchResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendEventBatchResponse) ProtoMessage() {}
+
+func (x *SendEventBatchResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[94]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendEventBatchResponse.ProtoReflect.Descriptor instead.
+func (*SendEventBatchResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{94}
+}
+
+func (x *SendEventBatchResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *SendEventBatchResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *SendEventBatchResponse) GetEventsReceived() int32 {
+	if x != nil {
+		return x.EventsReceived
+	}
+	return 0
+}
+
+func (x *SendEventBatchResponse) GetEventsProcessed() int32 {
+	if x != nil {
+		return x.EventsProcessed
+	}
+	return 0
+}
+
+func (x *SendEventBatchResponse) GetFailedEventIds() []string {
+	if x != nil {
+		return x.FailedEventIds
+	}
+	return nil
+}
+
+// Watcher Management Messages
+type WatcherConfig struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Id         string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Type       string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`             // file, process, port, cpu, memory, etc.
+	Conditions []string               `protobuf:"bytes,3,rep,name=conditions,proto3" json:"conditions,omitempty"` // created, changed, deleted, above, below, etc.
+	Interval   string                 `protobuf:"bytes,4,opt,name=interval,proto3" json:"interval,omitempty"`
+	// Type-specific fields
+	FilePath        string  `protobuf:"bytes,10,opt,name=file_path,json=filePath,proto3" json:"file_path,omitempty"`
+	CheckHash       bool    `protobuf:"varint,11,opt,name=check_hash,json=checkHash,proto3" json:"check_hash,omitempty"`
+	Recursive       bool    `protobuf:"varint,12,opt,name=recursive,proto3" json:"recursive,omitempty"`
+	ProcessName     string  `protobuf:"bytes,20,opt,name=process_name,json=processName,proto3" json:"process_name,omitempty"`
+	Pid             int32   `protobuf:"varint,21,opt,name=pid,proto3" json:"pid,omitempty"`
+	Port            int32   `protobuf:"varint,30,opt,name=port,proto3" json:"port,omitempty"`
+	Protocol        string  `protobuf:"bytes,31,opt,name=protocol,proto3" json:"protocol,omitempty"`
+	CpuThreshold    float64 `protobuf:"fixed64,40,opt,name=cpu_threshold,json=cpuThreshold,proto3" json:"cpu_threshold,omitempty"`
+	MemoryThreshold float64 `protobuf:"fixed64,41,opt,name=memory_threshold,json=memoryThreshold,proto3" json:"memory_threshold,omitempty"`
+	DiskThreshold   float64 `protobuf:"fixed64,42,opt,name=disk_threshold,json=diskThreshold,proto3" json:"disk_threshold,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *WatcherConfig) Reset() {
+	*x = WatcherConfig{}
+	mi := &file_proto_agent_proto_msgTypes[95]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WatcherConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WatcherConfig) ProtoMessage() {}
+
+func (x *WatcherConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[95]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WatcherConfig.ProtoReflect.Descriptor instead.
+func (*WatcherConfig) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{95}
+}
+
+func (x *WatcherConfig) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *WatcherConfig) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *WatcherConfig) GetConditions() []string {
+	if x != nil {
+		return x.Conditions
+	}
+	return nil
+}
+
+func (x *WatcherConfig) GetInterval() string {
+	if x != nil {
+		return x.Interval
+	}
+	return ""
+}
+
+func (x *WatcherConfig) GetFilePath() string {
+	if x != nil {
+		return x.FilePath
+	}
+	return ""
+}
+
+func (x *WatcherConfig) GetCheckHash() bool {
+	if x != nil {
+		return x.CheckHash
+	}
+	return false
+}
+
+func (x *WatcherConfig) GetRecursive() bool {
+	if x != nil {
+		return x.Recursive
+	}
+	return false
+}
+
+func (x *WatcherConfig) GetProcessName() string {
+	if x != nil {
+		return x.ProcessName
+	}
+	return ""
+}
+
+func (x *WatcherConfig) GetPid() int32 {
+	if x != nil {
+		return x.Pid
+	}
+	return 0
+}
+
+func (x *WatcherConfig) GetPort() int32 {
+	if x != nil {
+		return x.Port
+	}
+	return 0
+}
+
+func (x *WatcherConfig) GetProtocol() string {
+	if x != nil {
+		return x.Protocol
+	}
+	return ""
+}
+
+func (x *WatcherConfig) GetCpuThreshold() float64 {
+	if x != nil {
+		return x.CpuThreshold
+	}
+	return 0
+}
+
+func (x *WatcherConfig) GetMemoryThreshold() float64 {
+	if x != nil {
+		return x.MemoryThreshold
+	}
+	return 0
+}
+
+func (x *WatcherConfig) GetDiskThreshold() float64 {
+	if x != nil {
+		return x.DiskThreshold
+	}
+	return 0
+}
+
+type RegisterWatcherRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Config        *WatcherConfig         `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RegisterWatcherRequest) Reset() {
+	*x = RegisterWatcherRequest{}
+	mi := &file_proto_agent_proto_msgTypes[96]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegisterWatcherRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegisterWatcherRequest) ProtoMessage() {}
+
+func (x *RegisterWatcherRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[96]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegisterWatcherRequest.ProtoReflect.Descriptor instead.
+func (*RegisterWatcherRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{96}
+}
+
+func (x *RegisterWatcherRequest) GetConfig() *WatcherConfig {
+	if x != nil {
+		return x.Config
+	}
+	return nil
+}
+
+type RegisterWatcherResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	WatcherId     string                 `protobuf:"bytes,3,opt,name=watcher_id,json=watcherId,proto3" json:"watcher_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RegisterWatcherResponse) Reset() {
+	*x = RegisterWatcherResponse{}
+	mi := &file_proto_agent_proto_msgTypes[97]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RegisterWatcherResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RegisterWatcherResponse) ProtoMessage() {}
+
+func (x *RegisterWatcherResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[97]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RegisterWatcherResponse.ProtoReflect.Descriptor instead.
+func (*RegisterWatcherResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{97}
+}
+
+func (x *RegisterWatcherResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *RegisterWatcherResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *RegisterWatcherResponse) GetWatcherId() string {
+	if x != nil {
+		return x.WatcherId
+	}
+	return ""
+}
+
+type ListWatchersRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWatchersRequest) Reset() {
+	*x = ListWatchersRequest{}
+	mi := &file_proto_agent_proto_msgTypes[98]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWatchersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWatchersRequest) ProtoMessage() {}
+
+func (x *ListWatchersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[98]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWatchersRequest.ProtoReflect.Descriptor instead.
+func (*ListWatchersRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{98}
+}
+
+type ListWatchersResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Watchers      []*WatcherConfig       `protobuf:"bytes,1,rep,name=watchers,proto3" json:"watchers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListWatchersResponse) Reset() {
+	*x = ListWatchersResponse{}
+	mi := &file_proto_agent_proto_msgTypes[99]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListWatchersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListWatchersResponse) ProtoMessage() {}
+
+func (x *ListWatchersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[99]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListWatchersResponse.ProtoReflect.Descriptor instead.
+func (*ListWatchersResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{99}
+}
+
+func (x *ListWatchersResponse) GetWatchers() []*WatcherConfig {
+	if x != nil {
+		return x.Watchers
+	}
+	return nil
+}
+
+type GetWatcherRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WatcherId     string                 `protobuf:"bytes,1,opt,name=watcher_id,json=watcherId,proto3" json:"watcher_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWatcherRequest) Reset() {
+	*x = GetWatcherRequest{}
+	mi := &file_proto_agent_proto_msgTypes[100]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWatcherRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWatcherRequest) ProtoMessage() {}
+
+func (x *GetWatcherRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[100]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWatcherRequest.ProtoReflect.Descriptor instead.
+func (*GetWatcherRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{100}
+}
+
+func (x *GetWatcherRequest) GetWatcherId() string {
+	if x != nil {
+		return x.WatcherId
+	}
+	return ""
+}
+
+type GetWatcherResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Watcher       *WatcherConfig         `protobuf:"bytes,1,opt,name=watcher,proto3" json:"watcher,omitempty"`
+	Found         bool                   `protobuf:"varint,2,opt,name=found,proto3" json:"found,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWatcherResponse) Reset() {
+	*x = GetWatcherResponse{}
+	mi := &file_proto_agent_proto_msgTypes[101]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWatcherResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWatcherResponse) ProtoMessage() {}
+
+func (x *GetWatcherResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[101]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWatcherResponse.ProtoReflect.Descriptor instead.
+func (*GetWatcherResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{101}
+}
+
+func (x *GetWatcherResponse) GetWatcher() *WatcherConfig {
+	if x != nil {
+		return x.Watcher
+	}
+	return nil
+}
+
+func (x *GetWatcherResponse) GetFound() bool {
+	if x != nil {
+		return x.Found
+	}
+	return false
+}
+
+type RemoveWatcherRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WatcherId     string                 `protobuf:"bytes,1,opt,name=watcher_id,json=watcherId,proto3" json:"watcher_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveWatcherRequest) Reset() {
+	*x = RemoveWatcherRequest{}
+	mi := &file_proto_agent_proto_msgTypes[102]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveWatcherRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveWatcherRequest) ProtoMessage() {}
+
+func (x *RemoveWatcherRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[102]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveWatcherRequest.ProtoReflect.Descriptor instead.
+func (*RemoveWatcherRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{102}
+}
+
+func (x *RemoveWatcherRequest) GetWatcherId() string {
+	if x != nil {
+		return x.WatcherId
+	}
+	return ""
+}
+
+type RemoveWatcherResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RemoveWatcherResponse) Reset() {
+	*x = RemoveWatcherResponse{}
+	mi := &file_proto_agent_proto_msgTypes[103]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RemoveWatcherResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RemoveWatcherResponse) ProtoMessage() {}
+
+func (x *RemoveWatcherResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_proto_msgTypes[103]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RemoveWatcherResponse.ProtoReflect.Descriptor instead.
+func (*RemoveWatcherResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_proto_rawDescGZIP(), []int{103}
+}
+
+func (x *RemoveWatcherResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *RemoveWatcherResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 var File_proto_agent_proto protoreflect.FileDescriptor
 
 const file_proto_agent_proto_rawDesc = "" +
@@ -6367,7 +7234,79 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\x06stderr\x18\x02 \x01(\fR\x06stderr\x12\x1b\n" +
 	"\texit_code\x18\x03 \x01(\x05R\bexitCode\x12\x1c\n" +
 	"\tcompleted\x18\x04 \x01(\bR\tcompleted\x12\x14\n" +
-	"\x05error\x18\x05 \x01(\tR\x05error2\xcb\f\n" +
+	"\x05error\x18\x05 \x01(\tR\x05error\"\xd1\x02\n" +
+	"\tEventData\x12\x19\n" +
+	"\bevent_id\x18\x01 \x01(\tR\aeventId\x12\x1d\n" +
+	"\n" +
+	"event_type\x18\x02 \x01(\tR\teventType\x12\x1d\n" +
+	"\n" +
+	"agent_name\x18\x03 \x01(\tR\tagentName\x12\x1c\n" +
+	"\ttimestamp\x18\x04 \x01(\x03R\ttimestamp\x12\x14\n" +
+	"\x05stack\x18\x05 \x01(\tR\x05stack\x12\x15\n" +
+	"\x06run_id\x18\x06 \x01(\tR\x05runId\x12.\n" +
+	"\x04data\x18\a \x03(\v2\x1a.agent.EventData.DataEntryR\x04data\x12\x1b\n" +
+	"\tdata_json\x18\b \x01(\tR\bdataJson\x12\x1a\n" +
+	"\bseverity\x18\t \x01(\tR\bseverity\x1a7\n" +
+	"\tDataEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\":\n" +
+	"\x10SendEventRequest\x12&\n" +
+	"\x05event\x18\x01 \x01(\v2\x10.agent.EventDataR\x05event\"b\n" +
+	"\x11SendEventResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12\x19\n" +
+	"\bevent_id\x18\x03 \x01(\tR\aeventId\"`\n" +
+	"\x15SendEventBatchRequest\x12(\n" +
+	"\x06events\x18\x01 \x03(\v2\x10.agent.EventDataR\x06events\x12\x1d\n" +
+	"\n" +
+	"batch_size\x18\x02 \x01(\x05R\tbatchSize\"\xca\x01\n" +
+	"\x16SendEventBatchResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12'\n" +
+	"\x0fevents_received\x18\x03 \x01(\x05R\x0eeventsReceived\x12)\n" +
+	"\x10events_processed\x18\x04 \x01(\x05R\x0feventsProcessed\x12(\n" +
+	"\x10failed_event_ids\x18\x05 \x03(\tR\x0efailedEventIds\"\xa5\x03\n" +
+	"\rWatcherConfig\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12\x1e\n" +
+	"\n" +
+	"conditions\x18\x03 \x03(\tR\n" +
+	"conditions\x12\x1a\n" +
+	"\binterval\x18\x04 \x01(\tR\binterval\x12\x1b\n" +
+	"\tfile_path\x18\n" +
+	" \x01(\tR\bfilePath\x12\x1d\n" +
+	"\n" +
+	"check_hash\x18\v \x01(\bR\tcheckHash\x12\x1c\n" +
+	"\trecursive\x18\f \x01(\bR\trecursive\x12!\n" +
+	"\fprocess_name\x18\x14 \x01(\tR\vprocessName\x12\x10\n" +
+	"\x03pid\x18\x15 \x01(\x05R\x03pid\x12\x12\n" +
+	"\x04port\x18\x1e \x01(\x05R\x04port\x12\x1a\n" +
+	"\bprotocol\x18\x1f \x01(\tR\bprotocol\x12#\n" +
+	"\rcpu_threshold\x18( \x01(\x01R\fcpuThreshold\x12)\n" +
+	"\x10memory_threshold\x18) \x01(\x01R\x0fmemoryThreshold\x12%\n" +
+	"\x0edisk_threshold\x18* \x01(\x01R\rdiskThreshold\"F\n" +
+	"\x16RegisterWatcherRequest\x12,\n" +
+	"\x06config\x18\x01 \x01(\v2\x14.agent.WatcherConfigR\x06config\"l\n" +
+	"\x17RegisterWatcherResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1d\n" +
+	"\n" +
+	"watcher_id\x18\x03 \x01(\tR\twatcherId\"\x15\n" +
+	"\x13ListWatchersRequest\"H\n" +
+	"\x14ListWatchersResponse\x120\n" +
+	"\bwatchers\x18\x01 \x03(\v2\x14.agent.WatcherConfigR\bwatchers\"2\n" +
+	"\x11GetWatcherRequest\x12\x1d\n" +
+	"\n" +
+	"watcher_id\x18\x01 \x01(\tR\twatcherId\"Z\n" +
+	"\x12GetWatcherResponse\x12.\n" +
+	"\awatcher\x18\x01 \x01(\v2\x14.agent.WatcherConfigR\awatcher\x12\x14\n" +
+	"\x05found\x18\x02 \x01(\bR\x05found\"5\n" +
+	"\x14RemoveWatcherRequest\x12\x1d\n" +
+	"\n" +
+	"watcher_id\x18\x01 \x01(\tR\twatcherId\"K\n" +
+	"\x15RemoveWatcherResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage2\xf5\x0e\n" +
 	"\x05Agent\x12D\n" +
 	"\vExecuteTask\x12\x19.agent.ExecuteTaskRequest\x1a\x1a.agent.ExecuteTaskResponse\x12E\n" +
 	"\n" +
@@ -6392,7 +7331,13 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\x0fGetSystemErrors\x12\x1a.agent.SystemErrorsRequest\x1a\x1b.agent.SystemErrorsResponse\x12\\\n" +
 	"\x15GetPerformanceHistory\x12 .agent.PerformanceHistoryRequest\x1a!.agent.PerformanceHistoryResponse\x12Q\n" +
 	"\x0eDiagnoseHealth\x12\x1e.agent.HealthDiagnosticRequest\x1a\x1f.agent.HealthDiagnosticResponse\x12=\n" +
-	"\x10InteractiveShell\x12\x11.agent.ShellInput\x1a\x12.agent.ShellOutput(\x010\x012\xdb\t\n" +
+	"\x10InteractiveShell\x12\x11.agent.ShellInput\x1a\x12.agent.ShellOutput(\x010\x01\x12P\n" +
+	"\x0fRegisterWatcher\x12\x1d.agent.RegisterWatcherRequest\x1a\x1e.agent.RegisterWatcherResponse\x12G\n" +
+	"\fListWatchers\x12\x1a.agent.ListWatchersRequest\x1a\x1b.agent.ListWatchersResponse\x12A\n" +
+	"\n" +
+	"GetWatcher\x12\x18.agent.GetWatcherRequest\x1a\x19.agent.GetWatcherResponse\x12J\n" +
+	"\rRemoveWatcher\x12\x1b.agent.RemoveWatcherRequest\x1a\x1c.agent.RemoveWatcherResponse2\xea\n" +
+	"\n" +
 	"\rAgentRegistry\x12J\n" +
 	"\rRegisterAgent\x12\x1b.agent.RegisterAgentRequest\x1a\x1c.agent.RegisterAgentResponse\x12A\n" +
 	"\n" +
@@ -6410,7 +7355,9 @@ const file_proto_agent_proto_rawDesc = "" +
 	"\x17ExecuteOnMultipleAgents\x12\x19.agent.BulkExecuteRequest\x1a\x1a.agent.BulkExecuteResponse0\x01\x12_\n" +
 	"\x16GetMultipleAgentStatus\x12!.agent.MultipleAgentStatusRequest\x1a\".agent.MultipleAgentStatusResponse\x12Y\n" +
 	"\x14GetAggregatedMetrics\x12\x1f.agent.AggregatedMetricsRequest\x1a .agent.AggregatedMetricsResponse\x12D\n" +
-	"\x11StreamAgentEvents\x12\x1a.agent.StreamEventsRequest\x1a\x11.agent.AgentEvent0\x01B.Z,github.com/chalkan3-sloth/sloth-runner/protob\x06proto3"
+	"\x11StreamAgentEvents\x12\x1a.agent.StreamEventsRequest\x1a\x11.agent.AgentEvent0\x01\x12>\n" +
+	"\tSendEvent\x12\x17.agent.SendEventRequest\x1a\x18.agent.SendEventResponse\x12M\n" +
+	"\x0eSendEventBatch\x12\x1c.agent.SendEventBatchRequest\x1a\x1d.agent.SendEventBatchResponseB.Z,github.com/chalkan3-sloth/sloth-runner/protob\x06proto3"
 
 var (
 	file_proto_agent_proto_rawDescOnce sync.Once
@@ -6424,7 +7371,7 @@ func file_proto_agent_proto_rawDescGZIP() []byte {
 	return file_proto_agent_proto_rawDescData
 }
 
-var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 98)
+var file_proto_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 113)
 var file_proto_agent_proto_goTypes = []any{
 	(*ShutdownRequest)(nil),             // 0: agent.ShutdownRequest
 	(*ShutdownResponse)(nil),            // 1: agent.ShutdownResponse
@@ -6516,127 +7463,160 @@ var file_proto_agent_proto_goTypes = []any{
 	(*HealthDiagnosticResponse)(nil),    // 87: agent.HealthDiagnosticResponse
 	(*ShellInput)(nil),                  // 88: agent.ShellInput
 	(*ShellOutput)(nil),                 // 89: agent.ShellOutput
-	nil,                                 // 90: agent.MetricsData.CustomMetricsEntry
-	nil,                                 // 91: agent.EnvVarsResponse.VariablesEntry
-	nil,                                 // 92: agent.CreateGroupRequest.TagsEntry
-	nil,                                 // 93: agent.AgentGroup.TagsEntry
-	nil,                                 // 94: agent.AggregatedMetricsResponse.CustomMetricsEntry
-	nil,                                 // 95: agent.AgentEvent.MetadataEntry
-	nil,                                 // 96: agent.SystemError.ContextEntry
-	nil,                                 // 97: agent.HealthDiagnosticResponse.SummaryEntry
+	(*EventData)(nil),                   // 90: agent.EventData
+	(*SendEventRequest)(nil),            // 91: agent.SendEventRequest
+	(*SendEventResponse)(nil),           // 92: agent.SendEventResponse
+	(*SendEventBatchRequest)(nil),       // 93: agent.SendEventBatchRequest
+	(*SendEventBatchResponse)(nil),      // 94: agent.SendEventBatchResponse
+	(*WatcherConfig)(nil),               // 95: agent.WatcherConfig
+	(*RegisterWatcherRequest)(nil),      // 96: agent.RegisterWatcherRequest
+	(*RegisterWatcherResponse)(nil),     // 97: agent.RegisterWatcherResponse
+	(*ListWatchersRequest)(nil),         // 98: agent.ListWatchersRequest
+	(*ListWatchersResponse)(nil),        // 99: agent.ListWatchersResponse
+	(*GetWatcherRequest)(nil),           // 100: agent.GetWatcherRequest
+	(*GetWatcherResponse)(nil),          // 101: agent.GetWatcherResponse
+	(*RemoveWatcherRequest)(nil),        // 102: agent.RemoveWatcherRequest
+	(*RemoveWatcherResponse)(nil),       // 103: agent.RemoveWatcherResponse
+	nil,                                 // 104: agent.MetricsData.CustomMetricsEntry
+	nil,                                 // 105: agent.EnvVarsResponse.VariablesEntry
+	nil,                                 // 106: agent.CreateGroupRequest.TagsEntry
+	nil,                                 // 107: agent.AgentGroup.TagsEntry
+	nil,                                 // 108: agent.AggregatedMetricsResponse.CustomMetricsEntry
+	nil,                                 // 109: agent.AgentEvent.MetadataEntry
+	nil,                                 // 110: agent.SystemError.ContextEntry
+	nil,                                 // 111: agent.HealthDiagnosticResponse.SummaryEntry
+	nil,                                 // 112: agent.EventData.DataEntry
 }
 var file_proto_agent_proto_depIdxs = []int32{
-	8,  // 0: agent.ListAgentsResponse.agents:type_name -> agent.AgentInfo
-	8,  // 1: agent.GetAgentInfoResponse.agent_info:type_name -> agent.AgentInfo
-	25, // 2: agent.ProcessListResponse.processes:type_name -> agent.ProcessInfo
-	28, // 3: agent.NetworkInfoResponse.interfaces:type_name -> agent.NetworkInterface
-	31, // 4: agent.DiskInfoResponse.partitions:type_name -> agent.DiskPartition
-	90, // 5: agent.MetricsData.custom_metrics:type_name -> agent.MetricsData.CustomMetricsEntry
-	91, // 6: agent.EnvVarsResponse.variables:type_name -> agent.EnvVarsResponse.VariablesEntry
-	46, // 7: agent.ModulesResponse.modules:type_name -> agent.ModuleInfo
-	92, // 8: agent.CreateGroupRequest.tags:type_name -> agent.CreateGroupRequest.TagsEntry
-	93, // 9: agent.AgentGroup.tags:type_name -> agent.AgentGroup.TagsEntry
-	55, // 10: agent.ListGroupsResponse.groups:type_name -> agent.AgentGroup
-	62, // 11: agent.MultipleAgentStatusResponse.statuses:type_name -> agent.AgentStatusInfo
-	94, // 12: agent.AggregatedMetricsResponse.custom_metrics:type_name -> agent.AggregatedMetricsResponse.CustomMetricsEntry
-	95, // 13: agent.AgentEvent.metadata:type_name -> agent.AgentEvent.MetadataEntry
-	31, // 14: agent.DiskDetail.partitions:type_name -> agent.DiskPartition
-	28, // 15: agent.NetworkDetail.interfaces:type_name -> agent.NetworkInterface
-	69, // 16: agent.DetailedMetricsResponse.cpu:type_name -> agent.CPUDetail
-	70, // 17: agent.DetailedMetricsResponse.memory:type_name -> agent.MemoryDetail
-	71, // 18: agent.DetailedMetricsResponse.disk:type_name -> agent.DiskDetail
-	72, // 19: agent.DetailedMetricsResponse.network:type_name -> agent.NetworkDetail
-	34, // 20: agent.RecentLogsResponse.logs:type_name -> agent.LogEntry
-	77, // 21: agent.ConnectionsResponse.connections:type_name -> agent.ConnectionInfo
-	96, // 22: agent.SystemError.context:type_name -> agent.SystemError.ContextEntry
-	80, // 23: agent.SystemErrorsResponse.errors:type_name -> agent.SystemError
-	83, // 24: agent.PerformanceHistoryResponse.snapshots:type_name -> agent.PerformanceSnapshot
-	83, // 25: agent.PerformanceHistoryResponse.avg:type_name -> agent.PerformanceSnapshot
-	83, // 26: agent.PerformanceHistoryResponse.min:type_name -> agent.PerformanceSnapshot
-	83, // 27: agent.PerformanceHistoryResponse.max:type_name -> agent.PerformanceSnapshot
-	86, // 28: agent.HealthDiagnosticResponse.issues:type_name -> agent.HealthIssue
-	97, // 29: agent.HealthDiagnosticResponse.summary:type_name -> agent.HealthDiagnosticResponse.SummaryEntry
-	4,  // 30: agent.Agent.ExecuteTask:input_type -> agent.ExecuteTaskRequest
-	16, // 31: agent.Agent.RunCommand:input_type -> agent.RunCommandRequest
-	0,  // 32: agent.Agent.Shutdown:input_type -> agent.ShutdownRequest
-	2,  // 33: agent.Agent.UpdateAgent:input_type -> agent.UpdateAgentRequest
-	22, // 34: agent.Agent.GetResourceUsage:input_type -> agent.ResourceUsageRequest
-	24, // 35: agent.Agent.GetProcessList:input_type -> agent.ProcessListRequest
-	27, // 36: agent.Agent.GetNetworkInfo:input_type -> agent.NetworkInfoRequest
-	30, // 37: agent.Agent.GetDiskInfo:input_type -> agent.DiskInfoRequest
-	33, // 38: agent.Agent.StreamLogs:input_type -> agent.StreamLogsRequest
-	35, // 39: agent.Agent.StreamMetrics:input_type -> agent.StreamMetricsRequest
-	37, // 40: agent.Agent.RestartService:input_type -> agent.RestartServiceRequest
-	39, // 41: agent.Agent.GetEnvironmentVars:input_type -> agent.EnvVarsRequest
-	41, // 42: agent.Agent.SetEnvironmentVar:input_type -> agent.SetEnvVarRequest
-	43, // 43: agent.Agent.InstallModule:input_type -> agent.InstallModuleRequest
-	45, // 44: agent.Agent.GetInstalledModules:input_type -> agent.ModulesRequest
-	68, // 45: agent.Agent.GetDetailedMetrics:input_type -> agent.DetailedMetricsRequest
-	74, // 46: agent.Agent.GetRecentLogs:input_type -> agent.RecentLogsRequest
-	76, // 47: agent.Agent.GetActiveConnections:input_type -> agent.ConnectionsRequest
-	79, // 48: agent.Agent.GetSystemErrors:input_type -> agent.SystemErrorsRequest
-	82, // 49: agent.Agent.GetPerformanceHistory:input_type -> agent.PerformanceHistoryRequest
-	85, // 50: agent.Agent.DiagnoseHealth:input_type -> agent.HealthDiagnosticRequest
-	88, // 51: agent.Agent.InteractiveShell:input_type -> agent.ShellInput
-	6,  // 52: agent.AgentRegistry.RegisterAgent:input_type -> agent.RegisterAgentRequest
-	9,  // 53: agent.AgentRegistry.ListAgents:input_type -> agent.ListAgentsRequest
-	11, // 54: agent.AgentRegistry.StopAgent:input_type -> agent.StopAgentRequest
-	13, // 55: agent.AgentRegistry.UnregisterAgent:input_type -> agent.UnregisterAgentRequest
-	15, // 56: agent.AgentRegistry.ExecuteCommand:input_type -> agent.ExecuteCommandRequest
-	18, // 57: agent.AgentRegistry.Heartbeat:input_type -> agent.HeartbeatRequest
-	20, // 58: agent.AgentRegistry.GetAgentInfo:input_type -> agent.GetAgentInfoRequest
-	48, // 59: agent.AgentRegistry.CreateAgentGroup:input_type -> agent.CreateGroupRequest
-	50, // 60: agent.AgentRegistry.AddAgentToGroup:input_type -> agent.AddToGroupRequest
-	52, // 61: agent.AgentRegistry.RemoveAgentFromGroup:input_type -> agent.RemoveFromGroupRequest
-	54, // 62: agent.AgentRegistry.ListAgentGroups:input_type -> agent.ListGroupsRequest
-	57, // 63: agent.AgentRegistry.DeleteAgentGroup:input_type -> agent.DeleteGroupRequest
-	59, // 64: agent.AgentRegistry.ExecuteOnMultipleAgents:input_type -> agent.BulkExecuteRequest
-	61, // 65: agent.AgentRegistry.GetMultipleAgentStatus:input_type -> agent.MultipleAgentStatusRequest
-	64, // 66: agent.AgentRegistry.GetAggregatedMetrics:input_type -> agent.AggregatedMetricsRequest
-	66, // 67: agent.AgentRegistry.StreamAgentEvents:input_type -> agent.StreamEventsRequest
-	5,  // 68: agent.Agent.ExecuteTask:output_type -> agent.ExecuteTaskResponse
-	17, // 69: agent.Agent.RunCommand:output_type -> agent.StreamOutputResponse
-	1,  // 70: agent.Agent.Shutdown:output_type -> agent.ShutdownResponse
-	3,  // 71: agent.Agent.UpdateAgent:output_type -> agent.UpdateAgentResponse
-	23, // 72: agent.Agent.GetResourceUsage:output_type -> agent.ResourceUsageResponse
-	26, // 73: agent.Agent.GetProcessList:output_type -> agent.ProcessListResponse
-	29, // 74: agent.Agent.GetNetworkInfo:output_type -> agent.NetworkInfoResponse
-	32, // 75: agent.Agent.GetDiskInfo:output_type -> agent.DiskInfoResponse
-	34, // 76: agent.Agent.StreamLogs:output_type -> agent.LogEntry
-	36, // 77: agent.Agent.StreamMetrics:output_type -> agent.MetricsData
-	38, // 78: agent.Agent.RestartService:output_type -> agent.RestartServiceResponse
-	40, // 79: agent.Agent.GetEnvironmentVars:output_type -> agent.EnvVarsResponse
-	42, // 80: agent.Agent.SetEnvironmentVar:output_type -> agent.SetEnvVarResponse
-	44, // 81: agent.Agent.InstallModule:output_type -> agent.InstallModuleResponse
-	47, // 82: agent.Agent.GetInstalledModules:output_type -> agent.ModulesResponse
-	73, // 83: agent.Agent.GetDetailedMetrics:output_type -> agent.DetailedMetricsResponse
-	75, // 84: agent.Agent.GetRecentLogs:output_type -> agent.RecentLogsResponse
-	78, // 85: agent.Agent.GetActiveConnections:output_type -> agent.ConnectionsResponse
-	81, // 86: agent.Agent.GetSystemErrors:output_type -> agent.SystemErrorsResponse
-	84, // 87: agent.Agent.GetPerformanceHistory:output_type -> agent.PerformanceHistoryResponse
-	87, // 88: agent.Agent.DiagnoseHealth:output_type -> agent.HealthDiagnosticResponse
-	89, // 89: agent.Agent.InteractiveShell:output_type -> agent.ShellOutput
-	7,  // 90: agent.AgentRegistry.RegisterAgent:output_type -> agent.RegisterAgentResponse
-	10, // 91: agent.AgentRegistry.ListAgents:output_type -> agent.ListAgentsResponse
-	12, // 92: agent.AgentRegistry.StopAgent:output_type -> agent.StopAgentResponse
-	14, // 93: agent.AgentRegistry.UnregisterAgent:output_type -> agent.UnregisterAgentResponse
-	17, // 94: agent.AgentRegistry.ExecuteCommand:output_type -> agent.StreamOutputResponse
-	19, // 95: agent.AgentRegistry.Heartbeat:output_type -> agent.HeartbeatResponse
-	21, // 96: agent.AgentRegistry.GetAgentInfo:output_type -> agent.GetAgentInfoResponse
-	49, // 97: agent.AgentRegistry.CreateAgentGroup:output_type -> agent.CreateGroupResponse
-	51, // 98: agent.AgentRegistry.AddAgentToGroup:output_type -> agent.AddToGroupResponse
-	53, // 99: agent.AgentRegistry.RemoveAgentFromGroup:output_type -> agent.RemoveFromGroupResponse
-	56, // 100: agent.AgentRegistry.ListAgentGroups:output_type -> agent.ListGroupsResponse
-	58, // 101: agent.AgentRegistry.DeleteAgentGroup:output_type -> agent.DeleteGroupResponse
-	60, // 102: agent.AgentRegistry.ExecuteOnMultipleAgents:output_type -> agent.BulkExecuteResponse
-	63, // 103: agent.AgentRegistry.GetMultipleAgentStatus:output_type -> agent.MultipleAgentStatusResponse
-	65, // 104: agent.AgentRegistry.GetAggregatedMetrics:output_type -> agent.AggregatedMetricsResponse
-	67, // 105: agent.AgentRegistry.StreamAgentEvents:output_type -> agent.AgentEvent
-	68, // [68:106] is the sub-list for method output_type
-	30, // [30:68] is the sub-list for method input_type
-	30, // [30:30] is the sub-list for extension type_name
-	30, // [30:30] is the sub-list for extension extendee
-	0,  // [0:30] is the sub-list for field type_name
+	8,   // 0: agent.ListAgentsResponse.agents:type_name -> agent.AgentInfo
+	8,   // 1: agent.GetAgentInfoResponse.agent_info:type_name -> agent.AgentInfo
+	25,  // 2: agent.ProcessListResponse.processes:type_name -> agent.ProcessInfo
+	28,  // 3: agent.NetworkInfoResponse.interfaces:type_name -> agent.NetworkInterface
+	31,  // 4: agent.DiskInfoResponse.partitions:type_name -> agent.DiskPartition
+	104, // 5: agent.MetricsData.custom_metrics:type_name -> agent.MetricsData.CustomMetricsEntry
+	105, // 6: agent.EnvVarsResponse.variables:type_name -> agent.EnvVarsResponse.VariablesEntry
+	46,  // 7: agent.ModulesResponse.modules:type_name -> agent.ModuleInfo
+	106, // 8: agent.CreateGroupRequest.tags:type_name -> agent.CreateGroupRequest.TagsEntry
+	107, // 9: agent.AgentGroup.tags:type_name -> agent.AgentGroup.TagsEntry
+	55,  // 10: agent.ListGroupsResponse.groups:type_name -> agent.AgentGroup
+	62,  // 11: agent.MultipleAgentStatusResponse.statuses:type_name -> agent.AgentStatusInfo
+	108, // 12: agent.AggregatedMetricsResponse.custom_metrics:type_name -> agent.AggregatedMetricsResponse.CustomMetricsEntry
+	109, // 13: agent.AgentEvent.metadata:type_name -> agent.AgentEvent.MetadataEntry
+	31,  // 14: agent.DiskDetail.partitions:type_name -> agent.DiskPartition
+	28,  // 15: agent.NetworkDetail.interfaces:type_name -> agent.NetworkInterface
+	69,  // 16: agent.DetailedMetricsResponse.cpu:type_name -> agent.CPUDetail
+	70,  // 17: agent.DetailedMetricsResponse.memory:type_name -> agent.MemoryDetail
+	71,  // 18: agent.DetailedMetricsResponse.disk:type_name -> agent.DiskDetail
+	72,  // 19: agent.DetailedMetricsResponse.network:type_name -> agent.NetworkDetail
+	34,  // 20: agent.RecentLogsResponse.logs:type_name -> agent.LogEntry
+	77,  // 21: agent.ConnectionsResponse.connections:type_name -> agent.ConnectionInfo
+	110, // 22: agent.SystemError.context:type_name -> agent.SystemError.ContextEntry
+	80,  // 23: agent.SystemErrorsResponse.errors:type_name -> agent.SystemError
+	83,  // 24: agent.PerformanceHistoryResponse.snapshots:type_name -> agent.PerformanceSnapshot
+	83,  // 25: agent.PerformanceHistoryResponse.avg:type_name -> agent.PerformanceSnapshot
+	83,  // 26: agent.PerformanceHistoryResponse.min:type_name -> agent.PerformanceSnapshot
+	83,  // 27: agent.PerformanceHistoryResponse.max:type_name -> agent.PerformanceSnapshot
+	86,  // 28: agent.HealthDiagnosticResponse.issues:type_name -> agent.HealthIssue
+	111, // 29: agent.HealthDiagnosticResponse.summary:type_name -> agent.HealthDiagnosticResponse.SummaryEntry
+	112, // 30: agent.EventData.data:type_name -> agent.EventData.DataEntry
+	90,  // 31: agent.SendEventRequest.event:type_name -> agent.EventData
+	90,  // 32: agent.SendEventBatchRequest.events:type_name -> agent.EventData
+	95,  // 33: agent.RegisterWatcherRequest.config:type_name -> agent.WatcherConfig
+	95,  // 34: agent.ListWatchersResponse.watchers:type_name -> agent.WatcherConfig
+	95,  // 35: agent.GetWatcherResponse.watcher:type_name -> agent.WatcherConfig
+	4,   // 36: agent.Agent.ExecuteTask:input_type -> agent.ExecuteTaskRequest
+	16,  // 37: agent.Agent.RunCommand:input_type -> agent.RunCommandRequest
+	0,   // 38: agent.Agent.Shutdown:input_type -> agent.ShutdownRequest
+	2,   // 39: agent.Agent.UpdateAgent:input_type -> agent.UpdateAgentRequest
+	22,  // 40: agent.Agent.GetResourceUsage:input_type -> agent.ResourceUsageRequest
+	24,  // 41: agent.Agent.GetProcessList:input_type -> agent.ProcessListRequest
+	27,  // 42: agent.Agent.GetNetworkInfo:input_type -> agent.NetworkInfoRequest
+	30,  // 43: agent.Agent.GetDiskInfo:input_type -> agent.DiskInfoRequest
+	33,  // 44: agent.Agent.StreamLogs:input_type -> agent.StreamLogsRequest
+	35,  // 45: agent.Agent.StreamMetrics:input_type -> agent.StreamMetricsRequest
+	37,  // 46: agent.Agent.RestartService:input_type -> agent.RestartServiceRequest
+	39,  // 47: agent.Agent.GetEnvironmentVars:input_type -> agent.EnvVarsRequest
+	41,  // 48: agent.Agent.SetEnvironmentVar:input_type -> agent.SetEnvVarRequest
+	43,  // 49: agent.Agent.InstallModule:input_type -> agent.InstallModuleRequest
+	45,  // 50: agent.Agent.GetInstalledModules:input_type -> agent.ModulesRequest
+	68,  // 51: agent.Agent.GetDetailedMetrics:input_type -> agent.DetailedMetricsRequest
+	74,  // 52: agent.Agent.GetRecentLogs:input_type -> agent.RecentLogsRequest
+	76,  // 53: agent.Agent.GetActiveConnections:input_type -> agent.ConnectionsRequest
+	79,  // 54: agent.Agent.GetSystemErrors:input_type -> agent.SystemErrorsRequest
+	82,  // 55: agent.Agent.GetPerformanceHistory:input_type -> agent.PerformanceHistoryRequest
+	85,  // 56: agent.Agent.DiagnoseHealth:input_type -> agent.HealthDiagnosticRequest
+	88,  // 57: agent.Agent.InteractiveShell:input_type -> agent.ShellInput
+	96,  // 58: agent.Agent.RegisterWatcher:input_type -> agent.RegisterWatcherRequest
+	98,  // 59: agent.Agent.ListWatchers:input_type -> agent.ListWatchersRequest
+	100, // 60: agent.Agent.GetWatcher:input_type -> agent.GetWatcherRequest
+	102, // 61: agent.Agent.RemoveWatcher:input_type -> agent.RemoveWatcherRequest
+	6,   // 62: agent.AgentRegistry.RegisterAgent:input_type -> agent.RegisterAgentRequest
+	9,   // 63: agent.AgentRegistry.ListAgents:input_type -> agent.ListAgentsRequest
+	11,  // 64: agent.AgentRegistry.StopAgent:input_type -> agent.StopAgentRequest
+	13,  // 65: agent.AgentRegistry.UnregisterAgent:input_type -> agent.UnregisterAgentRequest
+	15,  // 66: agent.AgentRegistry.ExecuteCommand:input_type -> agent.ExecuteCommandRequest
+	18,  // 67: agent.AgentRegistry.Heartbeat:input_type -> agent.HeartbeatRequest
+	20,  // 68: agent.AgentRegistry.GetAgentInfo:input_type -> agent.GetAgentInfoRequest
+	48,  // 69: agent.AgentRegistry.CreateAgentGroup:input_type -> agent.CreateGroupRequest
+	50,  // 70: agent.AgentRegistry.AddAgentToGroup:input_type -> agent.AddToGroupRequest
+	52,  // 71: agent.AgentRegistry.RemoveAgentFromGroup:input_type -> agent.RemoveFromGroupRequest
+	54,  // 72: agent.AgentRegistry.ListAgentGroups:input_type -> agent.ListGroupsRequest
+	57,  // 73: agent.AgentRegistry.DeleteAgentGroup:input_type -> agent.DeleteGroupRequest
+	59,  // 74: agent.AgentRegistry.ExecuteOnMultipleAgents:input_type -> agent.BulkExecuteRequest
+	61,  // 75: agent.AgentRegistry.GetMultipleAgentStatus:input_type -> agent.MultipleAgentStatusRequest
+	64,  // 76: agent.AgentRegistry.GetAggregatedMetrics:input_type -> agent.AggregatedMetricsRequest
+	66,  // 77: agent.AgentRegistry.StreamAgentEvents:input_type -> agent.StreamEventsRequest
+	91,  // 78: agent.AgentRegistry.SendEvent:input_type -> agent.SendEventRequest
+	93,  // 79: agent.AgentRegistry.SendEventBatch:input_type -> agent.SendEventBatchRequest
+	5,   // 80: agent.Agent.ExecuteTask:output_type -> agent.ExecuteTaskResponse
+	17,  // 81: agent.Agent.RunCommand:output_type -> agent.StreamOutputResponse
+	1,   // 82: agent.Agent.Shutdown:output_type -> agent.ShutdownResponse
+	3,   // 83: agent.Agent.UpdateAgent:output_type -> agent.UpdateAgentResponse
+	23,  // 84: agent.Agent.GetResourceUsage:output_type -> agent.ResourceUsageResponse
+	26,  // 85: agent.Agent.GetProcessList:output_type -> agent.ProcessListResponse
+	29,  // 86: agent.Agent.GetNetworkInfo:output_type -> agent.NetworkInfoResponse
+	32,  // 87: agent.Agent.GetDiskInfo:output_type -> agent.DiskInfoResponse
+	34,  // 88: agent.Agent.StreamLogs:output_type -> agent.LogEntry
+	36,  // 89: agent.Agent.StreamMetrics:output_type -> agent.MetricsData
+	38,  // 90: agent.Agent.RestartService:output_type -> agent.RestartServiceResponse
+	40,  // 91: agent.Agent.GetEnvironmentVars:output_type -> agent.EnvVarsResponse
+	42,  // 92: agent.Agent.SetEnvironmentVar:output_type -> agent.SetEnvVarResponse
+	44,  // 93: agent.Agent.InstallModule:output_type -> agent.InstallModuleResponse
+	47,  // 94: agent.Agent.GetInstalledModules:output_type -> agent.ModulesResponse
+	73,  // 95: agent.Agent.GetDetailedMetrics:output_type -> agent.DetailedMetricsResponse
+	75,  // 96: agent.Agent.GetRecentLogs:output_type -> agent.RecentLogsResponse
+	78,  // 97: agent.Agent.GetActiveConnections:output_type -> agent.ConnectionsResponse
+	81,  // 98: agent.Agent.GetSystemErrors:output_type -> agent.SystemErrorsResponse
+	84,  // 99: agent.Agent.GetPerformanceHistory:output_type -> agent.PerformanceHistoryResponse
+	87,  // 100: agent.Agent.DiagnoseHealth:output_type -> agent.HealthDiagnosticResponse
+	89,  // 101: agent.Agent.InteractiveShell:output_type -> agent.ShellOutput
+	97,  // 102: agent.Agent.RegisterWatcher:output_type -> agent.RegisterWatcherResponse
+	99,  // 103: agent.Agent.ListWatchers:output_type -> agent.ListWatchersResponse
+	101, // 104: agent.Agent.GetWatcher:output_type -> agent.GetWatcherResponse
+	103, // 105: agent.Agent.RemoveWatcher:output_type -> agent.RemoveWatcherResponse
+	7,   // 106: agent.AgentRegistry.RegisterAgent:output_type -> agent.RegisterAgentResponse
+	10,  // 107: agent.AgentRegistry.ListAgents:output_type -> agent.ListAgentsResponse
+	12,  // 108: agent.AgentRegistry.StopAgent:output_type -> agent.StopAgentResponse
+	14,  // 109: agent.AgentRegistry.UnregisterAgent:output_type -> agent.UnregisterAgentResponse
+	17,  // 110: agent.AgentRegistry.ExecuteCommand:output_type -> agent.StreamOutputResponse
+	19,  // 111: agent.AgentRegistry.Heartbeat:output_type -> agent.HeartbeatResponse
+	21,  // 112: agent.AgentRegistry.GetAgentInfo:output_type -> agent.GetAgentInfoResponse
+	49,  // 113: agent.AgentRegistry.CreateAgentGroup:output_type -> agent.CreateGroupResponse
+	51,  // 114: agent.AgentRegistry.AddAgentToGroup:output_type -> agent.AddToGroupResponse
+	53,  // 115: agent.AgentRegistry.RemoveAgentFromGroup:output_type -> agent.RemoveFromGroupResponse
+	56,  // 116: agent.AgentRegistry.ListAgentGroups:output_type -> agent.ListGroupsResponse
+	58,  // 117: agent.AgentRegistry.DeleteAgentGroup:output_type -> agent.DeleteGroupResponse
+	60,  // 118: agent.AgentRegistry.ExecuteOnMultipleAgents:output_type -> agent.BulkExecuteResponse
+	63,  // 119: agent.AgentRegistry.GetMultipleAgentStatus:output_type -> agent.MultipleAgentStatusResponse
+	65,  // 120: agent.AgentRegistry.GetAggregatedMetrics:output_type -> agent.AggregatedMetricsResponse
+	67,  // 121: agent.AgentRegistry.StreamAgentEvents:output_type -> agent.AgentEvent
+	92,  // 122: agent.AgentRegistry.SendEvent:output_type -> agent.SendEventResponse
+	94,  // 123: agent.AgentRegistry.SendEventBatch:output_type -> agent.SendEventBatchResponse
+	80,  // [80:124] is the sub-list for method output_type
+	36,  // [36:80] is the sub-list for method input_type
+	36,  // [36:36] is the sub-list for extension type_name
+	36,  // [36:36] is the sub-list for extension extendee
+	0,   // [0:36] is the sub-list for field type_name
 }
 
 func init() { file_proto_agent_proto_init() }
@@ -6650,7 +7630,7 @@ func file_proto_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_agent_proto_rawDesc), len(file_proto_agent_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   98,
+			NumMessages:   113,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

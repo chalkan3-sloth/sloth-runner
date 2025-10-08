@@ -499,7 +499,7 @@ func (m *ModernDSL) workflowBuilderIndex(L *lua.LState) int {
 	case "tasks":
 		L.Push(L.NewFunction(func(L *lua.LState) int {
 			tasksArg := L.CheckTable(2) // Argument position 2 (1 is self)
-			
+
 			// Convert Lua table to task definitions
 			builder.tasks = []*TaskDefinition{}
 			tasksArg.ForEach(func(_, taskValue lua.LValue) {
@@ -510,8 +510,11 @@ func (m *ModernDSL) workflowBuilderIndex(L *lua.LState) int {
 					}
 				}
 			})
-			
-			L.Push(ud) // Return self for chaining
+
+			// Always return self for chaining
+			// The workflow will be registered when on_complete is called,
+			// or at the end of script execution if there's no on_complete
+			L.Push(ud)
 			return 1
 		}))
 	case "config":

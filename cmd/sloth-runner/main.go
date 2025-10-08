@@ -137,6 +137,9 @@ func Execute() error {
 	uiCmd := commands.NewUICommand(ctx)
 	rootCmd.AddCommand(uiCmd)
 
+	// Add modules command (list available Lua modules)
+	rootCmd.AddCommand(modulesCmd)
+
 	// Execute root command
 	return rootCmd.Execute()
 }

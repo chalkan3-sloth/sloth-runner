@@ -30,12 +30,18 @@ func (eq *EventQueue) InitializeSchema() error {
 		error TEXT,
 		timestamp INTEGER NOT NULL,
 		created_at INTEGER NOT NULL,
-		processed_at INTEGER
+		processed_at INTEGER,
+		stack TEXT,
+		agent TEXT,
+		run_id TEXT
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);
 	CREATE INDEX IF NOT EXISTS idx_events_type ON events(type);
 	CREATE INDEX IF NOT EXISTS idx_events_created_at ON events(created_at);
+	CREATE INDEX IF NOT EXISTS idx_events_stack ON events(stack);
+	CREATE INDEX IF NOT EXISTS idx_events_agent ON events(agent);
+	CREATE INDEX IF NOT EXISTS idx_events_run_id ON events(run_id);
 
 	CREATE TABLE IF NOT EXISTS file_watchers (
 		id TEXT PRIMARY KEY,
@@ -89,8 +95,8 @@ func (eq *EventQueue) EnqueueEvent(event *Event) error {
 	}
 
 	query := `
-		INSERT INTO events (id, type, data, status, timestamp, created_at)
-		VALUES (?, ?, ?, ?, ?, ?)
+		INSERT INTO events (id, type, data, status, timestamp, created_at, stack, agent, run_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
 	_, err = eq.db.Exec(query,
@@ -100,6 +106,9 @@ func (eq *EventQueue) EnqueueEvent(event *Event) error {
 		event.Status,
 		event.Timestamp.Unix(),
 		event.CreatedAt.Unix(),
+		event.Stack,
+		event.Agent,
+		event.RunID,
 	)
 
 	return err
@@ -108,7 +117,7 @@ func (eq *EventQueue) EnqueueEvent(event *Event) error {
 // GetPendingEvents returns all pending events ordered by creation time
 func (eq *EventQueue) GetPendingEvents(limit int) ([]*Event, error) {
 	query := `
-		SELECT id, type, data, status, error, timestamp, created_at, processed_at
+		SELECT id, type, data, status, error, timestamp, created_at, processed_at, stack, agent, run_id
 		FROM events
 		WHERE status = 'pending'
 		ORDER BY created_at ASC
@@ -133,10 +142,40 @@ func (eq *EventQueue) GetPendingEvents(limit int) ([]*Event, error) {
 	return events, rows.Err()
 }
 
+// GetStuckProcessingEvents returns events stuck in "processing" state for more than the specified seconds
+func (eq *EventQueue) GetStuckProcessingEvents(olderThanSeconds int, limit int) ([]*Event, error) {
+	cutoffTime := time.Now().Add(-time.Duration(olderThanSeconds) * time.Second).Unix()
+
+	query := `
+		SELECT id, type, data, status, error, timestamp, created_at, processed_at, stack, agent, run_id
+		FROM events
+		WHERE status = 'processing' AND processed_at < ?
+		ORDER BY created_at ASC
+		LIMIT ?
+	`
+
+	rows, err := eq.db.Query(query, cutoffTime, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []*Event
+	for rows.Next() {
+		event, err := eq.scanEvent(rows)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, event)
+	}
+
+	return events, rows.Err()
+}
+
 // ListEvents returns events with optional filters
 func (eq *EventQueue) ListEvents(eventType EventType, status EventStatus, limit int) ([]*Event, error) {
 	query := `
-		SELECT id, type, data, status, error, timestamp, created_at, processed_at
+		SELECT id, type, data, status, error, timestamp, created_at, processed_at, stack, agent, run_id
 		FROM events
 		WHERE 1=1
 	`
@@ -173,10 +212,50 @@ func (eq *EventQueue) ListEvents(eventType EventType, status EventStatus, limit 
 	return events, rows.Err()
 }
 
+// ListEventsByAgent returns events for a specific agent with optional filters
+func (eq *EventQueue) ListEventsByAgent(agent string, eventType EventType, status EventStatus, limit int) ([]*Event, error) {
+	query := `
+		SELECT id, type, data, status, error, timestamp, created_at, processed_at, stack, agent, run_id
+		FROM events
+		WHERE agent = ?
+	`
+	args := []interface{}{agent}
+
+	if eventType != "" {
+		query += " AND type = ?"
+		args = append(args, eventType)
+	}
+
+	if status != "" {
+		query += " AND status = ?"
+		args = append(args, status)
+	}
+
+	query += " ORDER BY created_at DESC LIMIT ?"
+	args = append(args, limit)
+
+	rows, err := eq.db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var events []*Event
+	for rows.Next() {
+		event, err := eq.scanEvent(rows)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, event)
+	}
+
+	return events, rows.Err()
+}
+
 // GetEvent retrieves a specific event by ID
 func (eq *EventQueue) GetEvent(id string) (*Event, error) {
 	query := `
-		SELECT id, type, data, status, error, timestamp, created_at, processed_at
+		SELECT id, type, data, status, error, timestamp, created_at, processed_at, stack, agent, run_id
 		FROM events
 		WHERE id = ?
 	`
@@ -230,6 +309,7 @@ func (eq *EventQueue) scanEvent(scanner interface {
 	var timestamp, createdAt int64
 	var processedAt sql.NullInt64
 	var errorMsg sql.NullString
+	var stack, agent, runID sql.NullString
 
 	err := scanner.Scan(
 		&event.ID,
@@ -240,6 +320,9 @@ func (eq *EventQueue) scanEvent(scanner interface {
 		&timestamp,
 		&createdAt,
 		&processedAt,
+		&stack,
+		&agent,
+		&runID,
 	)
 	if err != nil {
 		return nil, err
@@ -260,6 +343,18 @@ func (eq *EventQueue) scanEvent(scanner interface {
 
 	if errorMsg.Valid {
 		event.Error = errorMsg.String
+	}
+
+	if stack.Valid {
+		event.Stack = stack.String
+	}
+
+	if agent.Valid {
+		event.Agent = agent.String
+	}
+
+	if runID.Valid {
+		event.RunID = runID.String
 	}
 
 	return &event, nil
@@ -466,6 +561,74 @@ func (eq *EventQueue) GetEventHookExecutions(eventID string) ([]*EventHookExecut
 		if errorMsg.Valid {
 			exec.Error = errorMsg.String
 		}
+
+		executions = append(executions, &exec)
+	}
+
+	return executions, rows.Err()
+}
+
+// GetHookExecutionsByAgent returns hook executions for a specific agent
+func (eq *EventQueue) GetHookExecutionsByAgent(agent string, limit int) ([]*EventHookExecution, error) {
+	query := `
+		SELECT ehe.id, ehe.event_id, ehe.hook_id, ehe.hook_name, ehe.success, ehe.output, ehe.error, ehe.duration_ms, ehe.executed_at,
+		       e.type as event_type, e.agent, e.stack, e.run_id
+		FROM event_hook_executions ehe
+		JOIN events e ON ehe.event_id = e.id
+		WHERE e.agent = ?
+		ORDER BY ehe.executed_at DESC
+		LIMIT ?
+	`
+
+	rows, err := eq.db.Query(query, agent, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var executions []*EventHookExecution
+	for rows.Next() {
+		var exec EventHookExecution
+		var success int
+		var durationMS int64
+		var executedAt int64
+		var output, errorMsg sql.NullString
+		var eventType, eventAgent, stack, runID sql.NullString
+
+		err := rows.Scan(
+			&exec.ID,
+			&exec.EventID,
+			&exec.HookID,
+			&exec.HookName,
+			&success,
+			&output,
+			&errorMsg,
+			&durationMS,
+			&executedAt,
+			&eventType,
+			&eventAgent,
+			&stack,
+			&runID,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		exec.Success = success == 1
+		exec.Duration = time.Duration(durationMS) * time.Millisecond
+		exec.ExecutedAt = time.Unix(executedAt, 0)
+		if output.Valid {
+			exec.Output = output.String
+		}
+		if errorMsg.Valid {
+			exec.Error = errorMsg.String
+		}
+
+		// Store additional event info in a map for the frontend
+		exec.EventType = eventType.String
+		exec.EventAgent = eventAgent.String
+		exec.EventStack = stack.String
+		exec.EventRunID = runID.String
 
 		executions = append(executions, &exec)
 	}

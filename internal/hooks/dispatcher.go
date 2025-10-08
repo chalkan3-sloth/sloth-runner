@@ -18,6 +18,11 @@ type Dispatcher struct {
 	processing   bool
 	eventChannel chan *Event
 	maxWorkers   int
+
+	// Execution context for events
+	currentStack  string
+	currentAgent  string
+	currentRunID  string
 }
 
 // NewDispatcher creates a new event dispatcher
@@ -182,6 +187,9 @@ func (d *Dispatcher) DispatchTaskStarted(task *TaskEvent) error {
 				"status":     task.Status,
 			},
 		},
+		Stack:  task.Stack,
+		Agent:  task.AgentName,
+		RunID:  task.RunID,
 	}
 
 	return d.Dispatch(event)
@@ -201,6 +209,9 @@ func (d *Dispatcher) DispatchTaskCompleted(task *TaskEvent) error {
 				"duration":   task.Duration,
 			},
 		},
+		Stack:  task.Stack,
+		Agent:  task.AgentName,
+		RunID:  task.RunID,
 	}
 
 	return d.Dispatch(event)
@@ -221,6 +232,9 @@ func (d *Dispatcher) DispatchTaskFailed(task *TaskEvent) error {
 				"duration":   task.Duration,
 			},
 		},
+		Stack:  task.Stack,
+		Agent:  task.AgentName,
+		RunID:  task.RunID,
 	}
 
 	return d.Dispatch(event)
@@ -364,7 +378,19 @@ func (d *Dispatcher) processNextEvents() {
 	}
 
 	if len(events) == 0 {
-		return
+		// Also check for stuck events in "processing" state for more than 30 seconds
+		stuckEvents, err := d.repo.EventQueue.GetStuckProcessingEvents(30, 10)
+		if err != nil {
+			slog.Error("failed to get stuck processing events", "error", err)
+			return
+		}
+
+		if len(stuckEvents) > 0 {
+			slog.Warn("found stuck processing events, reprocessing", "count", len(stuckEvents))
+			events = stuckEvents
+		} else {
+			return
+		}
 	}
 
 	slog.Debug("fallback processing events", "count", len(events))
@@ -467,7 +493,40 @@ func (d *Dispatcher) CreateEventDispatcherFunc() func(eventType string, data map
 			Type:      EventType(eventType),
 			Timestamp: time.Now(),
 			Data:      data,
+			Stack:     d.GetCurrentStack(),
+			Agent:     d.GetCurrentAgent(),
+			RunID:     d.GetCurrentRunID(),
 		}
 		return d.Dispatch(event)
 	}
+}
+
+// GetCurrentStack returns the current stack from execution context
+func (d *Dispatcher) GetCurrentStack() string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.currentStack
+}
+
+// GetCurrentAgent returns the current agent from execution context
+func (d *Dispatcher) GetCurrentAgent() string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.currentAgent
+}
+
+// GetCurrentRunID returns the current run ID from execution context
+func (d *Dispatcher) GetCurrentRunID() string {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.currentRunID
+}
+
+// SetExecutionContext sets the current execution context
+func (d *Dispatcher) SetExecutionContext(stack, agent, runID string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.currentStack = stack
+	d.currentAgent = agent
+	d.currentRunID = runID
 }

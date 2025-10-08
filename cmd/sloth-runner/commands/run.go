@@ -5,11 +5,14 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/google/uuid"
 	"github.com/pterm/pterm"
 	"github.com/spf13/cobra"
 
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/handlers"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/services"
+	"github.com/chalkan3-sloth/sloth-runner/internal/hooks"
+	coremodules "github.com/chalkan3-sloth/sloth-runner/internal/modules/core"
 )
 
 // NewRunCommand creates the run command
@@ -80,6 +83,32 @@ If --sloth is specified, --file will be ignored.`,
 			// Get stack name from first argument
 			stackName := args[0]
 
+			// Generate unique run ID for this execution
+			runID := uuid.New().String()
+			slog.Info("starting workflow execution", "stack", stackName, "run_id", runID)
+
+			// Initialize hook system for event dispatching
+			// This is needed for task.started, task.completed, and task.failed events
+			slog.Info("initializing hook system for event dispatching")
+			if err := hooks.InitializeGlobalDispatcher(); err != nil {
+				slog.Warn("failed to initialize hook system, events will not be dispatched", "error", err)
+			} else {
+				slog.Info("hook system initialized successfully")
+				// Wire up the dispatcher to the event module
+				dispatcher := hooks.GetGlobalDispatcher()
+				if dispatcher != nil {
+					// Set execution context for events
+					dispatcher.SetExecutionContext(stackName, "local", runID)
+					slog.Info("execution context set", "stack", stackName, "agent", "local", "run_id", runID)
+
+					dispatcherFunc := dispatcher.CreateEventDispatcherFunc()
+					coremodules.SetGlobalEventDispatcher(dispatcherFunc)
+					slog.Info("event dispatcher wired to event module")
+				} else {
+					slog.Warn("dispatcher is nil after initialization")
+				}
+			}
+
 			// Determine output writer
 			writer := cmd.OutOrStdout()
 			if ctx.TestMode && ctx.OutputWriter != nil {
@@ -108,6 +137,7 @@ If --sloth is specified, --file will be ignored.`,
 				Context:          cmd.Context(),
 				Writer:           writer,
 				AgentRegistry:    ctx.AgentRegistry,
+				RunID:            runID,
 			}
 
 			// Create and execute handler

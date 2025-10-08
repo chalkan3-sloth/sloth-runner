@@ -1,0 +1,60 @@
+-- Simple Working Watcher Test
+-- Tests file watcher registration on lady-guica using modern group syntax
+
+name = "simple-watcher-test"
+version = "1.0.0"
+description = "Simple test to validate watcher registration on remote agent"
+
+group "test_file_watcher" {
+    description = "Register and test file watcher on lady-guica"
+    delegate_to = {"lady-guica"}
+
+    task "register_and_test" {
+        description = "Register file watcher and test it"
+        command = function(this, params, input)
+            print("🧪 Test: File Watcher on lady-guica")
+            print("======================================")
+
+            -- Clean up
+            exec.run("rm -f /tmp/simple_watcher_test.txt")
+
+            -- Register file watcher
+            print("📝 Registering file watcher...")
+            local watcher_id = watcher.register.file({
+                file_path = '/tmp/simple_watcher_test.txt',
+                when = {'created', 'changed', 'deleted'},
+                check_hash = true,
+                interval = '2s'
+            })
+
+            print("✓ Watcher registered: " .. watcher_id)
+            print("⏳ Monitoring /tmp/simple_watcher_test.txt")
+
+            -- Create file
+            print("\n📄 Creating test file...")
+            exec.run("echo 'Test content' > /tmp/simple_watcher_test.txt")
+            print("✓ File created, waiting 5s for watcher...")
+
+            os.execute("sleep 5")
+
+            -- Modify file
+            print("\n✏️  Modifying file...")
+            exec.run("echo 'Modified' >> /tmp/simple_watcher_test.txt")
+            print("✓ File modified, waiting 5s for watcher...")
+
+            os.execute("sleep 5")
+
+            -- Delete file
+            print("\n🗑️  Deleting file...")
+            exec.run("rm -f /tmp/simple_watcher_test.txt")
+            print("✓ File deleted, waiting 5s for watcher...")
+
+            os.execute("sleep 5")
+
+            print("\n✅ Test complete!")
+            print("Check agent logs and events database for generated events")
+
+            return true, "Watcher test completed successfully"
+        end
+    }
+}

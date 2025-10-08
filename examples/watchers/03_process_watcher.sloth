@@ -1,0 +1,45 @@
+-- Process Watcher Example
+-- Monitors process start/stop
+
+local register_watcher = task("register_process_watcher")
+    :description("Register process watcher for 'sleep'")
+    :command(function(this, params)
+        log.info("🔍 Registering process watcher")
+
+        local watcher_id = event.register.process({
+            process_name = "sleep",
+            when = {'created', 'deleted'},
+            interval = "2s"
+        })
+
+        log.info("✓ Process watcher registered", {watcher_id = watcher_id})
+        return true, "Watcher ID: " .. watcher_id
+    end)
+    :build()
+
+local start_process = task("start_test_process")
+    :description("Start test process")
+    :command(function(this, params)
+        log.info("▶️  Starting sleep process in background")
+        exec.run("sleep 30 &")
+        log.info("Waiting 3s for watcher...")
+        exec.run("sleep 3")
+        return true, "Process started"
+    end)
+    :build()
+
+local stop_process = task("stop_test_process")
+    :description("Stop test process")
+    :command(function(this, params)
+        log.info("⏹️  Killing sleep processes")
+        exec.run("pkill -f 'sleep 30' || true")
+        log.info("Waiting 3s for watcher...")
+        exec.run("sleep 3")
+        return true, "Process stopped"
+    end)
+    :build()
+
+workflow.define("process_watcher_test")
+    :description("Test process watcher functionality")
+    :tasks({register_watcher, start_process, stop_process})
+    :build()

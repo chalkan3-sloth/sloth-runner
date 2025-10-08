@@ -33,6 +33,12 @@ service Agent {
 
   // Interactive Shell RPC
   rpc InteractiveShell(stream ShellInput) returns (stream ShellOutput);
+
+  // Watcher Management RPCs
+  rpc RegisterWatcher(RegisterWatcherRequest) returns (RegisterWatcherResponse);
+  rpc ListWatchers(ListWatchersRequest) returns (ListWatchersResponse);
+  rpc GetWatcher(GetWatcherRequest) returns (GetWatcherResponse);
+  rpc RemoveWatcher(RemoveWatcherRequest) returns (RemoveWatcherResponse);
 }
 
 message ShutdownRequest {}
@@ -154,6 +160,10 @@ service AgentRegistry {
   // Health & Monitoring
   rpc GetAggregatedMetrics(AggregatedMetricsRequest) returns (AggregatedMetricsResponse);
   rpc StreamAgentEvents(StreamEventsRequest) returns (stream AgentEvent);
+
+  // Event Reporting - Agents send events to master
+  rpc SendEvent(SendEventRequest) returns (SendEventResponse);
+  rpc SendEventBatch(SendEventBatchRequest) returns (SendEventBatchResponse);
 }
 
 message HeartbeatRequest {
@@ -654,4 +664,97 @@ message ShellOutput {
   int32 exit_code = 3; // Exit code (only set when command completes)
   bool completed = 4; // True when command execution is complete
   string error = 5; // Error message if execution failed
+}
+
+// Event Reporting Messages - Agents push events to master
+message EventData {
+  string event_id = 1; // Unique event ID
+  string event_type = 2; // Type of event (task.started, file.created, etc)
+  string agent_name = 3; // Agent that generated the event
+  int64 timestamp = 4; // Unix timestamp
+  string stack = 5; // Stack name if applicable
+  string run_id = 6; // Run ID if applicable
+  map<string, string> data = 7; // Event data as key-value pairs
+  string data_json = 8; // Optional: full JSON data
+  string severity = 9; // info, warning, error, critical
+}
+
+message SendEventRequest {
+  EventData event = 1;
+}
+
+message SendEventResponse {
+  bool success = 1;
+  string message = 2;
+  string event_id = 3; // Confirmed event ID
+}
+
+message SendEventBatchRequest {
+  repeated EventData events = 1;
+  int32 batch_size = 2;
+}
+
+message SendEventBatchResponse {
+  bool success = 1;
+  string message = 2;
+  int32 events_received = 3;
+  int32 events_processed = 4;
+  repeated string failed_event_ids = 5;
+}
+
+// Watcher Management Messages
+message WatcherConfig {
+  string id = 1;
+  string type = 2; // file, process, port, cpu, memory, etc.
+  repeated string conditions = 3; // created, changed, deleted, above, below, etc.
+  string interval = 4;
+
+  // Type-specific fields
+  string file_path = 10;
+  bool check_hash = 11;
+  bool recursive = 12;
+
+  string process_name = 20;
+  int32 pid = 21;
+
+  int32 port = 30;
+  string protocol = 31;
+
+  double cpu_threshold = 40;
+  double memory_threshold = 41;
+  double disk_threshold = 42;
+}
+
+message RegisterWatcherRequest {
+  WatcherConfig config = 1;
+}
+
+message RegisterWatcherResponse {
+  bool success = 1;
+  string message = 2;
+  string watcher_id = 3;
+}
+
+message ListWatchersRequest {}
+
+message ListWatchersResponse {
+  repeated WatcherConfig watchers = 1;
+}
+
+message GetWatcherRequest {
+  string watcher_id = 1;
+}
+
+message GetWatcherResponse {
+  WatcherConfig watcher = 1;
+  bool found = 2;
+}
+
+message RemoveWatcherRequest {
+  string watcher_id = 1;
+}
+
+message RemoveWatcherResponse {
+  bool success = 1;
+  string message = 2;
 }

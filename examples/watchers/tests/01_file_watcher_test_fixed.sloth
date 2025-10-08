@@ -1,0 +1,104 @@
+-- Test 01: File Watcher - Created, Changed, Deleted
+-- Este teste valida que file watchers detectam criação, modificação e deleção de arquivos
+
+local register_file_watcher = task("register_file_watcher")
+    :description("Register file watcher on lady-guica")
+    :command(function()
+        print("🧪 Test 01: File Watcher - Create/Change/Delete")
+        print("==============================================")
+
+        -- Clean up test file if it exists
+        exec.run("rm -f /tmp/watcher_test_file.txt")
+        print("✓ Setup complete")
+
+        -- Register file watcher
+        print("📝 Registering file watcher...")
+        local watcher_id = watcher.register.file({
+            file_path = '/tmp/watcher_test_file.txt',
+            when = {'created', 'changed', 'deleted'},
+            check_hash = true,
+            interval = '2s'
+        })
+
+        print("✓ File watcher registered: " .. watcher_id)
+        print("⏳ Monitoring /tmp/watcher_test_file.txt")
+
+        return true, "Watcher registered successfully"
+    end)
+    :build()
+
+local create_test_file = task("create_test_file")
+    :description("Create test file to trigger 'created' event")
+    :command(function()
+        print("\n📄 Creating test file...")
+        exec.run("echo 'Initial content' > /tmp/watcher_test_file.txt")
+        print("✓ File created")
+
+        -- Wait for watcher to detect
+        print("⏳ Waiting 5s for watcher to detect creation...")
+        os.execute("sleep 5")
+
+        return true, "File created"
+    end)
+    :depends_on({"register_file_watcher"})
+    :build()
+
+local modify_test_file = task("modify_test_file")
+    :description("Modify test file to trigger 'changed' event")
+    :command(function()
+        print("\n✏️  Modifying test file...")
+        exec.run("echo 'Modified content at " .. os.date() .. "' >> /tmp/watcher_test_file.txt")
+        print("✓ File modified")
+
+        -- Wait for watcher to detect
+        print("⏳ Waiting 5s for watcher to detect change...")
+        os.execute("sleep 5")
+
+        return true, "File modified"
+    end)
+    :depends_on({"create_test_file"})
+    :build()
+
+local delete_test_file = task("delete_test_file")
+    :description("Delete test file to trigger 'deleted' event")
+    :command(function()
+        print("\n🗑️  Deleting test file...")
+        exec.run("rm -f /tmp/watcher_test_file.txt")
+        print("✓ File deleted")
+
+        -- Wait for watcher to detect
+        print("⏳ Waiting 5s for watcher to detect deletion...")
+        os.execute("sleep 5")
+
+        return true, "File deleted"
+    end)
+    :depends_on({"modify_test_file"})
+    :build()
+
+local verify_events = task("verify_events")
+    :description("Verify events were generated")
+    :command(function()
+        print("\n✅ Test Complete!")
+        print("==================")
+        print("Expected events:")
+        print("  - file.created at /tmp/watcher_test_file.txt")
+        print("  - file.changed at /tmp/watcher_test_file.txt")
+        print("  - file.deleted at /tmp/watcher_test_file.txt")
+        print("\nTo verify, check the agent logs and events database")
+
+        return true, "Test complete"
+    end)
+    :depends_on({"delete_test_file"})
+    :build()
+
+workflow
+    .define("file_watcher_test")
+    :description("Test file watcher with create, change, delete events")
+    :version("1.0.0")
+    :tasks({
+        register_file_watcher,
+        create_test_file,
+        modify_test_file,
+        delete_test_file,
+        verify_events
+    })

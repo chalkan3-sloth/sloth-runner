@@ -1,0 +1,44 @@
+-- Test Watcher Registration with delegate_to
+-- Watchers são automaticamente registrados no agent onde o código executa
+
+workflow("test_delegate_watchers")
+    :description("Test watcher registration with delegate_to")
+    :tasks({
+        task("register_watchers_on_lady_guica")
+            :description("Register watchers on lady-guica agent")
+            :delegate_to("lady-guica")
+            :shell([[
+                echo "🧪 Registering watchers on lady-guica via delegate_to..."
+            ]])
+            :on_complete(function()
+                -- Este código roda NO AGENT lady-guica
+                -- Então os watchers são registrados LÁ automaticamente!
+
+                print("📝 Registering CPU watcher...")
+                local cpu_id = watcher.register.cpu({
+                    threshold = 50,
+                    when = {'above'},
+                    interval = '10s'
+                })
+                print("✓ CPU watcher: " .. cpu_id)
+
+                print("📝 Registering memory watcher...")
+                local memory_id = watcher.register.memory({
+                    threshold = 70,
+                    when = {'above'},
+                    interval = '10s'
+                })
+                print("✓ Memory watcher: " .. memory_id)
+
+                print("📝 Registering file watcher...")
+                local file_id = watcher.register.file({
+                    file_path = '/tmp/test_watcher.txt',
+                    when = {'created', 'changed', 'deleted'},
+                    check_hash = true,
+                    interval = '5s'
+                })
+                print("✓ File watcher: " .. file_id)
+
+                print("🎉 All watchers registered on lady-guica!")
+            end)
+    })

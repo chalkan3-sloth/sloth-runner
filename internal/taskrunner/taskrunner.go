@@ -104,10 +104,14 @@ type TaskRunner struct {
 	Interactive bool
 	surveyAsker SurveyAsker
 	LuaScript   string
-	
+
 	// Core integration
 	globalCore *core.GlobalCore
 	logger     *slog.Logger
+
+	// Execution context for events
+	Stack  string  // Stack name being executed
+	RunID  string  // Unique run identifier
 	
 	// Pulumi-style output (optional)
 	pulumiOutput interface{} // Will be *output.PulumiStyleOutput when set
@@ -320,8 +324,13 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 			TaskName:  t.Name,
 			AgentName: agentName,
 			Status:    "started",
+			Stack:     tr.Stack,
+			RunID:     tr.RunID,
 		}
+		slog.Info("dispatching task.started event", "task", t.Name, "agent", agentName, "stack", tr.Stack, "run_id", tr.RunID)
 		dispatcher.DispatchTaskStarted(taskEvent)
+	} else {
+		slog.Warn("dispatcher is nil, cannot dispatch task.started event", "task", t.Name)
 	}
 
 	var agentAddress string
@@ -438,6 +447,8 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 					Error:     taskErr.Error(),
 					ExitCode:  exitCode,
 					Duration:  duration.String(),
+					Stack:     tr.Stack,
+					RunID:     tr.RunID,
 				}
 				dispatcher.DispatchTaskFailed(taskEvent)
 			} else {
@@ -448,6 +459,8 @@ func (tr *TaskRunner) runTask(ctx context.Context, t *types.Task, inputFromDepen
 					Status:    "completed",
 					ExitCode:  exitCode,
 					Duration:  duration.String(),
+					Stack:     tr.Stack,
+					RunID:     tr.RunID,
 				}
 				dispatcher.DispatchTaskCompleted(taskEvent)
 			}

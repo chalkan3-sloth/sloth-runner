@@ -1,0 +1,42 @@
+-- Test Remote Watcher Registration
+-- This script registers watchers on lady-guica agent remotely via gRPC
+
+print("🧪 Registering watchers on lady-guica remotely...")
+
+-- Register a CPU watcher remotely
+local cpu_watcher_id = watcher.register.cpu({
+    threshold = 50,
+    when = {'above'},
+    interval = '10s',
+    agent = '192.168.1.16:50051'
+})
+
+print("✓ CPU watcher registered: " .. cpu_watcher_id)
+
+-- Register a memory watcher remotely
+local memory_watcher_id = watcher.register.memory({
+    threshold = 70,
+    when = {'above'},
+    interval = '10s',
+    agent = '192.168.1.16:50051'
+})
+
+print("✓ Memory watcher registered: " .. memory_watcher_id)
+
+-- Register a file watcher remotely
+local file_watcher_id = watcher.register.file({
+    file_path = '/tmp/test_watcher.txt',
+    when = {'created', 'changed', 'deleted'},
+    check_hash = true,
+    interval = '5s',
+    agent = '192.168.1.16:50051'
+})
+
+print("✓ File watcher registered: " .. file_watcher_id)
+
+print("🎉 All watchers registered successfully!")
+print("Watchers are now monitoring on lady-guica agent")
+
+-- Create a dummy workflow so the script is valid
+workflow("test_remote_watchers")
+    :description("Test remote watcher registration on lady-guica")

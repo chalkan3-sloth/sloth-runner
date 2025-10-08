@@ -1,0 +1,105 @@
+-- Test 06: Watcher + Hook Integration
+-- Este teste valida que watchers geram eventos que disparam hooks
+
+workflow("watcher_hook_integration_test")
+    :description("Test complete watcher -> event -> hook flow")
+    :tasks({
+        task("setup_hook")
+            :delegate_to("lady-guica")
+            :shell([[
+                echo "🧪 Test 06: Watcher + Hook Integration"
+                echo "======================================"
+
+                # Criar hook que responde a file_changed events
+                mkdir -p /etc/sloth-runner/hooks
+
+                cat > /etc/sloth-runner/hooks/test_file_alert.lua << 'EOF'
+-- Hook: File Changed Alert
+-- Dispara quando arquivo de teste é modificado
+
+hook.on({
+    event_type = "file_changed",
+    conditions = {
+        file_path = "/tmp/hook_test_file.txt"
+    }
+}):execute(function(event)
+    print("🔔 HOOK TRIGGERED!")
+    print("   Event: " .. event.type)
+    print("   File: " .. (event.data.file_path or "unknown"))
+    print("   Time: " .. os.date("%Y-%m-%d %H:%M:%S"))
+
+    -- Criar arquivo de evidência que o hook executou
+    local f = io.open("/tmp/hook_executed.txt", "a")
+    if f then
+        f:write(os.date("%Y-%m-%d %H:%M:%S") .. " - Hook executed for file change\n")
+        f:close()
+    end
+
+    return true
+end)
+EOF
+
+                echo "✓ Hook created: /etc/sloth-runner/hooks/test_file_alert.lua"
+
+                # Limpar arquivos de teste
+                rm -f /tmp/hook_test_file.txt
+                rm -f /tmp/hook_executed.txt
+
+                echo "✓ Setup complete"
+            ]])
+            :on_complete(function()
+                print("📝 Registering file watcher...")
+
+                -- Registrar watcher para o arquivo que dispara o hook
+                local watcher_id = watcher.register.file({
+                    file_path = '/tmp/hook_test_file.txt',
+                    when = {'created', 'changed'},
+                    check_hash = true,
+                    interval = '2s'
+                })
+
+                print("✓ File watcher registered: " .. watcher_id)
+                print("⏳ Watcher will generate events that trigger the hook")
+            end),
+
+        task("trigger_events_and_verify_hook")
+            :delegate_to("lady-guica")
+            :depends_on("setup_hook")
+            :shell([[
+                echo ""
+                echo "🔄 Triggering events to test hook execution..."
+                echo "----------------------------------------------"
+
+                # Esperar watcher ser registrado
+                sleep 4
+
+                # Trigger 1: CREATE
+                echo "1️⃣  Creating file (should trigger hook)..."
+                echo "Initial content" > /tmp/hook_test_file.txt
+                sleep 4
+
+                # Trigger 2: CHANGE
+                echo "2️⃣  Modifying file (should trigger hook)..."
+                echo "Modified content" >> /tmp/hook_test_file.txt
+                sleep 4
+
+                # Verificar se hook executou
+                echo ""
+                echo "📊 Verification Results:"
+                echo "----------------------"
+
+                if [ -f /tmp/hook_executed.txt ]; then
+                    echo "✅ Hook executed successfully!"
+                    echo ""
+                    echo "Hook execution log:"
+                    cat /tmp/hook_executed.txt
+                else
+                    echo "❌ Hook did NOT execute"
+                    echo "   Check agent logs for errors"
+                fi
+
+                echo ""
+                echo "✅ Integration test complete"
+                echo "⏳ Check agent logs for complete event flow"
+            ]])
+    })

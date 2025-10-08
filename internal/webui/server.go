@@ -247,6 +247,8 @@ func (s *Server) setupRoutes(cfg *Config) {
 		{
 			events.GET("", eventHandler.List)
 			events.GET("/pending", eventHandler.ListPending)
+			events.GET("/by-agent", eventHandler.ListByAgent)
+			events.GET("/hook-executions/by-agent", eventHandler.ListHookExecutionsByAgent)
 			events.GET("/:id", eventHandler.Get)
 			events.POST("/:id/retry", eventHandler.Retry)
 		}

@@ -1,0 +1,61 @@
+-- Log Watcher Example
+-- Monitors log files for pattern matches
+
+local register_watcher = task("register_log_watcher")
+    :description("Register log watcher for ERROR patterns")
+    :command(function(this, params)
+        log.info("📋 Registering log watcher")
+
+        -- Create log file
+        exec.run("touch /tmp/test.log")
+
+        local watcher_id = event.register.log({
+            log_path = "/tmp/test.log",
+            pattern = "ERROR|CRITICAL",
+            when = {'matches'},
+            follow = true,
+            interval = "2s"
+        })
+
+        log.info("✓ Log watcher registered", {watcher_id = watcher_id})
+        return true, "Watcher ID: " .. watcher_id
+    end)
+    :build()
+
+local write_normal_log = task("write_normal_log")
+    :description("Write normal log entry")
+    :command(function(this, params)
+        log.info("📝 Writing INFO log")
+        exec.run("echo 'INFO: Application started' >> /tmp/test.log")
+        log.info("Waiting 3s...")
+        exec.run("sleep 3")
+        return true, "Normal log written"
+    end)
+    :build()
+
+local write_error_log = task("write_error_log")
+    :description("Write ERROR log entry")
+    :command(function(this, params)
+        log.info("⚠️  Writing ERROR log")
+        exec.run("echo 'ERROR: Database connection failed' >> /tmp/test.log")
+        log.info("Waiting 3s for watcher...")
+        exec.run("sleep 3")
+        return true, "Error log written - should trigger event"
+    end)
+    :build()
+
+local write_critical_log = task("write_critical_log")
+    :description("Write CRITICAL log entry")
+    :command(function(this, params)
+        log.info("🚨 Writing CRITICAL log")
+        exec.run("echo 'CRITICAL: System out of memory' >> /tmp/test.log")
+        log.info("Waiting 3s for watcher...")
+        exec.run("sleep 3")
+        return true, "Critical log written - should trigger event"
+    end)
+    :build()
+
+workflow.define("log_watcher_test")
+    :description("Test log watcher functionality")
+    :tasks({register_watcher, write_normal_log, write_error_log, write_critical_log})
+    :build()

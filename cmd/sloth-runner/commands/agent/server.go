@@ -19,12 +19,14 @@ import (
 	"sync"
 	"time"
 
+	agentInternal "github.com/chalkan3-sloth/sloth-runner/internal/agent"
 	"github.com/chalkan3-sloth/sloth-runner/internal/core"
 	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface"
 	"github.com/chalkan3-sloth/sloth-runner/internal/taskrunner"
 	"github.com/chalkan3-sloth/sloth-runner/internal/types"
 	pb "github.com/chalkan3-sloth/sloth-runner/proto"
 	"github.com/creack/pty"
+	"github.com/pterm/pterm"
 	"github.com/yuin/gopher-lua"
 	"google.golang.org/grpc"
 )
@@ -47,6 +49,10 @@ type agentServer struct {
 	cachedDisk        []DiskPartitionInfo
 	diskCache         sync.RWMutex
 	lastDiskUpdate    time.Time
+
+	// Event worker for sending events to master
+	eventWorker       interface{} // Will be *agentInternal.EventWorker, using interface{} to avoid import cycle
+	watcherManager    interface{} // Will be *agentInternal.EventWatcherManager, using interface{} to avoid import cycle
 }
 
 // CachedMetrics holds cached resource usage data
@@ -438,6 +444,14 @@ func (s *agentServer) ExecuteTask(ctx context.Context, in *pb.ExecuteTaskRequest
 		slog.Info("Task will run with user context", "user", in.GetUser(), "task", in.GetTaskName())
 	}
 
+	// Store EventWatcherManager in Lua state for watcher registration
+	if s.watcherManager != nil {
+		ud := L.NewUserData()
+		ud.Value = s.watcherManager
+		L.SetGlobal("__WATCHER_MANAGER__", ud)
+		slog.Info("EventWatcherManager attached to Lua state for watcher registration")
+	}
+
 	// Register all modules
 	luainterface.RegisterAllModules(L)
 	luainterface.OpenImport(L, scriptPath)
@@ -523,6 +537,52 @@ func (s *agentServer) ExecuteTask(ctx context.Context, in *pb.ExecuteTaskRequest
 	slog.Info("Agent executing task group", "group", in.GetTaskGroup())
 	err = runner.Run()
 
+	// Extract and register watchers after task execution
+	slog.Info("Checking for watchers to register", "watcherManager_nil", s.watcherManager == nil)
+	if s.watcherManager != nil {
+		watchers, extractErr := luainterface.GetRegisteredWatchers(L)
+		slog.Info("Extracted watchers from Lua state",
+			"count", len(watchers),
+			"error", extractErr,
+			"has_watchers", len(watchers) > 0)
+
+		if extractErr == nil && len(watchers) > 0 {
+			slog.Info("Processing watchers for registration", "count", len(watchers))
+
+			// Type assert watcherManager to its proper type
+			if watcherMgr, ok := s.watcherManager.(*agentInternal.EventWatcherManager); ok {
+				for _, watcherConfigMap := range watchers {
+					// Convert map to WatcherConfig struct
+					config, convertErr := convertMapToWatcherConfig(watcherConfigMap)
+					if convertErr != nil {
+						slog.Warn("Failed to convert watcher config", "error", convertErr)
+						continue
+					}
+
+					if regErr := watcherMgr.RegisterWatcher(config); regErr == nil {
+						slog.Info("Successfully registered watcher with manager",
+							"watcher_id", config.ID,
+							"type", config.Type)
+						pterm.Success.Printf("✓ Watcher %s started on agent\n", config.ID)
+					} else {
+						slog.Warn("Failed to register watcher with manager",
+							"watcher_id", config.ID,
+							"type", config.Type,
+							"error", regErr)
+					}
+				}
+			} else {
+				slog.Warn("watcherManager type assertion failed - watchers not registered")
+			}
+		} else if extractErr != nil {
+			slog.Warn("Failed to extract watchers from Lua state", "error", extractErr)
+		} else {
+			slog.Info("No watchers found in Lua state")
+		}
+	} else {
+		slog.Warn("watcherManager is nil - cannot register watchers")
+	}
+
 	// Pack the updated workspace
 	var buf bytes.Buffer
 	if err := createTarData(workDir, &buf); err != nil {
@@ -559,6 +619,67 @@ func (s *agentServer) ExecuteTask(ctx context.Context, in *pb.ExecuteTaskRequest
 		Output:    fmt.Sprintf("Task '%s' executed successfully on agent", in.GetTaskName()),
 		Workspace: buf.Bytes(),
 	}, nil
+}
+
+// convertMapToWatcherConfig converts a map[string]interface{} from Lua to WatcherConfig
+func convertMapToWatcherConfig(m map[string]interface{}) (agentInternal.WatcherConfig, error) {
+	config := agentInternal.WatcherConfig{}
+
+	// Extract basic fields
+	if id, ok := m["id"].(string); ok {
+		config.ID = id
+	}
+	if typeStr, ok := m["type"].(string); ok {
+		config.Type = agentInternal.WatcherType(typeStr)
+	}
+
+	// Extract conditions (when field)
+	if when, ok := m["when"].([]interface{}); ok {
+		for _, c := range when {
+			if condStr, ok := c.(string); ok {
+				config.Conditions = append(config.Conditions, agentInternal.EventCondition(condStr))
+			}
+		}
+	}
+
+	// Extract file/directory fields
+	if path, ok := m["file_path"].(string); ok {
+		config.FilePath = path
+	}
+	if recursive, ok := m["recursive"].(bool); ok {
+		config.Recursive = recursive
+	}
+	if checkHash, ok := m["check_hash"].(bool); ok {
+		config.CheckHash = checkHash
+	}
+	if pattern, ok := m["pattern"].(string); ok {
+		config.Pattern = pattern
+	}
+
+	// Extract process fields
+	if processName, ok := m["process_name"].(string); ok {
+		config.ProcessName = processName
+	}
+	if pid, ok := m["pid"].(float64); ok {
+		config.PID = int(pid)
+	}
+
+	// Extract port/network fields
+	if port, ok := m["port"].(float64); ok {
+		config.Port = int(port)
+	}
+	if protocol, ok := m["protocol"].(string); ok {
+		config.Protocol = protocol
+	}
+
+	// Extract interval (parse duration string)
+	if interval, ok := m["interval"].(string); ok {
+		if d, err := time.ParseDuration(interval); err == nil {
+			config.Interval = d
+		}
+	}
+
+	return config, nil
 }
 
 // createTarData creates a tarball from source directory
@@ -1899,4 +2020,177 @@ func (s *agentServer) InteractiveShell(stream pb.Agent_InteractiveShellServer) e
 		ExitCode:  int32(exitCode),
 		Completed: true,
 	})
+}
+
+// parseDuration parses a duration string with a default fallback
+func parseDuration(durationStr string, defaultDuration time.Duration) time.Duration {
+	if durationStr == "" {
+		return defaultDuration
+	}
+
+	d, err := time.ParseDuration(durationStr)
+	if err != nil {
+		slog.Warn("Failed to parse duration, using default", "input", durationStr, "default", defaultDuration)
+		return defaultDuration
+	}
+
+	return d
+}
+
+// RegisterWatcher registers a new watcher on the agent
+func (s *agentServer) RegisterWatcher(ctx context.Context, in *pb.RegisterWatcherRequest) (*pb.RegisterWatcherResponse, error) {
+	if s.watcherManager == nil {
+		return &pb.RegisterWatcherResponse{
+			Success: false,
+			Message: "watcher manager not initialized",
+		}, nil
+	}
+
+	config := in.GetConfig()
+	if config == nil {
+		return &pb.RegisterWatcherResponse{
+			Success: false,
+			Message: "watcher config is required",
+		}, nil
+	}
+
+	// Convert protobuf config to internal WatcherConfig
+	watcherConfig := &agentInternal.WatcherConfig{
+		ID:         config.GetId(),
+		Type:       agentInternal.WatcherType(config.GetType()),
+		Conditions: make([]agentInternal.EventCondition, 0),
+		Interval:   parseDuration(config.GetInterval(), 10*time.Second),
+
+		// File-specific
+		FilePath:  config.GetFilePath(),
+		CheckHash: config.GetCheckHash(),
+		Recursive: config.GetRecursive(),
+
+		// Process-specific
+		ProcessName: config.GetProcessName(),
+		PID:         int(config.GetPid()),
+
+		// Port-specific
+		Port:     int(config.GetPort()),
+		Protocol: config.GetProtocol(),
+
+		// Resource monitoring
+		CPUThreshold:    config.GetCpuThreshold(),
+		MemoryThreshold: config.GetMemoryThreshold(),
+		DiskThreshold:   config.GetDiskThreshold(),
+	}
+
+	// Convert conditions
+	for _, cond := range config.GetConditions() {
+		watcherConfig.Conditions = append(watcherConfig.Conditions, agentInternal.EventCondition(cond))
+	}
+
+	// Register the watcher
+	if watcherMgr, ok := s.watcherManager.(*agentInternal.EventWatcherManager); ok {
+		if err := watcherMgr.RegisterWatcher(*watcherConfig); err != nil {
+			return &pb.RegisterWatcherResponse{
+				Success: false,
+				Message: fmt.Sprintf("failed to register watcher: %v", err),
+			}, nil
+		}
+
+		slog.Info("Watcher registered via gRPC", "id", watcherConfig.ID, "type", watcherConfig.Type)
+
+		return &pb.RegisterWatcherResponse{
+			Success:   true,
+			Message:   "watcher registered successfully",
+			WatcherId: watcherConfig.ID,
+		}, nil
+	}
+
+	return &pb.RegisterWatcherResponse{
+		Success: false,
+		Message: "invalid watcher manager type",
+	}, nil
+}
+
+// ListWatchers lists all registered watchers on the agent
+func (s *agentServer) ListWatchers(ctx context.Context, in *pb.ListWatchersRequest) (*pb.ListWatchersResponse, error) {
+	if s.watcherManager == nil {
+		return &pb.ListWatchersResponse{
+			Watchers: []*pb.WatcherConfig{},
+		}, nil
+	}
+
+	// Type assert to get access to list method
+	if watcherMgr, ok := s.watcherManager.(*agentInternal.EventWatcherManager); ok {
+		watchers := watcherMgr.ListWatchers()
+		pbWatchers := make([]*pb.WatcherConfig, 0, len(watchers))
+
+		for _, w := range watchers {
+			conditions := make([]string, 0, len(w.Conditions))
+			for _, c := range w.Conditions {
+				conditions = append(conditions, string(c))
+			}
+
+			pbWatchers = append(pbWatchers, &pb.WatcherConfig{
+				Id:              w.ID,
+				Type:            string(w.Type),
+				Conditions:      conditions,
+				Interval:        w.Interval.String(),
+				FilePath:        w.FilePath,
+				CheckHash:       w.CheckHash,
+				Recursive:       w.Recursive,
+				ProcessName:     w.ProcessName,
+				Pid:             int32(w.PID),
+				Port:            int32(w.Port),
+				Protocol:        w.Protocol,
+				CpuThreshold:    w.CPUThreshold,
+				MemoryThreshold: w.MemoryThreshold,
+				DiskThreshold:   w.DiskThreshold,
+			})
+		}
+
+		return &pb.ListWatchersResponse{
+			Watchers: pbWatchers,
+		}, nil
+	}
+
+	return &pb.ListWatchersResponse{
+		Watchers: []*pb.WatcherConfig{},
+	}, nil
+}
+
+// RemoveWatcher removes a registered watcher from the agent
+func (s *agentServer) RemoveWatcher(ctx context.Context, in *pb.RemoveWatcherRequest) (*pb.RemoveWatcherResponse, error) {
+	if s.watcherManager == nil {
+		return &pb.RemoveWatcherResponse{
+			Success: false,
+			Message: "watcher manager not initialized",
+		}, nil
+	}
+
+	watcherID := in.GetWatcherId()
+	if watcherID == "" {
+		return &pb.RemoveWatcherResponse{
+			Success: false,
+			Message: "watcher ID is required",
+		}, nil
+	}
+
+	if watcherMgr, ok := s.watcherManager.(*agentInternal.EventWatcherManager); ok {
+		if err := watcherMgr.RemoveWatcher(watcherID); err != nil {
+			return &pb.RemoveWatcherResponse{
+				Success: false,
+				Message: fmt.Sprintf("failed to remove watcher: %v", err),
+			}, nil
+		}
+
+		slog.Info("Watcher removed via gRPC", "id", watcherID)
+
+		return &pb.RemoveWatcherResponse{
+			Success: true,
+			Message: "watcher removed successfully",
+		}, nil
+	}
+
+	return &pb.RemoveWatcherResponse{
+		Success: false,
+		Message: "invalid watcher manager type",
+	}, nil
 }

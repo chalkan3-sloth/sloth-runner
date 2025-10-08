@@ -21,6 +21,9 @@ type AgentRegistryClient interface {
 // AgentClient interface for dependency injection
 type AgentClient interface {
 	UpdateAgent(ctx context.Context, in *pb.UpdateAgentRequest, opts ...grpc.CallOption) (*pb.UpdateAgentResponse, error)
+	RegisterWatcher(ctx context.Context, in *pb.RegisterWatcherRequest, opts ...grpc.CallOption) (*pb.RegisterWatcherResponse, error)
+	ListWatchers(ctx context.Context, in *pb.ListWatchersRequest, opts ...grpc.CallOption) (*pb.ListWatchersResponse, error)
+	RemoveWatcher(ctx context.Context, in *pb.RemoveWatcherRequest, opts ...grpc.CallOption) (*pb.RemoveWatcherResponse, error)
 }
 
 // AgentService provides agent operations with injected dependencies
@@ -75,4 +78,49 @@ func (f *DefaultConnectionFactory) CreateAgentClient(agentAddr string) (AgentCli
 	cleanup := func() { conn.Close() }
 
 	return client, cleanup, nil
+}
+
+// RegisterWatcherOnAgent registers a watcher on a remote agent via gRPC
+func RegisterWatcherOnAgent(ctx context.Context, agentAddr string, config *pb.WatcherConfig) (*pb.RegisterWatcherResponse, error) {
+	factory := NewDefaultConnectionFactory()
+	client, cleanup, err := factory.CreateAgentClient(agentAddr)
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+
+	req := &pb.RegisterWatcherRequest{
+		Config: config,
+	}
+
+	return client.RegisterWatcher(ctx, req)
+}
+
+// ListWatchersOnAgent lists all watchers on a remote agent via gRPC
+func ListWatchersOnAgent(ctx context.Context, agentAddr string) (*pb.ListWatchersResponse, error) {
+	factory := NewDefaultConnectionFactory()
+	client, cleanup, err := factory.CreateAgentClient(agentAddr)
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+
+	req := &pb.ListWatchersRequest{}
+	return client.ListWatchers(ctx, req)
+}
+
+// RemoveWatcherFromAgent removes a watcher from a remote agent via gRPC
+func RemoveWatcherFromAgent(ctx context.Context, agentAddr string, watcherID string) (*pb.RemoveWatcherResponse, error) {
+	factory := NewDefaultConnectionFactory()
+	client, cleanup, err := factory.CreateAgentClient(agentAddr)
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+
+	req := &pb.RemoveWatcherRequest{
+		WatcherId: watcherID,
+	}
+
+	return client.RemoveWatcher(ctx, req)
 }

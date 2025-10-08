@@ -55,7 +55,7 @@ function renderEvents() {
     if (currentEvents.length === 0) {
         container.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center py-4">
+                <td colspan="7" class="text-center py-4">
                     <div class="text-muted">
                         <i class="bi bi-inbox fs-1 d-block mb-2"></i>
                         No events found
@@ -66,42 +66,58 @@ function renderEvents() {
         return;
     }
 
-    container.innerHTML = currentEvents.map(event => `
+    container.innerHTML = currentEvents.map(event => {
+        // Parse timestamps from Go time format
+        const createdAt = event.CreatedAt || event.created_at;
+        const processedAt = event.ProcessedAt || event.processed_at;
+
+        // Format timestamp
+        const formatTimestamp = (ts) => {
+            if (!ts) return '-';
+            try {
+                return new Date(ts).toLocaleString();
+            } catch {
+                return ts;
+            }
+        };
+
+        return `
         <tr>
-            <td><code class="small">${event.id || 'N/A'}</code></td>
+            <td><code class="small">${(event.ID || event.id || 'N/A').substring(0, 8)}</code></td>
             <td>
-                <span class="badge bg-info">${event.type || 'unknown'}</span>
+                <span class="badge bg-info">${event.Type || event.type || 'unknown'}</span>
             </td>
             <td>
-                <span class="badge ${getStatusBadgeClass(event.status)}">
-                    ${event.status || 'unknown'}
+                <span class="badge ${getStatusBadgeClass(event.Status || event.status)}">
+                    ${event.Status || event.status || 'unknown'}
                 </span>
             </td>
-            <td>${event.hook_id || '-'}</td>
+            <td>-</td>
             <td>
                 <small class="text-muted">
-                    ${event.created_at ? new Date(event.created_at).toLocaleString() : 'N/A'}
+                    ${formatTimestamp(createdAt)}
                 </small>
             </td>
             <td>
                 <small class="text-muted">
-                    ${event.processed_at ? new Date(event.processed_at).toLocaleString() : '-'}
+                    ${formatTimestamp(processedAt)}
                 </small>
             </td>
             <td>
                 <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-primary" onclick="viewEvent('${event.id}')" title="View Details">
+                    <button class="btn btn-outline-primary" onclick="viewEvent('${event.ID || event.id}')" title="View Details">
                         <i class="bi bi-eye"></i>
                     </button>
-                    ${event.status === 'failed' ? `
-                        <button class="btn btn-outline-warning" onclick="retryEvent('${event.id}')" title="Retry">
+                    ${(event.Status || event.status) === 'failed' ? `
+                        <button class="btn btn-outline-warning" onclick="retryEvent('${event.ID || event.id}')" title="Retry">
                             <i class="bi bi-arrow-clockwise"></i>
                         </button>
                     ` : ''}
                 </div>
             </td>
         </tr>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // Get status badge class
@@ -118,10 +134,10 @@ function getStatusBadgeClass(status) {
 
 // Update stats
 function updateStats() {
-    const pending = currentEvents.filter(e => e.status === 'pending').length;
-    const processing = currentEvents.filter(e => e.status === 'processing').length;
-    const completed = currentEvents.filter(e => e.status === 'completed').length;
-    const failed = currentEvents.filter(e => e.status === 'failed').length;
+    const pending = currentEvents.filter(e => (e.Status || e.status) === 'pending').length;
+    const processing = currentEvents.filter(e => (e.Status || e.status) === 'processing').length;
+    const completed = currentEvents.filter(e => (e.Status || e.status) === 'completed').length;
+    const failed = currentEvents.filter(e => (e.Status || e.status) === 'failed').length;
 
     document.getElementById('stat-pending').textContent = pending;
     document.getElementById('stat-processing').textContent = processing;
@@ -134,40 +150,50 @@ async function viewEvent(id) {
     try {
         const event = await API.get(`/api/v1/events/${id}`);
 
+        // Support both Go struct (capitalized) and JSON (lowercase) field names
+        const eventId = event.ID || event.id;
+        const eventType = event.Type || event.type;
+        const eventStatus = event.Status || event.status;
+        const eventData = event.Data || event.data || event.payload;
+        const eventError = event.Error || event.error;
+        const createdAt = event.CreatedAt || event.created_at;
+        const processedAt = event.ProcessedAt || event.processed_at;
+        const timestamp = event.Timestamp || event.timestamp;
+
         const modal = new bootstrap.Modal(document.getElementById('viewEventModal'));
         document.getElementById('viewEventContent').innerHTML = `
             <div class="mb-3">
-                <strong>ID:</strong> <code>${event.id}</code>
+                <strong>ID:</strong> <code>${eventId}</code>
             </div>
             <div class="mb-3">
-                <strong>Type:</strong> <span class="badge bg-info">${event.type}</span>
+                <strong>Type:</strong> <span class="badge bg-info">${eventType}</span>
             </div>
             <div class="mb-3">
-                <strong>Status:</strong> <span class="badge ${getStatusBadgeClass(event.status)}">${event.status}</span>
+                <strong>Status:</strong> <span class="badge ${getStatusBadgeClass(eventStatus)}">${eventStatus}</span>
             </div>
-            ${event.hook_id ? `
+            ${timestamp ? `
                 <div class="mb-3">
-                    <strong>Hook ID:</strong> <code>${event.hook_id}</code>
+                    <strong>Timestamp:</strong> ${new Date(timestamp).toLocaleString()}
                 </div>
             ` : ''}
             <div class="mb-3">
-                <strong>Created:</strong> ${new Date(event.created_at).toLocaleString()}
+                <strong>Created:</strong> ${new Date(createdAt).toLocaleString()}
             </div>
-            ${event.processed_at ? `
+            ${processedAt ? `
                 <div class="mb-3">
-                    <strong>Processed:</strong> ${new Date(event.processed_at).toLocaleString()}
+                    <strong>Processed:</strong> ${new Date(processedAt).toLocaleString()}
                 </div>
             ` : ''}
-            ${event.payload ? `
+            ${eventData ? `
                 <div class="mb-3">
-                    <strong>Payload:</strong>
-                    <pre class="bg-light p-3 rounded mt-2"><code>${JSON.stringify(event.payload, null, 2)}</code></pre>
+                    <strong>Data:</strong>
+                    <pre class="bg-light p-3 rounded mt-2" style="max-height: 400px; overflow-y: auto;"><code>${JSON.stringify(eventData, null, 2)}</code></pre>
                 </div>
             ` : ''}
-            ${event.error ? `
+            ${eventError ? `
                 <div class="mb-3">
                     <strong>Error:</strong>
-                    <div class="alert alert-danger mt-2">${event.error}</div>
+                    <div class="alert alert-danger mt-2">${eventError}</div>
                 </div>
             ` : ''}
         `;
