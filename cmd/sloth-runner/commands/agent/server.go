@@ -199,8 +199,45 @@ func (s *agentServer) UpdateAgent(ctx context.Context, in *pb.UpdateAgentRequest
 		}, nil
 	}
 
-	// Create update script that will run after agent stops
-	updateScript := fmt.Sprintf(`#!/bin/bash
+	// Check if running as systemd service
+	isSystemd := isRunningAsSystemd()
+	slog.Info("Update mode detected", "systemd", isSystemd)
+
+	if isSystemd {
+		// Running as systemd - update binary and let systemd restart us
+		slog.Info("Updating binary for systemd service")
+
+		// Copy new binary to current location
+		if err := copyFile(newBinaryPath, currentExe); err != nil {
+			return &pb.UpdateAgentResponse{
+				Success:    false,
+				Message:    fmt.Sprintf("Failed to update binary: %v", err),
+				OldVersion: currentVersion,
+			}, nil
+		}
+
+		// Make it executable
+		if err := os.Chmod(currentExe, 0755); err != nil {
+			return &pb.UpdateAgentResponse{
+				Success:    false,
+				Message:    fmt.Sprintf("Failed to set permissions: %v", err),
+				OldVersion: currentVersion,
+			}, nil
+		}
+
+		slog.Info("Agent binary updated", "old", currentVersion, "new", targetVersion)
+
+		if !in.SkipRestart {
+			// Exit and let systemd restart us with the new binary
+			slog.Info("Exiting to allow systemd restart...")
+			go func() {
+				time.Sleep(500 * time.Millisecond)
+				os.Exit(0)
+			}()
+		}
+	} else {
+		// Not running as systemd - use update script
+		updateScript := fmt.Sprintf(`#!/bin/bash
 # Agent auto-update script
 sleep 2
 cp -f %s %s || exit 1
@@ -211,28 +248,29 @@ chmod +x %s || exit 1
 rm -f $0
 `, newBinaryPath, currentExe, currentExe, currentExe, strings.Join(os.Args[1:], " "))
 
-	scriptPath := "/tmp/sloth-agent-update.sh"
-	if err := os.WriteFile(scriptPath, []byte(updateScript), 0755); err != nil {
-		return &pb.UpdateAgentResponse{
-			Success:    false,
-			Message:    fmt.Sprintf("Failed to create update script: %v", err),
-			OldVersion: currentVersion,
-		}, nil
-	}
+		scriptPath := "/tmp/sloth-agent-update.sh"
+		if err := os.WriteFile(scriptPath, []byte(updateScript), 0755); err != nil {
+			return &pb.UpdateAgentResponse{
+				Success:    false,
+				Message:    fmt.Sprintf("Failed to create update script: %v", err),
+				OldVersion: currentVersion,
+			}, nil
+		}
 
-	slog.Info("Agent binary update prepared", "old", currentVersion, "new", targetVersion)
+		slog.Info("Agent binary update prepared", "old", currentVersion, "new", targetVersion)
 
-	// Launch update script and exit
-	if !in.SkipRestart {
-		slog.Info("Launching update script and exiting...")
-		go func() {
-			time.Sleep(1 * time.Second)
-			// Execute update script in background
-			cmd := exec.Command("bash", scriptPath)
-			cmd.Start()
-			// Exit current process to allow binary replacement
-			os.Exit(0)
-		}()
+		// Launch update script and exit
+		if !in.SkipRestart {
+			slog.Info("Launching update script and exiting...")
+			go func() {
+				time.Sleep(1 * time.Second)
+				// Execute update script in background
+				cmd := exec.Command("bash", scriptPath)
+				cmd.Start()
+				// Exit current process to allow binary replacement
+				os.Exit(0)
+			}()
+		}
 	}
 
 	return &pb.UpdateAgentResponse{
@@ -241,6 +279,33 @@ rm -f $0
 		OldVersion: currentVersion,
 		NewVersion: targetVersion,
 	}, nil
+}
+
+// isRunningAsSystemd detects if the agent is running as a systemd service
+func isRunningAsSystemd() bool {
+	// Check for INVOCATION_ID environment variable (set by systemd)
+	if os.Getenv("INVOCATION_ID") != "" {
+		return true
+	}
+
+	// Check parent process name
+	ppid := os.Getppid()
+	if ppid == 1 {
+		// Parent is init/systemd (PID 1)
+		return true
+	}
+
+	// Check if parent process is systemd
+	cmdPath := fmt.Sprintf("/proc/%d/comm", ppid)
+	data, err := os.ReadFile(cmdPath)
+	if err == nil {
+		parentName := strings.TrimSpace(string(data))
+		if parentName == "systemd" {
+			return true
+		}
+	}
+
+	return false
 }
 
 // getCurrentAgentVersion returns the current agent version

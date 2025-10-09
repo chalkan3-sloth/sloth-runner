@@ -4,11 +4,23 @@ O módulo `pkg` fornece funcionalidades abrangentes de gerenciamento de pacotes 
 
 ## 🎯 Gerenciadores Suportados
 
-- **apt / apt-get** (Debian/Ubuntu)
-- **yum / dnf** (RHEL/CentOS/Fedora)
-- **pacman** (Arch Linux)
-- **zypper** (openSUSE)
-- **brew** (macOS - Homebrew)
+### Distribuições Linux
+- **apt / apt-get** (Debian/Ubuntu/Linux Mint)
+- **yum / dnf** (RHEL/CentOS/Fedora/Rocky Linux/AlmaLinux)
+- **pacman** (Arch Linux/Manjaro)
+- **zypper** (openSUSE/SUSE Linux Enterprise)
+- **apk** (Alpine Linux)
+- **slackpkg** (Slackware)
+- **emerge** (Gentoo/Calculate Linux)
+- **xbps-install** (Void Linux)
+- **nix-env** (NixOS)
+- **eopkg** (Solus)
+
+### BSD
+- **pkg** (FreeBSD/DragonFly BSD)
+
+### macOS
+- **brew** (Homebrew)
 
 ## 📚 Visão Geral das Funções
 
@@ -405,10 +417,22 @@ workflow.define("auditoria")
 
 ## ⚠️ Notas de Plataforma
 
-- **Linux**: Requer sudo
-- **macOS**: Homebrew não precisa de sudo
-- **Arch**: Usa sintaxe do pacman
-- **openSUSE**: Usa zypper
+### Requisitos de Permissões
+- **Maioria das distribuições Linux**: Requer sudo para operações de sistema
+- **macOS (Homebrew)**: Não precisa de sudo
+- **NixOS**: Não precisa de sudo (usuário)
+
+### Notas Específicas por Distribuição
+- **Debian/Ubuntu**: Suporta apt e apt-get
+- **Arch Linux**: Usa sintaxe específica do pacman (-S, -R, etc.)
+- **openSUSE**: Usa zypper com sintaxe própria
+- **Alpine Linux**: Gerenciador leve e rápido (apk)
+- **Slackware**: Usa slackpkg para gerenciamento de repositórios, installpkg para instalação local
+- **Gentoo**: Compilação de código-fonte via Portage (emerge)
+- **Void Linux**: Sistema de pacotes próprio (xbps)
+- **NixOS**: Gerenciamento declarativo e reproduzível
+- **Solus**: Gerenciador independente (eopkg)
+- **FreeBSD**: Sistema pkg do BSD
 
 ## 🔗 Veja Também
 

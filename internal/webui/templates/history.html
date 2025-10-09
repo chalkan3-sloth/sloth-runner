@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Execution History - Sloth Runner</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="/static/css/style.css" rel="stylesheet">
+    <style>
+        .status-running { color: #0d6efd; }
+        .status-completed { color: #198754; }
+        .status-failed { color: #dc3545; }
+        .status-cancelled { color: #6c757d; }
+
+        .execution-card {
+            transition: all 0.2s;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+        .execution-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .stat-card {
+            border-left: 4px solid #0d6efd;
+            margin-bottom: 1rem;
+        }
+        .stat-card .card-body {
+            padding: 1rem;
+        }
+        .stat-card h3 {
+            font-size: 1.75rem;
+            margin-bottom: 0;
+        }
+        .stat-card h6 {
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .task-timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+        .task-timeline::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #dee2e6;
+        }
+        .task-item {
+            position: relative;
+            margin-bottom: 15px;
+        }
+        .task-item::before {
+            content: '';
+            position: absolute;
+            left: -24px;
+            top: 8px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #198754;
+        }
+        .task-item.failed::before {
+            border-color: #dc3545;
+        }
+
+        .filter-badge {
+            cursor: pointer;
+            user-select: none;
+        }
+        .filter-badge.active {
+            background-color: #0d6efd !important;
+        }
+
+        /* Execution card responsive layout */
+        .execution-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .execution-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .execution-title {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .execution-status {
+            flex: 0 0 auto;
+        }
+
+        .execution-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .execution-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .stat-card h3 {
+                font-size: 1.5rem;
+            }
+
+            .execution-card .card-body {
+                padding: 0.75rem;
+            }
+
+            .execution-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .execution-title {
+                width: 100%;
+            }
+
+            .execution-meta {
+                width: 100%;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .filter-section {
+                margin-bottom: 0.5rem;
+            }
+
+            .task-timeline {
+                padding-left: 20px;
+            }
+
+            .task-timeline::before {
+                left: 5px;
+            }
+
+            .task-item::before {
+                left: -18px;
+            }
+
+            /* Make modal scrollable on mobile */
+            .modal-body {
+                max-height: 70vh;
+                overflow-y: auto;
+            }
+
+            /* Stack detail tables vertically on mobile */
+            .detail-table-container {
+                margin-bottom: 1rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .container-fluid {
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+
+            .btn {
+                font-size: 0.875rem;
+                padding: 0.375rem 0.75rem;
+            }
+
+            .stat-card h3 {
+                font-size: 1.25rem;
+            }
+
+            .stat-card h6 {
+                font-size: 0.75rem;
+            }
+        }
+
+        /* Improve table responsiveness */
+        .table-responsive-custom {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table-responsive-custom table {
+            min-width: 600px;
+        }
+
+        @media (max-width: 768px) {
+            .table-responsive-custom table {
+                min-width: 100%;
+                font-size: 0.875rem;
+            }
+
+            .table-responsive-custom th,
+            .table-responsive-custom td {
+                padding: 0.5rem 0.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="navbar-container"></div>
+
+    <div class="container-fluid mt-4">
+        <div class="row mb-4 align-items-center">
+            <div class="col-12 col-md-8 mb-3 mb-md-0">
+                <h2><i class="bi bi-clock-history"></i> Execution History</h2>
+                <p class="text-muted mb-0">View and analyze workflow execution history</p>
+            </div>
+            <div class="col-12 col-md-4 text-md-end">
+                <button class="btn btn-primary me-2" onclick="refreshHistory()">
+                    <i class="bi bi-arrow-clockwise"></i><span class="d-none d-sm-inline"> Refresh</span>
+                </button>
+                <button class="btn btn-outline-secondary" onclick="showStatsModal()">
+                    <i class="bi bi-graph-up"></i><span class="d-none d-sm-inline"> Statistics</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4" id="stats-cards">
+            <div class="col-6 col-md-3">
+                <div class="card stat-card">
+                    <div class="card-body">
+                        <h6 class="text-muted">Total Executions</h6>
+                        <h3 id="stat-total">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card stat-card" style="border-left-color: #198754;">
+                    <div class="card-body">
+                        <h6 class="text-muted">Completed</h6>
+                        <h3 id="stat-completed" class="text-success">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card stat-card" style="border-left-color: #dc3545;">
+                    <div class="card-body">
+                        <h6 class="text-muted">Failed</h6>
+                        <h3 id="stat-failed" class="text-danger">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card stat-card" style="border-left-color: #ffc107;">
+                    <div class="card-body">
+                        <h6 class="text-muted">Success Rate</h6>
+                        <h3 id="stat-success-rate">-</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12 col-md-3">
+                        <label class="form-label">Workflow</label>
+                        <input type="text" class="form-control" id="filter-workflow" placeholder="Filter by workflow...">
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="filter-status">
+                            <option value="">All</option>
+                            <option value="completed">Completed</option>
+                            <option value="failed">Failed</option>
+                            <option value="running">Running</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label">Agent</label>
+                        <input type="text" class="form-control" id="filter-agent" placeholder="Agent name...">
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label">Time Range</label>
+                        <select class="form-select" id="filter-since">
+                            <option value="">All time</option>
+                            <option value="1h">Last hour</option>
+                            <option value="24h">Last 24 hours</option>
+                            <option value="7d">Last 7 days</option>
+                            <option value="30d">Last 30 days</option>
+                        </select>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="form-label">Limit</label>
+                        <select class="form-select" id="filter-limit">
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                            <option value="200">200</option>
+                            <option value="500">500</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-1 d-flex align-items-end">
+                        <button class="btn btn-primary w-100" onclick="applyFilters()">
+                            <i class="bi bi-filter"></i><span class="d-none d-md-inline"> Filter</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Executions List -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Executions</h5>
+            </div>
+            <div class="card-body">
+                <div id="executions-list">
+                    <div class="text-center py-5">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Execution Detail Modal -->
+    <div class="modal fade" id="executionModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-fullscreen-md-down">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="executionModalTitle">Execution Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="executionModalBody">
+                    <div class="text-center py-5">
+                        <div class="spinner-border" role="status"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/navbar.js"></script>
+    <script>
+        let executionModal;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            executionModal = new bootstrap.Modal(document.getElementById('executionModal'));
+            loadStats();
+            loadExecutions();
+        });
+
+        function loadStats() {
+            fetch('/api/v1/executions/stats')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('stat-total').textContent = data.total || 0;
+                    document.getElementById('stat-completed').textContent = data.completed || 0;
+                    document.getElementById('stat-failed').textContent = data.failed || 0;
+                    const successRate = data.success_rate || 0;
+                    document.getElementById('stat-success-rate').textContent = successRate.toFixed(1) + '%';
+                })
+                .catch(err => console.error('Failed to load stats:', err));
+        }
+
+        function loadExecutions() {
+            const params = new URLSearchParams();
+
+            const workflow = document.getElementById('filter-workflow')?.value;
+            if (workflow) params.append('workflow', workflow);
+
+            const status = document.getElementById('filter-status')?.value;
+            if (status) params.append('status', status);
+
+            const agent = document.getElementById('filter-agent')?.value;
+            if (agent) params.append('agent', agent);
+
+            const since = document.getElementById('filter-since')?.value;
+            if (since) params.append('since', since);
+
+            const limit = document.getElementById('filter-limit')?.value || '50';
+            params.append('limit', limit);
+
+            fetch(`/api/v1/executions?${params}`)
+                .then(res => res.json())
+                .then(data => {
+                    renderExecutions(data.executions || []);
+                })
+                .catch(err => {
+                    console.error('Failed to load executions:', err);
+                    document.getElementById('executions-list').innerHTML =
+                        '<div class="alert alert-danger">Failed to load executions</div>';
+                });
+        }
+
+        function renderExecutions(executions) {
+            const container = document.getElementById('executions-list');
+
+            if (executions.length === 0) {
+                container.innerHTML = '<div class="text-center py-5 text-muted">No executions found</div>';
+                return;
+            }
+
+            container.innerHTML = executions.map(exec => {
+                const statusIcon = getStatusIcon(exec.status);
+                const statusClass = `status-${exec.status}`;
+                const startTime = new Date(exec.start_time * 1000).toLocaleString();
+                const duration = exec.duration ? formatDuration(exec.duration) : '-';
+                const target = exec.group_name ? `Group: ${exec.group_name}` : exec.agent_name || '-';
+
+                return `
+                    <div class="card execution-card" onclick="showExecutionDetail('${exec.id}')">
+                        <div class="card-body">
+                            <div class="execution-info">
+                                <!-- Title Row -->
+                                <div class="execution-row">
+                                    <div class="execution-title">
+                                        <h6 class="mb-1">${exec.workflow_name}</h6>
+                                        <small class="text-muted d-block d-md-inline">#${exec.id.substring(0, 8)}</small>
+                                    </div>
+                                    <div class="execution-status">
+                                        <span class="${statusClass} fw-bold">
+                                            ${statusIcon} <span class="d-none d-sm-inline">${exec.status.toUpperCase()}</span>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Meta Row -->
+                                <div class="execution-meta text-muted">
+                                    <div class="execution-meta-item">
+                                        <i class="bi bi-hdd-network"></i>
+                                        <span>${target}</span>
+                                    </div>
+                                    <div class="execution-meta-item">
+                                        <i class="bi bi-clock"></i>
+                                        <span>${duration}</span>
+                                    </div>
+                                    <div class="execution-meta-item">
+                                        <i class="bi bi-calendar"></i>
+                                        <span class="d-none d-md-inline">${startTime}</span>
+                                        <span class="d-md-none">${new Date(exec.start_time * 1000).toLocaleString('en-US', {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</span>
+                                    </div>
+                                    <div class="execution-meta-item">
+                                        <i class="bi bi-list-check"></i>
+                                        <span>${exec.tasks_success}/${exec.tasks_total} tasks
+                                        ${exec.tasks_failed > 0 ? `<span class="text-danger ms-1">(${exec.tasks_failed} failed)</span>` : ''}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showExecutionDetail(id) {
+            document.getElementById('executionModalBody').innerHTML = `
+                <div class="text-center py-5">
+                    <div class="spinner-border" role="status"></div>
+                </div>
+            `;
+            executionModal.show();
+
+            fetch(`/api/v1/executions/${id}`)
+                .then(res => res.json())
+                .then(data => {
+                    renderExecutionDetail(data.execution, data.tasks);
+                })
+                .catch(err => {
+                    document.getElementById('executionModalBody').innerHTML =
+                        '<div class="alert alert-danger">Failed to load execution details</div>';
+                });
+        }
+
+        function renderExecutionDetail(exec, tasks) {
+            const statusIcon = getStatusIcon(exec.status);
+            const statusClass = `status-${exec.status}`;
+            const startTime = new Date(exec.start_time * 1000).toLocaleString();
+            const endTime = exec.end_time ? new Date(exec.end_time * 1000).toLocaleString() : '-';
+            const duration = exec.duration ? formatDuration(exec.duration) : '-';
+            const target = exec.group_name ? `Group: ${exec.group_name}` : exec.agent_name || '-';
+
+            const html = `
+                <div class="row">
+                    <div class="col-12 col-md-6 mb-3 mb-md-0">
+                        <table class="table table-sm">
+                            <tr>
+                                <th width="150">Status</th>
+                                <td><span class="${statusClass}">${statusIcon} ${exec.status.toUpperCase()}</span></td>
+                            </tr>
+                            <tr>
+                                <th>Workflow</th>
+                                <td>${exec.workflow_name}</td>
+                            </tr>
+                            <tr>
+                                <th>File</th>
+                                <td><code class="small">${exec.workflow_file}</code></td>
+                            </tr>
+                            <tr>
+                                <th>Target</th>
+                                <td>${target}</td>
+                            </tr>
+                            ${exec.user ? `<tr><th>User</th><td>${exec.user}</td></tr>` : ''}
+                        </table>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <table class="table table-sm">
+                            <tr>
+                                <th width="150">Start Time</th>
+                                <td class="small">${startTime}</td>
+                            </tr>
+                            <tr>
+                                <th>End Time</th>
+                                <td class="small">${endTime}</td>
+                            </tr>
+                            <tr>
+                                <th>Duration</th>
+                                <td>${duration}</td>
+                            </tr>
+                            <tr>
+                                <th>Exit Code</th>
+                                <td>${exec.exit_code}</td>
+                            </tr>
+                            <tr>
+                                <th>Tasks</th>
+                                <td class="small">${exec.tasks_success} success, ${exec.tasks_failed} failed (${exec.tasks_total} total)</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                ${exec.error_message ? `
+                    <div class="alert alert-danger">
+                        <strong>Error:</strong> ${exec.error_message}
+                    </div>
+                ` : ''}
+
+                ${tasks && tasks.length > 0 ? `
+                    <h6 class="mt-4">Tasks</h6>
+                    <div class="task-timeline">
+                        ${tasks.map(task => {
+                            const taskStatusIcon = getStatusIcon(task.status);
+                            const taskStatusClass = `status-${task.status}`;
+                            const taskDuration = task.duration ? formatDuration(task.duration) : '-';
+                            const taskClass = task.status === 'failed' ? 'failed' : '';
+
+                            return `
+                                <div class="task-item ${taskClass}">
+                                    <div class="card mb-2">
+                                        <div class="card-body py-2 px-2 px-md-3">
+                                            <div class="row align-items-center g-2">
+                                                <div class="col-12 col-md-5">
+                                                    <strong>${task.task_name}</strong>
+                                                </div>
+                                                <div class="col-6 col-md-3">
+                                                    <span class="${taskStatusClass}">${taskStatusIcon} ${task.status}</span>
+                                                </div>
+                                                <div class="col-6 col-md-2">
+                                                    <small class="text-muted"><i class="bi bi-clock"></i> ${taskDuration}</small>
+                                                </div>
+                                                <div class="col-12 col-md-2">
+                                                    ${task.changed ? '<span class="badge bg-warning">Changed</span>' : ''}
+                                                </div>
+                                            </div>
+                                            ${task.error ? `
+                                                <div class="mt-2">
+                                                    <small class="text-danger d-block"><strong>Error:</strong> ${task.error}</small>
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                ` : ''}
+            `;
+
+            document.getElementById('executionModalTitle').textContent = `Execution: ${exec.workflow_name}`;
+            document.getElementById('executionModalBody').innerHTML = html;
+        }
+
+        function getStatusIcon(status) {
+            const icons = {
+                'completed': '✅',
+                'failed': '❌',
+                'running': '⏳',
+                'cancelled': '🚫'
+            };
+            return icons[status] || '❓';
+        }
+
+        function formatDuration(ms) {
+            if (ms < 1000) return `${ms}ms`;
+            if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+            if (ms < 3600000) return `${(ms / 60000).toFixed(1)}m`;
+            return `${(ms / 3600000).toFixed(1)}h`;
+        }
+
+        function applyFilters() {
+            loadExecutions();
+        }
+
+        function refreshHistory() {
+            loadStats();
+            loadExecutions();
+        }
+
+        function showStatsModal() {
+            // Could expand this to show more detailed stats
+            alert('Detailed statistics view coming soon!');
+        }
+    </script>
+</body>
+</html>

@@ -89,15 +89,30 @@ sloth-runner sysadmin health diagnostics --output diagnostics.json
 
 ### 🔧 debug - Debugging e Troubleshooting
 
-_(Em desenvolvimento)_
+Ferramentas abrangentes para diagnóstico e troubleshooting de agents, conexões e workflows.
 
-Ferramentas para debug de workflows, traces e análise de problemas.
+```bash
+sloth-runner sysadmin debug [subcommand]
+```
 
-**Planejado:**
-- `workflow` - Debug de execução de workflows
-- `trace` - Trace detalhado de operações
-- `analyze` - Análise automática de problemas
-- `snapshot` - Captura estado completo do sistema
+**Subcomandos:**
+- `connection` - Testa conectividade com agent (TCP, DNS, gRPC, latência)
+- `agent` - Diagnóstico completo de agent (config, status, system info)
+- `workflow` - Análise de execuções de workflows
+
+**Exemplos Rápidos:**
+```bash
+# Testar conectividade com agent
+sloth-runner sysadmin debug connection web-01 --verbose
+
+# Diagnóstico completo de agent
+sloth-runner sysadmin debug agent web-01 --full
+
+# Analisar últimas execuções de workflow
+sloth-runner sysadmin debug workflow deploy-prod --last 5
+```
+
+📖 **[Ver documentação completa de debug](debug-command.md)**
 
 ---
 
