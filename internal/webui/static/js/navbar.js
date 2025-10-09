@@ -38,6 +38,7 @@ const SlothNavbar = {
                             </a>
                             <ul class="dropdown-menu">
                                 <li><a class="dropdown-item" href="/agents" data-page="agents"><i class="bi bi-hdd-network"></i> Agents</a></li>
+                                <li><a class="dropdown-item" href="/agent-groups" data-page="agent-groups"><i class="bi bi-collection"></i> Agent Groups</a></li>
                                 <li><a class="dropdown-item" href="/agent-control" data-page="agent-control"><i class="bi bi-gear"></i> Agent Control</a></li>
                                 <li><a class="dropdown-item" href="/workflows" data-page="workflows"><i class="bi bi-diagram-3"></i> Workflows</a></li>
                                 <li><a class="dropdown-item" href="/stacks" data-page="stacks"><i class="bi bi-layers"></i> Stacks</a></li>
@@ -149,6 +150,7 @@ const SlothNavbar = {
         const searchIndex = [
             { title: 'Dashboard', url: '/', icon: 'speedometer2', description: 'Overview and system status' },
             { title: 'Agents', url: '/agents', icon: 'hdd-network', description: 'Manage remote agents' },
+            { title: 'Agent Groups', url: '/agent-groups', icon: 'collection', description: 'Organize and manage agent groups' },
             { title: 'Agent Control', url: '/agent-control', icon: 'gear', description: 'Control and monitor agents' },
             { title: 'Workflows', url: '/workflows', icon: 'diagram-3', description: 'Manage workflows and tasks' },
             { title: 'Stacks', url: '/stacks', icon: 'layers', description: 'Infrastructure stacks' },
