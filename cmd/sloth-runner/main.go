@@ -11,9 +11,11 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/db"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/events"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/group"
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/history"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/hook"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/scheduler"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/secrets"
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sysadmin"
 	slothcmd "github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sloth"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/stack"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/state"
@@ -131,6 +133,14 @@ func Execute() error {
 	// Add db command and subcommands
 	dbCmd := db.NewDBCommand(ctx)
 	rootCmd.AddCommand(dbCmd)
+
+	// Add history command and subcommands
+	historyCmd := history.NewHistoryCmd()
+	rootCmd.AddCommand(historyCmd)
+
+	// Add sysadmin command (includes logs, health, debug, backup, alert)
+	sysadminCmd := sysadmin.NewSysadminCmd()
+	rootCmd.AddCommand(sysadminCmd)
 
 	// Add other root commands (kept for backward compatibility)
 	listCmd := commands.NewListCommand(ctx)

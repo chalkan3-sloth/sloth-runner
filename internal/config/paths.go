@@ -95,10 +95,26 @@ func GetMastersDBPath() string {
 	return filepath.Join(GetDataDir(), "masters.db")
 }
 
+// GetHistoryDBPath returns the full path to the execution history database
+func GetHistoryDBPath() string {
+	return filepath.Join(GetDataDir(), "history.db")
+}
+
+// GetLogDir returns the directory for log files
+func GetLogDir() string {
+	return filepath.Join(GetDataDir(), "logs")
+}
+
 // EnsureDataDir creates the data directory if it doesn't exist
 func EnsureDataDir() error {
 	dir := GetDataDir()
-	return os.MkdirAll(dir, 0755)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	// Also ensure logs directory exists
+	logDir := GetLogDir()
+	return os.MkdirAll(logDir, 0755)
 }
 
 // GetMasterAddress returns the configured master server address
