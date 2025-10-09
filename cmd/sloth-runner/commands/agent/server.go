@@ -1992,22 +1992,75 @@ func (s *agentServer) DiagnoseHealth(ctx context.Context, in *pb.HealthDiagnosti
 func (s *agentServer) InteractiveShell(stream pb.Agent_InteractiveShellServer) error {
 	slog.Info("Starting interactive shell session")
 
-	// Start a bash shell with PTY for proper interactive behavior
-	cmd := exec.Command("/bin/bash", "-i")
+	// Wait for initial message with window size from client
+	initial, err := stream.Recv()
+	if err != nil {
+		return fmt.Errorf("failed to receive initial window size: %w", err)
+	}
 
-	// Set environment variables for a nice interactive shell
-	cmd.Env = append(os.Environ(),
-		"TERM=xterm-256color",
-		"PS1=\\[\\033[01;32m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ ",
-		"HISTFILE=/dev/null", // Don't save history during remote sessions
-	)
+	// Use provided window size or fallback to defaults
+	rows, cols := uint16(24), uint16(80)
+	if initial.WindowRows > 0 && initial.WindowCols > 0 {
+		rows, cols = uint16(initial.WindowRows), uint16(initial.WindowCols)
+		slog.Info("Client terminal size", "rows", rows, "cols", cols)
+	}
 
-	// Create a PTY using creack/pty library
-	ptmx, err := pty.Start(cmd)
+	// Create a shell initialization script that sets up the terminal correctly
+	shellScript := `#!/bin/bash
+# Reset terminal to sane state
+stty sane
+stty echo
+stty icanon
+stty icrnl
+stty onlcr
+
+# Set up shell
+export TERM=xterm-256color
+export PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+
+# Start interactive bash
+exec /bin/bash --norc --noprofile -i
+`
+
+	// Write script to temp file
+	tmpScript, err := os.CreateTemp("", "sloth-shell-*.sh")
+	if err != nil {
+		return fmt.Errorf("failed to create shell script: %w", err)
+	}
+	tmpScriptPath := tmpScript.Name()
+	defer os.Remove(tmpScriptPath)
+
+	if _, err := tmpScript.WriteString(shellScript); err != nil {
+		return fmt.Errorf("failed to write shell script: %w", err)
+	}
+	tmpScript.Close()
+
+	if err := os.Chmod(tmpScriptPath, 0755); err != nil {
+		return fmt.Errorf("failed to chmod shell script: %w", err)
+	}
+
+	// Start shell via wrapper script
+	cmd := exec.Command(tmpScriptPath)
+	cmd.Env = os.Environ()
+
+	// Start PTY with initial window size
+	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{
+		Rows: rows,
+		Cols: cols,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to start shell with PTY: %w", err)
 	}
-	defer ptmx.Close()
+
+	// Ensure cleanup on exit
+	defer func() {
+		ptmx.Close()
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+			cmd.Wait()
+		}
+		slog.Info("Shell session cleanup completed")
+	}()
 
 	// Channel to signal when to stop
 	done := make(chan struct{})
@@ -2033,7 +2086,21 @@ func (s *agentServer) InteractiveShell(stream pb.Agent_InteractiveShellServer) e
 				return
 			}
 
-			// Write any data received directly to PTY
+			// Handle window resize
+			if in.Resize {
+				newSize := &pty.Winsize{
+					Rows: uint16(in.WindowRows),
+					Cols: uint16(in.WindowCols),
+				}
+				if err := pty.Setsize(ptmx, newSize); err != nil {
+					slog.Warn("Failed to resize PTY", "error", err)
+				} else {
+					slog.Debug("PTY resized", "rows", in.WindowRows, "cols", in.WindowCols)
+				}
+				continue
+			}
+
+			// Write stdin data to PTY
 			if len(in.StdinData) > 0 {
 				if _, err := ptmx.Write(in.StdinData); err != nil {
 					slog.Error("Failed to write to PTY", "error", err)
@@ -2044,16 +2111,16 @@ func (s *agentServer) InteractiveShell(stream pb.Agent_InteractiveShellServer) e
 		}
 	}()
 
-	// Goroutine to read from PTY and send to client
+	// Goroutine to read from PTY and send to client with larger buffer
 	go func() {
-		buf := make([]byte, 8192)
+		buf := make([]byte, 32768) // Increased buffer size for large outputs
 		for {
 			n, err := ptmx.Read(buf)
 			if n > 0 {
-				if err := stream.Send(&pb.ShellOutput{
+				if sendErr := stream.Send(&pb.ShellOutput{
 					Stdout: buf[:n],
-				}); err != nil {
-					slog.Debug("Failed to send output (client disconnected)", "error", err)
+				}); sendErr != nil {
+					slog.Debug("Failed to send output (client disconnected)", "error", sendErr)
 					return
 				}
 			}
@@ -2074,29 +2141,13 @@ func (s *agentServer) InteractiveShell(stream pb.Agent_InteractiveShellServer) e
 	select {
 	case err := <-errChan:
 		slog.Info("Shell session ended with error", "error", err)
-		if cmd.Process != nil {
-			cmd.Process.Kill()
-		}
 		return err
 	case <-done:
 		slog.Info("Shell session ended normally")
-		// Client requested termination or shell exited
-		if cmd.Process != nil {
-			cmd.Process.Kill()
-		}
 	}
 
-	// Wait for process to exit
-	exitCode := 0
-	if err := cmd.Wait(); err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			exitCode = exitErr.ExitCode()
-		}
-		slog.Debug("Shell process exited", "error", err)
-	}
-
+	// Send completion message
 	return stream.Send(&pb.ShellOutput{
-		ExitCode:  int32(exitCode),
 		Completed: true,
 	})
 }
