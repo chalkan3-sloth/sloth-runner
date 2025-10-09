@@ -10,6 +10,7 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/agent"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/db"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/events"
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/group"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/hook"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/scheduler"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/secrets"
@@ -90,6 +91,10 @@ func Execute() error {
 	// Add agent command and subcommands
 	agentCmd := agent.NewAgentCommand(ctx)
 	rootCmd.AddCommand(agentCmd)
+
+	// Add group command and subcommands
+	groupCmd := group.NewGroupCmd()
+	rootCmd.AddCommand(groupCmd)
 
 	// Add stack command and subcommands
 	stackCmd := stack.NewStackCommand(ctx)

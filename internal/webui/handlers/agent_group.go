@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -30,27 +29,14 @@ type AgentGroup struct {
 
 // List returns all agent groups
 func (h *AgentGroupHandler) List(c *gin.Context) {
-	// TODO: Implement database storage for groups
-	// For now, return mock groups
-	groups := []AgentGroup{
-		{
-			ID:          "prod-web",
-			Name:        "Production Web Servers",
-			Description: "All production web servers",
-			AgentNames:  []string{"web-01", "web-02", "web-03"},
-			Tags:        map[string]string{"env": "production", "type": "web"},
-			CreatedAt:   time.Now().Add(-30 * 24 * time.Hour).Unix(),
-			AgentCount:  3,
-		},
-		{
-			ID:          "db-cluster",
-			Name:        "Database Cluster",
-			Description: "PostgreSQL database cluster",
-			AgentNames:  []string{"db-master", "db-replica-01", "db-replica-02"},
-			Tags:        map[string]string{"env": "production", "type": "database"},
-			CreatedAt:   time.Now().Add(-60 * 24 * time.Hour).Unix(),
-			AgentCount:  3,
-		},
+	groups, err := h.db.ListAgentGroups(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to list agent groups: " + err.Error()})
+		return
+	}
+
+	if groups == nil {
+		groups = []*AgentGroup{}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"groups": groups})
@@ -58,17 +44,12 @@ func (h *AgentGroupHandler) List(c *gin.Context) {
 
 // Get returns a specific agent group
 func (h *AgentGroupHandler) Get(c *gin.Context) {
-	name := c.Param("name")
+	groupID := c.Param("name")
 
-	// TODO: Get from database
-	group := AgentGroup{
-		ID:          name,
-		Name:        name,
-		Description: "Sample group",
-		AgentNames:  []string{"agent-1", "agent-2"},
-		Tags:        map[string]string{"env": "production"},
-		CreatedAt:   time.Now().Add(-7 * 24 * time.Hour).Unix(),
-		AgentCount:  2,
+	group, err := h.db.GetAgentGroup(c.Request.Context(), groupID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Agent group not found: " + err.Error()})
+		return
 	}
 
 	c.JSON(http.StatusOK, group)
@@ -88,7 +69,25 @@ func (h *AgentGroupHandler) Create(c *gin.Context) {
 		return
 	}
 
-	// TODO: Save to database
+	if req.GroupName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Group name is required"})
+		return
+	}
+
+	// Create the group
+	group := &AgentGroup{
+		ID:          req.GroupName, // Using name as ID for simplicity
+		Name:        req.GroupName,
+		Description: req.Description,
+		AgentNames:  req.AgentNames,
+		Tags:        req.Tags,
+	}
+
+	if err := h.db.CreateAgentGroup(c.Request.Context(), group); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create group: " + err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success":  true,
 		"message":  "Group created successfully",
@@ -98,9 +97,13 @@ func (h *AgentGroupHandler) Create(c *gin.Context) {
 
 // Delete deletes an agent group
 func (h *AgentGroupHandler) Delete(c *gin.Context) {
-	_ = c.Param("name")
+	groupID := c.Param("name")
 
-	// TODO: Delete from database
+	if err := h.db.DeleteAgentGroup(c.Request.Context(), groupID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete group: " + err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Group deleted successfully",
@@ -109,7 +112,7 @@ func (h *AgentGroupHandler) Delete(c *gin.Context) {
 
 // AddAgents adds agents to a group
 func (h *AgentGroupHandler) AddAgents(c *gin.Context) {
-	_ = c.Param("name")
+	groupID := c.Param("name")
 
 	var req struct {
 		AgentNames []string `json:"agent_names"`
@@ -120,7 +123,16 @@ func (h *AgentGroupHandler) AddAgents(c *gin.Context) {
 		return
 	}
 
-	// TODO: Update database
+	if len(req.AgentNames) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No agent names provided"})
+		return
+	}
+
+	if err := h.db.AddAgentsToGroup(c.Request.Context(), groupID, req.AgentNames); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add agents: " + err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Agents added to group",
@@ -129,7 +141,7 @@ func (h *AgentGroupHandler) AddAgents(c *gin.Context) {
 
 // RemoveAgents removes agents from a group
 func (h *AgentGroupHandler) RemoveAgents(c *gin.Context) {
-	_ = c.Param("name")
+	groupID := c.Param("name")
 
 	var req struct {
 		AgentNames []string `json:"agent_names"`
@@ -140,7 +152,16 @@ func (h *AgentGroupHandler) RemoveAgents(c *gin.Context) {
 		return
 	}
 
-	// TODO: Update database
+	if len(req.AgentNames) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No agent names provided"})
+		return
+	}
+
+	if err := h.db.RemoveAgentsFromGroup(c.Request.Context(), groupID, req.AgentNames); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove agents: " + err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Agents removed from group",
@@ -149,15 +170,13 @@ func (h *AgentGroupHandler) RemoveAgents(c *gin.Context) {
 
 // GetAggregatedMetrics returns aggregated metrics for a group
 func (h *AgentGroupHandler) GetAggregatedMetrics(c *gin.Context) {
-	_ = c.Param("name")
+	groupID := c.Param("name")
 
-	// TODO: Get real metrics from agents in group
-	c.JSON(http.StatusOK, gin.H{
-		"avg_cpu_percent":    25.5,
-		"avg_memory_percent": 45.2,
-		"avg_disk_percent":   55.0,
-		"total_agents":       3,
-		"healthy_agents":     3,
-		"unhealthy_agents":   0,
-	})
+	metrics, err := h.db.GetGroupAggregatedMetrics(c.Request.Context(), groupID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get metrics: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, metrics)
 }

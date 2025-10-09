@@ -72,6 +72,16 @@ func NewServer(cfg *Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to initialize agent DB: %w", err)
 	}
 
+	// Initialize agent groups schema
+	if err := agentDB.InitializeAgentGroupsSchema(); err != nil {
+		return nil, fmt.Errorf("failed to initialize agent groups schema: %w", err)
+	}
+
+	// Initialize advanced agent groups schema
+	if err := agentDB.InitializeAdvancedSchema(); err != nil {
+		return nil, fmt.Errorf("failed to initialize advanced agent groups schema: %w", err)
+	}
+
 	slothRepo, err := handlers.NewSlothRepoWrapper(cfg.SlothDBPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize sloth repository: %w", err)
@@ -202,8 +212,10 @@ func (s *Server) setupRoutes(cfg *Config) {
 
 		// Agent Groups
 		groupHandler := handlers.NewAgentGroupHandler(s.agentDB)
+		advancedGroupHandler := handlers.NewAgentGroupAdvancedHandler(s.agentDB)
 		groups := api.Group("/agent-groups")
 		{
+			// Basic operations
 			groups.GET("", groupHandler.List)
 			groups.GET("/:name", groupHandler.Get)
 			groups.POST("", groupHandler.Create)
@@ -211,6 +223,39 @@ func (s *Server) setupRoutes(cfg *Config) {
 			groups.POST("/:name/agents", groupHandler.AddAgents)
 			groups.DELETE("/:name/agents", groupHandler.RemoveAgents)
 			groups.GET("/:name/metrics", groupHandler.GetAggregatedMetrics)
+
+			// Advanced operations
+			// Bulk operations
+			groups.POST("/bulk-operation", advancedGroupHandler.ExecuteBulkOperation)
+
+			// Templates
+			groups.GET("/templates", advancedGroupHandler.ListTemplates)
+			groups.GET("/templates/:id", advancedGroupHandler.GetTemplate)
+			groups.POST("/templates", advancedGroupHandler.CreateTemplate)
+			groups.DELETE("/templates/:id", advancedGroupHandler.DeleteTemplate)
+			groups.POST("/templates/:id/apply", advancedGroupHandler.ApplyTemplate)
+
+			// Hierarchy
+			groups.POST("/:name/hierarchy", advancedGroupHandler.SetGroupHierarchy)
+			groups.GET("/:name/hierarchy", advancedGroupHandler.GetGroupHierarchy)
+			groups.DELETE("/:name/hierarchy", advancedGroupHandler.RemoveGroupHierarchy)
+			groups.GET("/:name/children", advancedGroupHandler.GetGroupChildren)
+
+			// Auto-discovery
+			groups.GET("/auto-discovery", advancedGroupHandler.ListAutoDiscoveryConfigs)
+			groups.GET("/auto-discovery/:id", advancedGroupHandler.GetAutoDiscoveryConfig)
+			groups.POST("/auto-discovery", advancedGroupHandler.CreateAutoDiscoveryConfig)
+			groups.PUT("/auto-discovery/:id", advancedGroupHandler.UpdateAutoDiscoveryConfig)
+			groups.DELETE("/auto-discovery/:id", advancedGroupHandler.DeleteAutoDiscoveryConfig)
+			groups.POST("/auto-discovery/:id/run", advancedGroupHandler.RunAutoDiscovery)
+
+			// Webhooks
+			groups.GET("/webhooks", advancedGroupHandler.ListWebhooks)
+			groups.GET("/webhooks/:id", advancedGroupHandler.GetWebhook)
+			groups.POST("/webhooks", advancedGroupHandler.CreateWebhook)
+			groups.PUT("/webhooks/:id", advancedGroupHandler.UpdateWebhook)
+			groups.DELETE("/webhooks/:id", advancedGroupHandler.DeleteWebhook)
+			groups.GET("/webhooks/:id/logs", advancedGroupHandler.GetWebhookLogs)
 		}
 
 		// Workflows (Sloths)
@@ -391,6 +436,7 @@ func (s *Server) setupRoutes(cfg *Config) {
 	s.router.GET("/", s.servePage("index.html"))
 	s.router.GET("/agents", s.servePage("agents.html"))
 	s.router.GET("/agent-control", s.servePage("agent-control.html"))
+	s.router.GET("/agent-groups", s.servePage("agent-groups.html"))
 	s.router.GET("/workflows", s.servePage("workflows.html"))
 	s.router.GET("/stacks", s.servePage("stacks.html"))
 	s.router.GET("/hooks", s.servePage("hooks.html"))

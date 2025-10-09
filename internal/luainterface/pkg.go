@@ -46,14 +46,27 @@ func (p *PkgModule) exports() map[string]lua.LGFunction {
 
 // detectPackageManager detects the available package manager
 func (p *PkgModule) detectPackageManager() (string, error) {
-	managers := []string{"apt-get", "apt", "yum", "dnf", "pacman", "zypper", "brew"}
-	
+	managers := []string{
+		"apt-get", "apt",           // Debian/Ubuntu
+		"yum", "dnf",               // RedHat/Fedora/CentOS
+		"pacman",                   // Arch Linux
+		"zypper",                   // openSUSE
+		"apk",                      // Alpine Linux
+		"slackpkg",                 // Slackware
+		"emerge",                   // Gentoo
+		"xbps-install",             // Void Linux
+		"nix-env",                  // NixOS
+		"eopkg",                    // Solus
+		"pkg",                      // FreeBSD
+		"brew",                     // macOS
+	}
+
 	for _, manager := range managers {
 		if _, err := exec.LookPath(manager); err == nil {
 			return manager, nil
 		}
 	}
-	
+
 	return "", fmt.Errorf("no supported package manager found")
 }
 
@@ -79,27 +92,31 @@ func (p *PkgModule) parsePackages(val lua.LValue) []string {
 
 // needsSudo checks if the command needs sudo
 func (p *PkgModule) needsSudo(manager string) bool {
-	// brew doesn't need sudo, others do (except on macOS running as root)
-	if manager == "brew" {
-		return false
+	// Package managers that don't need sudo
+	noSudoManagers := []string{"brew", "nix-env"}
+
+	for _, m := range noSudoManagers {
+		if manager == m {
+			return false
+		}
 	}
-	
+
 	// On macOS with other package managers (like MacPorts), may not need sudo
 	if runtime.GOOS == "darwin" {
 		return false
 	}
-	
+
 	return true
 }
 
 // buildInstallCommand builds the install command based on package manager
 func (p *PkgModule) buildInstallCommand(manager string, packages []string) []string {
 	var args []string
-	
+
 	if p.needsSudo(manager) {
 		args = append(args, "sudo")
 	}
-	
+
 	switch manager {
 	case "apt-get", "apt":
 		args = append(args, manager, "install", "-y")
@@ -113,6 +130,27 @@ func (p *PkgModule) buildInstallCommand(manager string, packages []string) []str
 	case "zypper":
 		args = append(args, manager, "install", "-y")
 		args = append(args, packages...)
+	case "apk":
+		args = append(args, manager, "add")
+		args = append(args, packages...)
+	case "slackpkg":
+		args = append(args, manager, "install")
+		args = append(args, packages...)
+	case "emerge":
+		args = append(args, manager, "--ask=n")
+		args = append(args, packages...)
+	case "xbps-install":
+		args = append(args, manager, "-y")
+		args = append(args, packages...)
+	case "nix-env":
+		args = append(args, manager, "-iA")
+		args = append(args, packages...)
+	case "eopkg":
+		args = append(args, manager, "install", "-y")
+		args = append(args, packages...)
+	case "pkg":
+		args = append(args, manager, "install", "-y")
+		args = append(args, packages...)
 	case "brew":
 		args = append(args, manager, "install")
 		args = append(args, packages...)
@@ -120,18 +158,18 @@ func (p *PkgModule) buildInstallCommand(manager string, packages []string) []str
 		args = append(args, manager, "install")
 		args = append(args, packages...)
 	}
-	
+
 	return args
 }
 
 // buildRemoveCommand builds the remove command based on package manager
 func (p *PkgModule) buildRemoveCommand(manager string, packages []string) []string {
 	var args []string
-	
+
 	if p.needsSudo(manager) {
 		args = append(args, "sudo")
 	}
-	
+
 	switch manager {
 	case "apt-get", "apt":
 		args = append(args, manager, "remove", "-y")
@@ -145,6 +183,28 @@ func (p *PkgModule) buildRemoveCommand(manager string, packages []string) []stri
 	case "zypper":
 		args = append(args, manager, "remove", "-y")
 		args = append(args, packages...)
+	case "apk":
+		args = append(args, manager, "del")
+		args = append(args, packages...)
+	case "slackpkg":
+		args = append(args, manager, "remove")
+		args = append(args, packages...)
+	case "emerge":
+		args = append(args, manager, "--unmerge")
+		args = append(args, packages...)
+	case "xbps-install":
+		// Void Linux uses xbps-remove for removal
+		args = append(args, "xbps-remove", "-y")
+		args = append(args, packages...)
+	case "nix-env":
+		args = append(args, manager, "-e")
+		args = append(args, packages...)
+	case "eopkg":
+		args = append(args, manager, "remove", "-y")
+		args = append(args, packages...)
+	case "pkg":
+		args = append(args, manager, "delete", "-y")
+		args = append(args, packages...)
 	case "brew":
 		args = append(args, manager, "uninstall")
 		args = append(args, packages...)
@@ -152,18 +212,18 @@ func (p *PkgModule) buildRemoveCommand(manager string, packages []string) []stri
 		args = append(args, manager, "remove")
 		args = append(args, packages...)
 	}
-	
+
 	return args
 }
 
 // buildUpdateCommand builds the update command based on package manager
 func (p *PkgModule) buildUpdateCommand(manager string) []string {
 	var args []string
-	
+
 	if p.needsSudo(manager) {
 		args = append(args, "sudo")
 	}
-	
+
 	switch manager {
 	case "apt-get", "apt":
 		args = append(args, manager, "update")
@@ -173,23 +233,37 @@ func (p *PkgModule) buildUpdateCommand(manager string) []string {
 		args = append(args, manager, "-Sy")
 	case "zypper":
 		args = append(args, manager, "refresh")
+	case "apk":
+		args = append(args, manager, "update")
+	case "slackpkg":
+		args = append(args, manager, "update")
+	case "emerge":
+		args = append(args, manager, "--sync")
+	case "xbps-install":
+		args = append(args, manager, "-S")
+	case "nix-env":
+		args = append(args, "nix-channel", "--update")
+	case "eopkg":
+		args = append(args, manager, "update-repo")
+	case "pkg":
+		args = append(args, manager, "update")
 	case "brew":
 		args = append(args, manager, "update")
 	default:
 		args = append(args, manager, "update")
 	}
-	
+
 	return args
 }
 
 // buildUpgradeCommand builds the upgrade command based on package manager
 func (p *PkgModule) buildUpgradeCommand(manager string) []string {
 	var args []string
-	
+
 	if p.needsSudo(manager) {
 		args = append(args, "sudo")
 	}
-	
+
 	switch manager {
 	case "apt-get", "apt":
 		args = append(args, manager, "upgrade", "-y")
@@ -199,12 +273,26 @@ func (p *PkgModule) buildUpgradeCommand(manager string) []string {
 		args = append(args, manager, "-Su", "--noconfirm")
 	case "zypper":
 		args = append(args, manager, "update", "-y")
+	case "apk":
+		args = append(args, manager, "upgrade")
+	case "slackpkg":
+		args = append(args, manager, "upgrade-all")
+	case "emerge":
+		args = append(args, manager, "--update", "--deep", "--with-bdeps=y", "@world")
+	case "xbps-install":
+		args = append(args, manager, "-Su")
+	case "nix-env":
+		args = append(args, manager, "-u")
+	case "eopkg":
+		args = append(args, manager, "upgrade", "-y")
+	case "pkg":
+		args = append(args, manager, "upgrade", "-y")
 	case "brew":
 		args = append(args, manager, "upgrade")
 	default:
 		args = append(args, manager, "upgrade")
 	}
-	
+
 	return args
 }
 
@@ -418,6 +506,20 @@ func (p *PkgModule) search(L *lua.LState) int {
 		args = []string{manager, "-Ss", query}
 	case "zypper":
 		args = []string{manager, "search", query}
+	case "apk":
+		args = []string{manager, "search", query}
+	case "slackpkg":
+		args = []string{manager, "search", query}
+	case "emerge":
+		args = []string{manager, "--search", query}
+	case "xbps-install":
+		args = []string{"xbps-query", "-Rs", query}
+	case "nix-env":
+		args = []string{manager, "-qaP", query}
+	case "eopkg":
+		args = []string{manager, "search", query}
+	case "pkg":
+		args = []string{manager, "search", query}
 	case "brew":
 		args = []string{manager, "search", query}
 	default:
@@ -466,6 +568,20 @@ func (p *PkgModule) info(L *lua.LState) int {
 		args = []string{manager, "-Si", pkgName}
 	case "zypper":
 		args = []string{manager, "info", pkgName}
+	case "apk":
+		args = []string{manager, "info", pkgName}
+	case "slackpkg":
+		args = []string{manager, "info", pkgName}
+	case "emerge":
+		args = []string{manager, "--info", pkgName}
+	case "xbps-install":
+		args = []string{"xbps-query", "-R", pkgName}
+	case "nix-env":
+		args = []string{manager, "-qa", "--description", pkgName}
+	case "eopkg":
+		args = []string{manager, "info", pkgName}
+	case "pkg":
+		args = []string{manager, "info", pkgName}
 	case "brew":
 		args = []string{manager, "info", pkgName}
 	default:
@@ -507,6 +623,20 @@ func (p *PkgModule) list(L *lua.LState) int {
 		args = []string{manager, "-Q"}
 	case "zypper":
 		args = []string{manager, "packages", "--installed-only"}
+	case "apk":
+		args = []string{manager, "list", "--installed"}
+	case "slackpkg":
+		args = []string{"ls", "/var/log/packages"}
+	case "emerge":
+		args = []string{"qlist", "-I"}
+	case "xbps-install":
+		args = []string{"xbps-query", "-l"}
+	case "nix-env":
+		args = []string{manager, "-q"}
+	case "eopkg":
+		args = []string{manager, "list-installed"}
+	case "pkg":
+		args = []string{manager, "info"}
 	case "brew":
 		args = []string{manager, "list"}
 	default:
@@ -549,17 +679,31 @@ func (p *PkgModule) isPackageInstalled(manager, pkgName string) bool {
 		cmd = exec.Command(manager, "-Q", pkgName)
 	case "zypper":
 		cmd = exec.Command(manager, "search", "--installed-only", pkgName)
+	case "apk":
+		cmd = exec.Command(manager, "info", "-e", pkgName)
+	case "slackpkg":
+		cmd = exec.Command("ls", "/var/log/packages/"+pkgName+"*")
+	case "emerge":
+		cmd = exec.Command("qlist", "-I", pkgName)
+	case "xbps-install":
+		cmd = exec.Command("xbps-query", "-l", pkgName)
+	case "nix-env":
+		cmd = exec.Command(manager, "-q", pkgName)
+	case "eopkg":
+		cmd = exec.Command(manager, "list-installed", pkgName)
+	case "pkg":
+		cmd = exec.Command(manager, "info", pkgName)
 	case "brew":
 		cmd = exec.Command(manager, "list", pkgName)
 	default:
 		cmd = exec.Command(manager, "list", pkgName)
 	}
-	
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return false
 	}
-	
+
 	return strings.Contains(string(output), pkgName)
 }
 
@@ -636,6 +780,20 @@ func (p *PkgModule) clean(L *lua.LState) int {
 		args = append(args, manager, "-Sc", "--noconfirm")
 	case "zypper":
 		args = append(args, manager, "clean")
+	case "apk":
+		args = append(args, manager, "cache", "clean")
+	case "slackpkg":
+		args = append(args, manager, "clean-system")
+	case "emerge":
+		args = append(args, "eclean", "distfiles")
+	case "xbps-install":
+		args = append(args, manager, "-O")
+	case "nix-env":
+		args = append(args, "nix-collect-garbage")
+	case "eopkg":
+		args = append(args, manager, "delete-cache")
+	case "pkg":
+		args = append(args, manager, "clean")
 	case "brew":
 		args = append(args, manager, "cleanup")
 	default:
@@ -681,6 +839,25 @@ func (p *PkgModule) autoremove(L *lua.LState) int {
 		args = append(args, manager, "autoremove", "-y")
 	case "pacman":
 		args = append(args, manager, "-Rns", "$(pacman -Qtdq)", "--noconfirm")
+	case "apk":
+		// Alpine doesn't have autoremove, but we can suggest using "apk cache clean"
+		L.Push(lua.LFalse)
+		L.Push(lua.LString("Autoremove not available for apk, use clean instead"))
+		return 2
+	case "slackpkg":
+		L.Push(lua.LFalse)
+		L.Push(lua.LString("Autoremove not available for slackpkg"))
+		return 2
+	case "emerge":
+		args = append(args, manager, "--depclean")
+	case "xbps-install":
+		args = append(args, "xbps-remove", "-o")
+	case "nix-env":
+		args = append(args, "nix-collect-garbage", "-d")
+	case "eopkg":
+		args = append(args, manager, "remove-orphans")
+	case "pkg":
+		args = append(args, manager, "autoremove", "-y")
 	case "brew":
 		args = append(args, manager, "autoremove")
 	default:
@@ -756,6 +933,20 @@ func (p *PkgModule) version(L *lua.LState) int {
 		cmd = exec.Command(manager, "-Q", pkgName)
 	case "zypper":
 		cmd = exec.Command(manager, "info", pkgName)
+	case "apk":
+		cmd = exec.Command(manager, "info", pkgName)
+	case "slackpkg":
+		cmd = exec.Command("ls", "-l", "/var/log/packages/"+pkgName+"*")
+	case "emerge":
+		cmd = exec.Command("qlist", "-Iv", pkgName)
+	case "xbps-install":
+		cmd = exec.Command("xbps-query", "-l", pkgName)
+	case "nix-env":
+		cmd = exec.Command(manager, "-q", pkgName)
+	case "eopkg":
+		cmd = exec.Command(manager, "info", pkgName)
+	case "pkg":
+		cmd = exec.Command(manager, "info", pkgName)
 	case "brew":
 		cmd = exec.Command(manager, "info", pkgName, "--json")
 	default:
@@ -815,6 +1006,22 @@ func (p *PkgModule) deps(L *lua.LState) int {
 		cmd = exec.Command(manager, "-Si", pkgName)
 	case "zypper":
 		cmd = exec.Command(manager, "info", "--requires", pkgName)
+	case "apk":
+		cmd = exec.Command(manager, "info", "-R", pkgName)
+	case "slackpkg":
+		L.Push(lua.LFalse)
+		L.Push(lua.LString("Dependency listing not directly supported for slackpkg"))
+		return 2
+	case "emerge":
+		cmd = exec.Command(manager, "--pretend", "--verbose", pkgName)
+	case "xbps-install":
+		cmd = exec.Command("xbps-query", "-x", pkgName)
+	case "nix-env":
+		cmd = exec.Command("nix-store", "-q", "--references", pkgName)
+	case "eopkg":
+		cmd = exec.Command(manager, "info", pkgName)
+	case "pkg":
+		cmd = exec.Command(manager, "info", "-d", pkgName)
 	case "brew":
 		cmd = exec.Command(manager, "deps", pkgName)
 	default:
@@ -868,6 +1075,23 @@ func (p *PkgModule) installLocal(L *lua.LState) int {
 		args = append(args, manager, "-U", "--noconfirm", filePath)
 	case "zypper":
 		args = append(args, manager, "install", "-y", filePath)
+	case "apk":
+		args = append(args, manager, "add", "--allow-untrusted", filePath)
+	case "slackpkg":
+		// Slackware uses installpkg for local package installation
+		args = append(args, "installpkg", filePath)
+	case "emerge":
+		L.Push(lua.LFalse)
+		L.Push(lua.LString("Local install not typical for Gentoo, use ebuild files instead"))
+		return 2
+	case "xbps-install":
+		args = append(args, manager, filePath)
+	case "nix-env":
+		args = append(args, manager, "-i", filePath)
+	case "eopkg":
+		args = append(args, manager, "install", filePath)
+	case "pkg":
+		args = append(args, manager, "add", filePath)
 	case "brew":
 		args = append(args, manager, "install", filePath)
 	default:

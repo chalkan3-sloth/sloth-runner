@@ -2,9 +2,14 @@ version: 2
 
 project_name: sloth-runner
 
+# Enable parallel builds for faster releases
+gomod:
+  gobinary: go
+
+# Optimize build performance
 before:
   hooks:
-    - go mod tidy
+    - go mod download
     - go generate ./...
 release:
   github:
@@ -51,11 +56,15 @@ builds:
     env:
       - CGO_ENABLED=1
       - CC=gcc
+      - GOCACHE=/tmp/go-build-cache
     ldflags:
       - -X main.version={{.Version}}
       - -X main.commit={{.Commit}}
       - -X main.date={{.Date}}
       - -s -w
+    flags:
+      - -trimpath
+      - -buildmode=pie
     goos:
       - linux
     goarch:
@@ -67,11 +76,15 @@ builds:
     env:
       - CGO_ENABLED=1
       - CC=aarch64-linux-gnu-gcc
+      - GOCACHE=/tmp/go-build-cache
     ldflags:
       - -X main.version={{.Version}}
       - -X main.commit={{.Commit}}
       - -X main.date={{.Date}}
       - -s -w
+    flags:
+      - -trimpath
+      - -buildmode=pie
     goos:
       - linux
     goarch:
@@ -82,11 +95,14 @@ builds:
   - id: darwin-amd64
     env:
       - CGO_ENABLED=0
+      - GOCACHE=/tmp/go-build-cache
     ldflags:
       - -X main.version={{.Version}}
       - -X main.commit={{.Commit}}
       - -X main.date={{.Date}}
       - -s -w
+    flags:
+      - -trimpath
     goos:
       - darwin
     goarch:
@@ -97,11 +113,14 @@ builds:
   - id: darwin-arm64
     env:
       - CGO_ENABLED=0
+      - GOCACHE=/tmp/go-build-cache
     ldflags:
       - -X main.version={{.Version}}
       - -X main.commit={{.Commit}}
       - -X main.date={{.Date}}
       - -s -w
+    flags:
+      - -trimpath
     goos:
       - darwin
     goarch:
