@@ -63,6 +63,32 @@
     .d-flex.justify-content-between .btn {
         width: 100%;
     }
+
+    /* Navbar adjustments for tablets */
+    .navbar-search {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        width: 100%;
+        max-width: 300px;
+    }
+
+    .navbar-search .search-container {
+        width: 100%;
+    }
+
+    .navbar-collapse {
+        padding-top: 1rem;
+    }
+
+    /* Compact navbar links on tablets */
+    .navbar-nav .nav-link {
+        padding: 0.6rem 0.8rem;
+        font-size: 0.95rem;
+    }
+
+    .navbar-brand {
+        font-size: 1.1rem;
+    }
 }
 
 /* Mobile phones */
@@ -103,11 +129,82 @@
 
     /* Adjust navbar */
     .navbar {
-        padding: 0.5rem 1rem;
+        padding: 0.5rem 0.75rem;
     }
 
     .navbar-brand {
-        font-size: 1rem;
+        font-size: 0.85rem !important;
+    }
+
+    .navbar-brand img {
+        max-height: 20px;
+    }
+
+    .navbar-brand span {
+        font-size: 0.9rem !important;
+    }
+
+    /* Hide search bar on mobile */
+    .navbar-search {
+        display: none !important;
+    }
+
+    /* Completely hide navigation text on mobile, show only icons */
+    .navbar-nav .nav-link {
+        padding: 0.5rem !important;
+        font-size: 1.1rem;
+        min-width: 40px;
+        text-align: center;
+    }
+
+    /* Hide ALL text in nav links, keep only icons */
+    .navbar-nav .nav-link span {
+        display: none !important;
+    }
+
+    /* Better dropdown menus on mobile */
+    .dropdown-menu {
+        font-size: 0.85rem;
+        min-width: 180px;
+    }
+
+    .dropdown-item {
+        padding: 0.5rem 1rem;
+    }
+
+    .dropdown-item i {
+        min-width: 20px;
+        margin-right: 0.5rem;
+    }
+
+    /* Hide dropdown arrow on mobile for cleaner look */
+    .navbar-nav .dropdown-toggle::after {
+        display: none;
+    }
+
+    /* Stack navbar items properly */
+    .navbar-collapse {
+        max-height: 80vh;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Make navbar items horizontal when collapsed */
+    .navbar-collapse .navbar-nav {
+        flex-direction: row !important;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.25rem;
+    }
+
+    /* Hide status text, keep icon */
+    #ws-status-text {
+        display: none !important;
+    }
+
+    /* Make theme toggle icon only */
+    .theme-toggle {
+        padding: 0.5rem !important;
     }
 
     /* Make modals full screen on mobile */

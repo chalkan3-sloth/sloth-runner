@@ -1,12 +1,15 @@
 package agent
 
 import (
+	"database/sql"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/chalkan3-sloth/sloth-runner/internal/config"
 	"github.com/chalkan3-sloth/sloth-runner/internal/masterdb"
 	"github.com/spf13/cobra"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 // addMasterFlag adds the --master flag to a command with the correct default value
@@ -77,4 +80,34 @@ func formatBytes(bytes uint64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %ciB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// getAgentAddressFromLocalDB retrieves agent address from local database
+// This is used when --local flag is set to connect directly to agent
+func getAgentAddressFromLocalDB(agentName string) (string, error) {
+	dbPath := config.GetAgentDBPath()
+
+	// Check if database exists
+	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("no local agent database found at: %s", dbPath)
+	}
+
+	// Open database
+	db, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open database: %w", err)
+	}
+	defer db.Close()
+
+	// Query agent address
+	var address string
+	err = db.QueryRow("SELECT address FROM agents WHERE name = ? LIMIT 1", agentName).Scan(&address)
+	if err == sql.ErrNoRows {
+		return "", fmt.Errorf("agent '%s' not found in local database", agentName)
+	}
+	if err != nil {
+		return "", fmt.Errorf("failed to query agent: %w", err)
+	}
+
+	return address, nil
 }

@@ -12,12 +12,12 @@ const SlothNavbar = {
                     <img src="/static/img/sloth-logo.svg" alt="Sloth" class="sloth-logo" onerror="this.style.display='none'">
                     <span class="fw-bold">🦥 Sloth Runner</span>
                 </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNav">
-                    <!-- Search Bar -->
-                    <div class="navbar-search mx-3">
+                    <!-- Search Bar (hidden on mobile, visible on tablets+) -->
+                    <div class="navbar-search mx-3 d-none d-md-block">
                         <div class="search-container">
                             <i class="bi bi-search search-icon"></i>
                             <input type="search" id="navbar-search" class="form-control" placeholder="Search... (Ctrl+K)" autocomplete="off">
@@ -29,12 +29,12 @@ const SlothNavbar = {
                     <ul class="navbar-nav me-auto">
                         <li class="nav-item">
                             <a class="nav-link" href="/" data-page="index">
-                                <i class="bi bi-speedometer2"></i> Dashboard
+                                <i class="bi bi-speedometer2"></i><span class="d-none d-lg-inline"> Dashboard</span>
                             </a>
                         </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-layers"></i> Management
+                                <i class="bi bi-layers"></i><span class="d-none d-lg-inline"> Management</span>
                             </a>
                             <ul class="dropdown-menu">
                                 <li><a class="dropdown-item" href="/agents" data-page="agents"><i class="bi bi-hdd-network"></i> Agents</a></li>
@@ -51,17 +51,18 @@ const SlothNavbar = {
                         </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-tools"></i> Operations
+                                <i class="bi bi-tools"></i><span class="d-none d-lg-inline"> Operations</span>
                             </a>
                             <ul class="dropdown-menu">
                                 <li><a class="dropdown-item" href="/executions" data-page="executions"><i class="bi bi-play-circle"></i> Executions</a></li>
+                                <li><a class="dropdown-item" href="/history" data-page="history"><i class="bi bi-clock-history"></i> History</a></li>
                                 <li><a class="dropdown-item" href="/scheduler" data-page="scheduler"><i class="bi bi-calendar-event"></i> Scheduler</a></li>
                                 <li><a class="dropdown-item" href="/terminal" data-page="terminal"><i class="bi bi-terminal"></i> Terminal</a></li>
                             </ul>
                         </li>
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-graph-up"></i> Monitoring
+                                <i class="bi bi-graph-up"></i><span class="d-none d-lg-inline"> Monitoring</span>
                             </a>
                             <ul class="dropdown-menu">
                                 <li><a class="dropdown-item" href="/agent-control" data-page="agent-control"><i class="bi bi-bar-chart"></i> Agent Dashboards</a></li>
@@ -71,7 +72,7 @@ const SlothNavbar = {
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="/backup" data-page="backup">
-                                <i class="bi bi-server"></i> Backup
+                                <i class="bi bi-server"></i><span class="d-none d-lg-inline"> Backup</span>
                             </a>
                         </li>
                     </ul>
@@ -84,7 +85,7 @@ const SlothNavbar = {
                         <li class="nav-item">
                             <span class="nav-link">
                                 <i class="bi bi-circle-fill status-pulse" id="ws-status" style="color: #6c757d;"></i>
-                                <span id="ws-status-text">Connecting...</span>
+                                <span id="ws-status-text" class="d-none d-sm-inline">Connecting...</span>
                             </span>
                         </li>
                     </ul>
@@ -159,6 +160,7 @@ const SlothNavbar = {
             { title: 'Secrets', url: '/secrets', icon: 'shield-lock', description: 'Manage secrets and credentials' },
             { title: 'SSH Profiles', url: '/ssh', icon: 'key', description: 'SSH connection profiles' },
             { title: 'Executions', url: '/executions', icon: 'play-circle', description: 'Workflow executions history' },
+            { title: 'History', url: '/history', icon: 'clock-history', description: 'Execution history and logs' },
             { title: 'Scheduler', url: '/scheduler', icon: 'calendar-event', description: 'Schedule tasks and workflows' },
             { title: 'Terminal', url: '/terminal', icon: 'terminal', description: 'Web-based terminal' },
             { title: 'Metrics', url: '/metrics', icon: 'speedometer', description: 'System metrics and monitoring' },

@@ -368,10 +368,12 @@ func (s *Server) setupRoutes(cfg *Config) {
 		executions := api.Group("/executions")
 		{
 			executions.POST("", execHandler.ExecuteWorkflow)
-			executions.GET("", execHandler.ListExecutions)
-			executions.GET("/:id", execHandler.GetExecution)
+			executions.GET("", handlers.ListExecutionsHandler)
+			executions.GET("/stats", handlers.GetExecutionStatsHandler)
+			executions.GET("/:id", handlers.GetExecutionHandler)
 			executions.POST("/:id/cancel", execHandler.CancelExecution)
 			executions.GET("/:id/logs", execHandler.GetExecutionLogs)
+			executions.DELETE("/cleanup", handlers.DeleteOldExecutionsHandler)
 		}
 
 		// Metrics
@@ -450,6 +452,7 @@ func (s *Server) setupRoutes(cfg *Config) {
 	s.router.GET("/agent-dashboard", s.servePage("agent-dashboard.html"))
 	s.router.GET("/metrics", s.servePage("metrics.html"))
 	s.router.GET("/logs", s.servePage("logs.html"))
+	s.router.GET("/history", s.servePage("history.html"))
 	s.router.GET("/scheduler", s.servePage("scheduler.html"))
 	s.router.GET("/terminal", s.servePage("terminal.html"))
 	s.router.GET("/backup", s.servePage("backup.html"))

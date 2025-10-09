@@ -173,3 +173,93 @@ func formatCommandResultText(result *CommandResult, agentName string, w io.Write
 
 	return fmt.Errorf("command execution failed")
 }
+
+// runCommandDirectly executes a command directly on an agent (bypassing master)
+func runCommandDirectly(ctx context.Context, client pb.AgentClient, opts RunCommandOptions) error {
+	// Show header for text output
+	if opts.OutputFormat != "json" {
+		pterm.Info.WithWriter(opts.OutputWriter).Printf("🚀 Executing on agent: %s (direct connection)\n", opts.AgentName)
+		pterm.Info.WithWriter(opts.OutputWriter).Printf("📝 Command: %s\n", opts.Command)
+		fmt.Fprintln(opts.OutputWriter)
+	}
+
+	// Execute command directly on agent
+	stream, err := client.RunCommand(ctx, &pb.RunCommandRequest{
+		Command: opts.Command,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to execute command: %w", err)
+	}
+
+	// Process stream (same logic as master)
+	result, err := processAgentCommandStream(stream, opts.OutputFormat, opts.OutputWriter, opts.ErrorWriter)
+	if err != nil {
+		return err
+	}
+
+	// Format output
+	if opts.OutputFormat == "json" {
+		return formatCommandResultJSON(result, opts.AgentName, opts.Command, opts.OutputWriter)
+	}
+
+	return formatCommandResultText(result, opts.AgentName, opts.OutputWriter)
+}
+
+// processAgentCommandStream processes the command execution stream from agent directly
+func processAgentCommandStream(stream pb.Agent_RunCommandClient, outputFormat string, outWriter, errWriter io.Writer) (*CommandResult, error) {
+	var stdoutBuffer bytes.Buffer
+	var stderrBuffer bytes.Buffer
+	result := &CommandResult{
+		ExitCode:    -1,
+		HasFinished: false,
+	}
+
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("stream error: %w", err)
+		}
+
+		// Handle stdout
+		if resp.GetStdoutChunk() != "" {
+			if outputFormat == "json" {
+				stdoutBuffer.WriteString(resp.GetStdoutChunk())
+			} else {
+				fmt.Fprint(outWriter, resp.GetStdoutChunk())
+			}
+		}
+
+		// Handle stderr
+		if resp.GetStderrChunk() != "" {
+			if outputFormat == "json" {
+				stderrBuffer.WriteString(resp.GetStderrChunk())
+			} else {
+				fmt.Fprint(errWriter, resp.GetStderrChunk())
+			}
+		}
+
+		// Handle error
+		if resp.GetError() != "" {
+			result.Error = resp.GetError()
+		}
+
+		// Handle completion
+		if resp.GetFinished() {
+			result.ExitCode = resp.GetExitCode()
+			result.HasFinished = true
+			break
+		}
+	}
+
+	// Store buffered output
+	result.Stdout = stdoutBuffer.String()
+	result.Stderr = stderrBuffer.String()
+
+	// Determine success
+	result.Success = (result.HasFinished && result.ExitCode == 0) || (!result.HasFinished && result.Error == "")
+
+	return result, nil
+}

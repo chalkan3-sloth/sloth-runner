@@ -1,6 +1,7 @@
 package sysadmin
 
 import (
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/debug"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/health"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/logs"
 	"github.com/spf13/cobra"
@@ -30,6 +31,7 @@ backups, and alerting.`,
 	// Add subcommands
 	cmd.AddCommand(logs.NewLogsCmd())
 	cmd.AddCommand(health.NewHealthCmd())
+	cmd.AddCommand(debug.NewDebugCmd())
 
 	return cmd
 }
