@@ -56,5 +56,20 @@ tmp/user_environment_setup_values.yaml
 # Sloth cache
 .sloth-cache/
 
+# Test files in root
+/test-*.sloth
+/test*.sh
+
+# AI-generated documentation (keep only main docs)
+/*_REPORT.md
+/*_STATUS.md
+/*_PROGRESS.md
+/*_TESTING.md
+/*_SUMMARY.md
+/*_FEATURES.md
+/*_POST.md
+/*_IMPROVEMENTS.md
+/coverage_report.md
+
 # MkDocs build
 site/
