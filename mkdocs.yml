@@ -167,9 +167,6 @@ nav:
       - '🎨 Web UI': 'pt/web-ui-completo'
   - '🏗️ Architecture':
     - '📐 System Architecture 🔥': 'en/architecture'
-    - '⚡ Hooks & Events System 🔥': 'architecture/hooks-events-system'
-    - '🔧 Modular Design': 'architecture/modular-design'
-    - '♻️ Refactoring Guide': 'architecture/refactoring-guide'
   - '🎨 Modern DSL':
     - '📖 DSL Introduction': 'modern-dsl/introduction'
     - '🎯 Module API Examples 🔥': 'modern-dsl/module-api-examples'
