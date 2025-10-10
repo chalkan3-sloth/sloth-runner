@@ -48,10 +48,12 @@ sloth-runner run -f examples/deploy_git_terraform.sloth -v examples/values.yaml 
 Deploy a complete web cluster in parallel using containers:
 
 ```lua
-task("deploy-web-cluster")
+local deploy_cluster = task("deploy-web-cluster")
     :description("Deploy complete web cluster with Incus")
     :delegate_to("incus-host-01")
-    :command(function()
+    :command(function(this, params)
+        local goroutine = require("goroutine")
+
         -- Create isolated network
         incus.network({
             name = "web-dmz",
@@ -72,9 +74,15 @@ task("deploy-web-cluster")
         end)
 
         log.info("✅ Web cluster deployed!")
-        return true
+        return true, "Web cluster deployed successfully"
     end)
     :build()
+
+workflow
+    .define("incus_cluster")
+    :description("Deploy web cluster with Incus")
+    :version("1.0.0")
+    :tasks({deploy_cluster})
 ```
 
 **What's happening here:**
@@ -92,43 +100,49 @@ task("deploy-web-cluster")
 Make smart deployment decisions based on real-time system state:
 
 ```lua
-task("intelligent-deploy")
+local intelligent_deploy = task("intelligent-deploy")
     :description("Intelligent deployment based on system facts")
-    :command(function()
+    :delegate_to("prod-server-01")
+    :command(function(this, params)
         -- Collect system information
-        local info = facts.get_all({ agent = "prod-server-01" })
+        local info = facts.get_all({agent = "prod-server-01"})
 
         log.info("🔍 Analyzing: " .. info.hostname)
         log.info("   Platform: " .. info.platform.os)
-        log.info("   Memory: " .. string.format("%.2f GB", 
+        log.info("   Memory: " .. string.format("%.2f GB",
             info.memory.total / 1024 / 1024 / 1024))
-        
+
         -- Validate requirements
         if (info.memory.total / 1024 / 1024 / 1024) < 4 then
-            error("❌ Need at least 4GB RAM")
+            return false, "❌ Need at least 4GB RAM"
         end
-        
+
         -- Check Docker installation
-        local docker = facts.get_package({ 
-            agent = "prod-server-01", 
-            name = "docker" 
+        local docker = facts.get_package({
+            agent = "prod-server-01",
+            name = "docker"
         })
-        
+
         if not docker.installed then
             log.info("📦 Installing Docker...")
-            pkg.install({ packages = {"docker.io"} })
-               :delegate_to("prod-server-01")
+            pkg.install({packages = {"docker.io"}})
         end
-        
+
         -- Conditional deploy based on architecture
         local image_tag = info.platform.architecture == "arm64"
             and "latest-arm64"
             or "latest-amd64"
 
         log.info("🚀 Deploying: myapp:" .. image_tag)
-        return true
+        return true, "Deployment completed"
     end)
     :build()
+
+workflow
+    .define("smart_deploy")
+    :description("Intelligent deployment workflow")
+    :version("1.0.0")
+    :tasks({intelligent_deploy})
 ```
 
 **What's happening here:**
@@ -173,7 +187,8 @@ local setup_web_server = task("setup_web_server")
     :timeout("10m")
     :build()
 
-workflow.define("setup_webserver")
+workflow
+    .define("setup_webserver")
     :description("Setup and configure web server")
     :version("1.0.0")
     :tasks({setup_web_server})
@@ -247,10 +262,11 @@ local deploy_task = task("deploy_terraform")
     :build()
 
 -- Define the complete GitOps workflow
-workflow.define("infrastructure_deployment")
+workflow
+    .define("infrastructure_deployment")
     :description("Complete GitOps: Clone + Plan + Deploy")
     :version("1.0.0")
-    :tasks({ clone_task, deploy_task })
+    :tasks({clone_task, deploy_task})
     :config({
         timeout = "20m",
         max_parallel_tasks = 1
@@ -400,9 +416,11 @@ local deploy_task = task("deploy_multi_server")
     :timeout("2m")
     :build()
 
-workflow.define("parallel_deployment")
+workflow
+    .define("parallel_deployment")
     :description("Deploy to multiple servers in parallel")
-    :tasks({ deploy_task })
+    :version("1.0.0")
+    :tasks({deploy_task})
 ```
 
 **Performance Real:**
@@ -657,10 +675,11 @@ local deploy_task = task("deploy")
     :timeout("15m")
     :build()
 
-workflow.define("production_deployment")
+workflow
+    .define("production_deployment")
     :description("Production deployment workflow")
     :version("1.0.0")
-    :tasks({ deploy_task })
+    :tasks({deploy_task})
     :on_complete(function(success, results)
         if success then
             log.info("🎉 Deployment completed successfully!")
@@ -791,7 +810,8 @@ local deploy_task = task("production_deployment")
     :retries(3, "exponential")
     :build()
 
-workflow.define("production_deploy_monitored")
+workflow
+    .define("production_deploy_monitored")
     :description("Monitored production deployment")
     :version("1.0.0")
     :tasks({deploy_task})
@@ -843,7 +863,8 @@ local deploy = task("deploy")
     :timeout("20m")
     :build()
 
-workflow.define("distributed_pipeline")
+workflow
+    .define("distributed_pipeline")
     :description("Distributed build and deployment pipeline")
     :version("1.0.0")
     :tasks({build_frontend, build_backend, run_tests, deploy})
@@ -886,7 +907,8 @@ local update_config = task("update_configuration")
     :retries(3, "exponential")
     :build()
 
-workflow.define("config_update")
+workflow
+    .define("config_update")
     :description("Configuration update workflow")
     :version("1.0.0")
     :tasks({update_config})
@@ -973,7 +995,8 @@ local deploy_production = task("deploy_production")
     :timeout("15m")
     :build()
 
-workflow.define("gitops_pipeline")
+workflow
+    .define("gitops_pipeline")
     :description("Complete GitOps CI/CD pipeline")
     :version("1.0.0")
     :tasks({
@@ -985,8 +1008,7 @@ workflow.define("gitops_pipeline")
         deploy_production
     })
     :config({
-        timeout = "90m",
-        on_git_push = true
+        timeout = "90m"
     })
     :on_complete(function(success, results)
         if success then
@@ -1161,7 +1183,8 @@ local hello_task = task("hello")
     end)
     :build()
 
-workflow.define("greeting")
+workflow
+    .define("greeting")
     :description("Simple greeting workflow")
     :version("1.0.0")
     :tasks({hello_task})
@@ -1582,7 +1605,8 @@ Ready to streamline your automation? Install Sloth Runner now!
         end)
         :build()
 
-    workflow.define("hello")
+    workflow
+        .define("hello")
         :description("Hello World workflow")
         :version("1.0.0")
         :tasks({greet_task})

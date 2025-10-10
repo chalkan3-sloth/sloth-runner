@@ -106,7 +106,8 @@ local system_info = task("system_info")
     :build()
 
 -- Define workflow
-workflow.define("hello_world")
+workflow
+    .define("hello_world")
     :description("My first Sloth Runner task")
     :version("1.0.0")
     :tasks({greet, system_info})
@@ -288,7 +289,8 @@ local process_queue = task("process_queue")
     :build()
 
 -- Define workflow
-workflow.define("state_demo")
+workflow
+    .define("state_demo")
     :description("Demonstrate state management capabilities")
     :version("1.0.0")
     :tasks({setup_state, simulate_usage, process_queue})
@@ -352,7 +354,8 @@ local collect_metrics = task("collect_metrics")
     :build()
 
 -- Define workflow
-workflow.define("metrics_demo")
+workflow
+    .define("metrics_demo")
     :description("Demonstrate metrics and monitoring")
     :version("1.0.0")
     :tasks({collect_metrics})

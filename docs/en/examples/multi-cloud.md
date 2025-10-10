@@ -14,9 +14,9 @@ Sloth Runner supports deployment to:
 
 ```lua
 -- Deploy to AWS
-task("deploy_aws", {
-    description = "Deploy to AWS",
-    command = function()
+local deploy_aws = task("deploy_aws")
+    :description("Deploy to AWS")
+    :command(function(this, params)
         log.info("☁️ Deploying to AWS...")
         local result = aws.s3.sync({
             source = "./build",
@@ -27,13 +27,13 @@ task("deploy_aws", {
             return false, "AWS deployment failed"
         end
         return true, "AWS deployment completed"
-    end
-})
+    end)
+    :build()
 
 -- Deploy to Azure
-task("deploy_azure", {
-    description = "Deploy to Azure",
-    command = function()
+local deploy_azure = task("deploy_azure")
+    :description("Deploy to Azure")
+    :command(function(this, params)
         log.info("🔷 Deploying to Azure...")
         local result = azure.exec({
             "storage", "blob", "upload-batch",
@@ -44,13 +44,13 @@ task("deploy_azure", {
             return false, "Azure deployment failed: " .. result.stderr
         end
         return true, "Azure deployment completed"
-    end
-})
+    end)
+    :build()
 
 -- Deploy to GCP
-task("deploy_gcp", {
-    description = "Deploy to GCP",
-    command = function()
+local deploy_gcp = task("deploy_gcp")
+    :description("Deploy to GCP")
+    :command(function(this, params)
         log.info("🌩️ Deploying to GCP...")
         local result = gcp.exec({
             "storage", "rsync", "-r", "./build",
@@ -60,8 +60,18 @@ task("deploy_gcp", {
             return false, "GCP deployment failed: " .. result.stderr
         end
         return true, "GCP deployment completed"
-    end
-})
+    end)
+    :build()
+
+-- Multi-cloud deployment workflow
+workflow
+    .define("multi_cloud_deploy")
+    :description("Deploy to multiple cloud providers")
+    :version("1.0.0")
+    :tasks({deploy_aws, deploy_azure, deploy_gcp})
+    :config({
+        max_parallel_tasks = 3  -- Deploy to all clouds in parallel
+    })
 ```
 
 ## Features

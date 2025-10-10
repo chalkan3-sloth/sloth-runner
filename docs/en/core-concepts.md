@@ -18,10 +18,11 @@ local my_task = task("task_name")
     end)
     :build()
 
-workflow.define("workflow_name")
+workflow
+    .define("workflow_name")
     :description("Workflow description - Modern DSL")
     :version("1.0.0")
-    :tasks({ my_task })
+    :tasks({my_task})
 ```
 
 ---
@@ -35,12 +36,12 @@ Tasks are now defined using the `task()` function and fluent API methods:
 ```lua
 local my_task = task("task_name")
     :description("What this task does")
-    :command(function(params, deps)
+    :command(function(this, params)
         -- Task logic here
-        return true, "Success message", { output_data = "value" }
+        return true, "Success message", {output_data = "value"}
     end)
     :timeout("5m")
-    :retries(3, "exponential")
+    :retries(3)
     :build()
 ```
 
@@ -168,7 +169,7 @@ local test_task = task("test")
     :consumes({"app.bin"})
     :command(function(this, params)
         -- At this point, 'app.bin' exists in this task's workdir
-        local content = exec.run("cat app.bin")
+        local success, content = exec.run("cat app.bin")
         if content:find("binary_content") then
             log.info("Successfully consumed artifact!")
             return true, "Artifact validated"
@@ -178,13 +179,13 @@ local test_task = task("test")
     end)
     :build()
 
-workflow.define("ci_pipeline")
+workflow
+    .define("ci_pipeline")
     :description("Demonstrates the use of artifacts")
     :version("1.0.0")
     :tasks({build_task, test_task})
     :config({
-        timeout = "10m",
-        create_workdir_before_run = true
+        timeout = "10m"
     })
 ```
 
@@ -209,7 +210,8 @@ local build_app = docker_tasks.build_image("my-app")
     :timeout("10m")
     :build()
 
-workflow.define("main")
+workflow
+    .define("main")
     :description("Main workflow using reusable tasks")
     :version("1.0.0")
     :tasks({build_app})

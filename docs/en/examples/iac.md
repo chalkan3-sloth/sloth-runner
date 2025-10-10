@@ -12,55 +12,64 @@ Use Sloth Runner to orchestrate infrastructure deployments:
 ## Terraform Example
 
 ```lua
-task("tf_plan", {
-    description = "Plan infrastructure changes",
-    command = function()
+local tf_plan = task("tf_plan")
+    :description("Plan infrastructure changes")
+    :command(function(this, params)
         log.info("📋 Planning...")
-        local result = terraform.plan({
-            workdir = "./terraform"
-        })
-        if not result.success then
-            return false, "Plan failed: " .. result.stderr
+        local client = terraform.init("./terraform")
+        local success, output = client:plan()
+        if not success then
+            return false, "Plan failed: " .. output
         end
         return true, "Plan completed"
-    end
-})
+    end)
+    :build()
 
-task("tf_apply", {
-    description = "Apply infrastructure changes",
-    depends_on = {"tf_plan"},
-    command = function()
+local tf_apply = task("tf_apply")
+    :description("Apply infrastructure changes")
+    :depends_on({"tf_plan"})
+    :command(function(this, params)
         log.info("🚀 Applying...")
-        local result = terraform.apply({
-            workdir = "./terraform",
-            auto_approve = true
-        })
-        if not result.success then
-            return false, "Apply failed: " .. result.stderr
+        local client = terraform.init("./terraform")
+        local success, output = client:apply({auto_approve = true})
+        if not success then
+            return false, "Apply failed: " .. output
         end
         return true, "Apply completed"
-    end
-})
+    end)
+    :build()
+
+workflow
+    .define("terraform_deploy")
+    :description("Terraform deployment workflow")
+    :version("1.0.0")
+    :tasks({tf_plan, tf_apply})
 ```
 
 ## Pulumi Example
 
 ```lua
-task("pulumi_deploy", {
-    description = "Deploy with Pulumi",
-    command = function()
+local pulumi_deploy = task("pulumi_deploy")
+    :description("Deploy with Pulumi")
+    :command(function(this, params)
         local stack = pulumi.stack({
             name = "my-org/project/production",
             workdir = "./infra"
         })
-        
-        local result = stack:up({ yes = true })
-        if not result.success then
-            return false, "Deploy failed: " .. result.stderr
+
+        local success, output = stack:up({yes = true})
+        if not success then
+            return false, "Deploy failed: " .. output
         end
         return true, "Deploy completed"
-    end
-})
+    end)
+    :build()
+
+workflow
+    .define("pulumi_deploy")
+    :description("Pulumi deployment workflow")
+    :version("1.0.0")
+    :tasks({pulumi_deploy})
 ```
 
 ## Learn More

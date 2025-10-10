@@ -54,13 +54,19 @@ Create a simple workflow file `hello.sloth`:
 
 ```lua
 -- hello.sloth
-task("hello")
+local hello_task = task("hello")
   :description("My first task")
   :command(function(this, params)
     print("🦥 Hello from Sloth Runner!")
     return true, "Task completed successfully"
   end)
   :build()
+
+workflow
+  .define("hello_workflow")
+  :description("Hello world workflow")
+  :version("1.0.0")
+  :tasks({hello_task})
 ```
 
 Run it:
@@ -103,16 +109,26 @@ sloth-runner run -f hello.sloth -o json
 Tasks are the building blocks. Define with the builder pattern:
 
 ```lua
-task("build")
+local build_task = task("build")
   :description("Build the application")
-  :command("go build -o app")
+  :command(function(this, params)
+    return exec.run("go build -o app")
+  end)
   :build()
 
-task("test")
+local test_task = task("test")
   :description("Run tests")
-  :command("go test ./...")
-  :depends_on("build")
+  :depends_on({"build"})
+  :command(function(this, params)
+    return exec.run("go test ./...")
+  end)
   :build()
+
+workflow
+  .define("ci_pipeline")
+  :description("CI pipeline")
+  :version("1.0.0")
+  :tasks({build_task, test_task})
 ```
 
 ### Task Groups
@@ -166,22 +182,34 @@ sloth-runner stack list
 ### Task Builder API
 
 ```lua
-task("deploy")
+local deploy_task = task("deploy")
   :description("Deploy to production")
-  :condition(function(this, params) return os.getenv("ENV") == "prod" end)
   :command(function(this, params)
+    -- Check environment condition
+    if os.getenv("ENV") ~= "prod" then
+      return false, "Not in production environment"
+    end
+
     log.info("Deploying...")
-    return exec.run("kubectl apply -f k8s/")
+    local success, output = exec.run("kubectl apply -f k8s/")
+
+    if success then
+      log.info("✅ Deployed successfully!")
+    else
+      log.error("❌ Deployment failed: " .. output)
+    end
+
+    return success, output
   end)
-  :on_success(function(this, params)
-    log.success("✅ Deployed successfully!")
-  end)
-  :on_error(function(this, params, err)
-    log.error("❌ Deployment failed: " .. err)
-  end)
-  :timeout(300)
-  :retry(3)
+  :timeout("5m")
+  :retries(3)
   :build()
+
+workflow
+  .define("deployment")
+  :description("Production deployment")
+  :version("1.0.0")
+  :tasks({deploy_task})
 ```
 
 ### Values Files
@@ -200,13 +228,20 @@ image: myapp:v1.2.3
 local env = values.environment
 local replicas = values.replicas
 
-task("deploy")
+local deploy_task = task("deploy")
+  :description("Deploy application")
   :command(function(this, params)
     log.info("Deploying to " .. env)
     log.info("Replicas: " .. replicas)
     return true, "Deployment configuration applied"
   end)
   :build()
+
+workflow
+  .define("deploy_workflow")
+  :description("Deploy with values")
+  :version("1.0.0")
+  :tasks({deploy_task})
 ```
 
 Run with values:
@@ -226,7 +261,8 @@ Sloth Runner includes powerful built-in modules:
 ```lua
 local docker = require("docker")
 
-task("deploy_container")
+local deploy_container = task("deploy_container")
+  :description("Deploy nginx container")
   :command(function(this, params)
     -- Pull image
     docker.pull("nginx:latest")
@@ -242,6 +278,12 @@ task("deploy_container")
     return true, "Container deployed successfully"
   end)
   :build()
+
+workflow
+  .define("docker_deploy")
+  :description("Deploy Docker container")
+  :version("1.0.0")
+  :tasks({deploy_container})
 ```
 
 ### Available Modules
@@ -263,29 +305,45 @@ task("deploy_container")
 ### CI/CD Pipeline
 
 ```lua
-task("lint")
-  :command("golangci-lint run")
+local lint_task = task("lint")
+  :description("Run linter")
+  :command(function(this, params)
+    return exec.run("golangci-lint run")
+  end)
   :build()
 
-task("test")
-  :command("go test -v ./...")
-  :depends_on("lint")
+local test_task = task("test")
+  :description("Run tests")
+  :depends_on({"lint"})
+  :command(function(this, params)
+    return exec.run("go test -v ./...")
+  end)
   :build()
 
-task("build")
-  :command("go build -o app")
-  :depends_on("test")
+local build_task = task("build")
+  :description("Build application")
+  :depends_on({"test"})
+  :command(function(this, params)
+    return exec.run("go build -o app")
+  end)
   :build()
 
-task("deploy")
+local deploy_task = task("deploy")
+  :description("Deploy application")
+  :depends_on({"build"})
   :command(function(this, params)
     exec.run("docker build -t myapp .")
     exec.run("docker push myapp")
     exec.run("kubectl rollout restart deployment/myapp")
     return true, "Deployment completed"
   end)
-  :depends_on("build")
   :build()
+
+workflow
+  .define("cicd_pipeline")
+  :description("Complete CI/CD pipeline")
+  :version("1.0.0")
+  :tasks({lint_task, test_task, build_task, deploy_task})
 ```
 
 Run the pipeline:
@@ -297,8 +355,8 @@ sloth-runner run -f pipeline.sloth -o rich
 ### Infrastructure Automation
 
 ```lua
-
-task("plan")
+local plan_task = task("plan")
+  :description("Plan Terraform changes")
   :command(function(this, params)
     return terraform.plan({
       dir = "./terraform",
@@ -307,15 +365,22 @@ task("plan")
   end)
   :build()
 
-task("apply")
+local apply_task = task("apply")
+  :description("Apply Terraform changes")
+  :depends_on({"plan"})
   :command(function(this, params)
     return terraform.apply({
       dir = "./terraform",
       auto_approve = true
     })
   end)
-  :depends_on("plan")
   :build()
+
+workflow
+  .define("terraform_deploy")
+  :description("Terraform deployment")
+  :version("1.0.0")
+  :tasks({plan_task, apply_task})
 ```
 
 ---
@@ -349,15 +414,27 @@ sloth-runner agent start \
 ### Distribute Tasks
 
 ```lua
-task("deploy_web")
-  :target_agent("web-01")
-  :command("nginx -s reload")
+local deploy_web = task("deploy_web")
+  :description("Reload nginx")
+  :delegate_to("web-01")
+  :command(function(this, params)
+    return exec.run("nginx -s reload")
+  end)
   :build()
 
-task("backup_db")
-  :target_agent("db-01")
-  :command("pg_dump mydb > backup.sql")
+local backup_db = task("backup_db")
+  :description("Backup database")
+  :delegate_to("db-01")
+  :command(function(this, params)
+    return exec.run("pg_dump mydb > backup.sql")
+  end)
   :build()
+
+workflow
+  .define("distributed_ops")
+  :description("Distributed operations")
+  :version("1.0.0")
+  :tasks({deploy_web, backup_db})
 ```
 
 ---
@@ -448,12 +525,20 @@ sloth-runner run -f app.sloth -v prod-values.yaml
 
 ```lua
 -- ❌ Don't shell out unnecessarily
-task("install"):command("apt-get install nginx"):build()
+local install_bad = task("install")
+  :description("Install nginx (bad)")
+  :command(function(this, params)
+    return exec.run("apt-get install nginx")
+  end)
+  :build()
 
 -- ✅ Use built-in modules
-task("install"):command(function(this, params)
-  return pkg.install("nginx")
-end):build()
+local install_good = task("install")
+  :description("Install nginx (good)")
+  :command(function(this, params)
+    return pkg.install({packages = {"nginx"}})
+  end)
+  :build()
 ```
 
 ---
