@@ -63,6 +63,7 @@ extra_css:
 
 extra_javascript:
   - javascripts/extra.js
+  - https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js
 
 # Plugins
 plugins:
