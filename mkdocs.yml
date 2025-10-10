@@ -166,7 +166,7 @@ nav:
       - '🔧 Todos os Módulos': 'pt/modulos-completos'
       - '🎨 Web UI': 'pt/web-ui-completo'
   - '🏗️ Architecture':
-    - '📐 System Architecture 🔥': 'architecture/sloth-runner-architecture'
+    - '📐 System Architecture 🔥': 'en/architecture'
     - '⚡ Hooks & Events System 🔥': 'architecture/hooks-events-system'
     - '🔧 Modular Design': 'architecture/modular-design'
     - '♻️ Refactoring Guide': 'architecture/refactoring-guide'
