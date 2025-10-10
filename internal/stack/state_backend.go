@@ -597,6 +597,28 @@ func (sb *StateBackend) GetTags(stackID string) ([]string, error) {
 	return tags, nil
 }
 
+// RemoveTag removes a tag from a stack
+func (sb *StateBackend) RemoveTag(stackID, tag string) error {
+	sb.sm.mu.Lock()
+	defer sb.sm.mu.Unlock()
+
+	result, err := sb.sm.db.Exec(`
+		DELETE FROM stack_tags
+		WHERE stack_id = ? AND tag = ?
+	`, stackID, tag)
+
+	if err != nil {
+		return fmt.Errorf("failed to remove tag: %w", err)
+	}
+
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
+		return fmt.Errorf("tag not found: %s", tag)
+	}
+
+	return nil
+}
+
 // AddResourceDependency records a dependency between resources
 func (sb *StateBackend) AddResourceDependency(resourceID, dependsOnID, depType string) error {
 	sb.sm.mu.Lock()

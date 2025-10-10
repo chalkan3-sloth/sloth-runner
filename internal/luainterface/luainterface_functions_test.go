@@ -3,17 +3,18 @@ package luainterface
 import (
 	"testing"
 
+	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/log"
 	lua "github.com/yuin/gopher-lua"
 )
 
 func setupSimpleTest(t *testing.T) (*lua.LState, func()) {
 	t.Helper()
-	
+
 	L := lua.NewState()
-	
+
 	// Register all modules
 	RegisterGoroutineModule(L)
-	OpenLog(L)
+	log.Open(L)
 	
 	cleanup := func() {
 		L.Close()

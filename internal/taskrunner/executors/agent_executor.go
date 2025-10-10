@@ -11,7 +11,6 @@ import (
 	"github.com/pterm/pterm"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	lua "github.com/yuin/gopher-lua"
 )
 
 // AgentExecutor executes tasks on remote agents via gRPC
@@ -122,7 +121,7 @@ func (ae *AgentExecutor) Execute(
 	}
 
 	// Check for execution errors
-	if r.GetError() != "" {
+	if !r.GetSuccess() {
 		pterm.Println()
 		pterm.DefaultBox.
 			WithTitle("❌ TASK FAILED ON AGENT").
@@ -132,15 +131,15 @@ func (ae *AgentExecutor) Execute(
 				"Agent: %s\nTask:  %s\n\n%s",
 				pterm.Yellow(agentAddress),
 				pterm.Cyan(task.Name),
-				pterm.Red(r.GetError()),
+				pterm.Red(r.GetOutput()),
 			)
 		pterm.Println()
 
 		slog.Error("Task failed on agent",
 			"agent_address", agentAddress,
 			"task", task.Name,
-			"error", r.GetError())
-		return &TaskExecutionError{TaskName: task.Name, Err: fmt.Errorf("task execution failed on agent %s: %s", agentAddress, r.GetError())}
+			"error", r.GetOutput())
+		return &TaskExecutionError{TaskName: task.Name, Err: fmt.Errorf("task execution failed on agent %s: %s", agentAddress, r.GetOutput())}
 	}
 
 	// Success display

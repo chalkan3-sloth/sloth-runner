@@ -3,6 +3,7 @@ package luainterface
 import (
 	"testing"
 
+	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/data"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -133,8 +134,8 @@ func TestGoValueToLua_NestedStructure(t *testing.T) {
 func TestLuaDataParseJson_Valid(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
-	
-	OpenData(L)
+
+	data.Open(L)
 
 	script := `
 		local data = require("data")
@@ -161,8 +162,8 @@ func TestLuaDataParseJson_Valid(t *testing.T) {
 func TestLuaDataToJson_Valid(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
-	
-	OpenData(L)
+
+	data.Open(L)
 
 	script := `
 		local data = require("data")
@@ -190,8 +191,8 @@ func TestLuaDataToJson_Valid(t *testing.T) {
 func TestLuaDataParseYaml_Valid(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
-	
-	OpenData(L)
+
+	data.Open(L)
 
 	script := `
 		local data = require("data")
@@ -218,8 +219,8 @@ func TestLuaDataParseYaml_Valid(t *testing.T) {
 func TestLuaDataToYaml_Valid(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
-	
-	OpenData(L)
+
+	data.Open(L)
 
 	script := `
 		local data = require("data")
@@ -248,7 +249,7 @@ func TestOpenData(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
 
-	OpenData(L)
+	data.Open(L)
 
 	// Test that data module can be accessed and used
 	script := `

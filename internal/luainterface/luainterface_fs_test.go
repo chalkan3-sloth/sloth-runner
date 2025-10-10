@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	luafs "github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/fs"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -12,7 +13,7 @@ func TestLuaFsRead(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
 	
-	OpenFs(L)
+	luafs.Open(L)
 
 	// Create temp file
 	tmpFile, err := os.CreateTemp("", "test-*.txt")
@@ -46,7 +47,7 @@ func TestLuaFsWrite(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
 	
-	OpenFs(L)
+	luafs.Open(L)
 
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "test.txt")
@@ -77,7 +78,7 @@ func TestLuaFsAppend(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
 	
-	OpenFs(L)
+	luafs.Open(L)
 
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "test.txt")
@@ -111,7 +112,7 @@ func TestLuaFsExists_True(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
 	
-	OpenFs(L)
+	luafs.Open(L)
 
 	tmpFile, err := os.CreateTemp("", "test-*.txt")
 	if err != nil {
@@ -141,7 +142,7 @@ func TestLuaFsExists_False(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
 	
-	OpenFs(L)
+	luafs.Open(L)
 
 	script := `
 		local fs = require("fs")
@@ -164,7 +165,7 @@ func TestLuaFsMkdir(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
 	
-	OpenFs(L)
+	luafs.Open(L)
 
 	tmpDir := t.TempDir()
 	newDir := filepath.Join(tmpDir, "newdir")
@@ -189,7 +190,7 @@ func TestLuaFsRm(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
 	
-	OpenFs(L)
+	luafs.Open(L)
 
 	tmpFile, err := os.CreateTemp("", "test-*.txt")
 	if err != nil {
@@ -217,7 +218,7 @@ func TestLuaFsRmR(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
 	
-	OpenFs(L)
+	luafs.Open(L)
 
 	tmpDir := t.TempDir()
 	subDir := filepath.Join(tmpDir, "subdir")
@@ -226,7 +227,7 @@ func TestLuaFsRmR(t *testing.T) {
 
 	script := `
 		local fs = require("fs")
-		fs.rm_r("` + subDir + `")
+		fs.rmr("` + subDir + `")
 	`
 
 	err := L.DoString(script)
@@ -244,7 +245,7 @@ func TestLuaFsLs(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
 	
-	OpenFs(L)
+	luafs.Open(L)
 
 	tmpDir := t.TempDir()
 	os.WriteFile(filepath.Join(tmpDir, "file1.txt"), []byte("test"), 0644)
@@ -275,7 +276,7 @@ func TestLuaFsTmpName(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
 	
-	OpenFs(L)
+	luafs.Open(L)
 
 	script := `
 		local fs = require("fs")
@@ -298,7 +299,7 @@ func TestLuaFsSize(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
 	
-	OpenFs(L)
+	luafs.Open(L)
 
 	tmpFile, err := os.CreateTemp("", "test-*.txt")
 	if err != nil {
@@ -334,7 +335,7 @@ func TestOpenFs(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
 
-	OpenFs(L)
+	luafs.Open(L)
 
 	// Test that fs module can be accessed and used
 	script := `
@@ -366,7 +367,7 @@ func TestFsIntegration(t *testing.T) {
 	L := lua.NewState()
 	defer L.Close()
 
-	OpenFs(L)
+	luafs.Open(L)
 
 	tmpDir := t.TempDir()
 	testFile := filepath.Join(tmpDir, "integration_test.txt")

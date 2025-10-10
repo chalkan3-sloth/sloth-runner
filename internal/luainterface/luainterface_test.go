@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"testing"
 
+	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/data"
+	"github.com/chalkan3-sloth/sloth-runner/internal/luainterface/modules/log"
 	"github.com/stretchr/testify/assert"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -52,8 +54,8 @@ func setupTest(t *testing.T) (*lua.LState, func()) {
 	L.PreloadModule("salt", SaltLoader)
 	OpenGCP(L)
 	// Open modules required by the examples
-	OpenLog(L)
-	OpenData(L)
+	log.Open(L)
+	data.Open(L)
 
 	cleanup := func() {
 		ExecCommand = originalExecCommand

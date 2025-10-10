@@ -100,6 +100,28 @@ func goValueToLua(L *lua.LState, value interface{}) lua.LValue {
 		return lua.LNil
 	case bool:
 		return lua.LBool(v)
+	case int:
+		return lua.LNumber(v)
+	case int8:
+		return lua.LNumber(v)
+	case int16:
+		return lua.LNumber(v)
+	case int32:
+		return lua.LNumber(v)
+	case int64:
+		return lua.LNumber(v)
+	case uint:
+		return lua.LNumber(v)
+	case uint8:
+		return lua.LNumber(v)
+	case uint16:
+		return lua.LNumber(v)
+	case uint32:
+		return lua.LNumber(v)
+	case uint64:
+		return lua.LNumber(v)
+	case float32:
+		return lua.LNumber(v)
 	case float64:
 		return lua.LNumber(v)
 	case string:

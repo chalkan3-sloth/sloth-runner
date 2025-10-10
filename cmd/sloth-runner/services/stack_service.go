@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/chalkan3-sloth/sloth-runner/internal/stack"
@@ -17,7 +18,10 @@ type StackService struct {
 
 // NewStackService creates a new stack service with state backend
 func NewStackService() (*StackService, error) {
-	backend, err := stack.NewStateBackend("")
+	// Check for test database path from environment
+	dbPath := os.Getenv("SLOTH_RUNNER_DB_PATH")
+
+	backend, err := stack.NewStateBackend(dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize state backend: %w", err)
 	}

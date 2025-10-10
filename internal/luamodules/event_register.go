@@ -2,7 +2,6 @@ package luamodules
 
 import (
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -402,7 +401,8 @@ func (m *EventRegisterModule) storeWatcher(L *lua.LState, config map[string]inte
 	// Convert config to JSON for storage
 	configJSON, err := json.Marshal(config)
 	if err != nil {
-		L.RaiseError(fmt.Sprintf("failed to marshal watcher config: %v", err))
+		const errMsg = "failed to marshal watcher config: %v"
+		L.RaiseError(errMsg, err)
 		return
 	}
 
@@ -486,7 +486,8 @@ func (m *EventRegisterModule) storeWatcher(L *lua.LState, config map[string]inte
 
 			if err := mgr.RegisterWatcher(*watcherConfig); err != nil {
 				slog.Error("Failed to register watcher", "error", err, "watcher_id", watcherConfig.ID)
-				L.RaiseError(fmt.Sprintf("failed to register watcher with manager: %v", err))
+				const errMsg = "failed to register watcher with manager: %v"
+				L.RaiseError(errMsg, err)
 			} else {
 				slog.Info("Watcher successfully registered with infinite lifecycle", "watcher_id", watcherConfig.ID)
 			}

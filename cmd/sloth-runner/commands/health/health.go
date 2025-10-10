@@ -617,7 +617,7 @@ func watchHealth(intervalStr string) error {
 	}
 
 	fmt.Printf("👀 Watching system health (interval: %v)\n", duration)
-	fmt.Println("Press Ctrl+C to stop\n")
+	fmt.Println("Press Ctrl+C to stop")
 
 	ticker := time.NewTicker(duration)
 	defer ticker.Stop()
@@ -675,7 +675,7 @@ func runHealthCheckSummary() {
 }
 
 func generateDiagnostics(outputFile string) error {
-	fmt.Println("🔍 Generating diagnostics report...\n")
+	fmt.Println("🔍 Generating diagnostics report...")
 
 	diagnostics := map[string]interface{}{
 		"timestamp":   time.Now(),
