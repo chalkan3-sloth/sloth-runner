@@ -90,9 +90,9 @@ Let's say you have a task that calls `aws.exec` and has logic that depends on th
 **Task in `my_workflow.sloth`:**
 ```lua
 -- ...
-{
-  name = "check-account",
-  command = function()
+task("check-account")
+  :description("Check AWS account identity")
+  :command(function(this, params)
     local result = aws.exec({"sts", "get-caller-identity"})
     local data = data.parse_json(result.stdout)
     if data.Account == "123456789012" then
@@ -100,8 +100,8 @@ Let's say you have a task that calls `aws.exec` and has logic that depends on th
     else
       return false, "Wrong account."
     end
-  end
-}
+  end)
+  :build()
 -- ...
 ```
 

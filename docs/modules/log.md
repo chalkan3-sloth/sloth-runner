@@ -41,27 +41,30 @@ Logs a message at the DEBUG level. These messages are typically hidden unless th
 ### Example
 
 ```lua
-command = function()
-  -- The log module is globally available and does not need to be required.
-  
-  log.info("Starting the logging example task.")
-  
-  local user_name = "Sloth"
-  log.debug("Current user is: " .. user_name)
+task("logging-example")
+  :description("Demonstrates the use of the log module")
+  :command(function(this, params)
+    -- The log module is globally available and does not need to be required.
 
-  if user_name ~= "Sloth" then
-    log.warn("The user is not the expected one.")
-  end
+    log.info("Starting the logging example task.")
 
-  log.info("Task is performing its main action...")
-  
-  local success = true -- Simulate a successful operation
-  if not success then
-    log.error("The main action failed unexpectedly!")
-    return false, "Main action failed"
-  end
+    local user_name = "Sloth"
+    log.debug("Current user is: " .. user_name)
 
-  log.info("Logging example task finished successfully.")
-  return true, "Logging demonstrated."
-end
+    if user_name ~= "Sloth" then
+      log.warn("The user is not the expected one.")
+    end
+
+    log.info("Task is performing its main action...")
+
+    local success = true -- Simulate a successful operation
+    if not success then
+      log.error("The main action failed unexpectedly!")
+      return false, "Main action failed"
+    end
+
+    log.info("Logging example task finished successfully.")
+    return true, "Logging demonstrated."
+  end)
+  :build()
 ```

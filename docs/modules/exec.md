@@ -28,52 +28,49 @@ This example demonstrates how to use `exec.run` with a custom working directory 
 ```lua
 -- examples/exec_module_example.sloth
 
-Modern DSLs = {
-  main = {
-    description = "A task to demonstrate the exec module.",
-    tasks = {
-      {
-        name = "run-with-options",
-        description = "Executes a command with a custom workdir and environment.",
-        command = function()
-          log.info("Preparing to run a custom command...")
-          
-          local exec = require("exec")
-          
-          -- Create a temporary directory for the example
-          local temp_dir = "/tmp/sloth-exec-test"
-          fs.mkdir(temp_dir)
-          fs.write(temp_dir .. "/test.txt", "hello from test file")
+local exec_demo = task("run-with-options")
+  :description("Executes a command with a custom workdir and environment")
+  :command(function(this, params)
+    log.info("Preparing to run a custom command...")
 
-          -- Define options
-          local options = {
-            workdir = temp_dir,
-            env = {
-              MY_VAR = "SlothRunner",
-              ANOTHER_VAR = "is_awesome"
-            }
-          }
+    local exec = require("exec")
 
-          -- Execute the command
-          local result = exec.run("echo 'MY_VAR is $MY_VAR' && ls -l && cat test.txt", options)
+    -- Create a temporary directory for the example
+    local temp_dir = "/tmp/sloth-exec-test"
+    fs.mkdir(temp_dir)
+    fs.write(temp_dir .. "/test.txt", "hello from test file")
 
-          -- Clean up the temporary directory
-          fs.rm_r(temp_dir)
-
-          if result.success then
-            log.info("Command executed successfully!")
-            print("--- STDOUT ---")
-            print(result.stdout)
-            print("--------------")
-            return true, "Exec command successful."
-          else
-            log.error("Exec command failed.")
-            log.error("Stderr: " .. result.stderr)
-            return false, "Exec command failed."
-          end
-        end
+    -- Define options
+    local options = {
+      workdir = temp_dir,
+      env = {
+        MY_VAR = "SlothRunner",
+        ANOTHER_VAR = "is_awesome"
       }
     }
-  }
-}
+
+    -- Execute the command
+    local result = exec.run("echo 'MY_VAR is $MY_VAR' && ls -l && cat test.txt", options)
+
+    -- Clean up the temporary directory
+    fs.rm_r(temp_dir)
+
+    if result.success then
+      log.info("Command executed successfully!")
+      print("--- STDOUT ---")
+      print(result.stdout)
+      print("--------------")
+      return true, "Exec command successful."
+    else
+      log.error("Exec command failed.")
+      log.error("Stderr: " .. result.stderr)
+      return false, "Exec command failed."
+    end
+  end)
+  :build()
+
+return workflow.define("main")
+  :description("A task to demonstrate the exec module")
+  :version("1.0.0")
+  :tasks({exec_demo})
 ```

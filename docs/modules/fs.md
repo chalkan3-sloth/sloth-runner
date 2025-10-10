@@ -107,33 +107,36 @@ Generates a unique temporary directory path. Note: This function only returns th
 ### Example
 
 ```lua
-command = function()
-  local fs = require("fs")
-  
-  local tmp_dir = "/tmp/fs-example"
-  log.info("Creating directory: " .. tmp_dir)
-  fs.mkdir(tmp_dir)
+task("fs-example")
+  :description("Demonstrates filesystem operations using the fs module")
+  :command(function(this, params)
+    local fs = require("fs")
 
-  local file_path = tmp_dir .. "/my_file.txt"
-  log.info("Writing to file: " .. file_path)
-  fs.write(file_path, "Hello, Sloth Runner!\n")
+    local tmp_dir = "/tmp/fs-example"
+    log.info("Creating directory: " .. tmp_dir)
+    fs.mkdir(tmp_dir)
 
-  log.info("Appending to file...")
-  fs.append(file_path, "This is a new line.")
+    local file_path = tmp_dir .. "/my_file.txt"
+    log.info("Writing to file: " .. file_path)
+    fs.write(file_path, "Hello, Sloth Runner!\n")
 
-  if fs.exists(file_path) then
-    log.info("File content: " .. fs.read(file_path))
-  end
+    log.info("Appending to file...")
+    fs.append(file_path, "This is a new line.")
 
-  log.info("Listing contents of " .. tmp_dir)
-  local contents = fs.ls(tmp_dir)
-  for i, name in ipairs(contents) do
-    print("- " .. name)
-  end
+    if fs.exists(file_path) then
+      log.info("File content: " .. fs.read(file_path))
+    end
 
-  log.info("Cleaning up...")
-  fs.rm_r(tmp_dir)
-  
-  return true, "FS module operations successful."
-end
+    log.info("Listing contents of " .. tmp_dir)
+    local contents = fs.ls(tmp_dir)
+    for i, name in ipairs(contents) do
+      print("- " .. name)
+    end
+
+    log.info("Cleaning up...")
+    fs.rm_r(tmp_dir)
+
+    return true, "FS module operations successful."
+  end)
+  :build()
 ```

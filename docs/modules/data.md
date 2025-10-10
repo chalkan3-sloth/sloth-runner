@@ -53,41 +53,44 @@ Serializes a Lua table into a YAML string.
 ### Example
 
 ```lua
-command = function()
-  local data = require("data")
+task("data-demo")
+  :description("Demonstrates JSON and YAML serialization/parsing")
+  :command(function(this, params)
+    local data = require("data")
 
-  -- JSON Example
-  log.info("Testing JSON serialization...")
-  local my_table = { name = "sloth-runner", version = 1.0, features = { "tasks", "lua" } }
-  local json_str, err = data.to_json(my_table)
-  if err then
-    return false, "Failed to serialize to JSON: " .. err
-  end
-  print("Serialized JSON: " .. json_str)
+    -- JSON Example
+    log.info("Testing JSON serialization...")
+    local my_table = { name = "sloth-runner", version = 1.0, features = { "tasks", "lua" } }
+    local json_str, err = data.to_json(my_table)
+    if err then
+      return false, "Failed to serialize to JSON: " .. err
+    end
+    print("Serialized JSON: " .. json_str)
 
-  log.info("Testing JSON parsing...")
-  local parsed_table, err = data.parse_json(json_str)
-  if err then
-    return false, "Failed to parse JSON: " .. err
-  end
-  log.info("Parsed name from JSON: " .. parsed_table.name)
+    log.info("Testing JSON parsing...")
+    local parsed_table, err = data.parse_json(json_str)
+    if err then
+      return false, "Failed to parse JSON: " .. err
+    end
+    log.info("Parsed name from JSON: " .. parsed_table.name)
 
-  -- YAML Example
-  log.info("Testing YAML serialization...")
-  local yaml_str, err = data.to_yaml(my_table)
-  if err then
-    return false, "Failed to serialize to YAML: " .. err
-  end
-  print("Serialized YAML:\n" .. yaml_str)
-  
-  log.info("Testing YAML parsing...")
-  parsed_table, err = data.parse_yaml(yaml_str)
-  if err then
-    return false, "Failed to parse YAML: " .. err
-  end
-  log.info("Parsed version from YAML: " .. parsed_table.version)
+    -- YAML Example
+    log.info("Testing YAML serialization...")
+    local yaml_str, err = data.to_yaml(my_table)
+    if err then
+      return false, "Failed to serialize to YAML: " .. err
+    end
+    print("Serialized YAML:\n" .. yaml_str)
 
-  return true, "Data module operations successful."
-end
+    log.info("Testing YAML parsing...")
+    parsed_table, err = data.parse_yaml(yaml_str)
+    if err then
+      return false, "Failed to parse YAML: " .. err
+    end
+    log.info("Parsed version from YAML: " .. parsed_table.version)
+
+    return true, "Data module operations successful."
+  end)
+  :build()
 ```
 

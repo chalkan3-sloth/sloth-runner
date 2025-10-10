@@ -51,57 +51,50 @@ This example demonstrates a complete lifecycle: creating a virtual environment, 
 ```lua
 -- examples/python_venv_lifecycle_example.sloth
 
-Modern DSLs = {
-  main = {
-    description = "A task to demonstrate the Python venv lifecycle.",
-    create_workdir_before_run = true, -- Use a temporary workdir
-    tasks = {
-      {
-        name = "run-python-script",
-        description = "Creates a venv, installs dependencies, and runs a script.",
-        command = function(params)
-          local python = require("python")
-          local workdir = params.workdir -- Get the temp workdir from the group
-          
-          -- 1. Write our Python script and dependencies to the workdir
-          fs.write(workdir .. "/requirements.txt", "requests==2.28.1")
-          fs.write(workdir .. "/main.py", "import requests\nprint(f'Hello from Python! Using requests version: {requests.__version__}')")
+local task = require("task")
 
-          -- 2. Create a venv object
-          local venv_path = workdir .. "/.venv"
-          log.info("Setting up virtual environment at: " .. venv_path)
-          local venv = python.venv(venv_path)
+task("run-python-script")
+  :description("Creates a venv, installs dependencies, and runs a script")
+  :command(function(this, params)
+    local python = require("python")
+    local workdir = params.workdir -- Get the temp workdir from the group
 
-          -- 3. Create the venv on the filesystem
-          venv:create()
+    -- 1. Write our Python script and dependencies to the workdir
+    fs.write(workdir .. "/requirements.txt", "requests==2.28.1")
+    fs.write(workdir .. "/main.py", "import requests\nprint(f'Hello from Python! Using requests version: {requests.__version__}')")
 
-          -- 4. Install dependencies using pip
-          log.info("Installing dependencies from requirements.txt...")
-          local pip_result = venv:pip("install -r " .. workdir .. "/requirements.txt")
-          if pip_result.exit_code ~= 0 then
-            log.error("Pip install failed: " .. pip_result.stderr)
-            return false, "Failed to install Python dependencies."
-          end
+    -- 2. Create a venv object
+    local venv_path = workdir .. "/.venv"
+    log.info("Setting up virtual environment at: " .. venv_path)
+    local venv = python.venv(venv_path)
 
-          -- 5. Execute the script
-          log.info("Running the Python script...")
-          local exec_result = venv:exec(workdir .. "/main.py")
-          if exec_result.exit_code ~= 0 then
-            log.error("Python script failed: " .. exec_result.stderr)
-            return false, "Python script execution failed."
-          end
+    -- 3. Create the venv on the filesystem
+    venv:create()
 
-          log.info("Python script executed successfully.")
-          print("---\n--- Python Script Output ---")
-          print(exec_result.stdout)
-          print("----------------------------")
+    -- 4. Install dependencies using pip
+    log.info("Installing dependencies from requirements.txt...")
+    local pip_result = venv:pip("install -r " .. workdir .. "/requirements.txt")
+    if pip_result.exit_code ~= 0 then
+      log.error("Pip install failed: " .. pip_result.stderr)
+      return false, "Failed to install Python dependencies."
+    end
 
-          return true, "Python venv lifecycle complete."
-        end
-      }
-    }
-  }
-}
+    -- 5. Execute the script
+    log.info("Running the Python script...")
+    local exec_result = venv:exec(workdir .. "/main.py")
+    if exec_result.exit_code ~= 0 then
+      log.error("Python script failed: " .. exec_result.stderr)
+      return false, "Python script execution failed."
+    end
+
+    log.info("Python script executed successfully.")
+    print("---\n--- Python Script Output ---")
+    print(exec_result.stdout)
+    print("----------------------------")
+
+    return true, "Python venv lifecycle complete."
+  end)
+  :build()
 ```
 
 ```

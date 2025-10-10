@@ -57,61 +57,59 @@ Create your first Lua task file:
 ```bash
 # Create a simple task file
 cat > hello-world.sloth << 'EOF'
-Modern DSLs = {
-    hello_world = {
-        description = "My first Sloth Runner task",
-        tasks = {
-            greet = {
-                name = "greet",
-                description = "Say hello to the world",
-                command = function()
-                    log.info("🎉 Hello from Sloth Runner!")
-                    
-                    -- Get system information
-                    local hostname, _ = exec.run("hostname")
-                    local whoami, _ = exec.run("whoami")
-                    
-                    log.info("Running on: " .. hostname)
-                    log.info("User: " .. whoami)
-                    
-                    -- Use state management
-                    state.set("last_greeting", os.time())
-                    local count = state.increment("greeting_count", 1)
-                    
-                    log.info("This is greeting #" .. count)
-                    
-                    return true, "Hello World task completed successfully!"
-                end
-            },
-            
-            system_info = {
-                name = "system_info", 
-                description = "Display system metrics",
-                depends_on = "greet",
-                command = function()
-                    log.info("📊 System Information:")
-                    
-                    -- Get system metrics
-                    local cpu = metrics.system_cpu()
-                    local memory = metrics.system_memory()
-                    local disk = metrics.system_disk()
-                    
-                    log.info("CPU Usage: " .. string.format("%.1f%%", cpu))
-                    log.info("Memory: " .. string.format("%.1f%% (%.0f MB used)", 
-                        memory.percent, memory.used_mb))
-                    log.info("Disk: " .. string.format("%.1f%% (%.1f GB used)", 
-                        disk.percent, disk.used_gb))
-                    
-                    -- Record metrics
-                    metrics.gauge("quickstart_cpu", cpu)
-                    metrics.gauge("quickstart_memory", memory.percent)
-                    
-                    return true, "System info collected"
-                end
-            }
-        }
-    }
-}
+-- Define individual tasks
+local greet = task("greet")
+    :description("Say hello to the world")
+    :command(function(this, params)
+        log.info("🎉 Hello from Sloth Runner!")
+
+        -- Get system information
+        local hostname, _ = exec.run("hostname")
+        local whoami, _ = exec.run("whoami")
+
+        log.info("Running on: " .. hostname)
+        log.info("User: " .. whoami)
+
+        -- Use state management
+        state.set("last_greeting", os.time())
+        local count = state.increment("greeting_count", 1)
+
+        log.info("This is greeting #" .. count)
+
+        return true, "Hello World task completed successfully!"
+    end)
+    :build()
+
+local system_info = task("system_info")
+    :description("Display system metrics")
+    :depends_on({"greet"})
+    :command(function(this, params)
+        log.info("📊 System Information:")
+
+        -- Get system metrics
+        local cpu = metrics.system_cpu()
+        local memory = metrics.system_memory()
+        local disk = metrics.system_disk()
+
+        log.info("CPU Usage: " .. string.format("%.1f%%", cpu))
+        log.info("Memory: " .. string.format("%.1f%% (%.0f MB used)",
+            memory.percent, memory.used_mb))
+        log.info("Disk: " .. string.format("%.1f%% (%.1f GB used)",
+            disk.percent, disk.used_gb))
+
+        -- Record metrics
+        metrics.gauge("quickstart_cpu", cpu)
+        metrics.gauge("quickstart_memory", memory.percent)
+
+        return true, "System info collected"
+    end)
+    :build()
+
+-- Define workflow
+workflow.define("hello_world")
+    :description("My first Sloth Runner task")
+    :version("1.0.0")
+    :tasks({greet, system_info})
 EOF
 ```
 
@@ -206,98 +204,94 @@ wait
 
 ```lua
 -- Create state-demo.sloth
-Modern DSLs = {
-    state_demo = {
-        description = "Demonstrate state management capabilities",
-        tasks = {
-            setup_state = {
-                name = "setup_state",
-                description = "Initialize application state", 
-                command = function()
-                    -- Initialize configuration
-                    state.set("app_config", {
-                        version = "1.0.0",
-                        environment = "development",
-                        debug = true
-                    })
-                    
-                    -- Set TTL for session data (5 minutes)
-                    state.set("session_token", "abc123xyz", 300)
-                    
-                    -- Initialize counters
-                    state.set("api_calls", 0)
-                    state.set("errors", 0)
-                    
-                    log.info("✅ Application state initialized")
-                    return true, "State setup completed"
-                end
-            },
-            
-            simulate_usage = {
-                name = "simulate_usage",
-                description = "Simulate application usage",
-                depends_on = "setup_state",
-                command = function()
-                    -- Simulate API calls
-                    for i = 1, 10 do
-                        local calls = state.increment("api_calls", 1)
-                        
-                        -- Simulate occasional error
-                        if math.random(1, 10) > 8 then
-                            state.increment("errors", 1)
-                            log.warn("Simulated error occurred")
-                        end
-                        
-                        -- Add to processing queue
-                        state.list_push("processing_queue", {
-                            id = "req_" .. i,
-                            timestamp = os.time(),
-                            status = "pending"
-                        })
-                        
-                        exec.run("sleep 0.1") -- Small delay
-                    end
-                    
-                    local total_calls = state.get("api_calls")
-                    local total_errors = state.get("errors")
-                    local queue_size = state.list_length("processing_queue")
-                    
-                    log.info("📊 Usage Summary:")
-                    log.info("  API Calls: " .. total_calls)
-                    log.info("  Errors: " .. total_errors)
-                    log.info("  Queue Size: " .. queue_size)
-                    
-                    return true, "Usage simulation completed"
-                end
-            },
-            
-            process_queue = {
-                name = "process_queue",
-                description = "Process items in queue with locking",
-                depends_on = "simulate_usage",
-                command = function()
-                    -- Process queue with distributed lock
-                    state.with_lock("queue_processing", function()
-                        log.info("🔒 Processing queue with exclusive lock...")
-                        
-                        local processed = 0
-                        while state.list_length("processing_queue") > 0 do
-                            local item = state.list_pop("processing_queue")
-                            log.info("Processing item: " .. item.id)
-                            processed = processed + 1
-                        end
-                        
-                        log.info("✅ Processed " .. processed .. " items")
-                        state.set("last_processing_time", os.time())
-                        
-                    end, 30) -- 30 second timeout
-                    
-                    return true, "Queue processing completed"
-                end
-            }
-        }
-    }
-}
+local setup_state = task("setup_state")
+    :description("Initialize application state")
+    :command(function(this, params)
+        -- Initialize configuration
+        state.set("app_config", {
+            version = "1.0.0",
+            environment = "development",
+            debug = true
+        })
+
+        -- Set TTL for session data (5 minutes)
+        state.set("session_token", "abc123xyz", 300)
+
+        -- Initialize counters
+        state.set("api_calls", 0)
+        state.set("errors", 0)
+
+        log.info("✅ Application state initialized")
+        return true, "State setup completed"
+    end)
+    :build()
+
+local simulate_usage = task("simulate_usage")
+    :description("Simulate application usage")
+    :depends_on({"setup_state"})
+    :command(function(this, params)
+        -- Simulate API calls
+        for i = 1, 10 do
+            local calls = state.increment("api_calls", 1)
+
+            -- Simulate occasional error
+            if math.random(1, 10) > 8 then
+                state.increment("errors", 1)
+                log.warn("Simulated error occurred")
+            end
+
+            -- Add to processing queue
+            state.list_push("processing_queue", {
+                id = "req_" .. i,
+                timestamp = os.time(),
+                status = "pending"
+            })
+
+            exec.run("sleep 0.1") -- Small delay
+        end
+
+        local total_calls = state.get("api_calls")
+        local total_errors = state.get("errors")
+        local queue_size = state.list_length("processing_queue")
+
+        log.info("📊 Usage Summary:")
+        log.info("  API Calls: " .. total_calls)
+        log.info("  Errors: " .. total_errors)
+        log.info("  Queue Size: " .. queue_size)
+
+        return true, "Usage simulation completed"
+    end)
+    :build()
+
+local process_queue = task("process_queue")
+    :description("Process items in queue with locking")
+    :depends_on({"simulate_usage"})
+    :command(function(this, params)
+        -- Process queue with distributed lock
+        state.with_lock("queue_processing", function()
+            log.info("🔒 Processing queue with exclusive lock...")
+
+            local processed = 0
+            while state.list_length("processing_queue") > 0 do
+                local item = state.list_pop("processing_queue")
+                log.info("Processing item: " .. item.id)
+                processed = processed + 1
+            end
+
+            log.info("✅ Processed " .. processed .. " items")
+            state.set("last_processing_time", os.time())
+
+        end, 30) -- 30 second timeout
+
+        return true, "Queue processing completed"
+    end)
+    :build()
+
+-- Define workflow
+workflow.define("state_demo")
+    :description("Demonstrate state management capabilities")
+    :version("1.0.0")
+    :tasks({setup_state, simulate_usage, process_queue})
 ```
 
 Run the state demo:
@@ -308,62 +302,60 @@ sloth-runner run -f state-demo.sloth
 ### **Metrics Monitoring Example**
 
 ```lua
--- Create metrics-demo.sloth  
-Modern DSLs = {
-    metrics_demo = {
-        description = "Demonstrate metrics and monitoring",
-        tasks = {
-            collect_metrics = {
-                name = "collect_metrics",
-                description = "Collect system and custom metrics",
-                command = function()
-                    log.info("📊 Collecting system metrics...")
-                    
-                    -- System metrics
-                    local cpu = metrics.system_cpu()
-                    local memory = metrics.system_memory() 
-                    local disk = metrics.system_disk()
-                    
-                    log.info("System Status:")
-                    log.info("  CPU: " .. string.format("%.1f%%", cpu))
-                    log.info("  Memory: " .. string.format("%.1f%%", memory.percent))
-                    log.info("  Disk: " .. string.format("%.1f%%", disk.percent))
-                    
-                    -- Custom metrics
-                    metrics.gauge("demo_cpu_usage", cpu)
-                    metrics.counter("demo_executions", 1)
-                    
-                    -- Performance timer
-                    local processing_time = metrics.timer("data_processing", function()
-                        -- Simulate data processing
-                        local sum = 0
-                        for i = 1, 1000000 do
-                            sum = sum + math.sqrt(i)
-                        end
-                        return sum
-                    end)
-                    
-                    log.info("⏱️ Processing took: " .. string.format("%.2f ms", processing_time))
-                    
-                    -- Health check
-                    local health = metrics.health_status()
-                    log.info("🏥 Overall health: " .. health.overall)
-                    
-                    -- Alert if CPU is high
-                    if cpu > 50 then
-                        metrics.alert("high_cpu_demo", {
-                            level = "warning",
-                            message = "CPU usage is elevated: " .. string.format("%.1f%%", cpu),
-                            value = cpu
-                        })
-                    end
-                    
-                    return true, "Metrics collection completed"
-                end
-            }
-        }
-    }
-}
+-- Create metrics-demo.sloth
+local collect_metrics = task("collect_metrics")
+    :description("Collect system and custom metrics")
+    :command(function(this, params)
+        log.info("📊 Collecting system metrics...")
+
+        -- System metrics
+        local cpu = metrics.system_cpu()
+        local memory = metrics.system_memory()
+        local disk = metrics.system_disk()
+
+        log.info("System Status:")
+        log.info("  CPU: " .. string.format("%.1f%%", cpu))
+        log.info("  Memory: " .. string.format("%.1f%%", memory.percent))
+        log.info("  Disk: " .. string.format("%.1f%%", disk.percent))
+
+        -- Custom metrics
+        metrics.gauge("demo_cpu_usage", cpu)
+        metrics.counter("demo_executions", 1)
+
+        -- Performance timer
+        local processing_time = metrics.timer("data_processing", function()
+            -- Simulate data processing
+            local sum = 0
+            for i = 1, 1000000 do
+                sum = sum + math.sqrt(i)
+            end
+            return sum
+        end)
+
+        log.info("⏱️ Processing took: " .. string.format("%.2f ms", processing_time))
+
+        -- Health check
+        local health = metrics.health_status()
+        log.info("🏥 Overall health: " .. health.overall)
+
+        -- Alert if CPU is high
+        if cpu > 50 then
+            metrics.alert("high_cpu_demo", {
+                level = "warning",
+                message = "CPU usage is elevated: " .. string.format("%.1f%%", cpu),
+                value = cpu
+            })
+        end
+
+        return true, "Metrics collection completed"
+    end)
+    :build()
+
+-- Define workflow
+workflow.define("metrics_demo")
+    :description("Demonstrate metrics and monitoring")
+    :version("1.0.0")
+    :tasks({collect_metrics})
 ```
 
 Run the metrics demo:

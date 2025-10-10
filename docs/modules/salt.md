@@ -51,29 +51,32 @@ Executes a Salt execution module function on the target.
 This example demonstrates targeting minions to ping them and apply a Salt state.
 
 ```lua
-command = function()
-  local salt = require("salt")
+task("salt_manage"):
+  description("Ping minions and apply Salt state"):
+  command(function(this, params)
+    local salt = require("salt")
 
-  -- 1. Create a Salt client
-  local client = salt.client()
+    -- 1. Create a Salt client
+    local client = salt.client()
 
-  -- 2. Target all minions and ping them
-  log.info("Pinging all minions...")
-  local ping_result = client:target("*"):cmd("test.ping")
-  if not ping_result.success then
-    return false, "Failed to ping minions: " .. ping_result.stderr
-  end
-  print("Ping Results:")
-  print(data.to_yaml(ping_result.stdout)) -- stdout is a table
+    -- 2. Target all minions and ping them
+    log.info("Pinging all minions...")
+    local ping_result = client:target("*"):cmd("test.ping")
+    if not ping_result.success then
+      return false, "Failed to ping minions: " .. ping_result.stderr
+    end
+    print("Ping Results:")
+    print(data.to_yaml(ping_result.stdout)) -- stdout is a table
 
-  -- 3. Target a specific web server and apply a state
-  log.info("Applying 'nginx' state to web-server-1...")
-  local apply_result = client:target("web-server-1", "glob"):cmd("state.apply", "nginx")
-  if not apply_result.success then
-    return false, "Failed to apply state: " .. apply_result.stderr
-  end
-  
-  log.info("State applied successfully.")
-  return true, "Salt operations complete."
-end
+    -- 3. Target a specific web server and apply a state
+    log.info("Applying 'nginx' state to web-server-1...")
+    local apply_result = client:target("web-server-1", "glob"):cmd("state.apply", "nginx")
+    if not apply_result.success then
+      return false, "Failed to apply state: " .. apply_result.stderr
+    end
+
+    log.info("State applied successfully.")
+    return true, "Salt operations complete."
+  end):
+  build()
 ```

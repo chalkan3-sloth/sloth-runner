@@ -344,31 +344,31 @@ gitops.start_auto_sync()
 ```lua
 local production_deploy = task("production_deploy")
     :description("Production deployment with full GitOps validation")
-    :command(function(params, deps)
+    :command(function(this, params)
         local workflow_id = workflows.production
-        
+
         -- Step 1: Generate diff and validate
         log.info("🔍 Analyzing changes for production deployment...")
         local diff = gitops.generate_diff(workflow_id)
-        
+
         if not diff then
             log.info("ℹ️ No changes detected")
-            return {success = true, message = "No changes to deploy"}
+            return true, "No changes to deploy"
         end
-        
+
         -- Step 2: Display change summary
         log.info("📊 Production Deployment Summary:")
         log.info("  📝 Total changes: " .. diff.summary.total_changes)
         log.info("  ✨ Created: " .. diff.summary.created_resources)
         log.info("  🔄 Updated: " .. diff.summary.updated_resources)
         log.info("  🗑️ Deleted: " .. diff.summary.deleted_resources)
-        
+
         -- Step 3: Check for conflicts and high-impact changes
         if diff.summary.conflict_count > 0 then
             log.error("💥 Conflicts detected - manual resolution required")
-            return {success = false, message = "Conflicts must be resolved"}
+            return false, "Conflicts must be resolved"
         end
-        
+
         local high_impact_changes = 0
         for _, change in ipairs(diff.changes) do
             if change.impact == "high" or change.impact == "critical" then
@@ -376,7 +376,7 @@ local production_deploy = task("production_deploy")
                 log.warn("⚠️ High-impact: " .. change.resource .. " (" .. change.type .. ")")
             end
         end
-        
+
         -- Step 4: Show warnings
         if #diff.warnings > 0 then
             log.warn("⚠️ Warnings:")
@@ -384,47 +384,47 @@ local production_deploy = task("production_deploy")
                 log.warn("  • " .. warning)
             end
         end
-        
+
         -- Step 5: Require approval for production
         if high_impact_changes > 0 then
             print("🔒 High-impact changes detected. Proceed? (y/N)")
             local response = io.read()
             if response:lower() ~= "y" then
-                return {success = false, message = "Deployment cancelled"}
+                return false, "Deployment cancelled"
             end
         end
-        
+
         -- Step 6: Execute deployment
         log.info("🚀 Executing production deployment...")
         local sync_success = gitops.sync_workflow(workflow_id)
-        
+
         if not sync_success then
             log.error("💥 Production deployment failed!")
-            return {success = false, message = "Deployment failed"}
+            return false, "Deployment failed"
         end
-        
+
         -- Step 7: Verify deployment
         log.info("🔍 Verifying deployment...")
         local status = gitops.get_workflow_status(workflow_id)
-        
+
         if status.status == "synced" and status.last_sync_result.status == "succeeded" then
             log.info("✅ Production deployment successful!")
             log.info("📊 Applied " .. status.last_sync_result.metrics.resources_applied .. " resources")
             log.info("⏱️ Completed in " .. status.last_sync_result.metrics.duration)
-            return {success = true, message = "Production deployed successfully"}
+            return true, "Production deployed successfully"
         else
             log.error("💥 Deployment verification failed!")
-            
+
             -- Automatic rollback
             log.warn("🔄 Initiating automatic rollback...")
             local rollback_success = gitops.rollback_workflow(workflow_id, "Deployment verification failed")
-            
+
             if rollback_success then
                 log.info("✅ Automatic rollback completed")
-                return {success = false, message = "Deployment failed, rollback successful"}
+                return false, "Deployment failed, rollback successful"
             else
                 log.error("💥 Rollback also failed!")
-                return {success = false, message = "Deployment and rollback both failed"}
+                return false, "Deployment and rollback both failed"
             end
         end
     end)
@@ -436,12 +436,12 @@ local production_deploy = task("production_deploy")
 ```lua
 local k8s_deploy = task("kubernetes_gitops_deploy")
     :description("Kubernetes-native GitOps deployment")
-    :command(function(params, deps)
+    :command(function(this, params)
         local workflow_id = params.workflow_id
-        
+
         -- Generate diff with Kubernetes-specific analysis
         local diff = gitops.generate_diff(workflow_id)
-        
+
         -- Kubernetes-specific validations
         local k8s_issues = {}
         for _, change in ipairs(diff.changes) do
@@ -453,41 +453,41 @@ local k8s_deploy = task("kubernetes_gitops_deploy")
                     table.insert(k8s_issues, "⚠️ WARNING: Deleting PersistentVolume " .. change.resource)
                 end
             end
-            
+
             if change.type == "update" and change.resource:match("Deployment") then
                 log.info("📦 Deployment update: " .. change.resource)
                 -- Could add image change detection here
             end
         end
-        
+
         if #k8s_issues > 0 then
             log.warn("🚨 Kubernetes-specific issues detected:")
             for _, issue in ipairs(k8s_issues) do
                 log.warn("  " .. issue)
             end
-            
+
             print("Proceed despite Kubernetes warnings? (y/N)")
             local response = io.read()
             if response:lower() ~= "y" then
-                return {success = false, message = "Deployment cancelled due to K8s issues"}
+                return false, "Deployment cancelled due to K8s issues"
             end
         end
-        
+
         -- Execute Kubernetes deployment
         local sync_success = gitops.sync_workflow(workflow_id)
-        
+
         if sync_success then
             -- Kubernetes-specific post-deployment checks
             log.info("🔍 Running Kubernetes health checks...")
-            
+
             -- Could add kubectl-based health checks here
             -- kubectl get pods --all-namespaces
             -- kubectl get services
             -- kubectl get ingress
-            
-            return {success = true, message = "Kubernetes deployment successful"}
+
+            return true, "Kubernetes deployment successful"
         else
-            return {success = false, message = "Kubernetes deployment failed"}
+            return false, "Kubernetes deployment failed"
         end
     end)
     :build()
@@ -594,25 +594,26 @@ local ai = require("ai")
 local gitops = require("gitops")
 
 local intelligent_deploy = task("ai_gitops_deploy")
-    :command(function(params, deps)
+    :description("AI-powered GitOps deployment with failure prediction")
+    :command(function(this, params)
         local deploy_cmd = "kubectl apply -f manifests/"
-        
+
         -- AI failure prediction before GitOps deployment
         local prediction = ai.predict_failure("ai_gitops_deploy", deploy_cmd)
-        
+
         if prediction.failure_probability > 0.25 then
-            log.warn("🤖 AI detected high deployment risk: " .. 
+            log.warn("🤖 AI detected high deployment risk: " ..
                     string.format("%.1f%%", prediction.failure_probability * 100))
-            
+
             for _, rec in ipairs(prediction.recommendations) do
                 log.info("💡 AI Recommendation: " .. rec)
             end
         end
-        
+
         -- GitOps deployment with AI insights
         local workflow_id = params.gitops_workflow_id
         local success = gitops.sync_workflow(workflow_id)
-        
+
         -- Record execution for AI learning
         ai.record_execution({
             task_name = "ai_gitops_deploy",
@@ -622,8 +623,12 @@ local intelligent_deploy = task("ai_gitops_deploy")
             ai_prediction_used = true,
             predicted_failure_probability = prediction.failure_probability
         })
-        
-        return {success = success}
+
+        if success then
+            return true, "AI-powered GitOps deployment successful"
+        else
+            return false, "AI-powered GitOps deployment failed"
+        end
     end)
     :build()
 ```
@@ -631,46 +636,41 @@ local intelligent_deploy = task("ai_gitops_deploy")
 ### With Modern DSL Workflows
 
 ```lua
-workflow.define("gitops_pipeline", {
-    description = "Complete GitOps deployment pipeline",
-    version = "2.0.0",
-    
-    metadata = {
+workflow.define("gitops_pipeline")
+    :description("Complete GitOps deployment pipeline")
+    :version("2.0.0")
+    :metadata({
         author = "DevOps Team",
         tags = {"gitops", "kubernetes", "production"}
-    },
-    
-    tasks = {
+    })
+    :tasks({
         production_deploy,
         k8s_deploy
-    },
-    
-    on_task_start = function(task_name)
+    })
+    :on_task_start(function(task_name)
         log.info("🚀 Starting GitOps task: " .. task_name)
-    end,
-    
-    on_task_complete = function(task_name, success, output)
+    end)
+    :on_task_complete(function(task_name, success, output)
         if success then
             log.info("✅ GitOps task completed: " .. task_name)
         else
             log.error("❌ GitOps task failed: " .. task_name)
-            
+
             -- Could trigger emergency rollback here
             if task_name == "production_deploy" then
                 log.warn("🔄 Triggering emergency rollback...")
                 gitops.rollback_workflow(production_workflow_id, "Emergency rollback due to task failure")
             end
         end
-    end,
-    
-    on_complete = function(success, results)
+    end)
+    :on_complete(function(success, results)
         if success then
             log.info("🎉 GitOps pipeline completed successfully!")
         else
             log.error("💥 GitOps pipeline failed - check logs for details")
         end
-    end
-})
+    end)
+    :build()
 ```
 
 ## 📚 See Also

@@ -51,22 +51,56 @@ Runs a Docker container using `docker run`.
 ```lua
 local image_tag = "my-test-image:latest"
 
--- Task 1: Build
-local result_build = docker.build({
-  tag = image_tag,
-  path = "./app"
-})
-if not result_build.success then return false, "Build failed" end
+-- Task 1: Build Docker image
+task("docker-build")
+  :description("Build Docker image")
+  :command(function(this, params)
+    local result = docker.build({
+      tag = image_tag,
+      path = "./app"
+    })
+    if not result.success then
+      return false, "Build failed: " .. (result.stderr or "")
+    end
+    return true, "Docker image built successfully"
+  end)
+  :build()
 
--- Task 2: Run
-local result_run = docker.run({
-  image = image_tag,
-  name = "my-test-container",
-  ports = {"8080:80"}
-})
-if not result_run.success then return false, "Run failed" end
+-- Task 2: Run Docker container
+task("docker-run")
+  :description("Run Docker container")
+  :command(function(this, params)
+    local result = docker.run({
+      image = image_tag,
+      name = "my-test-container",
+      ports = {"8080:80"}
+    })
+    if not result.success then
+      return false, "Run failed: " .. (result.stderr or "")
+    end
+    return true, "Docker container started successfully"
+  end)
+  :build()
 
--- Task 3: Push (after successful testing)
-local result_push = docker.push({tag = image_tag})
-if not result_push.success then return false, "Push failed" end
+-- Task 3: Push Docker image
+task("docker-push")
+  :description("Push Docker image to registry")
+  :command(function(this, params)
+    local result = docker.push({tag = image_tag})
+    if not result.success then
+      return false, "Push failed: " .. (result.stderr or "")
+    end
+    return true, "Docker image pushed successfully"
+  end)
+  :build()
+
+-- Workflow: Complete Docker pipeline
+workflow.define("docker-pipeline")
+  :description("Build, run, and push Docker image")
+  :version("1.0.0")
+  :tasks({
+    "docker-build",
+    "docker-run",
+    "docker-push"
+  })
 ```

@@ -61,23 +61,75 @@ Reads an output variable from a Terraform state file.
 local tf_workdir = "./examples/terraform"
 
 -- Task 1: Init
-local result_init = terraform.init({workdir = tf_workdir})
-if not result_init.success then return false, "Init failed" end
+local init_task = task("terraform-init")
+    :description("Initialize Terraform working directory")
+    :command(function(this, params)
+        local result = terraform.init({workdir = tf_workdir})
+        if not result.success then
+            return false, "Init failed: " .. result.stderr
+        end
+        return true, "Terraform initialized successfully"
+    end)
+    :build()
 
 -- Task 2: Plan
-local result_plan = terraform.plan({workdir = tf_workdir})
-if not result_plan.success then return false, "Plan failed" end
+local plan_task = task("terraform-plan")
+    :description("Create Terraform execution plan")
+    :command(function(this, params)
+        local result = terraform.plan({workdir = tf_workdir})
+        if not result.success then
+            return false, "Plan failed: " .. result.stderr
+        end
+        return true, "Plan created successfully"
+    end)
+    :build()
 
 -- Task 3: Apply
-local result_apply = terraform.apply({workdir = tf_workdir, auto_approve = true})
-if not result_apply.success then return false, "Apply failed" end
+local apply_task = task("terraform-apply")
+    :description("Apply Terraform plan")
+    :command(function(this, params)
+        local result = terraform.apply({workdir = tf_workdir, auto_approve = true})
+        if not result.success then
+            return false, "Apply failed: " .. result.stderr
+        end
+        return true, "Infrastructure applied successfully"
+    end)
+    :build()
 
 -- Task 4: Get Output
-local filename, err = terraform.output({workdir = tf_workdir, name = "report_filename"})
-if not filename then return false, "Output failed: " .. err end
-log.info("Terraform created file: " .. filename)
+local output_task = task("terraform-output")
+    :description("Read Terraform outputs")
+    :command(function(this, params)
+        local filename, err = terraform.output({workdir = tf_workdir, name = "report_filename"})
+        if not filename then
+            return false, "Output failed: " .. err
+        end
+        log.info("Terraform created file: " .. filename)
+        return true, "Output retrieved: " .. filename
+    end)
+    :build()
 
 -- Task 5: Destroy
-local result_destroy = terraform.destroy({workdir = tf_workdir, auto_approve = true})
-if not result_destroy.success then return false, "Destroy failed" end
+local destroy_task = task("terraform-destroy")
+    :description("Destroy Terraform-managed infrastructure")
+    :command(function(this, params)
+        local result = terraform.destroy({workdir = tf_workdir, auto_approve = true})
+        if not result.success then
+            return false, "Destroy failed: " .. result.stderr
+        end
+        return true, "Infrastructure destroyed successfully"
+    end)
+    :build()
+
+-- Workflow: Complete Terraform lifecycle
+local terraform_workflow = workflow.define("terraform-lifecycle")
+    :description("Complete Terraform infrastructure lifecycle")
+    :version("1.0.0")
+    :tasks({
+        init_task,
+        plan_task,
+        apply_task,
+        output_task,
+        destroy_task
+    })
 ```

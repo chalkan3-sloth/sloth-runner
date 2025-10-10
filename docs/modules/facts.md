@@ -30,17 +30,22 @@ local info, err = facts.get_all({ agent = "agent-name" })
 
 **Example:**
 ```lua
-task("check_system", function()
-    local info, err = facts.get_all({ agent = "prod-server-01" })
-    if err then
-        error("Failed to get facts: " .. err)
-    end
-    
-    print("Hostname: " .. info.hostname)
-    print("Platform: " .. info.platform)
-    print("CPUs: " .. info.cpus)
-    print("Memory Total: " .. info.memory.total)
-end)
+local check_system = task("check_system")
+    :description("Check system information")
+    :command(function(this, params)
+        local info, err = facts.get_all({ agent = "prod-server-01" })
+        if err then
+            return false, "Failed to get facts: " .. err
+        end
+
+        print("Hostname: " .. info.hostname)
+        print("Platform: " .. info.platform)
+        print("CPUs: " .. info.cpus)
+        print("Memory Total: " .. info.memory.total)
+
+        return true, "System information retrieved"
+    end)
+    :build()
 ```
 
 ### facts.get_hostname()
@@ -54,13 +59,17 @@ local hostname, err = facts.get_hostname({ agent = "agent-name" })
 
 **Example:**
 ```lua
-task("check_hostname", function()
-    local hostname, err = facts.get_hostname({ agent = "web-01" })
-    if err then
-        error("Failed: " .. err)
-    end
-    print("Hostname: " .. hostname)
-end)
+local check_hostname = task("check_hostname")
+    :description("Check agent hostname")
+    :command(function(this, params)
+        local hostname, err = facts.get_hostname({ agent = "web-01" })
+        if err then
+            return false, "Failed: " .. err
+        end
+        print("Hostname: " .. hostname)
+        return true, "Hostname checked: " .. hostname
+    end)
+    :build()
 ```
 
 ### facts.get_platform()
@@ -84,20 +93,25 @@ Table with fields:
 
 **Example:**
 ```lua
-task("check_os", function()
-    local platform, err = facts.get_platform({ agent = "db-server" })
-    if err then
-        error("Failed: " .. err)
-    end
-    
-    print(string.format("OS: %s %s", platform.os, platform.version))
-    print(string.format("Arch: %s", platform.architecture))
-    print(string.format("Kernel: %s %s", platform.kernel, platform.kernel_version))
-    
-    if platform.virtualization ~= "" then
-        print("Running on: " .. platform.virtualization)
-    end
-end)
+local check_os = task("check_os")
+    :description("Check OS and platform information")
+    :command(function(this, params)
+        local platform, err = facts.get_platform({ agent = "db-server" })
+        if err then
+            return false, "Failed: " .. err
+        end
+
+        print(string.format("OS: %s %s", platform.os, platform.version))
+        print(string.format("Arch: %s", platform.architecture))
+        print(string.format("Kernel: %s %s", platform.kernel, platform.kernel_version))
+
+        if platform.virtualization ~= "" then
+            print("Running on: " .. platform.virtualization)
+        end
+
+        return true, "Platform information retrieved"
+    end)
+    :build()
 ```
 
 ### facts.get_memory()
@@ -121,22 +135,28 @@ Table with fields:
 
 **Example:**
 ```lua
-task("check_memory", function()
-    local mem, err = facts.get_memory({ agent = "app-server" })
-    if err then
-        error("Failed: " .. err)
-    end
-    
-    local total_gb = mem.total / 1024 / 1024 / 1024
-    local used_gb = mem.used / 1024 / 1024 / 1024
-    
-    print(string.format("Memory: %.2f GB / %.2f GB (%.1f%%)", 
-        used_gb, total_gb, mem.used_percent))
-    
-    if mem.used_percent > 90 then
-        print("WARNING: Memory usage is critical!")
-    end
-end)
+local check_memory = task("check_memory")
+    :description("Check memory usage")
+    :command(function(this, params)
+        local mem, err = facts.get_memory({ agent = "app-server" })
+        if err then
+            return false, "Failed: " .. err
+        end
+
+        local total_gb = mem.total / 1024 / 1024 / 1024
+        local used_gb = mem.used / 1024 / 1024 / 1024
+
+        print(string.format("Memory: %.2f GB / %.2f GB (%.1f%%)",
+            used_gb, total_gb, mem.used_percent))
+
+        if mem.used_percent > 90 then
+            print("WARNING: Memory usage is critical!")
+            return false, "Critical memory usage detected"
+        end
+
+        return true, "Memory check completed"
+    end)
+    :build()
 ```
 
 ### facts.get_disk()
@@ -170,24 +190,35 @@ Each disk table contains:
 
 **Example:**
 ```lua
-task("check_disk_space", function()
-    local disks, err = facts.get_disk({ agent = "file-server" })
-    if err then
-        error("Failed: " .. err)
-    end
-    
-    for i, disk in ipairs(disks) do
-        local used_gb = disk.used / 1024 / 1024 / 1024
-        local total_gb = disk.total / 1024 / 1024 / 1024
-        
-        print(string.format("%s: %.2f GB / %.2f GB (%.1f%%)",
-            disk.mountpoint, used_gb, total_gb, disk.used_percent))
-        
-        if disk.used_percent > 85 then
-            print("  WARNING: Low disk space!")
+local check_disk_space = task("check_disk_space")
+    :description("Check disk space usage")
+    :command(function(this, params)
+        local disks, err = facts.get_disk({ agent = "file-server" })
+        if err then
+            return false, "Failed: " .. err
         end
-    end
-end)
+
+        local has_warning = false
+        for i, disk in ipairs(disks) do
+            local used_gb = disk.used / 1024 / 1024 / 1024
+            local total_gb = disk.total / 1024 / 1024 / 1024
+
+            print(string.format("%s: %.2f GB / %.2f GB (%.1f%%)",
+                disk.mountpoint, used_gb, total_gb, disk.used_percent))
+
+            if disk.used_percent > 85 then
+                print("  WARNING: Low disk space!")
+                has_warning = true
+            end
+        end
+
+        if has_warning then
+            return false, "Low disk space detected on some volumes"
+        end
+
+        return true, "Disk space check completed"
+    end)
+    :build()
 ```
 
 ### facts.get_network()
@@ -217,22 +248,27 @@ Table or array of tables with fields:
 
 **Example:**
 ```lua
-task("check_network", function()
-    local ifaces, err = facts.get_network({ agent = "router" })
-    if err then
-        error("Failed: " .. err)
-    end
-    
-    for _, iface in ipairs(ifaces) do
-        print(string.format("Interface: %s", iface.name))
-        print(string.format("  MAC: %s", iface.mac))
-        print(string.format("  Status: %s", iface.is_up and "UP" or "DOWN"))
-        print("  IPs:")
-        for _, addr in ipairs(iface.addresses) do
-            print("    - " .. addr)
+local check_network = task("check_network")
+    :description("Check network interfaces")
+    :command(function(this, params)
+        local ifaces, err = facts.get_network({ agent = "router" })
+        if err then
+            return false, "Failed: " .. err
         end
-    end
-end)
+
+        for _, iface in ipairs(ifaces) do
+            print(string.format("Interface: %s", iface.name))
+            print(string.format("  MAC: %s", iface.mac))
+            print(string.format("  Status: %s", iface.is_up and "UP" or "DOWN"))
+            print("  IPs:")
+            for _, addr in ipairs(iface.addresses) do
+                print("    - " .. addr)
+            end
+        end
+
+        return true, "Network interfaces checked"
+    end)
+    :build()
 ```
 
 ### facts.get_packages()
@@ -260,23 +296,28 @@ Each package contains:
 
 **Example:**
 ```lua
-task("check_packages", function()
-    local pkgs, err = facts.get_packages({ agent = "server-01" })
-    if err then
-        error("Failed: " .. err)
-    end
-    
-    print(string.format("Package Manager: %s", pkgs.manager))
-    print(string.format("Installed Packages: %d", pkgs.installed_count))
-    print(string.format("Updates Available: %d", pkgs.updates_available))
-    
-    if pkgs.updates_available > 0 then
-        print("\nAvailable Updates:")
-        for _, upd in ipairs(pkgs.updates) do
-            print(string.format("  - %s: %s", upd.name, upd.version))
+local check_packages = task("check_packages")
+    :description("Check installed packages and updates")
+    :command(function(this, params)
+        local pkgs, err = facts.get_packages({ agent = "server-01" })
+        if err then
+            return false, "Failed: " .. err
         end
-    end
-end)
+
+        print(string.format("Package Manager: %s", pkgs.manager))
+        print(string.format("Installed Packages: %d", pkgs.installed_count))
+        print(string.format("Updates Available: %d", pkgs.updates_available))
+
+        if pkgs.updates_available > 0 then
+            print("\nAvailable Updates:")
+            for _, upd in ipairs(pkgs.updates) do
+                print(string.format("  - %s: %s", upd.name, upd.version))
+            end
+        end
+
+        return true, string.format("Package check completed: %d updates available", pkgs.updates_available)
+    end)
+    :build()
 ```
 
 ### facts.get_package()
@@ -301,23 +342,28 @@ Table with fields:
 
 **Example:**
 ```lua
-task("ensure_nginx", function()
-    local pkg, err = facts.get_package({ 
-        agent = "web-server", 
-        name = "nginx" 
-    })
-    
-    if err then
-        error("Failed: " .. err)
-    end
-    
-    if pkg.installed then
-        print(string.format("nginx %s is installed", pkg.version))
-    else
-        print("nginx is not installed - installing...")
-        pkg.install({ packages = {"nginx"} }):delegate_to("web-server")
-    end
-end)
+local ensure_nginx = task("ensure_nginx")
+    :description("Ensure nginx is installed")
+    :command(function(this, params)
+        local pkg, err = facts.get_package({
+            agent = "web-server",
+            name = "nginx"
+        })
+
+        if err then
+            return false, "Failed: " .. err
+        end
+
+        if pkg.installed then
+            print(string.format("nginx %s is installed", pkg.version))
+            return true, "nginx is already installed"
+        else
+            print("nginx is not installed - installing...")
+            pkg.install({ packages = {"nginx"} }):delegate_to("web-server")
+            return true, "nginx installation initiated"
+        end
+    end)
+    :build()
 ```
 
 ### facts.get_services()
@@ -337,19 +383,26 @@ Array of service tables with fields:
 
 **Example:**
 ```lua
-task("list_services", function()
-    local services, err = facts.get_services({ agent = "app-server" })
-    if err then
-        error("Failed: " .. err)
-    end
-    
-    print("Active Services:")
-    for _, svc in ipairs(services) do
-        if svc.status == "active" then
-            print(string.format("  - %s: %s", svc.name, svc.state))
+local list_services = task("list_services")
+    :description("List active services")
+    :command(function(this, params)
+        local services, err = facts.get_services({ agent = "app-server" })
+        if err then
+            return false, "Failed: " .. err
         end
-    end
-end)
+
+        print("Active Services:")
+        local count = 0
+        for _, svc in ipairs(services) do
+            if svc.status == "active" then
+                print(string.format("  - %s: %s", svc.name, svc.state))
+                count = count + 1
+            end
+        end
+
+        return true, string.format("Found %d active services", count)
+    end)
+    :build()
 ```
 
 ### facts.get_service()
@@ -366,22 +419,28 @@ local service, err = facts.get_service({
 
 **Example:**
 ```lua
-task("check_nginx_status", function()
-    local svc, err = facts.get_service({ 
-        agent = "web-01", 
-        name = "nginx" 
-    })
-    
-    if err then
-        error("Failed: " .. err)
-    end
-    
-    print(string.format("nginx: %s (%s)", svc.status, svc.state))
-    
-    if svc.status ~= "active" then
-        print("WARNING: nginx is not active!")
-    end
-end)
+local check_nginx_status = task("check_nginx_status")
+    :description("Check nginx service status")
+    :command(function(this, params)
+        local svc, err = facts.get_service({
+            agent = "web-01",
+            name = "nginx"
+        })
+
+        if err then
+            return false, "Failed: " .. err
+        end
+
+        print(string.format("nginx: %s (%s)", svc.status, svc.state))
+
+        if svc.status ~= "active" then
+            print("WARNING: nginx is not active!")
+            return false, "nginx is not active"
+        end
+
+        return true, "nginx is active and running"
+    end)
+    :build()
 ```
 
 ### facts.get_users()
@@ -403,18 +462,23 @@ Array of user tables with fields:
 
 **Example:**
 ```lua
-task("list_users", function()
-    local users, err = facts.get_users({ agent = "server" })
-    if err then
-        error("Failed: " .. err)
-    end
-    
-    print("System Users:")
-    for _, user in ipairs(users) do
-        print(string.format("  %s (UID: %s) - %s", 
-            user.username, user.uid, user.shell))
-    end
-end)
+local list_users = task("list_users")
+    :description("List system users")
+    :command(function(this, params)
+        local users, err = facts.get_users({ agent = "server" })
+        if err then
+            return false, "Failed: " .. err
+        end
+
+        print("System Users:")
+        for _, user in ipairs(users) do
+            print(string.format("  %s (UID: %s) - %s",
+                user.username, user.uid, user.shell))
+        end
+
+        return true, string.format("Listed %d users", #users)
+    end)
+    :build()
 ```
 
 ### facts.get_user()
@@ -431,24 +495,29 @@ local user, err = facts.get_user({
 
 **Example:**
 ```lua
-task("check_user", function()
-    local user, err = facts.get_user({ 
-        agent = "server", 
-        username = "deploy" 
-    })
-    
-    if err then
-        print("User 'deploy' not found")
-        -- Create user
-        user.create({
-            name = "deploy",
-            home = "/home/deploy",
-            shell = "/bin/bash"
-        }):delegate_to("server")
-    else
-        print(string.format("User 'deploy' exists: %s", user.home))
-    end
-end)
+local check_user = task("check_user")
+    :description("Check if deploy user exists")
+    :command(function(this, params)
+        local user, err = facts.get_user({
+            agent = "server",
+            username = "deploy"
+        })
+
+        if err then
+            print("User 'deploy' not found")
+            -- Create user
+            user.create({
+                name = "deploy",
+                home = "/home/deploy",
+                shell = "/bin/bash"
+            }):delegate_to("server")
+            return true, "User 'deploy' created"
+        else
+            print(string.format("User 'deploy' exists: %s", user.home))
+            return true, "User 'deploy' already exists"
+        end
+    end)
+    :build()
 ```
 
 ### facts.get_processes()
@@ -469,19 +538,25 @@ Table with fields:
 
 **Example:**
 ```lua
-task("check_processes", function()
-    local procs, err = facts.get_processes({ agent = "server" })
-    if err then
-        error("Failed: " .. err)
-    end
-    
-    print(string.format("Processes: %d total, %d running, %d sleeping",
-        procs.total, procs.running, procs.sleeping))
-    
-    if procs.zombie > 0 then
-        print(string.format("WARNING: %d zombie processes!", procs.zombie))
-    end
-end)
+local check_processes = task("check_processes")
+    :description("Check process statistics")
+    :command(function(this, params)
+        local procs, err = facts.get_processes({ agent = "server" })
+        if err then
+            return false, "Failed: " .. err
+        end
+
+        print(string.format("Processes: %d total, %d running, %d sleeping",
+            procs.total, procs.running, procs.sleeping))
+
+        if procs.zombie > 0 then
+            print(string.format("WARNING: %d zombie processes!", procs.zombie))
+            return false, string.format("Found %d zombie processes", procs.zombie)
+        end
+
+        return true, "Process check completed"
+    end)
+    :build()
 ```
 
 ### facts.get_mounts()
@@ -502,18 +577,23 @@ Array of mount tables with fields:
 
 **Example:**
 ```lua
-task("list_mounts", function()
-    local mounts, err = facts.get_mounts({ agent = "server" })
-    if err then
-        error("Failed: " .. err)
-    end
-    
-    print("Mounted Filesystems:")
-    for _, mount in ipairs(mounts) do
-        print(string.format("  %s on %s type %s (%s)",
-            mount.device, mount.mountpoint, mount.fstype, mount.options))
-    end
-end)
+local list_mounts = task("list_mounts")
+    :description("List mounted filesystems")
+    :command(function(this, params)
+        local mounts, err = facts.get_mounts({ agent = "server" })
+        if err then
+            return false, "Failed: " .. err
+        end
+
+        print("Mounted Filesystems:")
+        for _, mount in ipairs(mounts) do
+            print(string.format("  %s on %s type %s (%s)",
+                mount.device, mount.mountpoint, mount.fstype, mount.options))
+        end
+
+        return true, string.format("Listed %d mount points", #mounts)
+    end)
+    :build()
 ```
 
 ### facts.get_uptime()
@@ -533,20 +613,25 @@ Table with fields:
 
 **Example:**
 ```lua
-task("check_uptime", function()
-    local uptime, err = facts.get_uptime({ agent = "server" })
-    if err then
-        error("Failed: " .. err)
-    end
-    
-    local days = math.floor(uptime.seconds / 86400)
-    local hours = math.floor((uptime.seconds % 86400) / 3600)
-    local mins = math.floor((uptime.seconds % 3600) / 60)
-    
-    print(string.format("Uptime: %d days, %d hours, %d minutes", 
-        days, hours, mins))
-    print(string.format("Timezone: %s", uptime.timezone))
-end)
+local check_uptime = task("check_uptime")
+    :description("Check system uptime")
+    :command(function(this, params)
+        local uptime, err = facts.get_uptime({ agent = "server" })
+        if err then
+            return false, "Failed: " .. err
+        end
+
+        local days = math.floor(uptime.seconds / 86400)
+        local hours = math.floor((uptime.seconds % 86400) / 3600)
+        local mins = math.floor((uptime.seconds % 3600) / 60)
+
+        print(string.format("Uptime: %d days, %d hours, %d minutes",
+            days, hours, mins))
+        print(string.format("Timezone: %s", uptime.timezone))
+
+        return true, string.format("System uptime: %d days", days)
+    end)
+    :build()
 ```
 
 ### facts.get_load()
@@ -563,19 +648,25 @@ Array with load averages [1min, 5min, 15min]
 
 **Example:**
 ```lua
-task("check_load", function()
-    local load, err = facts.get_load({ agent = "server" })
-    if err then
-        error("Failed: " .. err)
-    end
-    
-    print(string.format("Load Average: %.2f, %.2f, %.2f", 
-        load[1], load[2], load[3]))
-    
-    if load[1] > 4.0 then
-        print("WARNING: High load!")
-    end
-end)
+local check_load = task("check_load")
+    :description("Check system load average")
+    :command(function(this, params)
+        local load, err = facts.get_load({ agent = "server" })
+        if err then
+            return false, "Failed: " .. err
+        end
+
+        print(string.format("Load Average: %.2f, %.2f, %.2f",
+            load[1], load[2], load[3]))
+
+        if load[1] > 4.0 then
+            print("WARNING: High load!")
+            return false, "System load is too high"
+        end
+
+        return true, "Load average checked"
+    end)
+    :build()
 ```
 
 ### facts.get_kernel()
@@ -594,14 +685,19 @@ Table with fields:
 
 **Example:**
 ```lua
-task("check_kernel", function()
-    local kernel, err = facts.get_kernel({ agent = "server" })
-    if err then
-        error("Failed: " .. err)
-    end
-    
-    print(string.format("Kernel: %s %s", kernel.name, kernel.version))
-end)
+local check_kernel = task("check_kernel")
+    :description("Check kernel information")
+    :command(function(this, params)
+        local kernel, err = facts.get_kernel({ agent = "server" })
+        if err then
+            return false, "Failed: " .. err
+        end
+
+        print(string.format("Kernel: %s %s", kernel.name, kernel.version))
+
+        return true, string.format("Kernel: %s %s", kernel.name, kernel.version)
+    end)
+    :build()
 ```
 
 ### facts.query()
@@ -623,62 +719,64 @@ local result, err = facts.query({
 Este exemplo demonstra como usar facts para tomar decisões inteligentes durante o deploy, validando o sistema alvo e adaptando o comportamento baseado nas condições reais.
 
 ```lua
-task({
-    name = "intelligent-deploy",
-    run = function()
+local intelligent_deploy = task("intelligent-deploy")
+    :description("Intelligent deployment with system validation")
+    :command(function(this, params)
         local target_agent = values.target or "prod-server-01"
-        
+
         -- 📊 Coletar informações do sistema alvo
         local info, err = facts.get_all({ agent = target_agent })
         if err then
-            error("❌ Cannot reach agent: " .. err)
+            return false, "Cannot reach agent: " .. err
         end
-        
+
         log.info("🔍 Analyzing " .. info.hostname)
         log.info("   Platform: " .. info.platform.os .. " " .. info.platform.version)
         log.info("   Memory: " .. string.format("%.2f GB", info.memory.total / 1024 / 1024 / 1024))
         log.info("   Arch: " .. info.platform.architecture)
-        
+
         -- ✅ Validação de requisitos mínimos
         local mem_gb = info.memory.total / 1024 / 1024 / 1024
         if mem_gb < 4 then
-            error("❌ Insufficient memory: need 4GB, have " .. string.format("%.2f GB", mem_gb))
+            return false, "Insufficient memory: need 4GB, have " .. string.format("%.2f GB", mem_gb)
         end
-        
+
         -- ✅ Verificar espaço em disco
-        local root_disk, _ = facts.get_disk({ 
-            agent = target_agent, 
-            mountpoint = "/" 
+        local root_disk, _ = facts.get_disk({
+            agent = target_agent,
+            mountpoint = "/"
         })
         if root_disk.used_percent > 85 then
             log.warn("⚠️  Disk usage high: " .. root_disk.used_percent .. "%")
         end
-        
+
         -- ✅ Verificar se Docker já está instalado
-        local docker_pkg, _ = facts.get_package({ 
-            agent = target_agent, 
-            name = "docker" 
+        local docker_pkg, _ = facts.get_package({
+            agent = target_agent,
+            name = "docker"
         })
-        
+
         if not docker_pkg.installed then
             log.info("📦 Installing Docker...")
             pkg.install({ packages = {"docker.io"} }):delegate_to(target_agent)
         else
             log.info("✅ Docker already installed: " .. docker_pkg.version)
         end
-        
+
         -- 🚀 Deploy baseado na arquitetura
         local image_tag = "latest"
         if info.platform.architecture == "arm64" then
             image_tag = "latest-arm64"
         end
-        
+
         log.info("🚀 Deploying with image: myapp:" .. image_tag)
-        
+
         -- Continue with deployment...
         log.info("✅ Deploy completed successfully!")
-    end
-})
+
+        return true, "Deploy completed successfully"
+    end)
+    :build()
 ```
 
 **Recursos demonstrados:**
@@ -696,123 +794,145 @@ task({
 ### Example 1: Pre-deployment System Validation
 
 ```lua
-task("validate_system", function()
-    local hostname, _ = facts.get_hostname({ agent = "prod-app-01" })
-    print("Validating: " .. hostname)
-    
-    -- Check OS version
-    local platform, err = facts.get_platform({ agent = "prod-app-01" })
-    if err then error("Cannot get platform: " .. err) end
-    
-    if platform.os ~= "linux" then
-        error("Expected Linux, got: " .. platform.os)
-    end
-    
-    -- Check memory
-    local mem, err = facts.get_memory({ agent = "prod-app-01" })
-    if err then error("Cannot get memory: " .. err) end
-    
-    local mem_gb = mem.total / 1024 / 1024 / 1024
-    if mem_gb < 8 then
-        error(string.format("Insufficient memory: %.2f GB (need 8 GB)", mem_gb))
-    end
-    
-    -- Check disk space
-    local disk, err = facts.get_disk({ 
-        agent = "prod-app-01", 
-        mountpoint = "/" 
-    })
-    if err then error("Cannot get disk info: " .. err) end
-    
-    if disk.used_percent > 80 then
-        error(string.format("Disk usage too high: %.1f%%", disk.used_percent))
-    end
-    
-    -- Check required package
-    local pkg, err = facts.get_package({ 
-        agent = "prod-app-01", 
-        name = "docker" 
-    })
-    if err then error("Cannot check package: " .. err) end
-    
-    if not pkg.installed then
-        error("Docker is not installed")
-    end
-    
-    print("✓ All validations passed!")
-end)
+local validate_system = task("validate_system")
+    :description("Validate system requirements before deployment")
+    :command(function(this, params)
+        local hostname, _ = facts.get_hostname({ agent = "prod-app-01" })
+        print("Validating: " .. hostname)
+
+        -- Check OS version
+        local platform, err = facts.get_platform({ agent = "prod-app-01" })
+        if err then
+            return false, "Cannot get platform: " .. err
+        end
+
+        if platform.os ~= "linux" then
+            return false, "Expected Linux, got: " .. platform.os
+        end
+
+        -- Check memory
+        local mem, err = facts.get_memory({ agent = "prod-app-01" })
+        if err then
+            return false, "Cannot get memory: " .. err
+        end
+
+        local mem_gb = mem.total / 1024 / 1024 / 1024
+        if mem_gb < 8 then
+            return false, string.format("Insufficient memory: %.2f GB (need 8 GB)", mem_gb)
+        end
+
+        -- Check disk space
+        local disk, err = facts.get_disk({
+            agent = "prod-app-01",
+            mountpoint = "/"
+        })
+        if err then
+            return false, "Cannot get disk info: " .. err
+        end
+
+        if disk.used_percent > 80 then
+            return false, string.format("Disk usage too high: %.1f%%", disk.used_percent)
+        end
+
+        -- Check required package
+        local pkg, err = facts.get_package({
+            agent = "prod-app-01",
+            name = "docker"
+        })
+        if err then
+            return false, "Cannot check package: " .. err
+        end
+
+        if not pkg.installed then
+            return false, "Docker is not installed"
+        end
+
+        print("✓ All validations passed!")
+        return true, "All system validations passed"
+    end)
+    :build()
 ```
 
 ### Example 2: Dynamic Inventory Based on Facts
 
 ```lua
-task("discover_web_servers", function()
-    local agents = {"server-01", "server-02", "server-03"}
-    local web_servers = {}
-    
-    for _, agent in ipairs(agents) do
-        -- Check if nginx is running
-        local svc, err = facts.get_service({ 
-            agent = agent, 
-            name = "nginx" 
-        })
-        
-        if not err and svc.status == "active" then
-            -- Get IP address
-            local iface, _ = facts.get_network({ 
-                agent = agent, 
-                interface = "eth0" 
+local discover_web_servers = task("discover_web_servers")
+    :description("Discover web servers running nginx")
+    :command(function(this, params)
+        local agents = {"server-01", "server-02", "server-03"}
+        local web_servers = {}
+
+        for _, agent in ipairs(agents) do
+            -- Check if nginx is running
+            local svc, err = facts.get_service({
+                agent = agent,
+                name = "nginx"
             })
-            
-            if iface and #iface.addresses > 0 then
-                table.insert(web_servers, {
-                    name = agent,
-                    ip = iface.addresses[1]
+
+            if not err and svc.status == "active" then
+                -- Get IP address
+                local iface, _ = facts.get_network({
+                    agent = agent,
+                    interface = "eth0"
                 })
+
+                if iface and #iface.addresses > 0 then
+                    table.insert(web_servers, {
+                        name = agent,
+                        ip = iface.addresses[1]
+                    })
+                end
             end
         end
-    end
-    
-    print("Discovered Web Servers:")
-    for _, server in ipairs(web_servers) do
-        print(string.format("  - %s: %s", server.name, server.ip))
-    end
-end)
+
+        print("Discovered Web Servers:")
+        for _, server in ipairs(web_servers) do
+            print(string.format("  - %s: %s", server.name, server.ip))
+        end
+
+        return true, string.format("Discovered %d web servers", #web_servers)
+    end)
+    :build()
 ```
 
 ### Example 3: Conditional Deployment Based on System State
 
 ```lua
-task("deploy_app", function()
-    local agent = "app-server-01"
-    
-    -- Get current system state
-    local platform, _ = facts.get_platform({ agent = agent })
-    local mem, _ = facts.get_memory({ agent = agent })
-    
-    -- Decide deployment strategy based on available resources
-    if mem.available < 2 * 1024 * 1024 * 1024 then  -- Less than 2GB
-        print("Low memory - using minimal deployment")
-        -- Deploy with minimal resources
-    else
-        print("Sufficient memory - using full deployment")
-        -- Deploy with full resources
-    end
-    
-    -- Check if old version is installed
-    local old_app, _ = facts.get_package({ 
-        agent = agent, 
-        name = "myapp" 
-    })
-    
-    if old_app.installed then
-        print("Stopping old version: " .. old_app.version)
-        systemd.stop({ unit = "myapp" }):delegate_to(agent)
-    end
-    
-    -- Continue with deployment...
-    print("Deploying new version...")
-end)
+local deploy_app = task("deploy_app")
+    :description("Deploy application with conditional strategy based on system state")
+    :command(function(this, params)
+        local agent = "app-server-01"
+
+        -- Get current system state
+        local platform, _ = facts.get_platform({ agent = agent })
+        local mem, _ = facts.get_memory({ agent = agent })
+
+        -- Decide deployment strategy based on available resources
+        if mem.available < 2 * 1024 * 1024 * 1024 then  -- Less than 2GB
+            print("Low memory - using minimal deployment")
+            -- Deploy with minimal resources
+        else
+            print("Sufficient memory - using full deployment")
+            -- Deploy with full resources
+        end
+
+        -- Check if old version is installed
+        local old_app, _ = facts.get_package({
+            agent = agent,
+            name = "myapp"
+        })
+
+        if old_app.installed then
+            print("Stopping old version: " .. old_app.version)
+            systemd.stop({ unit = "myapp" }):delegate_to(agent)
+        end
+
+        -- Continue with deployment...
+        print("Deploying new version...")
+
+        return true, "Application deployed successfully"
+    end)
+    :build()
 ```
 
 ## Best Practices

@@ -209,7 +209,7 @@ for _, step in ipairs(deployment_steps) do
         initial_delay = 1,
         strategy = reliability.strategy.EXPONENTIAL_BACKOFF,
         on_retry = function(attempt, delay, error)
-            state.append("deployment_log", 
+            state.append("deployment_log",
                 step .. " retry " .. attempt .. ": " .. error, "\n")
         end
     }, function()
@@ -223,18 +223,172 @@ for _, step in ipairs(deployment_steps) do
             return execute_deployment_step(step)
         end)
     end)
-    
+
     if not step_result then
         state.set("deployment_status", "failed_at_" .. step)
         return false, "Deployment failed at: " .. step
     end
-    
+
     -- Update progress
     local progress = math.floor((step_index / #deployment_steps) * 100)
     state.set("deployment_progress", progress)
 end
 
 state.set("deployment_status", "completed")
+```
+
+### Task with Retry Pattern
+
+```lua
+-- Define a task with built-in retry logic using modern DSL
+task("fetch-api-data")
+    :description("Fetch data from external API with retry logic")
+    :command(function(this, params)
+        local result = reliability.retry_with_config({
+            max_attempts = 5,
+            initial_delay = 1,
+            max_delay = 10,
+            strategy = reliability.strategy.EXPONENTIAL_BACKOFF,
+            jitter = true,
+            on_retry = function(attempt, delay, error)
+                log.warn("Retry attempt " .. attempt .. " in " .. delay .. "s: " .. error)
+            end
+        }, function()
+            local response = http.get(params.api_url)
+            if response.status == 200 then
+                return response.body
+            else
+                return nil, "API returned status: " .. response.status
+            end
+        end)
+
+        if result then
+            return true, "Successfully fetched data"
+        else
+            return false, "Failed to fetch data after retries"
+        end
+    end)
+    :build()
+```
+
+### Task with Circuit Breaker
+
+```lua
+-- Define a task with circuit breaker protection using modern DSL
+task("call-payment-service")
+    :description("Call payment service with circuit breaker protection")
+    :command(function(this, params)
+        local result = reliability.circuit_breaker("payment_service", {
+            max_failures = 3,
+            timeout = 60,
+            success_threshold = 2,
+            on_state_change = function(from_state, to_state)
+                log.info("Payment service circuit: " .. from_state .. " -> " .. to_state)
+                state.set("payment_circuit_state", to_state)
+            end
+        }, function()
+            return process_payment(params.amount, params.customer_id)
+        end)
+
+        if result then
+            return true, "Payment processed successfully"
+        else
+            return false, "Payment service unavailable"
+        end
+    end)
+    :build()
+```
+
+### Workflow with Reliability Patterns
+
+```lua
+-- Define a workflow with reliability patterns using modern DSL
+workflow.define("resilient-deployment")
+    :description("Deployment workflow with comprehensive reliability patterns")
+    :version("1.0.0")
+    :tasks({
+        {
+            name = "validate-environment",
+            command = function(this, params)
+                local result = reliability.retry(3, 1, function()
+                    return validate_deployment_environment()
+                end)
+
+                if result then
+                    return true, "Environment validated"
+                else
+                    return false, "Environment validation failed"
+                end
+            end
+        },
+        {
+            name = "backup-current-state",
+            command = function(this, params)
+                local result = reliability.circuit_breaker("backup_service", {
+                    max_failures = 2,
+                    timeout = 30
+                }, function()
+                    return create_backup()
+                end)
+
+                if result then
+                    state.set("backup_id", result)
+                    return true, "Backup created: " .. result
+                else
+                    return false, "Backup service unavailable"
+                end
+            end
+        },
+        {
+            name = "deploy-application",
+            command = function(this, params)
+                local result = reliability.retry_with_config({
+                    max_attempts = 3,
+                    initial_delay = 2,
+                    strategy = reliability.strategy.EXPONENTIAL_BACKOFF,
+                    on_retry = function(attempt, delay, error)
+                        state.append("deploy_log",
+                            "Deploy retry " .. attempt .. ": " .. error, "\n")
+                    end
+                }, function()
+                    return deploy_to_production(params.version)
+                end)
+
+                if result then
+                    return true, "Deployment successful"
+                else
+                    return false, "Deployment failed after retries"
+                end
+            end
+        },
+        {
+            name = "health-check",
+            command = function(this, params)
+                local result = reliability.retry_with_config({
+                    max_attempts = 10,
+                    initial_delay = 1,
+                    max_delay = 60,
+                    strategy = reliability.strategy.EXPONENTIAL_BACKOFF,
+                    multiplier = 1.5,
+                    jitter = true
+                }, function()
+                    local response = http.get("http://localhost:8080/health")
+                    if response.status == 200 then
+                        return response.body
+                    else
+                        return nil, "Health check failed: " .. response.status
+                    end
+                end)
+
+                if result then
+                    state.set("deployment_status", "healthy")
+                    return true, "Application is healthy"
+                else
+                    return false, "Health check failed"
+                end
+            end
+        }
+    })
 ```
 
 ### Health Check with Backoff

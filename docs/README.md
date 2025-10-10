@@ -299,7 +299,7 @@ local deploy = task("deploy_application")
         })
 
         log.info("Deployment completed")
-        return true
+        return true, "Deployment completed successfully"
     end)
     :build()
 
@@ -311,18 +311,18 @@ return {deploy}
 ```lua
 local build = task("build")
     :description("Build application")
-    :command(function()
+    :command(function(this, params)
         exec.run("go build -o app ./cmd/app")
-        return true
+        return true, "Build completed successfully"
     end)
     :build()
 
 local test = task("test")
     :description("Run tests")
     :depends_on("build")
-    :command(function()
+    :command(function(this, params)
         exec.run("go test ./...")
-        return true
+        return true, "Tests passed"
     end)
     :build()
 
@@ -334,7 +334,7 @@ local deploy = task("deploy")
             src = "app",
             dest = params.host .. ":/opt/app/app"
         })
-        return true
+        return true, "Deployment completed"
     end)
     :build()
 
@@ -347,12 +347,12 @@ return {build, test, deploy}
 -- Health check that runs on multiple agents in parallel
 local health = task("health_check")
     :description("Check service health")
-    :command(function()
+    :command(function(this, params)
         local result = http.get({url = "http://localhost:8080/health"})
         if result.code ~= 200 then
-            error("Health check failed")
+            return false, "Health check failed: HTTP " .. result.code
         end
-        return true
+        return true, "Health check passed"
     end)
     :build()
 
@@ -399,7 +399,7 @@ function on_event()
     })
 
     print("Alert sent for task: " .. task.task_name)
-    return true
+    return true, "Alert sent successfully"
 end
 ```
 
@@ -422,7 +422,7 @@ function on_event()
             agent.name, os.date("%Y-%m-%d %H:%M:%S"))
     })
 
-    return true
+    return true, "Recovery initiated and alert sent"
 end
 ```
 

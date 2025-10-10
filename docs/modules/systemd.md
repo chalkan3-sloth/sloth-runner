@@ -121,7 +121,10 @@ Creates a new systemd service file at `/etc/systemd/system/{name}.service`.
         :build()
     
     workflow.define("deploy_service")
+        :description("Deploy web application service")
+        :version("1.0.0")
         :tasks({ create_web_service })
+        :build()
     ```
 
 === "With delegate_to"
@@ -157,7 +160,10 @@ Creates a new systemd service file at `/etc/systemd/system/{name}.service`.
         :build()
     
     workflow.define("remote_deploy")
+        :description("Deploy service on remote server")
+        :version("1.0.0")
         :tasks({ deploy_remote_service })
+        :build()
     ```
 
 ### Service Control
@@ -402,7 +408,10 @@ local deploy_webapp = task("deploy_webapp")
     :build()
 
 workflow.define("deploy")
+    :description("Deploy web application")
+    :version("1.0.0")
     :tasks({ deploy_webapp })
+    :build()
 ```
 
 ### Service Health Check
@@ -453,7 +462,10 @@ local health_check = task("health_check")
     :build()
 
 workflow.define("health_check")
+    :description("Check critical services health")
+    :version("1.0.0")
     :tasks({ health_check })
+    :build()
 ```
 
 ### Distributed Service Management
@@ -490,7 +502,10 @@ local restart_all_servers = task("restart_nginx")
     :build()
 
 workflow.define("rolling_restart")
+    :description("Restart nginx across all servers")
+    :version("1.0.0")
     :tasks({ restart_all_servers })
+    :build()
 ```
 
 ### Service Monitoring
@@ -538,7 +553,10 @@ local monitor_services = task("monitor_services")
     :build()
 
 workflow.define("monitor")
+    :description("Monitor and report service status")
+    :version("1.0.0")
     :tasks({ monitor_services })
+    :build()
 ```
 
 ### Service Update Workflow
@@ -600,7 +618,10 @@ local update_service = task("update_service")
     :build()
 
 workflow.define("update")
+    :description("Update service configuration")
+    :version("1.0.0")
     :tasks({ update_service })
+    :build()
 ```
 
 ## 🚀 Best Practices

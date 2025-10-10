@@ -47,42 +47,45 @@ Downloads a file from a URL and saves it to a local path.
 ### Example
 
 ```lua
-command = function()
-  local net = require("net")
-  
-  -- Example GET request
-  log.info("Performing GET request to httpbin.org...")
-  local body, status, headers, err = net.http_get("https://httpbin.org/get")
-  if err then
-    log.error("GET request failed: " .. err)
-    return false, "GET request failed"
-  end
-  log.info("GET request successful! Status: " .. status)
-  -- print("Response Body: " .. body)
+task("net-demo")
+  :description("Demonstrates HTTP requests and file downloads")
+  :command(function(this, params)
+    local net = require("net")
 
-  -- Example POST request
-  log.info("Performing POST request to httpbin.org...")
-  local post_body = '{"name": "sloth-runner", "awesome": true}'
-  local post_headers = { ["Content-Type"] = "application/json" }
-  body, status, headers, err = net.http_post("https://httpbin.org/post", post_body, post_headers)
-  if err then
-    log.error("POST request failed: " .. err)
-    return false, "POST request failed"
-  end
-  log.info("POST request successful! Status: " .. status)
-  -- print("Response Body: " .. body)
+    -- Example GET request
+    log.info("Performing GET request to httpbin.org...")
+    local body, status, headers, err = net.http_get("https://httpbin.org/get")
+    if err then
+      log.error("GET request failed: " .. err)
+      return false, "GET request failed"
+    end
+    log.info("GET request successful! Status: " .. status)
+    -- print("Response Body: " .. body)
 
-  -- Example Download
-  local download_path = "/tmp/sloth-runner-logo.svg"
-  log.info("Downloading file to " .. download_path)
-  local err = net.download("https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/assets/sloth-runner-logo.svg", download_path)
-  if err then
-    log.error("Download failed: " .. err)
-    return false, "Download failed"
-  end
-  log.info("File downloaded successfully.")
-  fs.rm(download_path) -- Clean up
+    -- Example POST request
+    log.info("Performing POST request to httpbin.org...")
+    local post_body = '{"name": "sloth-runner", "awesome": true}'
+    local post_headers = { ["Content-Type"] = "application/json" }
+    body, status, headers, err = net.http_post("https://httpbin.org/post", post_body, post_headers)
+    if err then
+      log.error("POST request failed: " .. err)
+      return false, "POST request failed"
+    end
+    log.info("POST request successful! Status: " .. status)
+    -- print("Response Body: " .. body)
 
-  return true, "Net module operations successful."
-end
+    -- Example Download
+    local download_path = "/tmp/sloth-runner-logo.svg"
+    log.info("Downloading file to " .. download_path)
+    local err = net.download("https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/assets/sloth-runner-logo.svg", download_path)
+    if err then
+      log.error("Download failed: " .. err)
+      return false, "Download failed"
+    end
+    log.info("File downloaded successfully.")
+    fs.rm(download_path) -- Clean up
+
+    return true, "Net module operations successful."
+  end)
+  :build()
 ```

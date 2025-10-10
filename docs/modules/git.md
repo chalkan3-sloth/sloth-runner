@@ -84,36 +84,39 @@ This method is called at the end of a chain to get the result of the *last* oper
 This example demonstrates a full CI/CD-like workflow: clone, create a version file, add, commit, tag, and push.
 
 ```lua
-command = function()
-  local git = require("git")
-  local repo_path = "/tmp/git-example-repo"
-  
-  -- Clean up previous runs
-  fs.rm_r(repo_path)
+task("git-version-bump")
+  :description("Clone repository, bump version, commit, tag and push")
+  :command(function(this, params)
+    local git = require("git")
+    local repo_path = "/tmp/git-example-repo"
 
-  -- 1. Clone the repository
-  log.info("Cloning repository...")
-  local repo, err = git.clone("https://github.com/chalkan3-sloth/sloth-runner.git", repo_path)
-  if err then
-    return false, "Failed to clone: " .. err
-  end
+    -- Clean up previous runs
+    fs.rm_r(repo_path)
 
-  -- 2. Create and write a version file
-  fs.write(repo_path .. "/VERSION", "1.2.3")
+    -- 1. Clone the repository
+    log.info("Cloning repository...")
+    local repo, err = git.clone("https://github.com/chalkan3-sloth/sloth-runner.git", repo_path)
+    if err then
+      return false, "Failed to clone: " .. err
+    end
 
-  -- 3. Chain Git commands: add -> commit -> tag -> push
-  log.info("Adding, committing, tagging, and pushing...")
-  repo:add("."):commit("ci: Bump version to 1.2.3"):tag("v1.2.3"):push("origin", "main", { follow_tags = true })
+    -- 2. Create and write a version file
+    fs.write(repo_path .. "/VERSION", "1.2.3")
 
-  -- 4. Get the result of the final operation (push)
-  local result = repo:result()
+    -- 3. Chain Git commands: add -> commit -> tag -> push
+    log.info("Adding, committing, tagging, and pushing...")
+    repo:add("."):commit("ci: Bump version to 1.2.3"):tag("v1.2.3"):push("origin", "main", { follow_tags = true })
 
-  if not result.success then
-    log.error("Git push failed: " .. result.stderr)
-    return false, "Git push failed."
-  end
+    -- 4. Get the result of the final operation (push)
+    local result = repo:result()
 
-  log.info("Successfully pushed new version tag.")
-  return true, "Git operations successful."
-end
+    if not result.success then
+      log.error("Git push failed: " .. result.stderr)
+      return false, "Git push failed"
+    end
+
+    log.info("Successfully pushed new version tag.")
+    return true, "Git operations successful"
+  end)
+  :build()
 ```

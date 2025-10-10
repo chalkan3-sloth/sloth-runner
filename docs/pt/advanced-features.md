@@ -50,20 +50,14 @@ O `sloth-runner` processa o `values.yaml` como um modelo Go, disponibilizando qu
 
     ```lua
     -- my_task.sloth
-    Modern DSLs = {
-      my_group = {
-        tasks = {
-          {
-            name = "deploy",
-            command = function()
-              log.info("Implantando na região: " .. values.region)
-              log.info("Usando a chave de API (primeiros 5 caracteres): " .. string.sub(values.api_key, 1, 5) .. "...")
-              return true, "Implantação bem-sucedida."
-            end
-          }
-        }
-      }
-    }
+    task("deploy")
+      :description("Implanta aplicação usando valores do values.yaml")
+      :command(function(this, params)
+        log.info("Implantando na região: " .. values.region)
+        log.info("Usando a chave de API (primeiros 5 caracteres): " .. string.sub(values.api_key, 1, 5) .. "...")
+        return true, "Implantação bem-sucedida."
+      end)
+      :build()
     ```
 
 3.  **Execute a tarefa com as variáveis de ambiente definidas:**

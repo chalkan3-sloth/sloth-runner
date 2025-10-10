@@ -95,14 +95,23 @@ Verifica se um arquivo ou diretório existe.
 ```lua
 local infra_test = require("infra_test")
 
-workflow("test-deployment")
-  :task("verify-config", function()
-    -- Verifica localmente
-    infra_test.file_exists("/etc/nginx/nginx.conf")
-    
-    -- Verifica em agente remoto
-    infra_test.file_exists("/etc/nginx/nginx.conf", "web-server-01")
-  end)
+workflow.define("test-deployment")
+  :description("Test deployment configuration")
+  :version("1.0.0")
+  :tasks({
+    task("verify-config")
+      :description("Verify configuration files")
+      :command(function(this, params)
+        -- Verifica localmente
+        infra_test.file_exists("/etc/nginx/nginx.conf")
+
+        -- Verifica em agente remoto
+        infra_test.file_exists("/etc/nginx/nginx.conf", "web-server-01")
+
+        return true, "Configuration verified successfully"
+      end)
+      :build()
+  })
   :delegate_to("prod-agent")
 ```
 
@@ -434,39 +443,56 @@ infra_test.package_version("postgresql", "14", "db-server")
 local infra_test = require("infra_test")
 local pkg = require("pkg")
 
-workflow("deploy-and-test-app")
-  :task("install-nginx", function()
-    pkg.install("nginx")
-  end)
-  
-  :task("verify-installation", function()
-    -- Verifica se o pacote foi instalado
-    infra_test.package_is_installed("nginx")
-    
-    -- Verifica se os arquivos existem
-    infra_test.file_exists("/usr/sbin/nginx")
-    infra_test.file_exists("/etc/nginx/nginx.conf")
-    
-    -- Verifica se o serviço está rodando e habilitado
-    infra_test.service_is_running("nginx")
-    infra_test.service_is_enabled("nginx")
-    
-    -- Verifica se a porta está aberta
-    infra_test.port_is_tcp(80)
-    
-    -- Verifica se o processo está ativo
-    infra_test.process_is_running("nginx")
-  end)
-  
-  :task("verify-config", function()
-    -- Verifica permissões e proprietário
-    infra_test.file_mode("/etc/nginx/nginx.conf", "644")
-    infra_test.file_owner("/var/www/html", "www-data")
-    
-    -- Verifica conteúdo da configuração
-    infra_test.file_contains("/etc/nginx/nginx.conf", "worker_processes")
-  end)
-  
+workflow.define("deploy-and-test-app")
+  :description("Deploy and test nginx application")
+  :version("1.0.0")
+  :tasks({
+    task("install-nginx")
+      :description("Install nginx package")
+      :command(function(this, params)
+        pkg.install("nginx")
+        return true, "Nginx installed successfully"
+      end)
+      :build(),
+
+    task("verify-installation")
+      :description("Verify nginx installation")
+      :command(function(this, params)
+        -- Verifica se o pacote foi instalado
+        infra_test.package_is_installed("nginx")
+
+        -- Verifica se os arquivos existem
+        infra_test.file_exists("/usr/sbin/nginx")
+        infra_test.file_exists("/etc/nginx/nginx.conf")
+
+        -- Verifica se o serviço está rodando e habilitado
+        infra_test.service_is_running("nginx")
+        infra_test.service_is_enabled("nginx")
+
+        -- Verifica se a porta está aberta
+        infra_test.port_is_tcp(80)
+
+        -- Verifica se o processo está ativo
+        infra_test.process_is_running("nginx")
+
+        return true, "Installation verified successfully"
+      end)
+      :build(),
+
+    task("verify-config")
+      :description("Verify nginx configuration")
+      :command(function(this, params)
+        -- Verifica permissões e proprietário
+        infra_test.file_mode("/etc/nginx/nginx.conf", "644")
+        infra_test.file_owner("/var/www/html", "www-data")
+
+        -- Verifica conteúdo da configuração
+        infra_test.file_contains("/etc/nginx/nginx.conf", "worker_processes")
+
+        return true, "Configuration verified successfully"
+      end)
+      :build()
+  })
   :delegate_to("web-server-01")
 ```
 
@@ -475,27 +501,41 @@ workflow("deploy-and-test-app")
 ```lua
 local infra_test = require("infra_test")
 
-workflow("test-infrastructure")
-  :task("test-web-servers", function()
-    -- Testa múltiplos servidores web
-    local servers = {"web-01", "web-02", "web-03"}
-    
-    for _, server in ipairs(servers) do
-      print("Testing " .. server)
-      
-      infra_test.service_is_running("nginx", server)
-      infra_test.port_is_listening(80, server)
-      infra_test.port_is_listening(443, server)
-      infra_test.file_exists("/var/www/html/index.html", server)
-    end
-  end)
-  
-  :task("test-connectivity", function()
-    -- Testa conectividade entre servidores
-    infra_test.can_connect("db-server.internal", 5432)
-    infra_test.can_connect("cache-server.internal", 6379)
-    infra_test.ping("load-balancer", 5)
-  end)
+workflow.define("test-infrastructure")
+  :description("Test infrastructure across multiple agents")
+  :version("1.0.0")
+  :tasks({
+    task("test-web-servers")
+      :description("Test multiple web servers")
+      :command(function(this, params)
+        -- Testa múltiplos servidores web
+        local servers = {"web-01", "web-02", "web-03"}
+
+        for _, server in ipairs(servers) do
+          print("Testing " .. server)
+
+          infra_test.service_is_running("nginx", server)
+          infra_test.port_is_listening(80, server)
+          infra_test.port_is_listening(443, server)
+          infra_test.file_exists("/var/www/html/index.html", server)
+        end
+
+        return true, "All web servers tested successfully"
+      end)
+      :build(),
+
+    task("test-connectivity")
+      :description("Test connectivity between servers")
+      :command(function(this, params)
+        -- Testa conectividade entre servidores
+        infra_test.can_connect("db-server.internal", 5432)
+        infra_test.can_connect("cache-server.internal", 6379)
+        infra_test.ping("load-balancer", 5)
+
+        return true, "Connectivity tests passed"
+      end)
+      :build()
+  })
 ```
 
 ### Exemplo 3: Teste de Configuração Completa
@@ -504,48 +544,61 @@ workflow("test-infrastructure")
 local infra_test = require("infra_test")
 local systemd = require("systemd")
 
-workflow("deploy-microservice")
-  :task("create-service", function()
-    systemd.create_service("myapp", {
-      description = "My Application",
-      exec_start = "/opt/myapp/bin/start.sh",
-      user = "appuser",
-      working_directory = "/opt/myapp"
-    })
-    
-    systemd.enable("myapp")
-    systemd.start("myapp")
-  end)
-  
-  :task("validate-deployment", function()
-    -- Verifica estrutura de diretórios
-    infra_test.is_directory("/opt/myapp")
-    infra_test.is_directory("/opt/myapp/bin")
-    infra_test.is_directory("/opt/myapp/logs")
-    
-    -- Verifica arquivos
-    infra_test.is_file("/opt/myapp/bin/start.sh")
-    infra_test.file_mode("/opt/myapp/bin/start.sh", "755")
-    infra_test.file_owner("/opt/myapp", "appuser")
-    
-    -- Verifica serviço
-    infra_test.service_is_running("myapp")
-    infra_test.service_is_enabled("myapp")
-    
-    -- Verifica processo
-    infra_test.process_is_running("myapp")
-    
-    -- Verifica porta da aplicação
-    infra_test.port_is_listening(8080)
-    
-    -- Testa endpoint da aplicação
-    infra_test.command_succeeds("curl -s http://localhost:8080/health")
-    infra_test.command_stdout_contains(
-      "curl -s http://localhost:8080/health",
-      "\"status\":\"up\""
-    )
-  end)
-  
+workflow.define("deploy-microservice")
+  :description("Deploy and validate microservice")
+  :version("1.0.0")
+  :tasks({
+    task("create-service")
+      :description("Create systemd service for myapp")
+      :command(function(this, params)
+        systemd.create_service("myapp", {
+          description = "My Application",
+          exec_start = "/opt/myapp/bin/start.sh",
+          user = "appuser",
+          working_directory = "/opt/myapp"
+        })
+
+        systemd.enable("myapp")
+        systemd.start("myapp")
+
+        return true, "Service created and started successfully"
+      end)
+      :build(),
+
+    task("validate-deployment")
+      :description("Validate microservice deployment")
+      :command(function(this, params)
+        -- Verifica estrutura de diretórios
+        infra_test.is_directory("/opt/myapp")
+        infra_test.is_directory("/opt/myapp/bin")
+        infra_test.is_directory("/opt/myapp/logs")
+
+        -- Verifica arquivos
+        infra_test.is_file("/opt/myapp/bin/start.sh")
+        infra_test.file_mode("/opt/myapp/bin/start.sh", "755")
+        infra_test.file_owner("/opt/myapp", "appuser")
+
+        -- Verifica serviço
+        infra_test.service_is_running("myapp")
+        infra_test.service_is_enabled("myapp")
+
+        -- Verifica processo
+        infra_test.process_is_running("myapp")
+
+        -- Verifica porta da aplicação
+        infra_test.port_is_listening(8080)
+
+        -- Testa endpoint da aplicação
+        infra_test.command_succeeds("curl -s http://localhost:8080/health")
+        infra_test.command_stdout_contains(
+          "curl -s http://localhost:8080/health",
+          "\"status\":\"up\""
+        )
+
+        return true, "Deployment validated successfully"
+      end)
+      :build()
+  })
   :delegate_to("app-server-prod")
 ```
 
@@ -554,37 +607,55 @@ workflow("deploy-microservice")
 ```lua
 local infra_test = require("infra_test")
 
-workflow("security-audit")
-  :task("check-file-permissions", function()
-    -- Verifica permissões críticas
-    infra_test.file_mode("/etc/passwd", "644")
-    infra_test.file_mode("/etc/shadow", "640")
-    infra_test.file_mode("/root/.ssh/id_rsa", "600")
-    
-    -- Verifica proprietários
-    infra_test.file_owner("/etc/shadow", "root")
-    infra_test.file_group("/etc/shadow", "shadow")
-  end)
-  
-  :task("check-services", function()
-    -- Verifica que serviços desnecessários não estão rodando
-    infra_test.command_fails("systemctl is-active telnet")
-    infra_test.command_fails("systemctl is-active ftp")
-    
-    -- Verifica que serviços críticos estão rodando
-    infra_test.service_is_running("sshd")
-    infra_test.service_is_running("fail2ban")
-  end)
-  
-  :task("check-firewall", function()
-    -- Verifica regras de firewall
-    infra_test.command_succeeds("iptables -L | grep -q 'Chain INPUT'")
-    infra_test.command_stdout_contains(
-      "iptables -L INPUT",
-      "ACCEPT.*tcp.*dpt:ssh"
-    )
-  end)
-  
+workflow.define("security-audit")
+  :description("Perform security audit on production server")
+  :version("1.0.0")
+  :tasks({
+    task("check-file-permissions")
+      :description("Check critical file permissions")
+      :command(function(this, params)
+        -- Verifica permissões críticas
+        infra_test.file_mode("/etc/passwd", "644")
+        infra_test.file_mode("/etc/shadow", "640")
+        infra_test.file_mode("/root/.ssh/id_rsa", "600")
+
+        -- Verifica proprietários
+        infra_test.file_owner("/etc/shadow", "root")
+        infra_test.file_group("/etc/shadow", "shadow")
+
+        return true, "File permissions verified successfully"
+      end)
+      :build(),
+
+    task("check-services")
+      :description("Check service security status")
+      :command(function(this, params)
+        -- Verifica que serviços desnecessários não estão rodando
+        infra_test.command_fails("systemctl is-active telnet")
+        infra_test.command_fails("systemctl is-active ftp")
+
+        -- Verifica que serviços críticos estão rodando
+        infra_test.service_is_running("sshd")
+        infra_test.service_is_running("fail2ban")
+
+        return true, "Service security checks passed"
+      end)
+      :build(),
+
+    task("check-firewall")
+      :description("Check firewall rules")
+      :command(function(this, params)
+        -- Verifica regras de firewall
+        infra_test.command_succeeds("iptables -L | grep -q 'Chain INPUT'")
+        infra_test.command_stdout_contains(
+          "iptables -L INPUT",
+          "ACCEPT.*tcp.*dpt:ssh"
+        )
+
+        return true, "Firewall rules verified successfully"
+      end)
+      :build()
+  })
   :delegate_to("prod-server")
 ```
 
@@ -594,42 +665,60 @@ workflow("security-audit")
 local infra_test = require("infra_test")
 local pkg = require("pkg")
 
-workflow("setup-development-environment")
-  :task("install-packages", function()
-    pkg.install("git")
-    pkg.install("docker-ce")
-    pkg.install("nodejs")
-    pkg.install("python3")
-  end)
-  
-  :task("verify-packages", function()
-    -- Verifica se todos os pacotes foram instalados
-    infra_test.package_is_installed("git")
-    infra_test.package_is_installed("docker-ce")
-    infra_test.package_is_installed("nodejs")
-    infra_test.package_is_installed("python3")
-    
-    -- Verifica versões específicas
-    infra_test.package_version("nodejs", "18")
-    infra_test.package_version("python3", "3.10")
-    
-    -- Verifica binários disponíveis
-    infra_test.command_succeeds("which git")
-    infra_test.command_succeeds("which docker")
-    infra_test.command_succeeds("which node")
-    infra_test.command_succeeds("which python3")
-    
-    -- Verifica versões via comando
-    infra_test.command_stdout_contains("node --version", "v18")
-    infra_test.command_stdout_contains("python3 --version", "Python 3.10")
-  end)
-  
-  :task("verify-docker-service", function()
-    infra_test.service_is_running("docker")
-    infra_test.service_is_enabled("docker")
-    infra_test.port_is_listening(2375)
-  end)
-  
+workflow.define("setup-development-environment")
+  :description("Setup and verify development environment")
+  :version("1.0.0")
+  :tasks({
+    task("install-packages")
+      :description("Install required development packages")
+      :command(function(this, params)
+        pkg.install("git")
+        pkg.install("docker-ce")
+        pkg.install("nodejs")
+        pkg.install("python3")
+
+        return true, "Development packages installed successfully"
+      end)
+      :build(),
+
+    task("verify-packages")
+      :description("Verify package installations and versions")
+      :command(function(this, params)
+        -- Verifica se todos os pacotes foram instalados
+        infra_test.package_is_installed("git")
+        infra_test.package_is_installed("docker-ce")
+        infra_test.package_is_installed("nodejs")
+        infra_test.package_is_installed("python3")
+
+        -- Verifica versões específicas
+        infra_test.package_version("nodejs", "18")
+        infra_test.package_version("python3", "3.10")
+
+        -- Verifica binários disponíveis
+        infra_test.command_succeeds("which git")
+        infra_test.command_succeeds("which docker")
+        infra_test.command_succeeds("which node")
+        infra_test.command_succeeds("which python3")
+
+        -- Verifica versões via comando
+        infra_test.command_stdout_contains("node --version", "v18")
+        infra_test.command_stdout_contains("python3 --version", "Python 3.10")
+
+        return true, "Package verification completed successfully"
+      end)
+      :build(),
+
+    task("verify-docker-service")
+      :description("Verify Docker service is running")
+      :command(function(this, params)
+        infra_test.service_is_running("docker")
+        infra_test.service_is_enabled("docker")
+        infra_test.port_is_listening(2375)
+
+        return true, "Docker service verified successfully"
+      end)
+      :build()
+  })
   :delegate_to("dev-machine")
 ```
 
@@ -638,54 +727,68 @@ workflow("setup-development-environment")
 ```lua
 local infra_test = require("infra_test")
 
-workflow("audit-packages")
-  :task("audit-web-servers", function()
-    local servers = {"web-01", "web-02", "web-03"}
-    local required_packages = {
-      "nginx",
-      "certbot",
-      "ufw",
-      "fail2ban"
-    }
-    
-    for _, server in ipairs(servers) do
-      print("Auditing " .. server)
-      
-      for _, pkg_name in ipairs(required_packages) do
-        infra_test.package_is_installed(pkg_name, server)
-      end
-      
-      -- Verifica versão do nginx
-      infra_test.package_version("nginx", "1.18", server)
-      
-      -- Verifica que pacotes inseguros não estão instalados
-      infra_test.command_fails("dpkg -l telnetd", server)
-      infra_test.command_fails("dpkg -l rsh-server", server)
-    end
-  end)
-  
-  :task("audit-database-servers", function()
-    local db_servers = {"db-01", "db-02"}
-    
-    for _, server in ipairs(db_servers) do
-      print("Auditing database: " .. server)
-      
-      -- Verifica pacotes do PostgreSQL
-      infra_test.package_is_installed("postgresql-14", server)
-      infra_test.package_is_installed("postgresql-contrib", server)
-      
-      -- Verifica serviço
-      infra_test.service_is_running("postgresql", server)
-      infra_test.port_is_listening(5432, server)
-      
-      -- Verifica versão
-      infra_test.command_stdout_contains(
-        "psql --version",
-        "14.",
-        server
-      )
-    end
-  end)
+workflow.define("audit-packages")
+  :description("Audit packages across multiple servers")
+  :version("1.0.0")
+  :tasks({
+    task("audit-web-servers")
+      :description("Audit web server packages")
+      :command(function(this, params)
+        local servers = {"web-01", "web-02", "web-03"}
+        local required_packages = {
+          "nginx",
+          "certbot",
+          "ufw",
+          "fail2ban"
+        }
+
+        for _, server in ipairs(servers) do
+          print("Auditing " .. server)
+
+          for _, pkg_name in ipairs(required_packages) do
+            infra_test.package_is_installed(pkg_name, server)
+          end
+
+          -- Verifica versão do nginx
+          infra_test.package_version("nginx", "1.18", server)
+
+          -- Verifica que pacotes inseguros não estão instalados
+          infra_test.command_fails("dpkg -l telnetd", server)
+          infra_test.command_fails("dpkg -l rsh-server", server)
+        end
+
+        return true, "Web server audit completed successfully"
+      end)
+      :build(),
+
+    task("audit-database-servers")
+      :description("Audit database server packages")
+      :command(function(this, params)
+        local db_servers = {"db-01", "db-02"}
+
+        for _, server in ipairs(db_servers) do
+          print("Auditing database: " .. server)
+
+          -- Verifica pacotes do PostgreSQL
+          infra_test.package_is_installed("postgresql-14", server)
+          infra_test.package_is_installed("postgresql-contrib", server)
+
+          -- Verifica serviço
+          infra_test.service_is_running("postgresql", server)
+          infra_test.port_is_listening(5432, server)
+
+          -- Verifica versão
+          infra_test.command_stdout_contains(
+            "psql --version",
+            "14.",
+            server
+          )
+        end
+
+        return true, "Database server audit completed successfully"
+      end)
+      :build()
+  })
 ```
 
 ---
@@ -705,38 +808,66 @@ workflow("audit-packages")
 ### 1. Deploy com Validação
 Combine instalação de pacotes com validação imediata:
 ```lua
-workflow("deploy-with-validation")
-  :task("install", function()
-    pkg.install("nginx")
-  end)
-  :task("validate", function()
-    infra_test.package_is_installed("nginx")
-    infra_test.service_is_running("nginx")
-    infra_test.port_is_listening(80)
-  end)
+workflow.define("deploy-with-validation")
+  :description("Deploy with immediate validation")
+  :version("1.0.0")
+  :tasks({
+    task("install")
+      :description("Install nginx")
+      :command(function(this, params)
+        pkg.install("nginx")
+        return true, "Nginx installed"
+      end)
+      :build(),
+    task("validate")
+      :description("Validate installation")
+      :command(function(this, params)
+        infra_test.package_is_installed("nginx")
+        infra_test.service_is_running("nginx")
+        infra_test.port_is_listening(80)
+        return true, "Validation complete"
+      end)
+      :build()
+  })
 ```
 
 ### 2. Auditoria de Conformidade
 Valide que todos os servidores estão em conformidade:
 ```lua
-workflow("compliance-check")
-  :task("check-security-packages", function()
-    infra_test.package_is_installed("fail2ban")
-    infra_test.package_is_installed("ufw")
-    infra_test.service_is_running("fail2ban")
-  end)
+workflow.define("compliance-check")
+  :description("Check security compliance")
+  :version("1.0.0")
+  :tasks({
+    task("check-security-packages")
+      :description("Verify security packages")
+      :command(function(this, params)
+        infra_test.package_is_installed("fail2ban")
+        infra_test.package_is_installed("ufw")
+        infra_test.service_is_running("fail2ban")
+        return true, "Security compliance verified"
+      end)
+      :build()
+  })
 ```
 
 ### 3. Validação de Dependências
 Verifique que todas as dependências necessárias estão presentes:
 ```lua
-workflow("check-dependencies")
-  :task("verify", function()
-    local deps = {"python3", "python3-pip", "python3-venv"}
-    for _, dep in ipairs(deps) do
-      infra_test.package_is_installed(dep)
-    end
-  end)
+workflow.define("check-dependencies")
+  :description("Check all required dependencies")
+  :version("1.0.0")
+  :tasks({
+    task("verify")
+      :description("Verify all dependencies are installed")
+      :command(function(this, params)
+        local deps = {"python3", "python3-pip", "python3-venv"}
+        for _, dep in ipairs(deps) do
+          infra_test.package_is_installed(dep)
+        end
+        return true, "All dependencies verified"
+      end)
+      :build()
+  })
 ```
 
 ## Notas Importantes

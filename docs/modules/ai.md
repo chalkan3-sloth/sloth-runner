@@ -318,16 +318,20 @@ local insights = ai.generate_insights({
 ### 1. **Always Record Executions**
 ```lua
 -- Record every execution for AI learning
-workflow.define("my_pipeline", {
-    on_task_complete = function(task_name, success, output)
+local my_pipeline = workflow.define("my_pipeline")
+    :description("Pipeline with AI learning")
+    :version("1.0.0")
+    :on_task_complete(function(this, task_name, success, output)
         ai.record_execution({
             task_name = task_name,
             command = output.command,
             success = success,
             execution_time = output.duration
         })
-    end
-})
+        return true, "Execution recorded"
+    end)
+    :tasks({})
+    :build()
 ```
 
 ### 2. **Use Confidence Thresholds**
@@ -405,25 +409,34 @@ ai.record_execution({
 ```lua
 local build_task = task("ai_optimized_build")
     :description("Build with AI optimization")
-    :command(function(params, deps)
+    :command(function(this, params)
         local cmd = "go build -o app ./cmd/main.go"
         local optimization = ai.optimize_command(cmd, {
             history = ai.get_task_history(cmd)
         })
-        
+
         if optimization.confidence_score > 0.7 then
-            return exec.run(optimization.optimized_command)
+            local success, output = exec.run(optimization.optimized_command)
+            if not success then
+                return false, "Build failed: " .. output
+            end
+            return true, output
         else
-            return exec.run(cmd)
+            local success, output = exec.run(cmd)
+            if not success then
+                return false, "Build failed: " .. output
+            end
+            return true, output
         end
     end)
-    :on_success(function(params, output)
+    :on_success(function(this, params, output)
         ai.record_execution({
             task_name = "ai_optimized_build",
             command = output.command,
             success = true,
             execution_time = output.duration
         })
+        return true, "Execution recorded"
     end)
     :build()
 ```
@@ -432,18 +445,23 @@ local build_task = task("ai_optimized_build")
 
 ```lua
 local gitops_task = task("intelligent_deploy")
-    :command(function(params, deps)
+    :description("Deploy with AI risk assessment")
+    :command(function(this, params)
         local deploy_cmd = "kubectl apply -f manifests/"
-        
+
         -- AI failure prediction
         local prediction = ai.predict_failure("intelligent_deploy", deploy_cmd)
         if prediction.failure_probability > 0.25 then
             log.warn("High deployment risk detected")
-            return {success = false, message = "Deployment blocked by AI risk assessment"}
+            return false, "Deployment blocked by AI risk assessment"
         end
-        
+
         -- GitOps deployment
-        return gitops.sync_workflow(params.workflow_id)
+        local success, result = gitops.sync_workflow(params.workflow_id)
+        if not success then
+            return false, "GitOps sync failed: " .. result
+        end
+        return true, result
     end)
     :build()
 ```

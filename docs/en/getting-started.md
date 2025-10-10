@@ -56,9 +56,9 @@ Create a simple workflow file `hello.sloth`:
 -- hello.sloth
 task("hello")
   :description("My first task")
-  :command(function()
+  :command(function(this, params)
     print("🦥 Hello from Sloth Runner!")
-    return true
+    return true, "Task completed successfully"
   end)
   :build()
 ```
@@ -168,15 +168,15 @@ sloth-runner stack list
 ```lua
 task("deploy")
   :description("Deploy to production")
-  :condition(function() return os.getenv("ENV") == "prod" end)
-  :command(function()
+  :condition(function(this, params) return os.getenv("ENV") == "prod" end)
+  :command(function(this, params)
     log.info("Deploying...")
     return exec.run("kubectl apply -f k8s/")
   end)
-  :on_success(function()
+  :on_success(function(this, params)
     log.success("✅ Deployed successfully!")
   end)
-  :on_error(function(err)
+  :on_error(function(this, params, err)
     log.error("❌ Deployment failed: " .. err)
   end)
   :timeout(300)
@@ -201,9 +201,10 @@ local env = values.environment
 local replicas = values.replicas
 
 task("deploy")
-  :command(function()
+  :command(function(this, params)
     log.info("Deploying to " .. env)
     log.info("Replicas: " .. replicas)
+    return true, "Deployment configuration applied"
   end)
   :build()
 ```
@@ -226,10 +227,10 @@ Sloth Runner includes powerful built-in modules:
 local docker = require("docker")
 
 task("deploy_container")
-  :command(function()
+  :command(function(this, params)
     -- Pull image
     docker.pull("nginx:latest")
-    
+
     -- Run container
     docker.run({
       image = "nginx:latest",
@@ -237,8 +238,8 @@ task("deploy_container")
       ports = {"80:80"},
       detach = true
     })
-    
-    return true
+
+    return true, "Container deployed successfully"
   end)
   :build()
 ```
@@ -277,10 +278,11 @@ task("build")
   :build()
 
 task("deploy")
-  :command(function()
+  :command(function(this, params)
     exec.run("docker build -t myapp .")
     exec.run("docker push myapp")
     exec.run("kubectl rollout restart deployment/myapp")
+    return true, "Deployment completed"
   end)
   :depends_on("build")
   :build()
@@ -298,7 +300,7 @@ sloth-runner run -f pipeline.sloth -o rich
 local terraform = require("terraform")
 
 task("plan")
-  :command(function()
+  :command(function(this, params)
     return terraform.plan({
       dir = "./terraform",
       var_file = "prod.tfvars"
@@ -307,7 +309,7 @@ task("plan")
   :build()
 
 task("apply")
-  :command(function()
+  :command(function(this, params)
     return terraform.apply({
       dir = "./terraform",
       auto_approve = true
@@ -451,7 +453,7 @@ task("install"):command("apt-get install nginx"):build()
 
 -- ✅ Use built-in modules
 local pkg = require("pkg")
-task("install"):command(function()
+task("install"):command(function(this, params)
   return pkg.install("nginx")
 end):build()
 ```

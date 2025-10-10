@@ -9,10 +9,11 @@ The `pkg` module provides comprehensive cross-platform package management functi
 ```lua
 -- pkg is available globally, no require needed!
 task("install_tools")
-  :command(function()
+  :description("Install essential development tools")
+  :command(function(this, params)
     pkg.update()
     pkg.install({"git", "curl", "vim"})
-    return true
+    return true, "Tools installed"
   end)
   :build()
 ```
@@ -23,10 +24,11 @@ task("install_tools")
 local pkg = require("pkg")
 
 task("install_tools")
-  :command(function()
+  :description("Install essential development tools")
+  :command(function(this, params)
     pkg.update()
     pkg.install({"git", "curl", "vim"})
-    return true
+    return true, "Tools installed"
   end)
   :build()
 ```
@@ -73,15 +75,17 @@ local ok, msg = pkg.install({"git", "curl", "wget", "vim"})
 
 -- In Modern DSL task
 task("install_nginx")
-  :command(function()
+  :description("Install nginx web server")
+  :command(function(this, params)
     log.info("Installing nginx...")
     local success, output = pkg.install("nginx")
     if success then
       log.success("✅ Nginx installed!")
+      return true, "Nginx installed successfully"
     else
       log.error("❌ Failed: " .. output)
+      return false, "Failed to install nginx: " .. output
     end
-    return success
   end)
   :build()
 ```
@@ -210,10 +214,15 @@ Update the package cache/repository list.
 
 ```lua
 task("update_cache")
-  :command(function()
+  :description("Update package cache")
+  :command(function(this, params)
     log.info("Updating package cache...")
     local ok, msg = pkg.update()
-    return ok
+    if ok then
+      return true, "Cache updated successfully"
+    else
+      return false, "Failed to update cache: " .. msg
+    end
   end)
   :timeout("2m")
   :build()
@@ -231,13 +240,16 @@ Upgrade all installed packages to their latest versions.
 
 ```lua
 task("upgrade_system")
-  :command(function()
+  :description("Upgrade all system packages")
+  :command(function(this, params)
     pkg.update()
     local ok, msg = pkg.upgrade()
     if ok then
       log.success("✅ System upgraded!")
+      return true, "System upgraded successfully"
+    else
+      return false, "Failed to upgrade system: " .. msg
     end
-    return ok
   end)
   :timeout("30m")
   :build()
@@ -293,10 +305,11 @@ Remove packages that were automatically installed as dependencies but are no lon
 
 ```lua
 task("cleanup")
-  :command(function()
+  :description("Clean up package cache and unused dependencies")
+  :command(function(this, params)
     pkg.autoremove()
     pkg.clean()
-    return true
+    return true, "Cleanup completed"
   end)
   :build()
 ```
@@ -382,13 +395,13 @@ pkg.install_local("/tmp/my-app_1.0.0_amd64.deb")
 ```lua
 task("setup_dev_env")
   :description("Install development tools")
-  :command(function()
+  :command(function(this, params)
     log.info("🚀 Setting up development environment...")
-    
+
     -- Update cache
     log.info("📦 Updating package cache...")
     pkg.update()
-    
+
     -- Install dev tools
     local tools = {
       "git",
@@ -399,13 +412,13 @@ task("setup_dev_env")
       "htop",
       "jq"
     }
-    
+
     log.info("🛠️  Installing tools...")
     local ok, msg = pkg.install(tools)
-    
+
     if ok then
       log.success("✅ All tools installed!")
-      
+
       -- Verify installations
       for _, tool in ipairs(tools) do
         if pkg.is_installed(tool) then
@@ -413,12 +426,11 @@ task("setup_dev_env")
           log.info("  ✓ " .. tool .. " " .. (ver or ""))
         end
       end
+      return true, "All development tools installed successfully"
     else
       log.error("❌ Installation failed: " .. msg)
-      return false
+      return false, "Installation failed: " .. msg
     end
-    
-    return true
   end)
   :timeout("10m")
   :build()
@@ -429,7 +441,7 @@ task("setup_dev_env")
 ```lua
 task("ensure_nginx")
   :description("Ensure Nginx is installed and running")
-  :command(function()
+  :command(function(this, params)
     -- Check if already installed
     if pkg.is_installed("nginx") then
       log.info("✅ Nginx already installed")
@@ -440,16 +452,15 @@ task("ensure_nginx")
       local ok, msg = pkg.install("nginx")
       if not ok then
         log.error("Failed: " .. msg)
-        return false
+        return false, "Failed to install nginx: " .. msg
       end
     end
-    
+
     -- Start service (assuming systemd)
-    local systemd = require("systemd")
     systemd.enable("nginx")
     systemd.start("nginx")
-    
-    return true
+
+    return true, "Nginx is installed and running"
   end)
   :build()
 ```
@@ -458,24 +469,37 @@ task("ensure_nginx")
 
 ```lua
 task("update")
-  :command(function()
-    return pkg.update()
+  :description("Update package cache")
+  :command(function(this, params)
+    local ok, msg = pkg.update()
+    if ok then
+      return true, "Package cache updated"
+    else
+      return false, "Failed to update cache: " .. msg
+    end
   end)
   :build()
 
 task("install_web_stack")
+  :description("Install web server stack")
   :depends_on("update")
-  :command(function()
-    return pkg.install({"nginx", "php-fpm", "mysql-server"})
+  :command(function(this, params)
+    local ok, msg = pkg.install({"nginx", "php-fpm", "mysql-server"})
+    if ok then
+      return true, "Web stack installed successfully"
+    else
+      return false, "Failed to install web stack: " .. msg
+    end
   end)
   :build()
 
 task("cleanup")
+  :description("Clean up after installation")
   :depends_on("install_web_stack")
-  :command(function()
+  :command(function(this, params)
     pkg.autoremove()
     pkg.clean()
-    return true
+    return true, "Cleanup completed"
   end)
   :build()
 ```
@@ -484,23 +508,31 @@ task("cleanup")
 
 ```lua
 task("install_docker")
-  :command(function()
+  :description("Install Docker on any platform")
+  :command(function(this, params)
     local pm = pkg.get_manager()
     log.info("Package manager: " .. pm)
-    
+
     pkg.update()
-    
+
+    local ok, msg
     if pm == "apt" then
-      pkg.install({"docker.io", "docker-compose"})
+      ok, msg = pkg.install({"docker.io", "docker-compose"})
     elseif pm == "yum" or pm == "dnf" then
-      pkg.install({"docker", "docker-compose"})
+      ok, msg = pkg.install({"docker", "docker-compose"})
     elseif pm == "pacman" then
-      pkg.install({"docker", "docker-compose"})
+      ok, msg = pkg.install({"docker", "docker-compose"})
     elseif pm == "brew" then
-      pkg.install("docker")
+      ok, msg = pkg.install("docker")
+    else
+      return false, "Unsupported package manager: " .. pm
     end
-    
-    return true
+
+    if ok then
+      return true, "Docker installed successfully"
+    else
+      return false, "Failed to install Docker: " .. msg
+    end
   end)
   :build()
 ```
@@ -511,20 +543,25 @@ task("install_docker")
 
 ```lua
 task("safe_install")
-  :command(function()
+  :description("Install nginx with fallback")
+  :command(function(this, params)
     local ok, msg = pkg.install("nginx")
-    
+
     if not ok then
       log.error("Installation failed: " .. msg)
-      
+
       -- Try alternative
       log.info("Trying alternative package...")
       ok, msg = pkg.install("nginx-full")
     end
-    
-    return ok, msg
+
+    if ok then
+      return true, "Nginx installed successfully"
+    else
+      return false, "Failed to install nginx: " .. msg
+    end
   end)
-  :on_error(function(err)
+  :on_error(function(this, params, err)
     log.error("Task failed: " .. err)
     -- Cleanup or rollback here
   end)
@@ -577,8 +614,14 @@ pkg.install("nginx")
 
 ```lua
 task("upgrade_all")
-  :command(function()
-    return pkg.upgrade()
+  :description("Upgrade all packages")
+  :command(function(this, params)
+    local ok, msg = pkg.upgrade()
+    if ok then
+      return true, "All packages upgraded"
+    else
+      return false, "Failed to upgrade: " .. msg
+    end
   end)
   :timeout("30m")  -- ✅ Prevent hanging
   :build()
@@ -610,8 +653,14 @@ print(results)
 ```lua
 -- Wait and retry
 task("install")
-  :command(function()
-    return pkg.install("package")
+  :description("Install package with retry")
+  :command(function(this, params)
+    local ok, msg = pkg.install("package")
+    if ok then
+      return true, "Package installed"
+    else
+      return false, "Failed to install: " .. msg
+    end
   end)
   :retry(3)
   :retry_delay("30s")
@@ -637,400 +686,3 @@ task("install")
 ---
 
 **Package management made simple across all platforms!** 📦✨
-    ```lua
-    local pkg = require("pkg")
-    
-    local install_tools = task("install_tools")
-        :description("Install development tools")
-        :command(function(this, params)
-            log.info("Installing tools...")
-            
-            -- Install multiple packages
-            local tools = {"git", "curl", "wget", "vim"}
-            local success, output = pkg.install(tools)
-            
-            if success then
-                log.info("✅ Tools installed successfully!")
-                return true, "Installed"
-            else
-                log.error("❌ Failed: " .. output)
-                return false, "Failed"
-            end
-        end)
-        :timeout("300s")
-        :build()
-    
-    workflow.define("setup")
-        :tasks({ install_tools })
-    ```
-
-=== "With delegate_to"
-    ```lua
-    local pkg = require("pkg")
-    
-    local install_on_agent = task("install_on_agent")
-        :description("Install packages on remote agent")
-        :command(function(this, params)
-            log.info("Installing on remote agent...")
-            
-            local success, output = pkg.install({"htop", "ncdu"})
-            
-            if success then
-                log.info("✅ Installed on agent!")
-                return true, "OK"
-            else
-                return false, "Failed"
-            end
-        end)
-        :delegate_to("production-server")
-        :timeout("300s")
-        :build()
-    
-    workflow.define("remote_install")
-        :tasks({ install_on_agent })
-    ```
-
-#### `pkg.remove(packages)`
-
-Removes one or more packages.
-
-**Parameters:**
-- `packages`: String or Table
-
-**Returns:**
-- `success` (boolean), `output` (string)
-
-**Example:**
-
-```lua
-local pkg = require("pkg")
-
-local cleanup = task("cleanup")
-    :description("Remove unnecessary packages")
-    :command(function(this, params)
-        local packages = {"package1", "package2"}
-        local success, output = pkg.remove(packages)
-        
-        if success then
-            log.info("✅ Packages removed")
-            return true, "Removed"
-        end
-        return false, "Failed"
-    end)
-    :timeout("180s")
-    :build()
-```
-
-### Package Information
-
-#### `pkg.search(query)`
-
-Searches for packages.
-
-**Example:**
-
-```lua
-local pkg = require("pkg")
-
-local search_python = task("search_python")
-    :description("Search for Python packages")
-    :command(function(this, params)
-        local success, results = pkg.search("python3")
-        
-        if success then
-            log.info("Search results:")
-            local count = 0
-            for line in results:gmatch("[^\r\n]+") do
-                if count < 10 then
-                    log.info("  • " .. line)
-                end
-                count = count + 1
-            end
-            return true, count .. " results"
-        end
-        return false, "Search failed"
-    end)
-    :timeout("60s")
-    :build()
-```
-
-#### `pkg.info(package)`
-
-Gets package information.
-
-**Example:**
-
-```lua
-local success, info = pkg.info("curl")
-if success then
-    log.info("Package info:\n" .. info)
-end
-```
-
-#### `pkg.list()`
-
-Lists installed packages.
-
-**Returns:** `success` (boolean), `packages` (table)
-
-**Example:**
-
-```lua
-local success, packages = pkg.list()
-if success and type(packages) == "table" then
-    local count = 0
-    for _ in pairs(packages) do count = count + 1 end
-    log.info("📦 Total: " .. count .. " packages")
-end
-```
-
-### System Maintenance
-
-#### `pkg.update()`
-
-Updates package cache.
-
-**Example:**
-
-```lua
-local update_cache = task("update_cache")
-    :description("Update package cache")
-    :command(function(this, params)
-        log.info("Updating...")
-        return pkg.update()
-    end)
-    :timeout("120s")
-    :build()
-```
-
-#### `pkg.upgrade()`
-
-Upgrades all packages.
-
-#### `pkg.clean()`
-
-Cleans package cache.
-
-#### `pkg.autoremove()`
-
-Removes unused dependencies.
-
-**Example:**
-
-```lua
-local maintenance = task("maintenance")
-    :description("System maintenance")
-    :command(function(this, params)
-        -- Update
-        pkg.update()
-        
-        -- Upgrade
-        pkg.upgrade()
-        
-        -- Clean
-        pkg.clean()
-        pkg.autoremove()
-        
-        return true, "Maintenance complete"
-    end)
-    :timeout("600s")
-    :build()
-```
-
-### Advanced Functions
-
-#### `pkg.is_installed(package)`
-
-Checks if installed.
-
-**Example:**
-
-```lua
-local pkg = require("pkg")
-
-local check_requirements = task("check_requirements")
-    :description("Check required packages")
-    :command(function(this, params)
-        local required = {"git", "curl", "wget"}
-        local missing = {}
-        
-        for _, pkg_name in ipairs(required) do
-            local installed, _ = pkg.is_installed(pkg_name)
-            if not installed then
-                table.insert(missing, pkg_name)
-            end
-        end
-        
-        if #missing > 0 then
-            return false, "Missing: " .. table.concat(missing, ", ")
-        end
-        
-        return true, "All OK"
-    end)
-    :build()
-```
-
-#### `pkg.get_manager()`
-
-Returns package manager name.
-
-**Example:**
-
-```lua
-local manager, err = pkg.get_manager()
-log.info("Manager: " .. (manager or "unknown"))
-```
-
-#### `pkg.which(executable)`
-
-Finds executable path.
-
-**Example:**
-
-```lua
-local path, err = pkg.which("git")
-if path then
-    log.info("Git at: " .. path)
-end
-```
-
-#### `pkg.version(package)`
-
-Gets package version.
-
-#### `pkg.deps(package)`
-
-Lists dependencies.
-
-#### `pkg.install_local(filepath)`
-
-Installs from local file (.deb, .rpm).
-
-## 🎯 Complete Examples
-
-### Development Environment Setup
-
-```lua
-local pkg = require("pkg")
-
-local update = task("update")
-    :command(function() return pkg.update() end)
-    :build()
-
-local install_tools = task("install_tools")
-    :command(function()
-        local tools = {"git", "curl", "wget", "vim", "htop"}
-        return pkg.install(tools)
-    end)
-    :depends_on({"update"})
-    :build()
-
-local verify = task("verify")
-    :command(function()
-        for _, tool in ipairs({"git", "curl"}) do
-            if pkg.is_installed(tool) then
-                local path = pkg.which(tool)
-                log.info("✅ " .. tool .. " (" .. path .. ")")
-            end
-        end
-        return true, "OK"
-    end)
-    :depends_on({"install_tools"})
-    :build()
-
-workflow.define("setup_dev")
-    :tasks({ update, install_tools, verify })
-```
-
-### Distributed Management
-
-```lua
-local pkg = require("pkg")
-
-local update_servers = task("update_servers")
-    :command(function() return pkg.update() end)
-    :delegate_to("prod-server-1")
-    :build()
-
-local install_monitoring = task("install_monitoring")
-    :command(function()
-        return pkg.install({"htop", "iotop", "nethogs"})
-    end)
-    :delegate_to("prod-server-1")
-    :depends_on({"update_servers"})
-    :build()
-
-workflow.define("setup_monitoring")
-    :tasks({ update_servers, install_monitoring })
-```
-
-### System Audit
-
-```lua
-local pkg = require("pkg")
-
-local audit = task("audit")
-    :command(function()
-        log.info("📊 System Audit")
-        log.info("=".rep(60))
-        
-        local manager = pkg.get_manager()
-        log.info("Manager: " .. manager)
-        
-        local _, packages = pkg.list()
-        local count = 0
-        for _ in pairs(packages) do count = count + 1 end
-        log.info("Packages: " .. count)
-        
-        local critical = {"openssl", "curl"}
-        for _, p in ipairs(critical) do
-            local installed = pkg.is_installed(p)
-            log.info((installed and "✅" or "❌") .. " " .. p)
-        end
-        
-        return true, "OK"
-    end)
-    :build()
-
-workflow.define("audit")
-    :tasks({ audit })
-```
-
-## 🚀 Best Practices
-
-1. **Update before installing:**
-   ```lua
-   pkg.update()
-   pkg.install("package")
-   ```
-
-2. **Check before installing:**
-   ```lua
-   if not pkg.is_installed("git") then
-       pkg.install("git")
-   end
-   ```
-
-3. **Cleanup after operations:**
-   ```lua
-   pkg.clean()
-   pkg.autoremove()
-   ```
-
-4. **Use delegate_to for remote:**
-   ```lua
-   :delegate_to("server-name")
-   ```
-
-## ⚠️ Platform Notes
-
-- **Linux**: Requires sudo
-- **macOS**: Homebrew doesn't need sudo
-- **Arch**: Uses pacman syntax
-- **openSUSE**: Uses zypper
-
-## 🔗 See Also
-
-- [exec Module](exec.md)
-- [Modern DSL Guide](../modern-dsl/overview.md)
-- [Distributed Agents](../distributed.md)
