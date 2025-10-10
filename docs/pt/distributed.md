@@ -18,23 +18,19 @@ Para executar uma tarefa em um agente remoto, você precisa especificar o campo 
 Você pode definir o agente diretamente dentro do seu grupo `Modern DSLs` usando o campo `delegate_to`. Todas as tarefas dentro deste grupo serão então delegadas a este agente, a menos que sejam substituídas por um `delegate_to` específico da tarefa.
 
 ```lua
-Modern DSLs = {
-  my_distributed_group = {
-    description = "Um grupo de tarefas com tarefas distribuídas.",
-    delegate_to = { address = "localhost:50051" }, -- Define o agente para todo o grupo
-    tasks = {
-      {
-        name = "remote_hello",
-        description = "Executa uma tarefa hello world em um agente remoto.",
-        -- Não é necessário o campo 'delegate_to' aqui, ele herda do grupo
-        command = function(params)
-          log.info("Olá do agente remoto!")
-          return true, "Tarefa remota executada."
-        end
-      }
-    }
-  }
-}
+local remote_hello = task("remote_hello")
+    :description("Executa uma tarefa hello world em um agente remoto")
+    :command(function(this, params)
+        log.info("Olá do agente remoto!")
+        return true, "Tarefa remota executada."
+    end)
+    :build()
+
+workflow.define("my_distributed_group")
+    :description("Um grupo de tarefas com tarefas distribuídas")
+    :version("1.0.0")
+    :tasks({remote_hello})
+    :delegate_to({ address = "localhost:50051" }) -- Define o agente para todo o grupo
 ```
 
 ### 2. Delegar a um Agente no Nível da Tarefa
@@ -42,27 +38,24 @@ Modern DSLs = {
 Alternativamente, você pode especificar o campo `delegate_to` diretamente em uma tarefa individual. Isso substituirá qualquer delegação em nível de grupo ou permitirá a execução remota ad-hoc.
 
 ```lua
-Modern DSLs = {
-  my_group = {
-    description = "Um grupo de tarefas com uma tarefa remota específica.",
-    tasks = {
-      {
-        name = "specific_remote_task",
-        description = "Executa esta tarefa em um agente remoto específico.",
-        delegate_to = { address = "192.168.1.100:50051" }, -- Define o agente apenas para esta tarefa
-        command = function(params)
-          log.info("Olá de um agente remoto específico!")
-          return true, "Tarefa remota específica executada."
-        end
-      },
-      {
-        name = "local_task",
-        description = "Esta tarefa é executada localmente.",
-        command = "echo 'Olá da máquina local!'"
-      }
-    }
-  }
-}
+local specific_remote_task = task("specific_remote_task")
+    :description("Executa esta tarefa em um agente remoto específico")
+    :delegate_to({ address = "192.168.1.100:50051" }) -- Define o agente apenas para esta tarefa
+    :command(function(this, params)
+        log.info("Olá de um agente remoto específico!")
+        return true, "Tarefa remota específica executada."
+    end)
+    :build()
+
+local local_task = task("local_task")
+    :description("Esta tarefa é executada localmente")
+    :command("echo 'Olá da máquina local!'")
+    :build()
+
+workflow.define("my_group")
+    :description("Um grupo de tarefas com uma tarefa remota específica")
+    :version("1.0.0")
+    :tasks({specific_remote_task, local_task})
 ```
 
 ## Executando um Agente

@@ -107,35 +107,43 @@ Gera um caminho de diretório temporário único. Nota: Esta função apenas ret
 ### Exemplo
 
 ```lua
-command = function()
-  local fs = require("fs")
-  
-  local tmp_dir = "/tmp/fs-example"
-  log.info("Criando diretório: " .. tmp_dir)
-  fs.mkdir(tmp_dir)
+local fs_operations = task("fs_operations")
+    :description("Demonstra operações do módulo FS")
+    :command(function(this, params)
+        local fs = require("fs")
 
-  local file_path = tmp_dir .. "/meu_arquivo.txt"
-  log.info("Escrevendo no arquivo: " .. file_path)
-  fs.write(file_path, "Olá, Sloth Runner!\n")
+        local tmp_dir = "/tmp/fs-example"
+        log.info("Criando diretório: " .. tmp_dir)
+        fs.mkdir(tmp_dir)
 
-  log.info("Adicionando ao arquivo...")
-  fs.append(file_path, "Esta é uma nova linha.")
+        local file_path = tmp_dir .. "/meu_arquivo.txt"
+        log.info("Escrevendo no arquivo: " .. file_path)
+        fs.write(file_path, "Olá, Sloth Runner!\n")
 
-  if fs.exists(file_path) then
-    log.info("Conteúdo do arquivo: " .. fs.read(file_path))
-  end
+        log.info("Adicionando ao arquivo...")
+        fs.append(file_path, "Esta é uma nova linha.")
 
-  log.info("Listando conteúdo de " .. tmp_dir)
-  local contents = fs.ls(tmp_dir)
-  for i, name in ipairs(contents) do
-    print("- " .. name)
-  end
+        if fs.exists(file_path) then
+            log.info("Conteúdo do arquivo: " .. fs.read(file_path))
+        end
 
-  log.info("Limpando...")
-  fs.rm_r(tmp_dir)
-  
-  return true, "Operações do módulo FS bem-sucedidas."
-end
+        log.info("Listando conteúdo de " .. tmp_dir)
+        local contents = fs.ls(tmp_dir)
+        for i, name in ipairs(contents) do
+            print("- " .. name)
+        end
+
+        log.info("Limpando...")
+        fs.rm_r(tmp_dir)
+
+        return true, "Operações do módulo FS bem-sucedidas."
+    end)
+    :build()
+
+workflow.define("fs_example")
+    :description("Exemplo de uso do módulo FS")
+    :version("1.0.0")
+    :tasks({fs_operations})
 ```
 
 ```

@@ -216,18 +216,18 @@ function verificar_saude_aplicacao()
 end
 
 -- Usar em tasks
-Modern DSLs = {
-    monitoramento_saude = {
-        tasks = {
-            verificacao_saude = {
-                command = function()
-                    local saudavel = verificar_saude_aplicacao()
-                    return saudavel, saudavel and "Sistema saudável" or "Problemas de saúde detectados"
-                end
-            }
-        }
-    }
-}
+local verificacao_saude = task("verificacao_saude")
+    :description("Verifica saúde da aplicação")
+    :command(function(this, params)
+        local saudavel = verificar_saude_aplicacao()
+        return saudavel, saudavel and "Sistema saudável" or "Problemas de saúde detectados"
+    end)
+    :build()
+
+workflow.define("monitoramento_saude")
+    :description("Monitoramento de saúde do sistema")
+    :version("1.0.0")
+    :tasks({verificacao_saude})
 ```
 
 ## 🚨 Sistema de Alertas
@@ -296,57 +296,57 @@ end
 ### Exemplo de Monitoramento de Performance
 
 ```lua
-Modern DSLs = {
-    monitoramento_performance = {
-        tasks = {
-            monitorar_performance_api = {
-                command = function()
-                    -- Iniciar sessão de monitoramento
-                    log.info("Iniciando monitoramento de performance da API...")
-                    
-                    -- Simular chamadas de API e medir performance
-                    for i = 1, 10 do
-                        local tempo_api = metrics.timer("chamada_api_" .. i, function()
-                            -- Simular chamada de API
-                            exec.run("curl -s -o /dev/null -w '%{time_total}' https://api.exemplo.com/health")
-                        end, {
-                            endpoint = "health",
-                            numero_chamada = tostring(i)
-                        })
-                        
-                        -- Registrar tempo de resposta
-                        metrics.histogram("tempo_resposta_api", tempo_api, {
-                            endpoint = "health"
-                        })
-                        
-                        -- Verificar se o tempo de resposta é aceitável
-                        if tempo_api > 1000 then -- 1 segundo
-                            metrics.counter("chamadas_api_lentas", 1, {
-                                endpoint = "health"
-                            })
-                            
-                            metrics.alert("resposta_api_lenta", {
-                                level = "warning",
-                                message = string.format("Resposta lenta da API: %.2f ms", tempo_api),
-                                tempo_resposta = tempo_api,
-                                threshold = 1000
-                            })
-                        end
-                        
-                        -- Breve atraso entre chamadas
-                        exec.run("sleep 0.1")
-                    end
-                    
-                    -- Obter estatísticas resumidas
-                    local saude_sistema = metrics.health_status()
-                    log.info("Saúde do sistema após testes da API: " .. saude_sistema.overall)
-                    
-                    return true, "Monitoramento de performance da API concluído"
-                end
-            }
-        }
-    }
-}
+local monitorar_performance_api = task("monitorar_performance_api")
+    :description("Monitora performance da API")
+    :command(function(this, params)
+        -- Iniciar sessão de monitoramento
+        log.info("Iniciando monitoramento de performance da API...")
+
+        -- Simular chamadas de API e medir performance
+        for i = 1, 10 do
+            local tempo_api = metrics.timer("chamada_api_" .. i, function()
+                -- Simular chamada de API
+                exec.run("curl -s -o /dev/null -w '%{time_total}' https://api.exemplo.com/health")
+            end, {
+                endpoint = "health",
+                numero_chamada = tostring(i)
+            })
+
+            -- Registrar tempo de resposta
+            metrics.histogram("tempo_resposta_api", tempo_api, {
+                endpoint = "health"
+            })
+
+            -- Verificar se o tempo de resposta é aceitável
+            if tempo_api > 1000 then -- 1 segundo
+                metrics.counter("chamadas_api_lentas", 1, {
+                    endpoint = "health"
+                })
+
+                metrics.alert("resposta_api_lenta", {
+                    level = "warning",
+                    message = string.format("Resposta lenta da API: %.2f ms", tempo_api),
+                    tempo_resposta = tempo_api,
+                    threshold = 1000
+                })
+            end
+
+            -- Breve atraso entre chamadas
+            exec.run("sleep 0.1")
+        end
+
+        -- Obter estatísticas resumidas
+        local saude_sistema = metrics.health_status()
+        log.info("Saúde do sistema após testes da API: " .. saude_sistema.overall)
+
+        return true, "Monitoramento de performance da API concluído"
+    end)
+    :build()
+
+workflow.define("monitoramento_performance")
+    :description("Monitoramento de performance da API")
+    :version("1.0.0")
+    :tasks({monitorar_performance_api})
 ```
 
 ## 🌐 Endpoints HTTP

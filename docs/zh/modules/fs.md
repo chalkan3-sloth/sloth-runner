@@ -98,9 +98,9 @@
 ### 示例
 
 ```lua
-command = function()
+command = function(this, params)
   local fs = require("fs")
-  
+
   local tmp_dir = "/tmp/fs-example"
   log.info("正在创建目录: " .. tmp_dir)
   fs.mkdir(tmp_dir)
@@ -124,7 +124,7 @@ command = function()
 
   log.info("正在清理...")
   fs.rm_r(tmp_dir)
-  
+
   return true, "FS 模块操作成功。"
 end
 ```

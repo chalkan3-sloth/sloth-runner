@@ -28,52 +28,50 @@
 ```lua
 -- examples/exec_module_example.sloth
 
-Modern DSLs = {
-  main = {
-    description = "一个演示 exec 模块的任务。",
-    tasks = {
-      {
-        name = "run-with-options",
-        description = "使用自定义工作目录和环境执行命令。",
-        command = function()
-          log.info("准备运行自定义命令...")
-          
-          local exec = require("exec")
-          
-          -- 为示例创建一个临时目录
-          local temp_dir = "/tmp/sloth-exec-test"
-          fs.mkdir(temp_dir)
-          fs.write(temp_dir .. "/test.txt", "来自测试文件的问候")
+local run_with_options = task("run-with-options")
+    :description("使用自定义工作目录和环境执行命令。")
+    :command(function(this, params)
+        log.info("准备运行自定义命令...")
 
-          -- 定义选项
-          local options = {
+        local exec = require("exec")
+
+        -- 为示例创建一个临时目录
+        local temp_dir = "/tmp/sloth-exec-test"
+        fs.mkdir(temp_dir)
+        fs.write(temp_dir .. "/test.txt", "来自测试文件的问候")
+
+        -- 定义选项
+        local options = {
             workdir = temp_dir,
             env = {
-              MY_VAR = "SlothRunner",
-              ANOTHER_VAR = "is_awesome"
+                MY_VAR = "SlothRunner",
+                ANOTHER_VAR = "is_awesome"
             }
-          }
+        }
 
-          -- 执行命令
-          local result = exec.run("echo 'MY_VAR is $MY_VAR' && ls -l && cat test.txt", options)
+        -- 执行命令
+        local result = exec.run("echo 'MY_VAR is $MY_VAR' && ls -l && cat test.txt", options)
 
-          -- 清理临时目录
-          fs.rm_r(temp_dir)
+        -- 清理临时目录
+        fs.rm_r(temp_dir)
 
-          if result.success then
+        if result.success then
             log.info("命令成功执行！")
             print("--- STDOUT ---")
             print(result.stdout)
             print("--------------")
             return true, "Exec 命令成功。"
-          else
+        else
             log.error("Exec 命令失败。")
             log.error("Stderr: " .. result.stderr)
             return false, "Exec 命令失败。"
-          end
         end
-      }
-    }
-  }
-}
+    end)
+    :build()
+
+workflow
+    .define("main")
+    :description("一个演示 exec 模块的任务。")
+    :version("1.0.0")
+    :tasks({run_with_options})
 ```

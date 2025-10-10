@@ -84,10 +84,10 @@
 此示例演示了一个完整的类似 CI/CD 的工作流：克隆、创建版本文件、添加、提交、打标签和推送。
 
 ```lua
-command = function()
+command = function(this, params)
   local git = require("git")
   local repo_path = "/tmp/git-example-repo"
-  
+
   -- 清理以前的运行
   fs.rm_r(repo_path)
 

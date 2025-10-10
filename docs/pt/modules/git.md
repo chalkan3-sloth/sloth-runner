@@ -84,36 +84,44 @@ Este método é chamado no final de uma cadeia para obter o resultado da *últim
 Este exemplo demonstra um fluxo de trabalho completo semelhante a CI/CD: clonar, criar um arquivo de versão, adicionar, commitar, criar uma tag e enviar (push).
 
 ```lua
-command = function()
-  local git = require("git")
-  local repo_path = "/tmp/git-example-repo"
-  
-  -- Limpa execuções anteriores
-  fs.rm_r(repo_path)
+local git_operations = task("git_operations")
+    :description("Demonstra operações do módulo Git")
+    :command(function(this, params)
+        local git = require("git")
+        local repo_path = "/tmp/git-example-repo"
 
-  -- 1. Clona o repositório
-  log.info("Clonando repositório...")
-  local repo, err = git.clone("https://github.com/chalkan3-sloth/sloth-runner.git", repo_path)
-  if err then
-    return false, "Falha ao clonar: " .. err
-  end
+        -- Limpa execuções anteriores
+        fs.rm_r(repo_path)
 
-  -- 2. Cria e escreve um arquivo de versão
-  fs.write(repo_path .. "/VERSION", "1.2.3")
+        -- 1. Clona o repositório
+        log.info("Clonando repositório...")
+        local repo, err = git.clone("https://github.com/chalkan3-sloth/sloth-runner.git", repo_path)
+        if err then
+            return false, "Falha ao clonar: " .. err
+        end
 
-  -- 3. Encadear comandos Git: add -> commit -> tag -> push
-  log.info("Adicionando, commitando, criando tag e enviando...")
-  repo:add("."):commit("ci: Bump version to 1.2.3"):tag("v1.2.3"):push("origin", "main", { follow_tags = true })
+        -- 2. Cria e escreve um arquivo de versão
+        fs.write(repo_path .. "/VERSION", "1.2.3")
 
-  -- 4. Obtém o resultado da operação final (push)
-  local result = repo:result()
+        -- 3. Encadear comandos Git: add -> commit -> tag -> push
+        log.info("Adicionando, commitando, criando tag e enviando...")
+        repo:add("."):commit("ci: Bump version to 1.2.3"):tag("v1.2.3"):push("origin", "main", { follow_tags = true })
 
-  if not result.success then
-    log.error("O push do Git falhou: " .. result.stderr)
-    return false, "O push do Git falhou."
-  end
+        -- 4. Obtém o resultado da operação final (push)
+        local result = repo:result()
 
-  log.info("Tag da nova versão enviada com sucesso.")
-  return true, "Operações Git bem-sucedidas."
-end
+        if not result.success then
+            log.error("O push do Git falhou: " .. result.stderr)
+            return false, "O push do Git falhou."
+        end
+
+        log.info("Tag da nova versão enviada com sucesso.")
+        return true, "Operações Git bem-sucedidas."
+    end)
+    :build()
+
+workflow.define("git_example")
+    :description("Exemplo de uso do módulo Git")
+    :version("1.0.0")
+    :tasks({git_operations})
 ```

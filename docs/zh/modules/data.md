@@ -53,7 +53,7 @@
 ### 示例
 
 ```lua
-command = function()
+command = function(this, params)
   local data = require("data")
 
   -- JSON 示例
@@ -79,7 +79,7 @@ command = function()
     return false, "序列化到 YAML 失败: " .. err
   end
   print("序列化的 YAML:\n" .. yaml_str)
-  
+
   log.info("测试 YAML 解析...")
   parsed_table, err = data.parse_yaml(yaml_str)
   if err then

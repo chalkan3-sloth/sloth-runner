@@ -68,11 +68,11 @@
 此示例显示了一个常见模式：部署一个网络堆栈 (VPC)，然后使用其输出 (`vpcId`) 来配置和部署一个应用程序堆栈。
 
 ```lua
-command = function()
+command = function(this, params)
 
   -- 1. 定义 VPC 堆栈
   local vpc_stack = pulumi.stack("my-org/vpc/prod", { workdir = "./pulumi/vpc" })
-  
+
   -- 2. 部署 VPC
   log.info("正在部署 VPC 堆栈...")
   local vpc_result = vpc_stack:up({ yes = true })

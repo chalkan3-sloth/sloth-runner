@@ -41,27 +41,35 @@ Registra uma mensagem no nível DEBUG. Essas mensagens geralmente ficam ocultas,
 ### Exemplo
 
 ```lua
-command = function()
-  -- O módulo log está disponível globalmente e não precisa ser requerido.
-  
-  log.info("Iniciando a tarefa de exemplo de log.")
-  
-  local user_name = "Sloth"
-  log.debug("O usuário atual é: " .. user_name)
+local log_example = task("log_example")
+    :description("Demonstra uso do módulo log")
+    :command(function(this, params)
+        -- O módulo log está disponível globalmente e não precisa ser requerido.
 
-  if user_name ~= "Sloth" then
-    log.warn("O usuário não é o esperado.")
-  end
+        log.info("Iniciando a tarefa de exemplo de log.")
 
-  log.info("A tarefa está executando sua ação principal...")
-  
-  local success = true -- Simula uma operação bem-sucedida
-  if not success then
-    log.error("A ação principal falhou inesperadamente!")
-    return false, "Ação principal falhou"
-  end
+        local user_name = "Sloth"
+        log.debug("O usuário atual é: " .. user_name)
 
-  log.info("Tarefa de exemplo de log concluída com sucesso.")
-  return true, "Log demonstrado."
-end
+        if user_name ~= "Sloth" then
+            log.warn("O usuário não é o esperado.")
+        end
+
+        log.info("A tarefa está executando sua ação principal...")
+
+        local success = true -- Simula uma operação bem-sucedida
+        if not success then
+            log.error("A ação principal falhou inesperadamente!")
+            return false, "Ação principal falhou"
+        end
+
+        log.info("Tarefa de exemplo de log concluída com sucesso.")
+        return true, "Log demonstrado."
+    end)
+    :build()
+
+workflow.define("log_demo")
+    :description("Demonstração do módulo de log")
+    :version("1.0.0")
+    :tasks({log_example})
 ```

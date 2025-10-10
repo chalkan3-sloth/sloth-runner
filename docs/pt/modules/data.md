@@ -53,42 +53,50 @@ Serializa uma tabela Lua em uma string YAML.
 ### Exemplo
 
 ```lua
-command = function()
-  local data = require("data")
+local data_operations = task("data_operations")
+    :description("Demonstra operações do módulo Data")
+    :command(function(this, params)
+        local data = require("data")
 
-  -- Exemplo JSON
-  log.info("Testando serialização JSON...")
-  local minha_tabela = { name = "sloth-runner", version = 1.0, features = { "tasks", "lua" } }
-  local json_str, err = data.to_json(minha_tabela)
-  if err then
-    return false, "Falha ao serializar para JSON: " .. err
-  end
-  print("JSON Serializado: " .. json_str)
+        -- Exemplo JSON
+        log.info("Testando serialização JSON...")
+        local minha_tabela = { name = "sloth-runner", version = 1.0, features = { "tasks", "lua" } }
+        local json_str, err = data.to_json(minha_tabela)
+        if err then
+            return false, "Falha ao serializar para JSON: " .. err
+        end
+        print("JSON Serializado: " .. json_str)
 
-  log.info("Testando análise de JSON...")
-  local tabela_parseada, err = data.parse_json(json_str)
-  if err then
-    return false, "Falha ao analisar JSON: " .. err
-  end
-  log.info("Nome extraído do JSON: " .. tabela_parseada.name)
+        log.info("Testando análise de JSON...")
+        local tabela_parseada, err = data.parse_json(json_str)
+        if err then
+            return false, "Falha ao analisar JSON: " .. err
+        end
+        log.info("Nome extraído do JSON: " .. tabela_parseada.name)
 
-  -- Exemplo YAML
-  log.info("Testando serialização YAML...")
-  local yaml_str, err = data.to_yaml(minha_tabela)
-  if err then
-    return false, "Falha ao serializar para YAML: " .. err
-  end
-  print("YAML Serializado:\n" .. yaml_str)
-  
-  log.info("Testando análise de YAML...")
-  tabela_parseada, err = data.parse_yaml(yaml_str)
-  if err then
-    return false, "Falha ao analisar YAML: " .. err
-  end
-  log.info("Versão extraída do YAML: " .. tabela_parseada.version)
+        -- Exemplo YAML
+        log.info("Testando serialização YAML...")
+        local yaml_str, err = data.to_yaml(minha_tabela)
+        if err then
+            return false, "Falha ao serializar para YAML: " .. err
+        end
+        print("YAML Serializado:\n" .. yaml_str)
 
-  return true, "Operações do módulo Data bem-sucedidas."
-end
+        log.info("Testando análise de YAML...")
+        tabela_parseada, err = data.parse_yaml(yaml_str)
+        if err then
+            return false, "Falha ao analisar YAML: " .. err
+        end
+        log.info("Versão extraída do YAML: " .. tabela_parseada.version)
+
+        return true, "Operações do módulo Data bem-sucedidas."
+    end)
+    :build()
+
+workflow.define("data_example")
+    :description("Exemplo de uso do módulo Data")
+    :version("1.0.0")
+    :tasks({data_operations})
 ```
 
 ```

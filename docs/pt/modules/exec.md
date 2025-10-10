@@ -28,52 +28,49 @@ Este exemplo demonstra como usar `exec.run` com um diretório de trabalho e vari
 ```lua
 -- examples/exec_module_example.sloth
 
-Modern DSLs = {
-  main = {
-    description = "Uma tarefa para demonstrar o módulo exec.",
-    tasks = {
-      {
-        name = "run-with-options",
-        description = "Executa um comando com um workdir e ambiente personalizados.",
-        command = function()
-          log.info("Preparando para executar um comando personalizado...")
-          
-          local exec = require("exec")
-          
-          -- Cria um diretório temporário para o exemplo
-          local temp_dir = "/tmp/sloth-exec-test"
-          fs.mkdir(temp_dir)
-          fs.write(temp_dir .. "/test.txt", "olá do arquivo de teste")
+local run_with_options = task("run-with-options")
+    :description("Executa um comando com um workdir e ambiente personalizados")
+    :command(function(this, params)
+        log.info("Preparando para executar um comando personalizado...")
 
-          -- Define as opções
-          local options = {
+        local exec = require("exec")
+
+        -- Cria um diretório temporário para o exemplo
+        local temp_dir = "/tmp/sloth-exec-test"
+        fs.mkdir(temp_dir)
+        fs.write(temp_dir .. "/test.txt", "olá do arquivo de teste")
+
+        -- Define as opções
+        local options = {
             workdir = temp_dir,
             env = {
-              MINHA_VAR = "SlothRunner",
-              OUTRA_VAR = "e_incrivel"
+                MINHA_VAR = "SlothRunner",
+                OUTRA_VAR = "e_incrivel"
             }
-          }
+        }
 
-          -- Executa o comando
-          local result = exec.run("echo 'MINHA_VAR é $MINHA_VAR' && ls -l && cat test.txt", options)
+        -- Executa o comando
+        local result = exec.run("echo 'MINHA_VAR é $MINHA_VAR' && ls -l && cat test.txt", options)
 
-          -- Limpa o diretório temporário
-          fs.rm_r(temp_dir)
+        -- Limpa o diretório temporário
+        fs.rm_r(temp_dir)
 
-          if result.success then
+        if result.success then
             log.info("Comando executado com sucesso!")
             print("--- STDOUT ---")
             print(result.stdout)
             print("--------------")
             return true, "Comando exec bem-sucedido."
-          else
+        else
             log.error("Comando exec falhou.")
             log.error("Stderr: " .. result.stderr)
             return false, "Comando exec falhou."
-          end
         end
-      }
-    }
-  }
-}
+    end)
+    :build()
+
+workflow.define("exec_example")
+    :description("Uma tarefa para demonstrar o módulo exec")
+    :version("1.0.0")
+    :tasks({run_with_options})
 ```

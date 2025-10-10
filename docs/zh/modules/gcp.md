@@ -25,45 +25,43 @@
 ```lua
 -- examples/gcp_cli_example.sloth
 
-Modern DSLs = {
-  main = {
-    description = "一个列出 GCP 计算实例的任务。",
-    tasks = {
-      {
-        name = "list-instances",
-        description = "列出 us-central1 中的 GCE 实例。",
-        command = function()
-          log.info("正在列出 GCP 实例...")
-          
-          -- 需要 gcp 模块使其可用
-          local gcp = require("gcp")
+local list_instances = task("list-instances")
+    :description("列出 us-central1 中的 GCE 实例。")
+    :command(function(this, params)
+        log.info("正在列出 GCP 实例...")
 
-          -- 执行 gcloud 命令
-          local result = gcp.exec({
-            "compute", 
-            "instances", 
-            "list", 
+        -- 需要 gcp 模块使其可用
+        local gcp = require("gcp")
+
+        -- 执行 gcloud 命令
+        local result = gcp.exec({
+            "compute",
+            "instances",
+            "list",
             "--project", "my-gcp-project-id",
             "--zones", "us-central1-a,us-central1-b"
-          })
+        })
 
-          -- 检查结果
-          if result and result.exit_code == 0 then
+        -- 检查结果
+        if result and result.exit_code == 0 then
             log.info("成功列出实例。")
             print("--- 实例列表 ---")
             print(result.stdout)
             print("---------------------")
             return true, "GCP 命令成功。"
-          else
+        else
             log.error("未能列出 GCP 实例。")
             if result then
-              log.error("Stderr: " .. result.stderr)
+                log.error("Stderr: " .. result.stderr)
             end
             return false, "GCP 命令失败。"
-          end
         end
-      }
-    }
-  }
-}
+    end)
+    :build()
+
+workflow
+    .define("main")
+    :description("一个列出 GCP 计算实例的任务。")
+    :version("1.0.0")
+    :tasks({list_instances})
 ```

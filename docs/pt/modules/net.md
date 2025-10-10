@@ -47,42 +47,50 @@ Baixa um arquivo de uma URL e o salva em um caminho local.
 ### Exemplo
 
 ```lua
-command = function()
-  local net = require("net")
-  
-  -- Exemplo de requisição GET
-  log.info("Realizando requisição GET para httpbin.org...")
-  local body, status, headers, err = net.http_get("https://httpbin.org/get")
-  if err then
-    log.error("Requisição GET falhou: " .. err)
-    return false, "Requisição GET falhou"
-  end
-  log.info("Requisição GET bem-sucedida! Status: " .. status)
-  -- print("Corpo da Resposta: " .. body)
+local net_operations = task("net_operations")
+    :description("Demonstra operações do módulo Net")
+    :command(function(this, params)
+        local net = require("net")
 
-  -- Exemplo de requisição POST
-  log.info("Realizando requisição POST para httpbin.org...")
-  local post_body = '{"name": "sloth-runner", "awesome": true}'
-  local post_headers = { ["Content-Type"] = "application/json" }
-  body, status, headers, err = net.http_post("https://httpbin.org/post", post_body, post_headers)
-  if err then
-    log.error("Requisição POST falhou: " .. err)
-    return false, "Requisição POST falhou"
-  end
-  log.info("Requisição POST bem-sucedida! Status: " .. status)
-  -- print("Corpo da Resposta: " .. body)
+        -- Exemplo de requisição GET
+        log.info("Realizando requisição GET para httpbin.org...")
+        local body, status, headers, err = net.http_get("https://httpbin.org/get")
+        if err then
+            log.error("Requisição GET falhou: " .. err)
+            return false, "Requisição GET falhou"
+        end
+        log.info("Requisição GET bem-sucedida! Status: " .. status)
+        -- print("Corpo da Resposta: " .. body)
 
-  -- Exemplo de Download
-  local download_path = "/tmp/sloth-runner-logo.svg"
-  log.info("Baixando arquivo para " .. download_path)
-  local err = net.download("https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/assets/sloth-runner-logo.svg", download_path)
-  if err then
-    log.error("Download falhou: " .. err)
-    return false, "Download falhou"
-  end
-  log.info("Arquivo baixado com sucesso.")
-  fs.rm(download_path) -- Limpeza
+        -- Exemplo de requisição POST
+        log.info("Realizando requisição POST para httpbin.org...")
+        local post_body = '{"name": "sloth-runner", "awesome": true}'
+        local post_headers = { ["Content-Type"] = "application/json" }
+        body, status, headers, err = net.http_post("https://httpbin.org/post", post_body, post_headers)
+        if err then
+            log.error("Requisição POST falhou: " .. err)
+            return false, "Requisição POST falhou"
+        end
+        log.info("Requisição POST bem-sucedida! Status: " .. status)
+        -- print("Corpo da Resposta: " .. body)
 
-  return true, "Operações do módulo Net bem-sucedidas."
-end
+        -- Exemplo de Download
+        local download_path = "/tmp/sloth-runner-logo.svg"
+        log.info("Baixando arquivo para " .. download_path)
+        local err = net.download("https://raw.githubusercontent.com/chalkan3-sloth/sloth-runner/master/assets/sloth-runner-logo.svg", download_path)
+        if err then
+            log.error("Download falhou: " .. err)
+            return false, "Download falhou"
+        end
+        log.info("Arquivo baixado com sucesso.")
+        fs.rm(download_path) -- Limpeza
+
+        return true, "Operações do módulo Net bem-sucedidas."
+    end)
+    :build()
+
+workflow.define("net_example")
+    :description("Exemplo de uso do módulo Net")
+    :version("1.0.0")
+    :tasks({net_operations})
 ```

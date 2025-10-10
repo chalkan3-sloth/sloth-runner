@@ -117,15 +117,15 @@ func ProcessWorkflowTasks(ctx context.Context, workflow *Workflow) error {
 -- 好的：清晰的任务定义，适当的链式调用
 local deploy_task = task("deploy_application")
     :description("将应用部署到生产环境")
-    :command(function(params, deps)
+    :command(function(this, params)
         local result = exec.run("kubectl apply -f deployment.yaml")
         if not result.success then
             log.error("部署失败: " .. result.stderr)
-            return false
+            return false, "部署失败"
         end
-        return true
+        return true, "部署成功"
     end)
-    :timeout(300)
+    :timeout("300s")
     :retries(3)
     :build()
 ```

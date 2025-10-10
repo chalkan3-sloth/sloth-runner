@@ -25,45 +25,42 @@ Este exemplo define uma tarefa que lista todas as instâncias do Compute Engine 
 ```lua
 -- examples/gcp_cli_example.sloth
 
-Modern DSLs = {
-  main = {
-    description = "Uma tarefa para listar instâncias de computação do GCP.",
-    tasks = {
-      {
-        name = "list-instances",
-        description = "Lista instâncias do GCE em us-central1.",
-        command = function()
-          log.info("Listando instâncias do GCP...")
-          
-          -- Requer o módulo gcp para torná-lo disponível
-          local gcp = require("gcp")
+local list_instances = task("list-instances")
+    :description("Lista instâncias do GCE em us-central1")
+    :command(function(this, params)
+        log.info("Listando instâncias do GCP...")
 
-          -- Executa o comando gcloud
-          local result = gcp.exec({
-            "compute", 
-            "instances", 
-            "list", 
+        -- Requer o módulo gcp para torná-lo disponível
+        local gcp = require("gcp")
+
+        -- Executa o comando gcloud
+        local result = gcp.exec({
+            "compute",
+            "instances",
+            "list",
             "--project", "meu-projeto-gcp-id",
             "--zones", "us-central1-a,us-central1-b"
-          })
+        })
 
-          -- Verifica o resultado
-          if result and result.exit_code == 0 then
+        -- Verifica o resultado
+        if result and result.exit_code == 0 then
             log.info("Instâncias listadas com sucesso.")
             print("--- LISTA DE INSTÂNCIAS ---")
             print(result.stdout)
             print("-------------------------")
             return true, "Comando GCP bem-sucedido."
-          else
+        else
             log.error("Falha ao listar instâncias do GCP.")
             if result then
-              log.error("Stderr: " .. result.stderr)
+                log.error("Stderr: " .. result.stderr)
             end
             return false, "Comando GCP falhou."
-          end
         end
-      }
-    }
-  }
-}
+    end)
+    :build()
+
+workflow.define("gcp_example")
+    :description("Uma tarefa para listar instâncias de computação do GCP")
+    :version("1.0.0")
+    :tasks({list_instances})
 ```

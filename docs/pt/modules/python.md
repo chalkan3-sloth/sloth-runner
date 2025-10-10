@@ -51,56 +51,55 @@ Este exemplo demonstra um ciclo de vida completo: criar um ambiente virtual, ins
 ```lua
 -- examples/python_venv_lifecycle_example.sloth
 
-Modern DSLs = {
-  main = {
-    description = "Uma tarefa para demonstrar o ciclo de vida de um venv Python.",
-    create_workdir_before_run = true, -- Usa um diretório de trabalho temporário
-    tasks = {
-      {
-        name = "run-python-script",
-        description = "Cria um venv, instala dependências e executa um script.",
-        command = function(params)
-          local python = require("python")
-          local workdir = params.workdir -- Obtém o diretório de trabalho temporário do grupo
-          
-          -- 1. Escreve nosso script Python e dependências no workdir
-          fs.write(workdir .. "/requirements.txt", "requests==2.28.1")
-          fs.write(workdir .. "/main.py", "import requests\nprint(f'Olá do Python! Usando a versão do requests: {requests.__version__}')")
+local run_python_script = task("run-python-script")
+    :description("Cria um venv, instala dependências e executa um script")
+    :command(function(this, params)
+        local python = require("python")
+        local workdir = params.workdir -- Obtém o diretório de trabalho temporário do grupo
 
-          -- 2. Cria um objeto venv
-          local venv_path = workdir .. "/.venv"
-          log.info("Configurando ambiente virtual em: " .. venv_path)
-          local venv = python.venv(venv_path)
+        -- 1. Escreve nosso script Python e dependências no workdir
+        fs.write(workdir .. "/requirements.txt", "requests==2.28.1")
+        fs.write(workdir .. "/main.py", "import requests\nprint(f'Olá do Python! Usando a versão do requests: {requests.__version__}')")
 
-          -- 3. Cria o venv no sistema de arquivos
-          venv:create()
+        -- 2. Cria um objeto venv
+        local venv_path = workdir .. "/.venv"
+        log.info("Configurando ambiente virtual em: " .. venv_path)
+        local venv = python.venv(venv_path)
 
-          -- 4. Instala as dependências usando pip
-          log.info("Instalando dependências do requirements.txt...")
-          local pip_result = venv:pip("install -r " .. workdir .. "/requirements.txt")
-          if pip_result.exit_code ~= 0 then
+        -- 3. Cria o venv no sistema de arquivos
+        venv:create()
+
+        -- 4. Instala as dependências usando pip
+        log.info("Instalando dependências do requirements.txt...")
+        local pip_result = venv:pip("install -r " .. workdir .. "/requirements.txt")
+        if pip_result.exit_code ~= 0 then
             log.error("A instalação com pip falhou: " .. pip_result.stderr)
             return false, "Falha ao instalar dependências Python."
-          end
+        end
 
-          -- 5. Executa o script
-          log.info("Executando o script Python...")
-          local exec_result = venv:exec(workdir .. "/main.py")
-          if exec_result.exit_code ~= 0 then
+        -- 5. Executa o script
+        log.info("Executando o script Python...")
+        local exec_result = venv:exec(workdir .. "/main.py")
+        if exec_result.exit_code ~= 0 then
             log.error("O script Python falhou: " .. exec_result.stderr)
             return false, "A execução do script Python falhou."
-          end
-
-          log.info("Script Python executado com sucesso.")
-          print("--- Saída do Script Python ---")
-          print(exec_result.stdout)
-          print("----------------------------")
-
-          return true, "Ciclo de vida do venv Python completo."
         end
-      }
-    }
-  }
-}
+
+        log.info("Script Python executado com sucesso.")
+        print("--- Saída do Script Python ---")
+        print(exec_result.stdout)
+        print("----------------------------")
+
+        return true, "Ciclo de vida do venv Python completo."
+    end)
+    :build()
+
+workflow.define("python_venv_example")
+    :description("Uma tarefa para demonstrar o ciclo de vida de um venv Python")
+    :version("1.0.0")
+    :tasks({run_python_script})
+    :config({
+        create_workdir_before_run = true -- Usa um diretório de trabalho temporário
+    })
 ```
 

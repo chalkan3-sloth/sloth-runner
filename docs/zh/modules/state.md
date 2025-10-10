@@ -186,59 +186,60 @@ end, 15) -- 15秒超时
 ### 1. 部署版本控制
 
 ```lua
-Modern DSLs = {
-    deployment_pipeline = {
-        tasks = {
-            prepare_deploy = {
-                command = function()
-                    -- 检查最后部署的版本
-                    local last_version = state.get("last_deployed_version", "v0.0.0")
-                    local new_version = "v1.2.3"
-                    
-                    -- 检查是否已部署
-                    if last_version == new_version then
-                        log.warn("版本 " .. new_version .. " 已部署")
-                        return false, "版本已部署"
-                    end
-                    
-                    -- 注册部署开始
-                    state.set("deploy_status", "in_progress")
-                    state.set("deploy_start_time", os.time())
-                    state.increment("total_deploys", 1)
-                    
-                    return true, "部署准备完成"
-                end
-            },
-            
-            execute_deploy = {
-                depends_on = "prepare_deploy",
-                command = function()
-                    -- 部署的临界区
-                    return state.with_lock("deployment_lock", function()
-                        log.info("使用锁执行部署...")
-                        
-                        -- 模拟部署
-                        exec.run("sleep 5")
-                        
-                        -- 更新状态
-                        state.set("last_deployed_version", "v1.2.3")
-                        state.set("deploy_status", "completed")
-                        state.set("deploy_end_time", os.time())
-                        
-                        -- 记录历史
-                        state.list_push("deploy_history", {
-                            version = "v1.2.3",
-                            timestamp = os.time(),
-                            duration = state.get("deploy_end_time") - state.get("deploy_start_time")
-                        })
-                        
-                        return true, "部署成功完成"
-                    end, 300) -- 5分钟超时
-                end
-            }
-        }
-    }
-}
+local prepare_deploy = task("prepare_deploy")
+    :description("准备部署")
+    :command(function(this, params)
+        -- 检查最后部署的版本
+        local last_version = state.get("last_deployed_version", "v0.0.0")
+        local new_version = "v1.2.3"
+
+        -- 检查是否已部署
+        if last_version == new_version then
+            log.warn("版本 " .. new_version .. " 已部署")
+            return false, "版本已部署"
+        end
+
+        -- 注册部署开始
+        state.set("deploy_status", "in_progress")
+        state.set("deploy_start_time", os.time())
+        state.increment("total_deploys", 1)
+
+        return true, "部署准备完成"
+    end)
+    :build()
+
+local execute_deploy = task("execute_deploy")
+    :description("执行部署")
+    :command(function(this, params)
+        -- 部署的临界区
+        return state.with_lock("deployment_lock", function()
+            log.info("使用锁执行部署...")
+
+            -- 模拟部署
+            exec.run("sleep 5")
+
+            -- 更新状态
+            state.set("last_deployed_version", "v1.2.3")
+            state.set("deploy_status", "completed")
+            state.set("deploy_end_time", os.time())
+
+            -- 记录历史
+            state.list_push("deploy_history", {
+                version = "v1.2.3",
+                timestamp = os.time(),
+                duration = state.get("deploy_end_time") - state.get("deploy_start_time")
+            })
+
+            return true, "部署成功完成"
+        end, 300) -- 5分钟超时
+    end)
+    :build()
+
+workflow
+    .define("deployment_pipeline")
+    :description("部署管道")
+    :version("1.0.0")
+    :tasks({prepare_deploy, execute_deploy})
 ```
 
 ### 2. 带TTL的智能缓存
@@ -259,27 +260,28 @@ function get_cached_data(cache_key, fetch_function, ttl)
 end
 
 -- 在任务中使用
-Modern DSLs = {
-    data_processing = {
-        tasks = {
-            fetch_user_data = {
-                command = function()
-                    local user_data = get_cached_data("user:123:profile", function()
-                        -- 模拟昂贵的获取操作
-                        return {
-                            name = "张三",
-                            email = "zhangsan@example.com",
-                            preferences = {"dark_mode", "notifications"}
-                        }
-                    end, 600) -- 缓存10分钟
-                    
-                    log.info("用户数据: " .. data.to_json(user_data))
-                    return true, "用户数据已获取"
-                end
+local fetch_user_data = task("fetch_user_data")
+    :description("获取用户数据")
+    :command(function(this, params)
+        local user_data = get_cached_data("user:123:profile", function()
+            -- 模拟昂贵的获取操作
+            return {
+                name = "张三",
+                email = "zhangsan@example.com",
+                preferences = {"dark_mode", "notifications"}
             }
-        }
-    }
-}
+        end, 600) -- 缓存10分钟
+
+        log.info("用户数据: " .. data.to_json(user_data))
+        return true, "用户数据已获取"
+    end)
+    :build()
+
+workflow
+    .define("data_processing")
+    :description("数据处理")
+    :version("1.0.0")
+    :tasks({fetch_user_data})
 ```
 
 ### 3. 速率限制
@@ -306,26 +308,27 @@ function check_rate_limit(identifier, max_requests, window_seconds)
 end
 
 -- 在任务中使用
-Modern DSLs = {
-    api_tasks = {
-        tasks = {
-            make_api_call = {
-                command = function()
-                    local allowed, msg = check_rate_limit("api_calls", 100, 3600) -- 100次调用/小时
-                    
-                    if not allowed then
-                        log.error(msg)
-                        return false, msg
-                    end
-                    
-                    -- 进行API调用
-                    log.info("进行API调用...")
-                    return true, "API调用完成"
-                end
-            }
-        }
-    }
-}
+local make_api_call = task("make_api_call")
+    :description("进行API调用")
+    :command(function(this, params)
+        local allowed, msg = check_rate_limit("api_calls", 100, 3600) -- 100次调用/小时
+
+        if not allowed then
+            log.error(msg)
+            return false, msg
+        end
+
+        -- 进行API调用
+        log.info("进行API调用...")
+        return true, "API调用完成"
+    end)
+    :build()
+
+workflow
+    .define("api_tasks")
+    :description("API任务")
+    :version("1.0.0")
+    :tasks({make_api_call})
 ```
 
 ## ⚙️ 配置和存储

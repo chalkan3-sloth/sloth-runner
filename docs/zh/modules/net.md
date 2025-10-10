@@ -47,9 +47,9 @@
 ### 示例
 
 ```lua
-command = function()
+command = function(this, params)
   local net = require("net")
-  
+
   -- GET 请求示例
   log.info("正在向 httpbin.org 执行 GET 请求...")
   local body, status, headers, err = net.http_get("https://httpbin.org/get")

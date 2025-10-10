@@ -41,11 +41,11 @@
 ### 示例
 
 ```lua
-command = function()
+command = function(this, params)
   -- log 模块是全局可用的，不需要 require。
-  
+
   log.info("启动日志记录示例任务。")
-  
+
   local user_name = "Sloth"
   log.debug("当前用户是: " .. user_name)
 
@@ -54,7 +54,7 @@ command = function()
   end
 
   log.info("任务正在执行其主要操作...")
-  
+
   local success = true -- 模拟一次成功的操作
   if not success then
     log.error("主要操作意外失败！")

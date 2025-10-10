@@ -88,10 +88,10 @@ local minha_tarefa = task("teste_customizado")
 local saudacao = meu_modulo.ola("Desenvolvedor")
 log.info(saudacao)
 
-workflow.define("teste_plugin", {
-    description = "Testando plugin customizado",
-    tasks = { minha_tarefa }
-})
+workflow.define("teste_plugin")
+    :description("Testando plugin customizado")
+    :version("1.0.0")
+    :tasks({minha_tarefa})
 ```
 
 ### Registro de Plugin

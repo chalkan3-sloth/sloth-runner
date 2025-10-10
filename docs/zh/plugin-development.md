@@ -88,10 +88,11 @@ local my_task = task("test_custom")
 local greeting = my_module.hello("开发者")
 log.info(greeting)
 
-workflow.define("plugin_test", {
-    description = "测试自定义插件",
-    tasks = { my_task }
-})
+workflow
+    .define("plugin_test")
+    :description("测试自定义插件")
+    :version("1.0.0")
+    :tasks({my_task})
 ```
 
 ### 插件注册

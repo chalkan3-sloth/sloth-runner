@@ -90,18 +90,18 @@ test.mock("terraform.output", {
 **`my_workflow.sloth` 中的任务:**
 ```lua
 -- ...
-{
-  name = "check-account",
-  command = function()
-    local result = aws.exec({"sts", "get-caller-identity"})
-    local data = data.parse_json(result.stdout)
-    if data.Account == "123456789012" then
-      return true, "正确的帐户。"
-    else
-      return false, "错误的帐户。"
-    end
-  end
-}
+local check_account = task("check-account")
+    :description("检查账户")
+    :command(function(this, params)
+        local result = aws.exec({"sts", "get-caller-identity"})
+        local data = data.parse_json(result.stdout)
+        if data.Account == "123456789012" then
+            return true, "正确的帐户。"
+        else
+            return false, "错误的帐户。"
+        end
+    end)
+    :build()
 -- ...
 ```
 

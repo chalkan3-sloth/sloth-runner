@@ -90,18 +90,18 @@ Digamos que você tenha uma tarefa que chama `aws.exec` e possui uma lógica que
 **Tarefa em `meu_workflow.sloth`:**
 ```lua
 -- ...
-task("verificar-conta")
-  :description("Verifica a conta AWS")
-  :command(function(this, params)
-    local result = aws.exec({"sts", "get-caller-identity"})
-    local data = data.parse_json(result.stdout)
-    if data.Account == "123456789012" then
-      return true, "Conta correta."
-    else
-      return false, "Conta errada."
-    end
-  end)
-  :build()
+local verificar_conta = task("verificar-conta")
+    :description("Verifica a conta AWS")
+    :command(function(this, params)
+        local result = aws.exec({"sts", "get-caller-identity"})
+        local data = data.parse_json(result.stdout)
+        if data.Account == "123456789012" then
+            return true, "Conta correta."
+        else
+            return false, "Conta errada."
+        end
+    end)
+    :build()
 -- ...
 ```
 

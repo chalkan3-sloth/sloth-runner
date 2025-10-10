@@ -216,18 +216,19 @@ function check_application_health()
 end
 
 -- 在任务中使用
-Modern DSLs = {
-    health_monitoring = {
-        tasks = {
-            health_check = {
-                command = function()
-                    local healthy = check_application_health()
-                    return healthy, healthy and "系统健康" or "检测到系统健康问题"
-                end
-            }
-        }
-    }
-}
+local health_check = task("health_check")
+    :description("执行健康检查")
+    :command(function(this, params)
+        local healthy = check_application_health()
+        return healthy, healthy and "系统健康" or "检测到系统健康问题"
+    end)
+    :build()
+
+workflow
+    .define("health_monitoring")
+    :description("健康监控")
+    :version("1.0.0")
+    :tasks({health_check})
 ```
 
 ## 🚨 告警系统
@@ -296,57 +297,58 @@ end
 ### 性能监控示例
 
 ```lua
-Modern DSLs = {
-    performance_monitoring = {
-        tasks = {
-            monitor_api_performance = {
-                command = function()
-                    -- 开始监控会话
-                    log.info("开始API性能监控...")
-                    
-                    -- 模拟API调用并测量性能
-                    for i = 1, 10 do
-                        local api_time = metrics.timer("api_call_" .. i, function()
-                            -- 模拟API调用
-                            exec.run("curl -s -o /dev/null -w '%{time_total}' https://api.example.com/health")
-                        end, {
-                            endpoint = "health",
-                            call_number = tostring(i)
-                        })
-                        
-                        -- 记录响应时间
-                        metrics.histogram("api_response_time", api_time, {
-                            endpoint = "health"
-                        })
-                        
-                        -- 检查响应时间是否可接受
-                        if api_time > 1000 then -- 1秒
-                            metrics.counter("slow_api_calls", 1, {
-                                endpoint = "health"
-                            })
-                            
-                            metrics.alert("slow_api_response", {
-                                level = "warning",
-                                message = string.format("API响应慢: %.2f ms", api_time),
-                                response_time = api_time,
-                                threshold = 1000
-                            })
-                        end
-                        
-                        -- 调用间短暂延迟
-                        exec.run("sleep 0.1")
-                    end
-                    
-                    -- 获取汇总统计
-                    local system_health = metrics.health_status()
-                    log.info("API测试后系统健康: " .. system_health.overall)
-                    
-                    return true, "API性能监控完成"
-                end
-            }
-        }
-    }
-}
+local monitor_api_performance = task("monitor_api_performance")
+    :description("监控API性能")
+    :command(function(this, params)
+        -- 开始监控会话
+        log.info("开始API性能监控...")
+
+        -- 模拟API调用并测量性能
+        for i = 1, 10 do
+            local api_time = metrics.timer("api_call_" .. i, function()
+                -- 模拟API调用
+                exec.run("curl -s -o /dev/null -w '%{time_total}' https://api.example.com/health")
+            end, {
+                endpoint = "health",
+                call_number = tostring(i)
+            })
+
+            -- 记录响应时间
+            metrics.histogram("api_response_time", api_time, {
+                endpoint = "health"
+            })
+
+            -- 检查响应时间是否可接受
+            if api_time > 1000 then -- 1秒
+                metrics.counter("slow_api_calls", 1, {
+                    endpoint = "health"
+                })
+
+                metrics.alert("slow_api_response", {
+                    level = "warning",
+                    message = string.format("API响应慢: %.2f ms", api_time),
+                    response_time = api_time,
+                    threshold = 1000
+                })
+            end
+
+            -- 调用间短暂延迟
+            exec.run("sleep 0.1")
+        end
+
+        -- 获取汇总统计
+        local system_health = metrics.health_status()
+        log.info("API测试后系统健康: " .. system_health.overall)
+
+        return true, "API性能监控完成"
+    end)
+    :build()
+
+workflow
+    .define("performance_monitoring")
+    :description("性能监控")
+    :version("1.0.0")
+    :tasks({monitor_api_performance})
 ```
 
 ## 🌐 HTTP端点

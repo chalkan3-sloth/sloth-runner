@@ -51,7 +51,7 @@
 此示例演示了如何定位 minions 以 ping 它们并应用 Salt 状态。
 
 ```lua
-command = function()
+command = function(this, params)
 
   -- 1. 创建一个 Salt 客户端
   local client = salt.client()
@@ -71,7 +71,7 @@ command = function()
   if not apply_result.success then
     return false, "应用状态失败: " .. apply_result.stderr
   end
-  
+
   log.info("状态成功应用。")
   return true, "Salt 操作完成。"
 end

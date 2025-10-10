@@ -35,7 +35,7 @@ As tarefas agora são definidas usando a função `task()` e métodos da API flu
 ```lua
 local minha_tarefa = task("nome_da_tarefa")
     :description("O que esta tarefa faz")
-    :command(function(params, deps)
+    :command(function(this, params)
         -- Lógica da tarefa aqui
         return true, "Mensagem de sucesso", { dados_de_saida = "valor" }
     end)
@@ -229,18 +229,21 @@ Executa uma lista de tarefas concorrentemente e espera que todas terminem.
 
 **Exemplo:**
 ```lua
-command = function()
-  log.info("Iniciando 3 tarefas em paralelo...")
-  local results, err = parallel({
-    { name = "short_task", command = "sleep 1" },
-    { name = "medium_task", command = "sleep 2" },
-    { name = "long_task", command = "sleep 3" }
-  })
-  if err then
-    return false, "Execução paralela falhou"
-  end
-  return true, "Todas as tarefas paralelas terminaram."
-end
+local parallel_task = task("parallel_example")
+    :description("Executa tarefas em paralelo")
+    :command(function(this, params)
+        log.info("Iniciando 3 tarefas em paralelo...")
+        local results, err = parallel({
+            { name = "short_task", command = "sleep 1" },
+            { name = "medium_task", command = "sleep 2" },
+            { name = "long_task", command = "sleep 3" }
+        })
+        if err then
+            return false, "Execução paralela falhou"
+        end
+        return true, "Todas as tarefas paralelas terminaram."
+    end)
+    :build()
 ```
 
 ### `export(table)`
@@ -251,10 +254,13 @@ Exporta dados de qualquer ponto de um script para a CLI. Quando a flag `--return
 
 **Exemplo:**
 ```lua
-command = function()
-  export({ valor_importante = "dado do meio da tarefa" })
-  return true, "Tarefa concluída", { output_final = "algum resultado" }
-end
+local export_task = task("export_example")
+    :description("Exporta dados durante execução")
+    :command(function(this, params)
+        export({ valor_importante = "dado do meio da tarefa" })
+        return true, "Tarefa concluída", { output_final = "algum resultado" }
+    end)
+    :build()
 ```
 Executar com `--return` produziria:
 ```json

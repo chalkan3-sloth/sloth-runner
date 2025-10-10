@@ -51,57 +51,54 @@
 ```lua
 -- examples/python_venv_lifecycle_example.sloth
 
-Modern DSLs = {
-  main = {
-    description = "一个演示 Python venv 生命周期的任务。",
-    create_workdir_before_run = true, -- 使用临时工作目录
-    tasks = {
-      {
-        name = "run-python-script",
-        description = "创建 venv，安装依赖项并运行脚本。",
-        command = function(params) 
-          local python = require("python")
-          local workdir = params.workdir -- 从组中获取临时工作目录
-          
-          -- 1. 将我们的 Python 脚本和依赖项写入工作目录
-          fs.write(workdir .. "/requirements.txt", "requests==2.28.1")
-          fs.write(workdir .. "/main.py", "import requests\nprint(f'Hello from Python! Using requests version: {requests.__version__}')")
+local run_python_script = task("run-python-script")
+    :description("创建 venv，安装依赖项并运行脚本。")
+    :command(function(this, params)
+        local python = require("python")
+        local workdir = params.workdir -- 从组中获取临时工作目录
 
-          -- 2. 创建一个 venv 对象
-          local venv_path = workdir .. "/.venv"
-          log.info("正在设置虚拟环境于: " .. venv_path)
-          local venv = python.venv(venv_path)
+        -- 1. 将我们的 Python 脚本和依赖项写入工作目录
+        fs.write(workdir .. "/requirements.txt", "requests==2.28.1")
+        fs.write(workdir .. "/main.py", "import requests\nprint(f'Hello from Python! Using requests version: {requests.__version__}')")
 
-          -- 3. 在文件系统上创建 venv
-          venv:create()
+        -- 2. 创建一个 venv 对象
+        local venv_path = workdir .. "/.venv"
+        log.info("正在设置虚拟环境于: " .. venv_path)
+        local venv = python.venv(venv_path)
 
-          -- 4. 使用 pip 安装依赖项
-          log.info("正在从 requirements.txt 安装依赖项...")
-          local pip_result = venv:pip("install -r " .. workdir .. "/requirements.txt")
-          if pip_result.exit_code ~= 0 then
+        -- 3. 在文件系统上创建 venv
+        venv:create()
+
+        -- 4. 使用 pip 安装依赖项
+        log.info("正在从 requirements.txt 安装依赖项...")
+        local pip_result = venv:pip("install -r " .. workdir .. "/requirements.txt")
+        if pip_result.exit_code ~= 0 then
             log.error("Pip 安装失败: " .. pip_result.stderr)
             return false, "未能安装 Python 依赖项。"
-          end
+        end
 
-          -- 5. 执行脚本
-          log.info("正在运行 Python 脚本...")
-          local exec_result = venv:exec(workdir .. "/main.py")
-          if exec_result.exit_code ~= 0 then
+        -- 5. 执行脚本
+        log.info("正在运行 Python 脚本...")
+        local exec_result = venv:exec(workdir .. "/main.py")
+        if exec_result.exit_code ~= 0 then
             log.error("Python 脚本失败: " .. exec_result.stderr)
             return false, "Python 脚本执行失败。"
-          end
-
-          log.info("Python 脚本成功执行。")
-          print("--- Python 脚本输出 ---")
-          print(exec_result.stdout)
-          print("----------------------------")
-
-          return true, "Python venv 生命周期完成。"
         end
-      }
-    }
-  }
-}
+
+        log.info("Python 脚本成功执行。")
+        print("--- Python 脚本输出 ---")
+        print(exec_result.stdout)
+        print("----------------------------")
+
+        return true, "Python venv 生命周期完成。"
+    end)
+    :build()
+
+workflow
+    .define("main")
+    :description("一个演示 Python venv 生命周期的任务。")
+    :version("1.0.0")
+    :tasks({run_python_script})
 ```
 
 ```

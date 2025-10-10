@@ -21,16 +21,17 @@ go install github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner@latest
 ```lua
 local hello_task = task("hello")
     :description("我的第一个任务")
-    :command(function()
+    :command(function(this, params)
         print("🦥 你好，来自 Sloth Runner!")
-        return true
+        return true, "成功完成"
     end)
     :build()
 
-workflow.define("hello_world", {
-    description = "我的第一个工作流",
-    tasks = { hello_task }
-})
+workflow
+    .define("hello_world")
+    :description("我的第一个工作流")
+    :version("1.0.0")
+    :tasks({hello_task})
 ```
 
 运行:

@@ -129,12 +129,12 @@ Modern DSLs = {
         description = "消费二进制文件以运行测试。",
         depends_on = "build",
         consumes = {"app.bin"},
-        command = function(params)
+        command = function(this, params)
           -- 此时, 'app.bin' 存在于此任务的 workdir 中
           local content, err = fs.read(params.workdir .. "/app.bin")
           if content == "binary_content" then
             log.info("成功消费工件！")
-            return true
+            return true, "成功消费工件"
           else
             return false, "工件内容不正确！"
           end
@@ -181,7 +181,7 @@ Modern DSLs = {
 
 **示例:**
 ```lua
-command = function()
+command = function(this, params)
   log.info("并行启动3个任务...")
   local results, err = parallel({
     { name = "short_task", command = "sleep 1" },
@@ -203,7 +203,7 @@ end
 
 **示例:**
 ```lua
-command = function()
+command = function(this, params)
   export({ important_value = "来自任务中间的数据" })
   return true, "任务完成", { final_output = "一些结果" }
 end

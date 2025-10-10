@@ -186,59 +186,60 @@ end, 15) -- timeout de 15 segundos
 ### 1. Controle de Versão de Deploy
 
 ```lua
-Modern DSLs = {
-    pipeline_deployment = {
-        tasks = {
-            preparar_deploy = {
-                command = function()
-                    -- Verificar última versão deployada
-                    local ultima_versao = state.get("ultima_versao_deployada", "v0.0.0")
-                    local nova_versao = "v1.2.3"
-                    
-                    -- Verificar se já foi deployada
-                    if ultima_versao == nova_versao then
-                        log.warn("Versão " .. nova_versao .. " já foi deployada")
-                        return false, "Versão já deployada"
-                    end
-                    
-                    -- Registrar início do deploy
-                    state.set("status_deploy", "em_progresso")
-                    state.set("inicio_deploy", os.time())
-                    state.increment("total_deploys", 1)
-                    
-                    return true, "Preparação do deploy concluída"
-                end
-            },
-            
-            executar_deploy = {
-                depends_on = "preparar_deploy",
-                command = function()
-                    -- Seção crítica para deployment
-                    return state.with_lock("lock_deployment", function()
-                        log.info("Executando deployment com lock...")
-                        
-                        -- Simular deployment
-                        exec.run("sleep 5")
-                        
-                        -- Atualizar estado
-                        state.set("ultima_versao_deployada", "v1.2.3")
-                        state.set("status_deploy", "concluido")
-                        state.set("fim_deploy", os.time())
-                        
-                        -- Registrar histórico
-                        state.list_push("historico_deploy", {
-                            versao = "v1.2.3",
-                            timestamp = os.time(),
-                            duracao = state.get("fim_deploy") - state.get("inicio_deploy")
-                        })
-                        
-                        return true, "Deploy concluído com sucesso"
-                    end, 300) -- timeout de 5 minutos
-                end
-            }
-        }
-    }
-}
+local preparar_deploy = task("preparar_deploy")
+    :description("Prepara ambiente para deploy")
+    :command(function(this, params)
+        -- Verificar última versão deployada
+        local ultima_versao = state.get("ultima_versao_deployada", "v0.0.0")
+        local nova_versao = "v1.2.3"
+
+        -- Verificar se já foi deployada
+        if ultima_versao == nova_versao then
+            log.warn("Versão " .. nova_versao .. " já foi deployada")
+            return false, "Versão já deployada"
+        end
+
+        -- Registrar início do deploy
+        state.set("status_deploy", "em_progresso")
+        state.set("inicio_deploy", os.time())
+        state.increment("total_deploys", 1)
+
+        return true, "Preparação do deploy concluída"
+    end)
+    :build()
+
+local executar_deploy = task("executar_deploy")
+    :description("Executa deployment com lock")
+    :depends_on({"preparar_deploy"})
+    :command(function(this, params)
+        -- Seção crítica para deployment
+        return state.with_lock("lock_deployment", function()
+            log.info("Executando deployment com lock...")
+
+            -- Simular deployment
+            exec.run("sleep 5")
+
+            -- Atualizar estado
+            state.set("ultima_versao_deployada", "v1.2.3")
+            state.set("status_deploy", "concluido")
+            state.set("fim_deploy", os.time())
+
+            -- Registrar histórico
+            state.list_push("historico_deploy", {
+                versao = "v1.2.3",
+                timestamp = os.time(),
+                duracao = state.get("fim_deploy") - state.get("inicio_deploy")
+            })
+
+            return true, "Deploy concluído com sucesso"
+        end, 300) -- timeout de 5 minutos
+    end)
+    :build()
+
+workflow.define("pipeline_deployment")
+    :description("Pipeline de deployment com controle de versão")
+    :version("1.0.0")
+    :tasks({preparar_deploy, executar_deploy})
 ```
 
 ### 2. Cache Inteligente com TTL
@@ -259,27 +260,27 @@ function obter_dados_cached(chave_cache, funcao_busca, ttl)
 end
 
 -- Uso em tasks
-Modern DSLs = {
-    processamento_dados = {
-        tasks = {
-            buscar_dados_usuario = {
-                command = function()
-                    local dados_usuario = obter_dados_cached("usuario:123:perfil", function()
-                        -- Simular busca custosa
-                        return {
-                            nome = "Alice",
-                            email = "alice@exemplo.com",
-                            preferencias = {"modo_escuro", "notificacoes"}
-                        }
-                    end, 600) -- Cache por 10 minutos
-                    
-                    log.info("Dados do usuário: " .. data.to_json(dados_usuario))
-                    return true, "Dados do usuário obtidos"
-                end
+local buscar_dados_usuario = task("buscar_dados_usuario")
+    :description("Busca dados do usuário com cache")
+    :command(function(this, params)
+        local dados_usuario = obter_dados_cached("usuario:123:perfil", function()
+            -- Simular busca custosa
+            return {
+                nome = "Alice",
+                email = "alice@exemplo.com",
+                preferencias = {"modo_escuro", "notificacoes"}
             }
-        }
-    }
-}
+        end, 600) -- Cache por 10 minutos
+
+        log.info("Dados do usuário: " .. data.to_json(dados_usuario))
+        return true, "Dados do usuário obtidos"
+    end)
+    :build()
+
+workflow.define("processamento_dados")
+    :description("Processamento de dados com cache inteligente")
+    :version("1.0.0")
+    :tasks({buscar_dados_usuario})
 ```
 
 ### 3. Rate Limiting
@@ -306,26 +307,26 @@ function verificar_rate_limit(identificador, max_requisicoes, janela_segundos)
 end
 
 -- Uso em tasks
-Modern DSLs = {
-    tarefas_api = {
-        tasks = {
-            fazer_chamada_api = {
-                command = function()
-                    local permitido, msg = verificar_rate_limit("chamadas_api", 100, 3600) -- 100 chamadas/hora
-                    
-                    if not permitido then
-                        log.error(msg)
-                        return false, msg
-                    end
-                    
-                    -- Fazer chamada da API
-                    log.info("Fazendo chamada da API...")
-                    return true, "Chamada da API concluída"
-                end
-            }
-        }
-    }
-}
+local fazer_chamada_api = task("fazer_chamada_api")
+    :description("Faz chamada de API com rate limiting")
+    :command(function(this, params)
+        local permitido, msg = verificar_rate_limit("chamadas_api", 100, 3600) -- 100 chamadas/hora
+
+        if not permitido then
+            log.error(msg)
+            return false, msg
+        end
+
+        -- Fazer chamada da API
+        log.info("Fazendo chamada da API...")
+        return true, "Chamada da API concluída"
+    end)
+    :build()
+
+workflow.define("tarefas_api")
+    :description("Gerenciamento de chamadas de API com rate limiting")
+    :version("1.0.0")
+    :tasks({fazer_chamada_api})
 ```
 
 ## ⚙️ Configuração e Armazenamento

@@ -50,20 +50,20 @@ sloth-runner run -f examples/basic_pipeline.sloth --yes --interactive
 
     ```lua
     -- my_task.sloth
-    Modern DSLs = {
-      my_group = {
-        tasks = {
-          {
-            name = "deploy",
-            command = function()
-              log.info("部署到区域: " .. values.region)
-              log.info("使用 API 密钥 (前 5 个字符): " .. string.sub(values.api_key, 1, 5) .. "...")
-              return true, "部署成功。"
-            end
-          }
-        }
-      }
-    }
+    local deploy_task = task("deploy")
+        :description("部署应用")
+        :command(function(this, params)
+            log.info("部署到区域: " .. values.region)
+            log.info("使用 API 密钥 (前 5 个字符): " .. string.sub(values.api_key, 1, 5) .. "...")
+            return true, "部署成功。"
+        end)
+        :build()
+
+    workflow
+        .define("my_group")
+        :description("部署工作流")
+        :version("1.0.0")
+        :tasks({deploy_task})
     ```
 
 3.  **在设置环境变量的情况下运行任务：**
