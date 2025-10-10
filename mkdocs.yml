@@ -173,6 +173,15 @@ nav:
     - '🎯 Module API Examples 🔥': 'modern-dsl/module-api-examples'
     - '📚 Best Practices': 'modern-dsl/best-practices'
     - '📖 Reference Guide': 'modern-dsl/reference-guide'
+  - '🗄️ State Management':
+    - '📋 State Management Guide 🔥': 'state-management'
+    - '🏗️ Stack State Management 🔥': 'en/stack-state-management'
+    - '🔄 Idempotency': 'idempotency'
+  - '📖 Guides':
+    - '✨ Using Values with delegate_to 🔥': 'guides/values-delegate-to'
+    - '👤 Running Tasks as Different Users 🔥': 'features/user-field'
+    - '🦥 Sloth Management (Saved Workflows) 🔥': 'features/sloth-management'
+  - '🎭 Examples': 'en/advanced-examples'
   - '🔧 Modules':
     - '🔧 Module Index': 'modules/'
     - '📚 Built-in Modules Reference 🔥': 'modules/README'
@@ -200,29 +209,17 @@ nav:
     - '🔔 Notifications': 'modules/notifications'
     - '💾 State Module': 'modules/state'
     - '🔧 Lua API': 'en/plugin-development'
-  - '🗄️ State Management':
-    - '📋 State Management Guide 🔥': 'state-management'
-    - '🏗️ Stack State Management 🔥': 'en/stack-state-management'
-    - '🔄 Idempotency': 'idempotency'
-  - '📖 Guides':
-    - '✨ Using Values with delegate_to 🔥': 'guides/values-delegate-to'
-    - '👤 Running Tasks as Different Users 🔥': 'features/user-field'
-    - '🦥 Sloth Management (Saved Workflows) 🔥': 'features/sloth-management'
-  - '🎭 Examples': 'en/advanced-examples'
-  - '⚡ Enterprise Features':
-    - '🤖 AI Integration': 'en/ai-features'
-    - '🌐 Distributed Agents': 'en/distributed'
-    - '🤖 Agent Setup Guide': 'en/master-agent-architecture'
-    - '🎯 Master Management 🔥': 'en/master-management'
-    - '🔄 Agent Auto-Reconnection 🔥': 'en/agent-improvements'
-    - '📦 Agents in Incus/LXC Containers': 'pt/agente-em-containers'
-    - '📊 Web UI 🔥':
+  - '🌐 Distributed Agents': 'en/distributed'
+  - '🎯 Master Management 🔥': 'en/master-management'
+  - '🔄 Agent Auto-Reconnection 🔥': 'en/agent-improvements'
+  - '📦 Agents in Incus/LXC Containers': 'pt/agente-em-containers'
+  - '📊 Web UI 🔥':
       - '🎨 Web UI Complete Guide': 'WEBUI_GUIDE'
       - '📱 Quick Start': 'WEB_UI'
       - '🔌 API Reference': 'web-ui/api-reference'
-    - '⏰ Advanced Scheduler': 'pt/scheduler'
-    - '☁️ Multi-Cloud': 'en/enterprise-features'
-    - '📈 Telemetry & Observability 🔥':
+  - '⏰ Advanced Scheduler': 'pt/scheduler'
+  - '☁️ Multi-Cloud': 'en/enterprise-features'
+  - '📈 Telemetry & Observability 🔥':
       - '📊 Overview': 'en/telemetry/index'
       - '📈 Prometheus Metrics': 'en/telemetry/prometheus-metrics'
       - '💻 Grafana Dashboard': 'en/telemetry/grafana-dashboard'
