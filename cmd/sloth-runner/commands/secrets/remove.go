@@ -59,17 +59,21 @@ Examples:
 				// Remove all secrets
 				err = secretsService.RemoveAllSecrets(cmd.Context(), stack.ID)
 				if err != nil {
+					trackSecretDelete("all", stack.ID, false)
 					return err
 				}
 				pterm.Success.Printf("All secrets removed from stack '%s'\n", stackName)
+				trackSecretDelete("all", stack.ID, true)
 			} else {
 				// Remove specific secret
 				secretName := args[0]
 				err = secretsService.RemoveSecret(cmd.Context(), stack.ID, secretName)
 				if err != nil {
+					trackSecretDelete(secretName, stack.ID, false)
 					return err
 				}
 				pterm.Success.Printf("Secret '%s' removed from stack '%s'\n", secretName, stackName)
+				trackSecretDelete(secretName, stack.ID, true)
 			}
 
 			return nil

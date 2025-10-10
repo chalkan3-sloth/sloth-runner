@@ -48,10 +48,14 @@ func NewDeleteCommand(ctx *commands.AppContext) *cobra.Command {
 
 			// Delete hook
 			if err := repo.Delete(hook.ID); err != nil {
+				trackHookDelete(hookName, false)
 				return fmt.Errorf("failed to delete hook: %w", err)
 			}
 
 			pterm.Success.Printf("Hook '%s' deleted successfully\n", hookName)
+
+			// Track operation
+			trackHookDelete(hookName, true)
 
 			return nil
 		},

@@ -80,6 +80,10 @@ func updateAgent(agentName, masterAddr, version string, restart bool, local bool
 	}
 
 	_, err = updateAgentWithClients(ctx, registryClient, agentClientFactory, opts)
+
+	// Track operation
+	trackAgentUpdate(agentName, version, err == nil)
+
 	return err
 }
 
@@ -137,6 +141,9 @@ func updateAgentLocal(ctx context.Context, factory ConnectionFactory, agentName,
 	displayUpdateSummary(result, opts, os.Stdout)
 
 	pterm.Success.Printf("✅ Agent %s updated successfully\n", agentName)
+
+	// Track operation
+	trackAgentUpdate(agentName, version, true)
 
 	return nil
 }

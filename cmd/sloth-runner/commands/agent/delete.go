@@ -78,7 +78,12 @@ func NewDeleteCommand(ctx *commands.AppContext) *cobra.Command {
 				AgentName: agentName,
 			}
 
-			return deleteAgentWithClient(context.Background(), client, opts)
+			err = deleteAgentWithClient(context.Background(), client, opts)
+
+			// Track operation
+			trackAgentDelete(agentName, err == nil)
+
+			return err
 		},
 	}
 
@@ -145,5 +150,9 @@ func deleteAgentFromLocalDB(agentName string, debug bool) error {
 	}
 
 	spinner.Success(fmt.Sprintf("Agent '%s' deleted successfully from local database", agentName))
+
+	// Track operation
+	trackAgentDelete(agentName, true)
+
 	return nil
 }

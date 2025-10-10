@@ -190,6 +190,7 @@ Example:
 			}
 
 			if err := repo.Add(hook); err != nil {
+				trackHookRegister(hookName, eventType, false)
 				return fmt.Errorf("failed to add hook: %w", err)
 			}
 
@@ -200,6 +201,9 @@ Example:
 				pterm.Info.Printf("Stack: %s\n", stack)
 			}
 			pterm.Info.Printf("Enabled: %v\n", enabled)
+
+			// Track operation
+			trackHookRegister(hookName, eventType, true)
 
 			return nil
 		},

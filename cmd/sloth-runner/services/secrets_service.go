@@ -30,12 +30,8 @@ type Secret struct {
 
 // NewSecretsService creates a new secrets service
 func NewSecretsService() (*SecretsService, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get home directory: %w", err)
-	}
-
-	dbPath := filepath.Join(homeDir, ".sloth-runner", "secrets.db")
+	// Always use /etc/sloth-runner/ as per system requirements
+	dbPath := "/etc/sloth-runner/secrets.db"
 	dbDir := filepath.Dir(dbPath)
 
 	// Create directory if it doesn't exist

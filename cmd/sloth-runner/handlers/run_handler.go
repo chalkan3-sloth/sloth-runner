@@ -422,6 +422,23 @@ func (h *RunHandler) executeTasks(
 		enhancedOutput.WorkflowStart(workflowName, "Executing workflow")
 	}
 
+	// Create pre-execution snapshot
+	preExecutionVersion, snapshotErr := h.stackService.CreateSnapshot(
+		stackID,
+		"system",
+		fmt.Sprintf("Pre-execution snapshot for %s", workflowName),
+	)
+	if snapshotErr != nil {
+		slog.Warn("Failed to create pre-execution snapshot", "error", snapshotErr)
+	} else {
+		if h.config.Debug {
+			slog.Debug("Created pre-execution snapshot", "version", preExecutionVersion)
+		}
+		if enhancedOutput != nil {
+			enhancedOutput.Info(fmt.Sprintf("Created snapshot version %d", preExecutionVersion))
+		}
+	}
+
 	// Update stack status to running
 	executionStart := time.Now()
 	if err := h.stackService.UpdateStackStatus(stackID, "running"); err != nil {
@@ -447,6 +464,30 @@ func (h *RunHandler) executeTasks(
 
 	// Record execution
 	h.recordExecution(stackID, executionStart, duration, err, runner, exportedOutputs)
+
+	// Track workflow execution operation
+	h.trackWorkflowExecution(stackID, workflowName, duration, err)
+
+	// Create post-execution snapshot
+	postStatus := "success"
+	if err != nil {
+		postStatus = "failure"
+	}
+	postExecutionVersion, snapshotErr := h.stackService.CreateSnapshot(
+		stackID,
+		"system",
+		fmt.Sprintf("Post-execution snapshot (%s) for %s", postStatus, workflowName),
+	)
+	if snapshotErr != nil {
+		slog.Warn("Failed to create post-execution snapshot", "error", snapshotErr)
+	} else {
+		if h.config.Debug {
+			slog.Debug("Created post-execution snapshot", "version", postExecutionVersion)
+		}
+		if enhancedOutput != nil {
+			enhancedOutput.Info(fmt.Sprintf("Created snapshot version %d", postExecutionVersion))
+		}
+	}
 
 	// Handle results
 	return h.handleResults(err, duration, workflowName, stackID, runner, exportedOutputs, enhancedOutput)
@@ -611,6 +652,49 @@ func (h *RunHandler) handleSuccess(
 		fmt.Fprintln(h.config.Writer, "\nExported Outputs:")
 		for key, value := range exportedOutputs {
 			fmt.Fprintf(h.config.Writer, "  %s: %v\n", key, value)
+		}
+	}
+}
+
+// trackWorkflowExecution tracks the workflow execution operation
+func (h *RunHandler) trackWorkflowExecution(stackID, workflowName string, duration time.Duration, err error) {
+	tracker, trackerErr := services.GetGlobalStateTracker()
+	if trackerErr != nil {
+		slog.Warn("Failed to get state tracker", "error", trackerErr)
+		return
+	}
+
+	status := "completed"
+	errorMsg := ""
+	if err != nil {
+		status = "failed"
+		errorMsg = err.Error()
+	}
+
+	operation := &stack.Operation{
+		Type:       stack.OpWorkflowExecution,
+		StackName:  h.config.StackName,
+		ResourceID: workflowName,
+		Status:     status,
+		StartedAt:  time.Now().Add(-duration),
+		Duration:   duration,
+		Metadata: map[string]interface{}{
+			"stack_id":  stackID,
+			"file_path": h.config.FilePath,
+			"run_id":    h.config.RunID,
+		},
+		Error:       errorMsg,
+		PerformedBy: "cli-user",
+	}
+
+	now := time.Now()
+	operation.CompletedAt = &now
+
+	if trackErr := tracker.TrackOperationWithEvents(operation); trackErr != nil {
+		slog.Warn("Failed to track workflow execution", "error", trackErr)
+	} else {
+		if h.config.Debug {
+			slog.Debug("Workflow execution tracked", "workflow", workflowName, "status", status)
 		}
 	}
 }

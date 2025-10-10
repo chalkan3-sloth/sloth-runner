@@ -115,6 +115,10 @@ func startAgent(ctx *commands.AppContext, port int, masterAddr, agentName string
 			return fmt.Errorf("failed to write PID file: %w", err)
 		}
 		fmt.Printf("Agent %s started with PID %d. Logs can be found at %s.\n", agentName, command.Process.Pid, "agent.log")
+
+		// Track operation (daemon mode)
+		trackAgentRegistration(agentName, "localhost", port, true)
+
 		return nil
 	}
 
@@ -298,6 +302,18 @@ func startMasterConnection(ctx *commands.AppContext, masterAddr, agentName, agen
 
 		pterm.Success.Printf("✓ Agent registered with master at %s (reporting address: %s)\n", masterAddr, agentReportAddress)
 		slog.Info(fmt.Sprintf("Agent registered with master at %s, reporting address %s", masterAddr, agentReportAddress))
+
+		// Track operation (foreground mode)
+		// Parse host and port from agentReportAddress
+		hostPort := strings.Split(agentReportAddress, ":")
+		host := hostPort[0]
+		reportPort := 50052 // default port
+		if len(hostPort) > 1 {
+			if p, err := strconv.Atoi(hostPort[1]); err == nil {
+				reportPort = p
+			}
+		}
+		trackAgentRegistration(agentName, host, reportPort, true)
 
 		// Start heartbeat loop
 		connected := true

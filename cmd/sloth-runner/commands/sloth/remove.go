@@ -44,10 +44,14 @@ func NewRemoveCommand(ctx *commands.AppContext) *cobra.Command {
 
 			if err := service.RemoveSloth(cmd.Context(), name); err != nil {
 				spinner.Fail(fmt.Sprintf("Failed to remove sloth: %v", err))
+				trackSlothDelete(name, false)
 				return err
 			}
 
 			spinner.Success(fmt.Sprintf("✓ Sloth '%s' removed successfully", name))
+
+			// Track operation
+			trackSlothDelete(name, true)
 
 			return nil
 		},
@@ -93,10 +97,14 @@ func NewDeleteCommand(ctx *commands.AppContext) *cobra.Command {
 
 			if err := service.DeleteSloth(cmd.Context(), name); err != nil {
 				spinner.Fail(fmt.Sprintf("Failed to delete sloth: %v", err))
+				trackSlothDelete(name, false)
 				return err
 			}
 
 			spinner.Success(fmt.Sprintf("✓ Sloth '%s' deleted successfully", name))
+
+			// Track operation
+			trackSlothDelete(name, true)
 
 			return nil
 		},

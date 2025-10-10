@@ -170,10 +170,15 @@ func addSecretInteractive(cmd *cobra.Command, service *services.SecretsService, 
 	// Add secret
 	err = service.AddSecret(cmd.Context(), stackID, name, value, password, salt)
 	if err != nil {
+		trackSecretCreate(name, stackID, false)
 		return err
 	}
 
 	pterm.Success.Printf("Secret '%s' added successfully\n", name)
+
+	// Track operation
+	trackSecretCreate(name, stackID, true)
+
 	return nil
 }
 
@@ -192,10 +197,15 @@ func addSecretFromFile(cmd *cobra.Command, service *services.SecretsService, sta
 	// Add secret
 	err = service.AddSecret(cmd.Context(), stackID, name, value, password, salt)
 	if err != nil {
+		trackSecretCreate(name, stackID, false)
 		return err
 	}
 
 	pterm.Success.Printf("Secret '%s' added from file '%s'\n", name, filePath)
+
+	// Track operation
+	trackSecretCreate(name, stackID, true)
+
 	return nil
 }
 
@@ -225,9 +235,11 @@ func addSecretsFromYAML(cmd *cobra.Command, service *services.SecretsService, st
 		err = service.AddSecret(cmd.Context(), stackID, name, value, password, salt)
 		if err != nil {
 			pterm.Error.Printf("Failed to add secret '%s': %v\n", name, err)
+			trackSecretCreate(name, stackID, false)
 			continue
 		}
 		pterm.Success.Printf("Added secret '%s'\n", name)
+		trackSecretCreate(name, stackID, true)
 		count++
 	}
 

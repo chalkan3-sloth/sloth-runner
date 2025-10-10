@@ -4,12 +4,20 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/debug"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/health"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/logs"
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sysadmin/alerting"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sysadmin/backup"
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sysadmin/config"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sysadmin/deployment"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sysadmin/maintenance"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sysadmin/network"
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sysadmin/packages"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sysadmin/performance"
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sysadmin/process"
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sysadmin/resources"
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sysadmin/security"
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sysadmin/services"
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sysadmin/systemd"
+	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/commands/sysadmin/users"
 	"github.com/spf13/cobra"
 )
 
@@ -43,12 +51,20 @@ backups, performance monitoring, network diagnostics, and security auditing.`,
 	cmd.AddCommand(debug.NewDebugCmd())
 
 	// Add new sysadmin tools
+	cmd.AddCommand(alerting.NewAlertingCmd())
 	cmd.AddCommand(backup.NewBackupCmd())
-	cmd.AddCommand(performance.NewPerformanceCmd())
-	cmd.AddCommand(network.NewNetworkCmd())
-	cmd.AddCommand(security.NewSecurityCmd())
-	cmd.AddCommand(maintenance.NewMaintenanceCmd())
+	cmd.AddCommand(config.NewConfigCmd())
 	cmd.AddCommand(deployment.NewDeploymentCmd())
+	cmd.AddCommand(maintenance.NewMaintenanceCmd())
+	cmd.AddCommand(network.NewNetworkCmd())
+	cmd.AddCommand(packages.NewPackagesCmd())
+	cmd.AddCommand(performance.NewPerformanceCmd())
+	cmd.AddCommand(process.NewProcessCmd())
+	cmd.AddCommand(resources.NewResourcesCmd())
+	cmd.AddCommand(security.NewSecurityCmd())
+	cmd.AddCommand(services.NewServicesCmd())
+	cmd.AddCommand(systemd.NewSystemdCmd())
+	cmd.AddCommand(users.NewUsersCmd())
 
 	return cmd
 }

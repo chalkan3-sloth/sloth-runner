@@ -39,6 +39,7 @@ The file content will be stored and can be referenced by name in run commands.`,
 
 			if err := service.AddSloth(cmd.Context(), name, filePath, description, active); err != nil {
 				spinner.Fail(fmt.Sprintf("Failed to add sloth: %v", err))
+				trackSlothAdd(name, filePath, false)
 				return err
 			}
 
@@ -52,6 +53,9 @@ The file content will be stored and can be referenced by name in run commands.`,
 				pterm.Info.Printf("Description: %s\n", description)
 			}
 			pterm.Info.Printf("Active: %v\n", active)
+
+			// Track operation
+			trackSlothAdd(name, filePath, true)
 
 			return nil
 		},

@@ -69,11 +69,24 @@ const (
 	EventSecretExpired        EventType = "secret.expired"
 
 	// Stack events
-	EventStackDeployed      EventType = "stack.deployed"
-	EventStackDestroyed     EventType = "stack.destroyed"
-	EventStackUpdated       EventType = "stack.updated"
-	EventStackDriftDetected EventType = "stack.drift_detected"
-	EventStackFailed        EventType = "stack.failed"
+	EventStackDeployed         EventType = "stack.deployed"
+	EventStackDestroyed        EventType = "stack.destroyed"
+	EventStackUpdated          EventType = "stack.updated"
+	EventStackDriftDetected    EventType = "stack.drift_detected"
+	EventStackFailed           EventType = "stack.failed"
+	EventStackSnapshotCreated  EventType = "stack.snapshot_created"
+	EventStackRolledBack       EventType = "stack.rolled_back"
+	EventStackRollbackFailed   EventType = "stack.rollback_failed"
+	EventStackLocked           EventType = "stack.locked"
+	EventStackUnlocked         EventType = "stack.unlocked"
+	EventStackTagged           EventType = "stack.tagged"
+	EventStackUntagged         EventType = "stack.untagged"
+
+	// Resource events
+	EventResourceCreated EventType = "resource.created"
+	EventResourceUpdated EventType = "resource.updated"
+	EventResourceDeleted EventType = "resource.deleted"
+	EventResourceFailed  EventType = "resource.failed"
 
 	// Backup events
 	EventBackupStarted   EventType = "backup.started"

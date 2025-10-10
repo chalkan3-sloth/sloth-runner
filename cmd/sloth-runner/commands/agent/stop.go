@@ -31,7 +31,12 @@ func NewStopCommand(ctx *commands.AppContext) *cobra.Command {
 				AgentName: agentName,
 			}
 
-			return stopAgentWithClient(context.Background(), client, opts)
+			err = stopAgentWithClient(context.Background(), client, opts)
+
+			// Track operation
+			trackAgentStop(agentName, err == nil)
+
+			return err
 		},
 	}
 

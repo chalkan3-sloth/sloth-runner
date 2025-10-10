@@ -18,6 +18,7 @@ func NewWorkflowCommand(ctx *commands.AppContext) *cobra.Command {
 
 	// Add all workflow state subcommands
 	cmd.AddCommand(
+		// Basic commands
 		NewWorkflowListCommand(ctx),
 		NewWorkflowShowCommand(ctx),
 		NewWorkflowVersionsCommand(ctx),
@@ -26,6 +27,17 @@ func NewWorkflowCommand(ctx *commands.AppContext) *cobra.Command {
 		NewWorkflowResourcesCommand(ctx),
 		NewWorkflowOutputsCommand(ctx),
 		NewWorkflowDeleteCommand(ctx),
+
+		// Advanced commands
+		NewWorkflowTagsCommand(ctx),        // Tag management
+		NewWorkflowImportCommand(ctx),      // Import state
+		NewWorkflowExportCommand(ctx),      // Export state
+		NewWorkflowBackupCommand(ctx),      // Create backup
+		NewWorkflowRestoreCommand(ctx),     // Restore from backup
+		NewWorkflowDiffCommand(ctx),        // Diff versions
+		NewWorkflowSearchCommand(ctx),      // Advanced search
+		NewWorkflowPruneCommand(ctx),       // Cleanup old states
+		NewWorkflowAnalyticsCommand(ctx),   // Analytics
 	)
 
 	return cmd

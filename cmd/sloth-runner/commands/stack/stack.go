@@ -19,11 +19,27 @@ func NewStackCommand(ctx *commands.AppContext) *cobra.Command {
 
 	// Add all stack subcommands
 	cmd.AddCommand(
+		// Basic stack management
 		NewListCommand(ctx),
 		NewShowCommand(ctx),
 		NewNewCommand(ctx),
 		NewDeleteCommand(ctx),
 		NewHistoryCommand(ctx),
+
+		// State management (Pulumi/Terraform-like)
+		NewStateCommand(ctx),
+		NewMigrateCommand(ctx),
+
+		// Operations tracking
+		NewOperationsCommand(ctx),
+
+		// Advanced state management
+		NewSnapshotCommand(ctx),   // Snapshot management (create, list, restore, compare)
+		NewDriftCommand(ctx),      // Drift detection and auto-fix
+		NewLockCommand(ctx),       // State locking (prevent concurrent modifications)
+		NewValidateCommand(ctx),   // State validation and repair
+		NewEventsCommand(ctx),     // Event viewing and statistics
+		NewDepsCommand(ctx),       // Dependency graph visualization and analysis
 	)
 
 	return cmd
