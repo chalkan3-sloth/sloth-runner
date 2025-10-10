@@ -69,7 +69,6 @@
 
 ```lua
 command = function()
-  local pulumi = require("pulumi")
 
   -- 1. 定义 VPC 堆栈
   local vpc_stack = pulumi.stack("my-org/vpc/prod", { workdir = "./pulumi/vpc" })

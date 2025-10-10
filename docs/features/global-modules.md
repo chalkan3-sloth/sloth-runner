@@ -7,10 +7,6 @@ Starting from the latest version of Sloth Runner, **all native infrastructure mo
 ### ❌ Before (Old Way)
 ```lua
 -- Had to require every module
-local pkg = require("pkg")
-local user = require("user")
-local systemd = require("systemd")
-local file_ops = require("file_ops")
 
 task("setup")
     :command(function()
@@ -131,8 +127,6 @@ If you have existing scripts with `require()` calls for native modules, they wil
 
 **Old Script (Still Works):**
 ```lua
-local pkg = require("pkg")
-local systemd = require("systemd")
 
 task("install_nginx")
     :command(function()

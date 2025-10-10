@@ -49,7 +49,6 @@ Installs one or more packages.
 
 === "Modern DSL"
     ```lua
-    local pkg = require("pkg")
     
     local install_tools = task("install_tools")
         :description("Install development tools")
@@ -77,7 +76,6 @@ Installs one or more packages.
 
 === "With delegate_to"
     ```lua
-    local pkg = require("pkg")
     
     local install_on_agent = task("install_on_agent")
         :description("Install packages on remote agent")
@@ -103,7 +101,6 @@ Installs one or more packages.
 
 === "Single Package"
     ```lua
-    local pkg = require("pkg")
     
     local install_nginx = task("install_nginx")
         :description("Install nginx web server")
@@ -135,7 +132,6 @@ Removes one or more packages.
 **Example:**
 
 ```lua
-local pkg = require("pkg")
 
 local cleanup = task("cleanup")
     :description("Remove unnecessary packages")
@@ -162,7 +158,6 @@ Searches for packages.
 **Example:**
 
 ```lua
-local pkg = require("pkg")
 
 local search_python = task("search_python")
     :description("Search for Python packages")
@@ -278,7 +273,6 @@ Checks if installed.
 **Example:**
 
 ```lua
-local pkg = require("pkg")
 
 local check_requirements = task("check_requirements")
     :description("Check required packages")
@@ -352,7 +346,6 @@ end
 ### Development Environment Setup
 
 ```lua
-local pkg = require("pkg")
 
 local update = task("update")
     :command(function() return pkg.update({}) end)
@@ -387,7 +380,6 @@ workflow.define("setup_dev")
 ### Distributed Management
 
 ```lua
-local pkg = require("pkg")
 
 local update_servers = task("update_servers")
     :command(function() return pkg.update({}) end)
@@ -409,7 +401,6 @@ workflow.define("setup_monitoring")
 ### System Audit
 
 ```lua
-local pkg = require("pkg")
 
 local audit = task("audit")
     :command(function()

@@ -69,7 +69,6 @@ This example shows a common pattern: deploying a networking stack (VPC) and then
 
 ```lua
 command = function()
-  local pulumi = require("pulumi")
 
   -- 1. Define the VPC stack
   local vpc_stack = pulumi.stack("my-org/vpc/prod", { workdir = "./pulumi/vpc" })

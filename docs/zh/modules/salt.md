@@ -52,7 +52,6 @@
 
 ```lua
 command = function()
-  local salt = require("salt")
 
   -- 1. 创建一个 Salt 客户端
   local client = salt.client()

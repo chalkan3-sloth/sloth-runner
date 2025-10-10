@@ -118,7 +118,6 @@ func getTableBool(tbl *lua.LTable, key string, def bool) bool {
 ### pkg Module (Package Management)
 
 ```lua
-local pkg = require("pkg")
 
 -- Install packages
 pkg.install({packages = "vim"})
@@ -157,7 +156,6 @@ local manager, _ = pkg.get_manager({})
 ### ssh Module (SSH Operations)
 
 ```lua
-local ssh = require("ssh")
 
 -- Connect to server
 ssh.connect({

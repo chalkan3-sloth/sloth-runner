@@ -63,7 +63,6 @@ local start_nginx = task("start-nginx")
     :description("Start and enable nginx service")
     :delegate_to("web-server")
     :command(function(this, params)
-        local systemd = require("systemd")
 
         local success, msg = systemd.start("nginx")
         if not success then
@@ -218,7 +217,6 @@ Only a few modules need `require()`:
 ```lua
 :command(function(this, params)
     -- Systemd module
-    local systemd = require("systemd")
     systemd.start("nginx")
     systemd.enable("nginx")
 

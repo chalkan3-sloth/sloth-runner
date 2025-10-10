@@ -323,7 +323,6 @@ O módulo `salt` fornece uma API completa e abrangente para interagir com o Salt
 
 ### Exemplo Básico - Conectividade
 ```lua
-local salt = require("salt")
 
 -- Testar conectividade com todos os minions
 local ping_result = salt.ping("*", {timeout = 30})
@@ -337,7 +336,6 @@ end
 
 ### Exemplo Avançado - Aplicação de Estado
 ```lua
-local salt = require("salt")
 
 -- Aplicar estado nginx com configuração específica
 local result = salt.state_apply("web*", "nginx", {
@@ -361,7 +359,6 @@ end
 
 ### Exemplo Enterprise - Orquestração
 ```lua
-local salt = require("salt")
 
 -- Orquestração complexa com múltiplos ambientes
 local orchestration = salt.orchestrate("deploy.application", {
@@ -388,7 +385,6 @@ end
 
 ### Exemplo Cloud - Gerenciamento de Infraestrutura
 ```lua
-local salt = require("salt")
 
 -- Criar instâncias na nuvem
 local cloud_result = salt.cloud_create("web-profile", "web-server-03")
@@ -408,7 +404,6 @@ end
 
 ### Exemplo Docker - Gerenciamento de Containers
 ```lua
-local salt = require("salt")
 
 -- Gerenciamento completo de containers Docker
 local docker_ops = {

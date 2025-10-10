@@ -297,7 +297,6 @@ sloth-runner run -f pipeline.sloth -o rich
 ### Infrastructure Automation
 
 ```lua
-local terraform = require("terraform")
 
 task("plan")
   :command(function(this, params)
@@ -452,7 +451,6 @@ sloth-runner run -f app.sloth -v prod-values.yaml
 task("install"):command("apt-get install nginx"):build()
 
 -- ✅ Use built-in modules
-local pkg = require("pkg")
 task("install"):command(function(this, params)
   return pkg.install("nginx")
 end):build()

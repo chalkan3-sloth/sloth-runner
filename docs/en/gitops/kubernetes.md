@@ -14,7 +14,6 @@ Sloth Runner integrates seamlessly with Kubernetes:
 ## Basic Usage
 
 ```lua
-local k8s = require("kubernetes")
 
 local deploy_task = task("k8s_deploy")
     :description("Deploy to Kubernetes")

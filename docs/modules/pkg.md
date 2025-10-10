@@ -4,8 +4,6 @@ The `pkg` module provides comprehensive cross-platform package management functi
 
 ## 🚀 Quick Start
 
-### Modern Syntax (Recommended)
-
 ```lua
 -- pkg is available globally, no require needed!
 task("install_tools")
@@ -18,22 +16,7 @@ task("install_tools")
   :build()
 ```
 
-### Classic Syntax (Still Supported)
-
-```lua
-local pkg = require("pkg")
-
-task("install_tools")
-  :description("Install essential development tools")
-  :command(function(this, params)
-    pkg.update()
-    pkg.install({"git", "curl", "vim"})
-    return true, "Tools installed"
-  end)
-  :build()
-```
-
-> 💡 **Tip**: Use the modern syntax! All built-in modules (`pkg`, `docker`, `systemd`, `git`, `terraform`, etc.) are available globally without `require()`.
+> 💡 **Tip**: The `pkg` module is available globally! All infrastructure modules are automatically available without `require()`.
 
 ---
 

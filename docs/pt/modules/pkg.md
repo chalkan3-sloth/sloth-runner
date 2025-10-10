@@ -61,7 +61,6 @@ Instala um ou mais pacotes.
 
 === "DSL Moderno"
     ```lua
-    local pkg = require("pkg")
     
     local instalar_ferramentas = task("instalar_ferramentas")
         :description("Instalar ferramentas de desenvolvimento")
@@ -89,7 +88,6 @@ Instala um ou mais pacotes.
 
 === "Com delegate_to"
     ```lua
-    local pkg = require("pkg")
     
     local instalar_no_agente = task("instalar_no_agente")
         :description("Instalar pacotes no agente remoto")
@@ -120,7 +118,6 @@ Remove um ou mais pacotes.
 **Exemplo:**
 
 ```lua
-local pkg = require("pkg")
 
 local limpeza = task("limpeza")
     :description("Remover pacotes desnecessários")
@@ -147,7 +144,6 @@ Busca pacotes.
 **Exemplo:**
 
 ```lua
-local pkg = require("pkg")
 
 local buscar_python = task("buscar_python")
     :description("Buscar pacotes Python")
@@ -255,7 +251,6 @@ local manutencao = task("manutencao")
 Verifica se está instalado.
 
 ```lua
-local pkg = require("pkg")
 
 local verificar_requisitos = task("verificar_requisitos")
     :description("Verificar pacotes necessários")
@@ -304,7 +299,6 @@ end
 ### Configuração de Ambiente de Desenvolvimento
 
 ```lua
-local pkg = require("pkg")
 
 local atualizar = task("atualizar")
     :command(function() return pkg.update() end)
@@ -338,7 +332,6 @@ workflow.define("configurar_dev")
 ### Gerenciamento Distribuído
 
 ```lua
-local pkg = require("pkg")
 
 local atualizar_servidores = task("atualizar_servidores")
     :command(function() return pkg.update() end)
@@ -360,7 +353,6 @@ workflow.define("configurar_monitoramento")
 ### Auditoria do Sistema
 
 ```lua
-local pkg = require("pkg")
 
 local auditoria = task("auditoria")
     :command(function()

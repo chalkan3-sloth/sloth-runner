@@ -5,7 +5,6 @@ O módulo **user** fornece funcionalidades completas de gerenciamento de usuári
 ## 📦 Importação
 
 ```lua
-local user = require("user")
 ```
 
 ## 🚀 Funcionalidades Principais
@@ -37,7 +36,6 @@ Cria um novo usuário no sistema.
 ```lua
 task("create-user", {
     action = function()
-        local user = require("user")
         
         -- Criar usuário simples
         local ok, msg = user.create("john")
@@ -65,7 +63,6 @@ task("create-user", {
 ```lua
 task("create-remote-user", {
     action = function()
-        local user = require("user")
         
         -- Criar usuário em servidor remoto com senha
         delegate_to("production-server", function()
@@ -99,7 +96,6 @@ Remove um usuário do sistema.
 ```lua
 task("cleanup-users", {
     action = function()
-        local user = require("user")
         
         -- Deletar usuário mantendo o home
         user.delete("tempuser")

@@ -91,7 +91,6 @@ All modules are **globally available** - no `require()` needed! Just use them di
 
 ```lua
 -- Old way (still works)
-local pkg = require("pkg")
 
 -- New way (recommended) - modules are global!
 pkg.install({ packages = {"nginx"} })

@@ -22,7 +22,6 @@ Remote Agent (production-server)
 ## Script de Deploy (deploy.sloth)
 
 ```lua
-local file_ops = require("file_ops")
 local exec = require("exec")
 
 -- Task: Deploy de configuração do Nginx

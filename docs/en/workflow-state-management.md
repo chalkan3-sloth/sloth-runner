@@ -364,7 +364,6 @@ For now, you can manually manage state in your workflows:
 
 ```lua
 -- Example: Create workflow state
-local state = require('state')
 local workflow_id = state.create_workflow{
     name = "my-deployment",
     metadata = {

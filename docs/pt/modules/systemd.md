@@ -81,7 +81,6 @@ Cria um novo arquivo de serviço systemd em `/etc/systemd/system/{nome}.service`
 
 === "DSL Moderno"
     ```lua
-    local systemd = require("systemd")
     
     local criar_servico_web = task("criar_servico_web")
         :description("Criar serviço de aplicação web")
@@ -125,7 +124,6 @@ Cria um novo arquivo de serviço systemd em `/etc/systemd/system/{nome}.service`
 
 === "Com delegate_to"
     ```lua
-    local systemd = require("systemd")
     
     local implantar_servico_remoto = task("implantar_servico_remoto")
         :description("Implantar serviço no agente remoto")
@@ -277,7 +275,6 @@ Mostra propriedades detalhadas de um serviço.
 ### Implantação de Aplicação Web
 
 ```lua
-local systemd = require("systemd")
 
 local implantar_webapp = task("implantar_webapp")
     :description("Implantar e configurar aplicação web")
@@ -326,7 +323,6 @@ workflow.define("implantar")
 ### Verificação de Saúde
 
 ```lua
-local systemd = require("systemd")
 
 local verificacao_saude = task("verificacao_saude")
     :description("Verificar saúde dos serviços críticos")
@@ -363,7 +359,6 @@ workflow.define("verificar_saude")
 ### Gerenciamento Distribuído
 
 ```lua
-local systemd = require("systemd")
 
 local reiniciar_todos_servidores = task("reiniciar_nginx")
     :description("Reiniciar nginx em todos os servidores")

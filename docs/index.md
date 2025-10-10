@@ -161,7 +161,6 @@ local setup_web_server = task("setup_web_server")
         })
 
         -- Configure systemd service
-        local systemd = require("systemd")
         systemd.enable("nginx")
         systemd.start("nginx")
 
@@ -222,7 +221,6 @@ local clone_task = task("clone_infrastructure")
 local deploy_task = task("deploy_terraform")
     :description("Deploy infrastructure using Terraform")
     :command(function(this, params)
-        local terraform = require("terraform")
         
         -- Terraform init runs automatically
         local client = terraform.init(this.workdir:get())
@@ -275,7 +273,6 @@ git.checkout(repo, "production")
 git.pull(repo, "origin", "production")
 
 -- Terraform lifecycle management
-local terraform = require("terraform")
 local client = terraform.init("/tmp/infra/terraform/")  -- Runs 'terraform init'
 local plan = client:plan({ var_file = "production.tfvars" })
 local apply = client:apply({ auto_approve = true })
@@ -544,7 +541,6 @@ sloth-runner scheduler delete backup-task
 
 ```lua
 -- Advanced state operations
-local state = require("state")
 state.lock("deploy-resource", 30)  -- 30 second lock
 state.set("config", data, 3600)    -- 1 hour TTL
 state.atomic_increment("build-count")
@@ -768,7 +764,6 @@ local deploy_task = task("production_deployment")
     :description("Production deployment with monitoring")
     :command(function(this, params)
         local monitoring = require("monitoring")
-        local state = require("state")
 
         -- Track deployment metrics
         monitoring.counter("deployments_started", 1)
@@ -865,7 +860,6 @@ workflow.define("distributed_pipeline")
 local update_config = task("update_configuration")
     :description("Update configuration with atomic locking")
     :command(function(this, params)
-        local state = require("state")
 
         -- Critical section with automatic locking
         local result = state.with_lock("config_update", function()
@@ -942,7 +936,6 @@ local deploy_staging = task("deploy_staging")
     :description("Deploy to staging environment")
     :depends_on({"build_image"})
     :command(function(this, params)
-        local kubernetes = require("kubernetes")
         local success = kubernetes.apply_manifest({
             file = "/tmp/build/k8s/staging.yaml",
             namespace = "staging",
@@ -970,7 +963,6 @@ local deploy_production = task("deploy_production")
         return params.branch == "main"
     end)
     :command(function(this, params)
-        local kubernetes = require("kubernetes")
         local success = kubernetes.apply_manifest({
             file = "/tmp/build/k8s/production.yaml",
             namespace = "production",

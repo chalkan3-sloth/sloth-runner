@@ -69,7 +69,6 @@ Este exemplo mostra um padrão comum: implantar uma stack de rede (VPC) e, em se
 
 ```lua
 command = function()
-  local pulumi = require("pulumi")
 
   -- 1. Define a stack da VPC
   local vpc_stack = pulumi.stack("minha-org/vpc/prod", { workdir = "./pulumi/vpc" })

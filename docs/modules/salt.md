@@ -54,7 +54,6 @@ This example demonstrates targeting minions to ping them and apply a Salt state.
 task("salt_manage"):
   description("Ping minions and apply Salt state"):
   command(function(this, params)
-    local salt = require("salt")
 
     -- 1. Create a Salt client
     local client = salt.client()

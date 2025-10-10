@@ -93,7 +93,6 @@ Verifica se um arquivo ou diretório existe.
 
 **Exemplo:**
 ```lua
-local infra_test = require("infra_test")
 
 workflow.define("test-deployment")
   :description("Test deployment configuration")
@@ -398,7 +397,6 @@ Verifica se um pacote está instalado no sistema. O módulo detecta automaticame
 
 **Exemplo:**
 ```lua
-local infra_test = require("infra_test")
 
 -- Verifica se nginx está instalado localmente
 infra_test.package_is_installed("nginx")
@@ -440,8 +438,6 @@ infra_test.package_version("postgresql", "14", "db-server")
 ### Exemplo 1: Teste de Deploy de Aplicação
 
 ```lua
-local infra_test = require("infra_test")
-local pkg = require("pkg")
 
 workflow.define("deploy-and-test-app")
   :description("Deploy and test nginx application")
@@ -499,7 +495,6 @@ workflow.define("deploy-and-test-app")
 ### Exemplo 2: Validação Multi-Agent
 
 ```lua
-local infra_test = require("infra_test")
 
 workflow.define("test-infrastructure")
   :description("Test infrastructure across multiple agents")
@@ -541,8 +536,6 @@ workflow.define("test-infrastructure")
 ### Exemplo 3: Teste de Configuração Completa
 
 ```lua
-local infra_test = require("infra_test")
-local systemd = require("systemd")
 
 workflow.define("deploy-microservice")
   :description("Deploy and validate microservice")
@@ -605,7 +598,6 @@ workflow.define("deploy-microservice")
 ### Exemplo 4: Teste de Segurança
 
 ```lua
-local infra_test = require("infra_test")
 
 workflow.define("security-audit")
   :description("Perform security audit on production server")
@@ -662,8 +654,6 @@ workflow.define("security-audit")
 ### Exemplo 5: Teste de Pacotes e Dependências
 
 ```lua
-local infra_test = require("infra_test")
-local pkg = require("pkg")
 
 workflow.define("setup-development-environment")
   :description("Setup and verify development environment")
@@ -725,7 +715,6 @@ workflow.define("setup-development-environment")
 ### Exemplo 6: Auditoria de Pacotes Multi-Agent
 
 ```lua
-local infra_test = require("infra_test")
 
 workflow.define("audit-packages")
   :description("Audit packages across multiple servers")

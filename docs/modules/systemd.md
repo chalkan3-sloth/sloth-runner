@@ -81,7 +81,6 @@ Creates a new systemd service file at `/etc/systemd/system/{name}.service`.
 
 === "Modern DSL"
     ```lua
-    local systemd = require("systemd")
     
     local create_web_service = task("create_web_service")
         :description("Create web application service")
@@ -129,7 +128,6 @@ Creates a new systemd service file at `/etc/systemd/system/{name}.service`.
 
 === "With delegate_to"
     ```lua
-    local systemd = require("systemd")
     
     local deploy_remote_service = task("deploy_remote_service")
         :description("Deploy service on remote agent")
@@ -348,7 +346,6 @@ log.info("Service details:\n" .. info)
 ### Web Application Deployment
 
 ```lua
-local systemd = require("systemd")
 
 local deploy_webapp = task("deploy_webapp")
     :description("Deploy and configure web application")
@@ -417,7 +414,6 @@ workflow.define("deploy")
 ### Service Health Check
 
 ```lua
-local systemd = require("systemd")
 
 local health_check = task("health_check")
     :description("Check critical services health")
@@ -471,7 +467,6 @@ workflow.define("health_check")
 ### Distributed Service Management
 
 ```lua
-local systemd = require("systemd")
 
 local restart_all_servers = task("restart_nginx")
     :description("Restart nginx on all servers")
@@ -511,7 +506,6 @@ workflow.define("rolling_restart")
 ### Service Monitoring
 
 ```lua
-local systemd = require("systemd")
 
 local monitor_services = task("monitor_services")
     :description("Monitor and report service status")
@@ -562,7 +556,6 @@ workflow.define("monitor")
 ### Service Update Workflow
 
 ```lua
-local systemd = require("systemd")
 
 local update_service = task("update_service")
     :description("Update service configuration")

@@ -52,7 +52,6 @@ This example demonstrates targeting minions to ping them and apply a Salt state.
 
 ```lua
 command = function()
-  local salt = require("salt")
 
   -- 1. Create a Salt client
   local client = salt.client()
