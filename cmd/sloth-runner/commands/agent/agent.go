@@ -32,7 +32,8 @@ func NewAgentCommand(ctx *commands.AppContext) *cobra.Command {
 		NewDocsCommand(ctx),
 		NewShellCommand(ctx),
 		NewWatcherCommand(ctx),
-		NewArtifactsCommand(ctx),
+		// TODO: NewArtifactsCommand requires protobuf definitions - temporarily disabled
+		// NewArtifactsCommand(ctx),
 	)
 
 	return cmd
