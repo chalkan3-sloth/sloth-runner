@@ -1,0 +1,87 @@
+-- FRP Test on Remote Agent
+-- Simple test to verify FRP module works on do-sloth-runner-01
+
+-- Task 1: Install FRP on remote agent
+local install_task = task("install_frp_remote")
+    :description("Install FRP on do-sloth-runner-01 agent")
+    :command(function()
+        log.info("Installing FRP on remote agent...")
+
+        -- Install FRP using delegate_to
+        local server = frp.server("test-frps")
+            :version("latest")
+            :delegate_to("do-sloth-runner-01")
+
+        local result, err = server:install()
+        if err then
+            log.error("Failed to install FRP: " .. err)
+            return false, err
+        end
+
+        log.info("FRP installed successfully on remote agent")
+        log.info(result)
+        return true, "FRP installed on do-sloth-runner-01"
+    end)
+    :build()
+
+-- Task 2: Configure simple FRP server
+local config_task = task("configure_frp_server")
+    :description("Configure FRP server with basic settings")
+    :depends_on({"install_frp_remote"})
+    :command(function()
+        log.info("Configuring FRP server...")
+
+        -- Create simple server configuration
+        local server = frp.server("test-frps")
+            :config({
+                bindAddr = "0.0.0.0",
+                bindPort = 7000,
+                auth = {
+                    method = "token",
+                    token = "test_token_123"
+                }
+            })
+            :delegate_to("do-sloth-runner-01")
+
+        local result, err = server:save_config()
+        if err then
+            log.error("Failed to save config: " .. err)
+            return false, err
+        end
+
+        log.info("FRP server configured successfully")
+        log.info(result)
+        return true, "Server configured"
+    end)
+    :build()
+
+-- Task 3: Check if config file was created
+local verify_task = task("verify_config")
+    :description("Verify configuration file exists")
+    :depends_on({"configure_frp_server"})
+    :command(function()
+        log.info("Verifying configuration file...")
+
+        -- Use exec module to check if file exists on remote agent
+        local result, err = exec.ssh("do-sloth-runner-01", "ls -lh /etc/frp/frps.toml")
+        if err then
+            log.error("Config file not found: " .. err)
+            return false, err
+        end
+
+        log.info("Configuration file verified:")
+        log.info(result)
+        return true, "Config verified"
+    end)
+    :build()
+
+-- Define workflow
+workflow.define("frp_remote_test")
+    :description("Test FRP module on do-sloth-runner-01 agent")
+    :version("1.0.0")
+    :tasks({install_task, config_task, verify_task})
+    :config({
+        timeout = "15m",
+        create_workdir_before_run = false
+    })
+    :build()

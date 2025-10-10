@@ -1,0 +1,118 @@
+-- FRP Server Setup Example
+-- This example demonstrates how to install and configure an FRP server
+
+-- Task 1: Install FRP
+local install_task = task("install_frp")
+    :description("Install FRP server and client binaries")
+    :command(function()
+        -- Install FRP (both server and client)
+        local result, err = frp.install("latest")
+        if err then
+            log.error("Failed to install FRP: " .. err)
+            return false, err
+        end
+
+        log.info("FRP installed successfully")
+        log.info(result)
+        return true, "FRP installed"
+    end)
+    :build()
+
+-- Task 2: Configure FRP Server
+local config_task = task("configure_server")
+    :description("Configure FRP server with TOML settings")
+    :depends_on({"install_frp"})
+    :command(function()
+        -- Create FRP server configuration
+        local server = frp.server("production-frps")
+            :config({
+                bindAddr = "0.0.0.0",
+                bindPort = 7000,
+                vhostHTTPPort = 8080,
+                vhostHTTPSPort = 8443,
+                kcpBindPort = 7000,
+                auth = {
+                    method = "token",
+                    token = "my_secure_token_12345"
+                },
+                webServer = {
+                    addr = "0.0.0.0",
+                    port = 7500,
+                    user = "admin",
+                    password = "admin123"
+                },
+                log = {
+                    to = "/var/log/frp/frps.log",
+                    level = "info",
+                    maxDays = 7
+                }
+            })
+
+        -- Save configuration to TOML file
+        local result, err = server:save_config()
+        if err then
+            log.error("Failed to save configuration: " .. err)
+            return false, err
+        end
+
+        log.info("FRP server configured successfully")
+        log.info(result)
+        return true, "Server configured"
+    end)
+    :build()
+
+-- Task 3: Enable and Start FRP Server
+local start_task = task("start_server")
+    :description("Enable and start FRP server service")
+    :depends_on({"configure_server"})
+    :command(function()
+        local server = frp.server("production-frps")
+
+        -- Enable service to start on boot
+        local enable_result, enable_err = server:enable()
+        if enable_err then
+            log.error("Failed to enable FRP server: " .. enable_err)
+            return false, enable_err
+        end
+        log.info(enable_result)
+
+        -- Start the service
+        local start_result, start_err = server:start()
+        if start_err then
+            log.error("Failed to start FRP server: " .. start_err)
+            return false, start_err
+        end
+
+        log.info("FRP server started successfully")
+        log.info(start_result)
+        return true, "Server started"
+    end)
+    :build()
+
+-- Task 4: Check Server Status
+local status_task = task("check_status")
+    :description("Check FRP server status")
+    :depends_on({"start_server"})
+    :command(function()
+        local server = frp.server("production-frps")
+
+        local status, err = server:status()
+        if err then
+            log.warn("Could not get status (service may be stopped): " .. err)
+        end
+
+        log.info("FRP Server Status:")
+        log.info(status)
+        return true, "Status checked"
+    end)
+    :build()
+
+-- Define workflow
+workflow.define("frp_server_setup")
+    :description("Install and configure FRP server")
+    :version("1.0.0")
+    :tasks({install_task, config_task, start_task, status_task})
+    :config({
+        timeout = "10m",
+        create_workdir_before_run = false
+    })

@@ -1,0 +1,143 @@
+-- FRP Client Setup Example
+-- This example demonstrates how to install and configure an FRP client to expose local services
+
+-- Task 1: Install FRP
+local install_task = task("install_frp")
+    :description("Install FRP client")
+    :command(function()
+        -- Install FRP (both server and client)
+        local result, err = frp.install("latest")
+        if err then
+            log.error("Failed to install FRP: " .. err)
+            return false, err
+        end
+
+        log.info("FRP installed successfully")
+        log.info(result)
+        return true, "FRP installed"
+    end)
+    :build()
+
+-- Task 2: Configure FRP Client with Multiple Proxies
+local config_task = task("configure_client")
+    :description("Configure FRP client with proxy settings")
+    :depends_on({"install_frp"})
+    :command(function()
+        -- Create FRP client configuration
+        local client = frp.client("my-frpc")
+            :server("frp.example.com", 7000)
+            :config({
+                auth = {
+                    method = "token",
+                    token = "my_secure_token_12345"
+                },
+                log = {
+                    to = "/var/log/frp/frpc.log",
+                    level = "info",
+                    maxDays = 7
+                },
+                transport = {
+                    protocol = "tcp"
+                }
+            })
+            -- Add HTTP proxy for web application
+            :proxy({
+                name = "web",
+                type = "http",
+                localIP = "127.0.0.1",
+                localPort = 3000,
+                customDomains = {"myapp.example.com"}
+            })
+            -- Add HTTPS proxy
+            :proxy({
+                name = "web_https",
+                type = "https",
+                localIP = "127.0.0.1",
+                localPort = 3000,
+                customDomains = {"myapp.example.com"}
+            })
+            -- Add SSH proxy
+            :proxy({
+                name = "ssh",
+                type = "tcp",
+                localIP = "127.0.0.1",
+                localPort = 22,
+                remotePort = 6000
+            })
+            -- Add database proxy
+            :proxy({
+                name = "postgres",
+                type = "tcp",
+                localIP = "127.0.0.1",
+                localPort = 5432,
+                remotePort = 6432
+            })
+
+        -- Save configuration to TOML file
+        local result, err = client:save_config()
+        if err then
+            log.error("Failed to save configuration: " .. err)
+            return false, err
+        end
+
+        log.info("FRP client configured successfully")
+        log.info(result)
+        return true, "Client configured"
+    end)
+    :build()
+
+-- Task 3: Enable and Start FRP Client
+local start_task = task("start_client")
+    :description("Enable and start FRP client service")
+    :depends_on({"configure_client"})
+    :command(function()
+        local client = frp.client("my-frpc")
+
+        -- Enable service to start on boot
+        local enable_result, enable_err = client:enable()
+        if enable_err then
+            log.error("Failed to enable FRP client: " .. enable_err)
+            return false, enable_err
+        end
+        log.info(enable_result)
+
+        -- Start the service
+        local start_result, start_err = client:start()
+        if start_err then
+            log.error("Failed to start FRP client: " .. start_err)
+            return false, start_err
+        end
+
+        log.info("FRP client started successfully")
+        log.info(start_result)
+        return true, "Client started"
+    end)
+    :build()
+
+-- Task 4: Check Client Status
+local status_task = task("check_status")
+    :description("Check FRP client status")
+    :depends_on({"start_client"})
+    :command(function()
+        local client = frp.client("my-frpc")
+
+        local status, err = client:status()
+        if err then
+            log.warn("Could not get status (service may be stopped): " .. err)
+        end
+
+        log.info("FRP Client Status:")
+        log.info(status)
+        return true, "Status checked"
+    end)
+    :build()
+
+-- Define workflow
+workflow.define("frp_client_setup")
+    :description("Install and configure FRP client with multiple proxies")
+    :version("1.0.0")
+    :tasks({install_task, config_task, start_task, status_task})
+    :config({
+        timeout = "10m",
+        create_workdir_before_run = false
+    })

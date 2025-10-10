@@ -1,0 +1,88 @@
+-- FRP Test Workflow
+-- This workflow tests FRP module
+
+local test_frp_module = task("test_frp_module")
+    :description("Test FRP module")
+    :command(function()
+        log.info("Testing FRP module...")
+        if frp then
+            log.info("✓ FRP is available")
+            return true, "FRP module OK"
+        else
+            log.error("✗ FRP not found")
+            return false, "FRP not available"
+        end
+    end)
+    :build()
+
+local check_agent_system = task("check_agent_system")
+    :description("Check system info on agent")
+    :command(function()
+        local os_info = exec.run("uname -a")
+        print("Agent system: " .. os_info)
+
+        local cpu_info = exec.run("grep -c processor /proc/cpuinfo 2>/dev/null || sysctl -n hw.ncpu")
+        print("CPU cores: " .. cpu_info)
+
+        return true, "System info retrieved"
+    end)
+    :depends_on({"check_agent_hostname"})
+    :build()
+
+local create_agent_file = task("create_agent_file")
+    :description("Create test file on agent")
+    :command(function()
+        local timestamp = os.date("%Y%m%d_%H%M%S")
+        local filename = "/tmp/agent_test_" .. timestamp .. ".txt"
+
+        exec.run("echo 'Hello from Sloth Runner Agent Execution!' > " .. filename)
+        print("Created file on agent: " .. filename)
+
+        local check = exec.run("cat " .. filename)
+        print("File contents: " .. check)
+
+        return true, "File created", {filename = filename}
+    end)
+    :depends_on({"check_agent_system"})
+    :build()
+
+local check_agent_services = task("check_agent_services")
+    :description("Check running services on agent")
+    :command(function()
+        print("=== Agent Services ===")
+
+        -- Check if systemd is available
+        local systemd_check = exec.run("which systemctl >/dev/null 2>&1 && echo 'yes' || echo 'no'")
+
+        if systemd_check:match("yes") then
+            local services = exec.run("systemctl list-units --type=service --state=running | head -10")
+            print("Running services:\n" .. services)
+        else
+            local processes = exec.run("ps aux | head -10")
+            print("Top processes:\n" .. processes)
+        end
+
+        return true, "Services checked"
+    end)
+    :depends_on({"create_agent_file"})
+    :build()
+
+workflow
+    .define("frp_test")
+    :description("Test FRP module")
+    :version("1.0.0")
+    :tasks({
+        test_frp_module
+    })
+    :config({
+        workdir = "/tmp",
+        timeout = "5m"
+    })
+    :on_complete(function(success, results)
+        if success then
+            print("\n✅ Agent test completed successfully!")
+            print("All tasks executed on remote agent")
+        else
+            print("\n❌ Agent test failed")
+        end
+    end)

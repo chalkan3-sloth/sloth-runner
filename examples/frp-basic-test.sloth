@@ -1,0 +1,49 @@
+-- FRP Module Basic Test
+
+local test_frp = task("test_frp")
+    :description("Test FRP module availability")
+    :command(function()
+        log.info("Testing FRP module...")
+
+        if frp then
+            log.info("✓ FRP module is available")
+            log.info("Type of frp: " .. type(frp))
+
+            if type(frp.server) == "function" then
+                log.info("✓ frp.server is a function")
+            else
+                log.error("✗ frp.server is not a function")
+                return false, "frp.server not available"
+            end
+
+            if type(frp.client) == "function" then
+                log.info("✓ frp.client is a function")
+            else
+                log.error("✗ frp.client is not a function")
+                return false, "frp.client not available"
+            end
+
+            if type(frp.install) == "function" then
+                log.info("✓ frp.install is a function")
+            else
+                log.error("✗ frp.install is not a function")
+                return false, "frp.install not available"
+            end
+
+            log.info("All FRP functions are available!")
+            return true, "FRP module OK"
+        else
+            log.error("✗ FRP module is NOT available")
+            return false, "FRP module not found"
+        end
+    end)
+    :build()
+
+workflow
+    .define("frp_basic_test")
+    :description("Basic FRP module test")
+    :version("1.0.0")
+    :tasks({test_frp})
+    :config({
+        timeout = "2m"
+    })
