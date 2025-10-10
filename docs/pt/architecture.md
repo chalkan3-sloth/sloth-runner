@@ -177,7 +177,7 @@ Executa definições de workflow com resolução de dependências.
 
 ```mermaid
 graph TD
-    WorkflowDef[Definição de Workflow<br/>Arquivo Lua] --> Parser[Parser DSL]
+    WorkflowDef[Definição de Workflow Arquivo Lua] --> Parser[Parser DSL]
     Parser --> DAG[Construtor DAG]
     DAG --> Scheduler[Agendador de Tarefas]
     Scheduler --> Executor[Executor de Tarefas]
@@ -382,36 +382,35 @@ return meu_modulo
 
 ```mermaid
 graph TB
-    subgraph "Estação de Trabalho do Usuário"
+    subgraph Workstation["Estação de Trabalho do Usuário"]
         DevCLI[CLI do Desenvolvedor]
     end
 
-    subgraph "Nó Master - Primário"
-        Master[Servidor Master<br/>:50053]
-        MasterDB[(DB de Estado<br/>DB de Stack)]
-        MasterUI[Interface Web<br/>:8080]
+    subgraph MasterNode["Nó Master - Primário"]
+        Master[Servidor Master :50053]
+        MasterDB[(DB de Estado DB de Stack)]
+        MasterUI[Interface Web :8080]
     end
 
-    subgraph "Cluster de Agentes"
-        direction LR
-        A1[Agente 1<br/>build-01]
-        A2[Agente 2<br/>build-02]
-        A3[Agente 3<br/>deploy-01]
+    subgraph AgentCluster["Cluster de Agentes"]
+        A1[Agente 1 build-01]
+        A2[Agente 2 build-02]
+        A3[Agente 3 deploy-01]
     end
 
-    subgraph "Infraestrutura Alvo"
-        K8s[Cluster<br/>Kubernetes]
-        Servers[Máquinas<br/>Virtuais]
-        Cloud[Recursos<br/>Cloud]
+    subgraph TargetInfra["Infraestrutura Alvo"]
+        K8s[Cluster Kubernetes]
+        Servers[Máquinas Virtuais]
+        Cloud[Recursos Cloud]
     end
 
     DevCLI -->|gRPC/HTTP| Master
     DevCLI -->|HTTP| MasterUI
 
     Master <--> MasterDB
-    Master <-.gRPC<br/>:50053.-> A1
-    Master <-.gRPC<br/>:50053.-> A2
-    Master <-.gRPC<br/>:50053.-> A3
+    Master -.gRPC.-> A1
+    Master -.gRPC.-> A2
+    Master -.gRPC.-> A3
 
     A1 --> K8s
     A2 --> Servers

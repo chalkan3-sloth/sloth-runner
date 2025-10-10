@@ -177,7 +177,7 @@ Executes workflow definitions with dependency resolution.
 
 ```mermaid
 graph TD
-    WorkflowDef[Workflow Definition<br/>Lua File] --> Parser[DSL Parser]
+    WorkflowDef[Workflow Definition Lua File] --> Parser[DSL Parser]
     Parser --> DAG[DAG Builder]
     DAG --> Scheduler[Task Scheduler]
     Scheduler --> Executor[Task Executor]
@@ -382,36 +382,35 @@ return mymodule
 
 ```mermaid
 graph TB
-    subgraph "User Workstation"
+    subgraph Workstation["User Workstation"]
         DevCLI[Developer CLI]
     end
 
-    subgraph "Master Node - Primary"
-        Master[Master Server<br/>:50053]
-        MasterDB[(State DB<br/>Stack DB)]
-        MasterUI[Web UI<br/>:8080]
+    subgraph MasterNode["Master Node - Primary"]
+        Master[Master Server :50053]
+        MasterDB[(State DB Stack DB)]
+        MasterUI[Web UI :8080]
     end
 
-    subgraph "Agent Cluster"
-        direction LR
-        A1[Agent 1<br/>build-01]
-        A2[Agent 2<br/>build-02]
-        A3[Agent 3<br/>deploy-01]
+    subgraph AgentCluster["Agent Cluster"]
+        A1[Agent 1 build-01]
+        A2[Agent 2 build-02]
+        A3[Agent 3 deploy-01]
     end
 
-    subgraph "Target Infrastructure"
-        K8s[Kubernetes<br/>Cluster]
-        Servers[Virtual<br/>Machines]
-        Cloud[Cloud<br/>Resources]
+    subgraph TargetInfra["Target Infrastructure"]
+        K8s[Kubernetes Cluster]
+        Servers[Virtual Machines]
+        Cloud[Cloud Resources]
     end
 
     DevCLI -->|gRPC/HTTP| Master
     DevCLI -->|HTTP| MasterUI
 
     Master <--> MasterDB
-    Master <-.gRPC<br/>:50053.-> A1
-    Master <-.gRPC<br/>:50053.-> A2
-    Master <-.gRPC<br/>:50053.-> A3
+    Master -.gRPC.-> A1
+    Master -.gRPC.-> A2
+    Master -.gRPC.-> A3
 
     A1 --> K8s
     A2 --> Servers
@@ -984,21 +983,21 @@ graph TB
 
 ```mermaid
 graph TB
-    subgraph "Load Balancer"
+    subgraph LoadBalancer["Load Balancer"]
         LB[HAProxy/Nginx]
     end
 
-    subgraph "Master Cluster"
-        M1[Master 1<br/>Primary]
-        M2[Master 2<br/>Standby]
-        M3[Master 3<br/>Standby]
+    subgraph MasterCluster["Master Cluster"]
+        M1[Master 1 Primary]
+        M2[Master 2 Standby]
+        M3[Master 3 Standby]
     end
 
-    subgraph "Database"
-        PGDB[(PostgreSQL<br/>Primary-Replica)]
+    subgraph Database["Database"]
+        PGDB[(PostgreSQL Primary-Replica)]
     end
 
-    subgraph "Agent Pool"
+    subgraph AgentPool["Agent Pool"]
         A1[Agent 1]
         A2[Agent 2]
         AN[Agent N]
