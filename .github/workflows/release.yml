@@ -55,8 +55,3 @@ jobs:
           echo "🎉 Release completed successfully!"
           echo "📦 Version: ${GITHUB_REF#refs/tags/}"
           echo "🔗 Release URL: https://github.com/${{ github.repository }}/releases/tag/${GITHUB_REF#refs/tags/}"
-
-      - name: Update agent lady-arch
-        run: |
-          echo "🔄 Updating agent lady-arch..."
-          sloth-runner agent update lady-arch || echo "⚠️  Failed to update agent"

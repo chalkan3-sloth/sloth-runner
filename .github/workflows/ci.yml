@@ -1,4 +1,4 @@
-name: build-and-test
+name: CI
 
 on:
   push:
@@ -15,10 +15,48 @@ on:
       - 'site/**'
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          args: '-no-fail -fmt sarif -out results.sarif ./...'
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: results.sarif
+
   test:
     name: Test
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,15 +91,33 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          go test -v ./cmd/sloth-runner/... -coverprofile=coverage.out -timeout=2m
-          go test -v ./internal/telemetry/... -coverprofile=telemetry-coverage.out -timeout=2m
+          go test -v ./cmd/sloth-runner/... -coverprofile=cmd-coverage.out -covermode=atomic -timeout=2m
+          go test -v ./internal/telemetry/... -coverprofile=telemetry-coverage.out -covermode=atomic -timeout=2m
+          go test -v ./internal/sloth/... -coverprofile=sloth-coverage.out -covermode=atomic -timeout=2m
+          go test -v ./cmd/sloth-runner/services/... -coverprofile=services-coverage.out -covermode=atomic -timeout=2m
         env:
           CGO_ENABLED: 1
-        timeout-minutes: 3
+        timeout-minutes: 5
 
-      - name: Upload coverage report
+      - name: Merge coverage reports
+        run: |
+          echo "mode: atomic" > coverage.out
+          tail -q -n +2 *-coverage.out >> coverage.out
+          go tool cover -func=coverage.out
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: github.event_name == 'pull_request'
+        with:
+          files: ./coverage.out
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+      - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: coverage-report
-          path: coverage.out
+          name: coverage-reports
+          path: '*-coverage.out'
+          retention-days: 7

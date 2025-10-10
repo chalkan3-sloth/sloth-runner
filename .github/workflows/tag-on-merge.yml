@@ -29,6 +29,19 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
+          # Get commit message for skip check
+          COMMIT_MSG=$(cat <<'EOF'
+          ${{ github.event.head_commit.message }}
+          EOF
+          )
+
+          # Check for skip tags
+          if printf '%s' "$COMMIT_MSG" | grep -iE '\[(skip-tag|no-tag|skip-release|no-release)\]'; then
+            echo "🚫 Tag creation skipped due to [skip-tag] in commit message"
+            echo "tag_created=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
           # Fetch all tags to ensure correct versioning
           git fetch --tags
 
@@ -50,11 +63,7 @@ jobs:
             PATCH=$(echo $LATEST_TAG | sed -E 's/v([0-9]+)\.([0-9]+)\.([0-9]+)/\3/')
           fi
 
-          # Get commit message for analysis (use printf to safely handle special characters)
-          COMMIT_MSG=$(cat <<'EOF'
-          ${{ github.event.head_commit.message }}
-          EOF
-          )
+          # Analyze commit message (already loaded above)
           echo "Analyzing commit: $(printf '%s' "$COMMIT_MSG" | head -c 100)..."
 
           # Determine version bump based on conventional commits

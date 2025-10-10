@@ -40,7 +40,14 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Build documentation
-        run: mkdocs build --clean
+        run: mkdocs build --clean --strict
+
+      - name: Validate documentation
+        run: |
+          echo "📝 Documentation built successfully"
+          echo "📊 Site statistics:"
+          find site -type f -name "*.html" | wc -l | xargs echo "  HTML pages:"
+          du -sh site | cut -f1 | xargs echo "  Total size:"
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

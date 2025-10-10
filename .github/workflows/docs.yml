@@ -40,12 +40,16 @@ jobs:
           pip install -r requirements.txt
 
       - name: Test documentation build
-        run: mkdocs build --clean
+        run: mkdocs build --clean --strict
 
-      - name: Check for broken links (basic)
+      - name: Install HTML link checker
         run: |
-          # Basic link validation
-          find site -name "*.html" -exec grep -l "href=\"#" {} \; | head -5
+          npm install -g linkinator
+
+      - name: Check for broken links
+        run: |
+          echo "🔍 Checking for broken links in documentation..."
+          linkinator ./site --recurse --skip "^https?://localhost" --skip "^https?://127.0.0.1" || true
           echo "✅ Documentation built successfully"
 
       - name: Upload built site as artifact

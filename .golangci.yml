@@ -1,0 +1,92 @@
+run:
+  timeout: 5m
+  tests: true
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Vet examines Go source code
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Advanced Go linter
+    - unused        # Check for unused code
+    - gofmt         # Check if code is gofmt-ed
+    - goimports     # Check imports
+    - misspell      # Check for misspelled words
+    - unconvert     # Remove unnecessary type conversions
+    - goconst       # Find repeated strings that could be constants
+    - gocyclo       # Check cyclomatic complexity
+    - gosec         # Security issues
+    - revive        # Fast, configurable, extensible linter
+    - bodyclose     # Check HTTP response body is closed
+    - noctx         # Find sending http request without context.Context
+    - rowserrcheck  # Check SQL rows errors
+    - sqlclosecheck # Check SQL rows/statements are closed
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
+  misspell:
+    locale: US
+
+  revive:
+    confidence: 0.8
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: increment-decrement
+      - name: var-naming
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: empty-block
+      - name: superfluous-else
+      - name: unreachable-code
+      - name: redefines-builtin-id
+
+  gosec:
+    excludes:
+      - G204  # Subprocess with variable - needed for sloth-runner
+      - G304  # File path from variable - needed for file operations
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - gosec
+
+    # Ignore long lines in generated files
+    - path: ".*\\.pb\\.go"
+      linters:
+        - lll
+
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+  # Don't hide multiple issues on the same line
+  new: false
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  uniq-by-line: true
+  sort-results: true
