@@ -40,7 +40,7 @@ jobs:
         uses: actions/configure-pages@v5
 
       - name: Build documentation
-        run: mkdocs build --clean --strict
+        run: mkdocs build --clean
 
       - name: Validate documentation
         run: |

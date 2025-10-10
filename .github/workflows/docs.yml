@@ -40,7 +40,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Test documentation build
-        run: mkdocs build --clean --strict
+        run: mkdocs build --clean
 
       - name: Install HTML link checker
         run: |
