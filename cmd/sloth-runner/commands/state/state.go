@@ -24,6 +24,7 @@ func NewStateCommand(ctx *commands.AppContext) *cobra.Command {
 		NewDeleteCommand(ctx),
 		NewClearCommand(ctx),
 		NewStatsCommand(ctx),
+		NewWorkflowCommand(ctx), // Workflow state management (Terraform/Pulumi-like)
 	)
 
 	return cmd
