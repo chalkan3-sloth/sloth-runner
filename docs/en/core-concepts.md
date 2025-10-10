@@ -12,13 +12,16 @@ The Modern DSL provides an intuitive, fluent API for defining workflows. You can
 -- my_pipeline.sloth - Modern DSL
 local my_task = task("task_name")
     :description("Task description")
-    :command(function() ... end)
+    :command(function(this, params)
+        -- Task logic here
+        return true, "Task completed"
+    end)
     :build()
 
-workflow.define("workflow_name", {
-    description = "Workflow description - Modern DSL",
-    tasks = { my_task }
-})
+workflow.define("workflow_name")
+    :description("Workflow description - Modern DSL")
+    :version("1.0.0")
+    :tasks({ my_task })
 ```
 
 ---
@@ -150,36 +153,39 @@ This is useful for CI/CD pipelines where a build step might generate a binary (t
 ### Artifacts Example
 
 ```lua
-Modern DSLs = {
-  ["ci-pipeline"] = {
-    description = "Demonstrates the use of artifacts.",
-    create_workdir_before_run = true,
-    tasks = {
-      {
-        name = "build",
-        description = "Creates a binary and declares it as an artifact.",
-        command = "echo 'binary_content' > app.bin",
-        artifacts = {"app.bin"}
-      },
-      {
-        name = "test",
-        description = "Consumes the binary to run tests.",
-        depends_on = "build",
-        consumes = {"app.bin"},
-        command = function(params)
-          -- At this point, 'app.bin' exists in this task's workdir
-          local content, err = fs.read(params.workdir .. "/app.bin")
-          if content == "binary_content" then
+local build_task = task("build")
+    :description("Creates a binary and declares it as an artifact")
+    :command(function(this, params)
+        exec.run("echo 'binary_content' > app.bin")
+        return true, "Binary created"
+    end)
+    :artifacts({"app.bin"})
+    :build()
+
+local test_task = task("test")
+    :description("Consumes the binary to run tests")
+    :depends_on({"build"})
+    :consumes({"app.bin"})
+    :command(function(this, params)
+        -- At this point, 'app.bin' exists in this task's workdir
+        local content = exec.run("cat app.bin")
+        if content:find("binary_content") then
             log.info("Successfully consumed artifact!")
-            return true
-          else
+            return true, "Artifact validated"
+        else
             return false, "Artifact content was incorrect!"
-          end
         end
-      }
-    }
-  }
-}
+    end)
+    :build()
+
+workflow.define("ci_pipeline")
+    :description("Demonstrates the use of artifacts")
+    :version("1.0.0")
+    :tasks({build_task, test_task})
+    :config({
+        timeout = "10m",
+        create_workdir_before_run = true
+    })
 ```
 
 ---
@@ -194,20 +200,19 @@ Loads another sloth file and returns the value it returns. This is the primary m
 
 **Example (`reusable_tasks.sloth`):**
 ```lua
--- Import a module that returns a table of task definitions
+-- Import a module that returns task definitions
 local docker_tasks = import("shared/docker.sloth")
 
-Modern DSLs = {
-  main = {
-    tasks = {
-      {
-        -- Use the 'build' task from the imported module
-        uses = docker_tasks.build,
-        params = { image_name = "my-app" }
-      }
-    }
-  }
-}
+-- Use the imported task with custom parameters
+local build_app = docker_tasks.build_image("my-app")
+    :description("Build my-app Docker image")
+    :timeout("10m")
+    :build()
+
+workflow.define("main")
+    :description("Main workflow using reusable tasks")
+    :version("1.0.0")
+    :tasks({build_app})
 ```
 
 ### `parallel(tasks)`

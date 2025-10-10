@@ -147,44 +147,37 @@ task("intelligent-deploy")
 All modules now use a **modern, consistent, table-based API** for maximum clarity and flexibility:
 
 ```lua
--- Package Management
-task("setup_web_server", {
-    description = "Setup web server on remote host",
-    command = function()
+-- Package Management with modern DSL
+local setup_web_server = task("setup_web_server")
+    :description("Setup web server on remote host")
+    :delegate_to("web-server")
+    :command(function(this, params)
         -- Update package database
-        pkg.update({ delegate_to = "web-server" })
-        
+        pkg.update()
+
         -- Install packages
         pkg.install({
-            packages = {"nginx", "certbot", "postgresql"},
-            delegate_to = "web-server"
+            packages = {"nginx", "certbot", "postgresql"}
         })
-        
+
         -- Configure systemd service
-        systemd.enable({
-            service = "nginx",
-            delegate_to = "web-server"
-        })
-        
-        systemd.start({
-            service = "nginx",
-            delegate_to = "web-server"
-        })
-        
+        local systemd = require("systemd")
+        systemd.enable("nginx")
+        systemd.start("nginx")
+
         -- Verify installation
-        infra_test.service_is_running({
-            name = "nginx",
-            delegate_to = "web-server"
-        })
-        
-        infra_test.port_is_listening({
-            port = 80,
-            delegate_to = "web-server"
-        })
-        
+        infra_test.service_is_running({ name = "nginx" })
+        infra_test.port_is_listening({ port = 80 })
+
         return true, "Web server configured successfully"
-    end
-})
+    end)
+    :timeout("10m")
+    :build()
+
+workflow.define("setup_webserver")
+    :description("Setup and configure web server")
+    :version("1.0.0")
+    :tasks({setup_web_server})
 ```
 
 **🎯 Key Benefits:**
@@ -649,10 +642,11 @@ sloth-runner stack show prod-app
 
 ```lua
 local deploy_task = task("deploy")
-    :command(function(params, deps)
+    :description("Deploy application to production")
+    :command(function(this, params)
         -- Deploy application
         local result = exec.run("kubectl apply -f deployment.yaml")
-        
+
         -- Export important outputs to stack
         runner.Export({
             app_url = "https://myapp.example.com",
@@ -661,14 +655,21 @@ local deploy_task = task("deploy")
             deployed_at = os.date(),
             health_endpoint = "https://myapp.example.com/health"
         })
-        
+
         return true, result.stdout, { status = "deployed" }
     end)
+    :timeout("15m")
     :build()
 
-workflow.define("production_deployment", {
-    tasks = { deploy_task }
-})
+workflow.define("production_deployment")
+    :description("Production deployment workflow")
+    :version("1.0.0")
+    :tasks({ deploy_task })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 Deployment completed successfully!")
+        end
+    end)
 ```
 
 **Run with JSON output for automation:**
@@ -762,164 +763,246 @@ sloth-runner scheduler delete backup-task
 ### 📊 Distributed Deployment with Monitoring
 
 ```lua
-local monitoring = require("monitoring")
-local state = require("state")
-
 -- Production deployment with comprehensive monitoring
 local deploy_task = task("production_deployment")
-    :command(function(params, deps)
+    :description("Production deployment with monitoring")
+    :command(function(this, params)
+        local monitoring = require("monitoring")
+        local state = require("state")
+
         -- Track deployment metrics
         monitoring.counter("deployments_started", 1)
-        
+
         -- Use state for coordination
         local deploy_id = state.increment("deployment_counter", 1)
         state.set("current_deployment", deploy_id)
-        
+
         -- Execute deployment
         local result = exec.run("kubectl apply -f production.yaml")
-        
+
         if result.success then
             monitoring.gauge("deployment_status", 1)
             state.set("last_successful_deploy", os.time())
             log.info("✅ Deployment " .. deploy_id .. " completed successfully")
+            return true, "Deployment completed"
         else
             monitoring.gauge("deployment_status", 0)
             monitoring.counter("deployments_failed", 1)
             log.error("❌ Deployment " .. deploy_id .. " failed: " .. result.stderr)
+            return false, "Deployment failed"
         end
-        
-        return result
     end)
+    :timeout("20m")
+    :retries(3, "exponential")
     :build()
+
+workflow.define("production_deploy_monitored")
+    :description("Monitored production deployment")
+    :version("1.0.0")
+    :tasks({deploy_task})
 ```
 
 ### 🌐 Multi-Agent Distributed Execution
 
 ```lua
-local distributed = require("distributed")
-
 -- Execute tasks across multiple agents
-workflow.define("distributed_pipeline", {
-    tasks = {
-        task("build_frontend")
-            :agent("build-agent-1")
-            :command("npm run build")
-            :build(),
-            
-        task("build_backend")
-            :agent("build-agent-2")
-            :command("go build -o app ./cmd/server")
-            :build(),
-            
-        task("run_tests")
-            :agent("test-agent")
-            :depends_on({"build_frontend", "build_backend"})
-            :command("npm test && go test ./...")
-            :build(),
-            
-        task("deploy")
-            :agent("deploy-agent")
-            :depends_on({"run_tests"})
-            :command("./deploy.sh production")
-            :build()
-    }
-})
+local build_frontend = task("build_frontend")
+    :description("Build frontend application")
+    :delegate_to("build-agent-1")
+    :command(function(this, params)
+        local result = exec.run("npm run build")
+        return result.success, result.stdout
+    end)
+    :timeout("10m")
+    :build()
+
+local build_backend = task("build_backend")
+    :description("Build backend application")
+    :delegate_to("build-agent-2")
+    :command(function(this, params)
+        local result = exec.run("go build -o app ./cmd/server")
+        return result.success, result.stdout
+    end)
+    :timeout("10m")
+    :build()
+
+local run_tests = task("run_tests")
+    :description("Run all tests")
+    :delegate_to("test-agent")
+    :depends_on({"build_frontend", "build_backend"})
+    :command(function(this, params)
+        local result = exec.run("npm test && go test ./...")
+        return result.success, result.stdout
+    end)
+    :timeout("15m")
+    :build()
+
+local deploy = task("deploy")
+    :description("Deploy to production")
+    :delegate_to("deploy-agent")
+    :depends_on({"run_tests"})
+    :command(function(this, params)
+        local result = exec.run("./deploy.sh production")
+        return result.success, result.stdout
+    end)
+    :timeout("20m")
+    :build()
+
+workflow.define("distributed_pipeline")
+    :description("Distributed build and deployment pipeline")
+    :version("1.0.0")
+    :tasks({build_frontend, build_backend, run_tests, deploy})
+    :config({
+        timeout = "60m",
+        max_parallel_tasks = 2
+    })
 ```
 
 ### 💾 Advanced State Management
 
 ```lua
-local state = require("state")
-
 -- Complex state operations with locking
 local update_config = task("update_configuration")
-    :command(function(params, deps)
+    :description("Update configuration with atomic locking")
+    :command(function(this, params)
+        local state = require("state")
+
         -- Critical section with automatic locking
-        return state.with_lock("config_update", function()
+        local result = state.with_lock("config_update", function()
             local current_version = state.get("config_version") or 0
             local new_version = current_version + 1
-            
+
             -- Atomic configuration update
             local success = state.compare_and_swap("config_version", current_version, new_version)
-            
+
             if success then
                 state.set("config_data", params.new_config)
                 state.set("config_updated_at", os.time())
                 log.info("Configuration updated to version " .. new_version)
-                return { version = new_version, success = true }
+                return true, "Config updated", { version = new_version }
             else
                 log.error("Configuration update failed - version mismatch")
-                return { success = false, error = "version_mismatch" }
+                return false, "Version mismatch"
             end
         end)
+
+        return result
     end)
+    :timeout("5m")
+    :retries(3, "exponential")
     :build()
+
+workflow.define("config_update")
+    :description("Configuration update workflow")
+    :version("1.0.0")
+    :tasks({update_config})
 ```
 
 ### 🔄 CI/CD Pipeline with GitOps
 
 ```lua
-local git = require("git")
-local docker = require("docker")
-local kubernetes = require("kubernetes")
-
 -- Complete CI/CD pipeline
-workflow.define("gitops_pipeline", {
-    on_git_push = true,
-    
-    tasks = {
-        task("checkout_code")
-            :command(function()
-                return git.clone(params.repository, "/tmp/build")
-            end)
-            :build(),
-            
-        task("run_tests")
-            :depends_on({"checkout_code"})
-            :command("cd /tmp/build && npm test")
-            :retry_count(3)
-            :build(),
-            
-        task("build_image")
-            :depends_on({"run_tests"})
-            :command(function()
-                return docker.build({
-                    path = "/tmp/build",
-                    tag = "myapp:" .. params.git_sha,
-                    push = true
-                })
-            end)
-            :build(),
-            
-        task("deploy_staging")
-            :depends_on({"build_image"})
-            :command(function()
-                return kubernetes.apply_manifest({
-                    file = "/tmp/build/k8s/staging.yaml",
-                    namespace = "staging",
-                    image = "myapp:" .. params.git_sha
-                })
-            end)
-            :build(),
-            
-        task("integration_tests")
-            :depends_on({"deploy_staging"})
-            :command("./run-integration-tests.sh staging")
-            :build(),
-            
-        task("deploy_production")
-            :depends_on({"integration_tests"})
-            :condition(function() return params.branch == "main" end)
-            :command(function()
-                return kubernetes.apply_manifest({
-                    file = "/tmp/build/k8s/production.yaml",
-                    namespace = "production",
-                    image = "myapp:" .. params.git_sha
-                })
-            end)
-            :build()
-    }
-})
+local checkout_code = task("checkout_code")
+    :description("Checkout code from repository")
+    :command(function(this, params)
+        local git = require("git")
+        local repo = git.clone(params.repository, "/tmp/build")
+        return true, "Code checked out"
+    end)
+    :timeout("5m")
+    :build()
+
+local run_tests = task("run_tests")
+    :description("Run test suite")
+    :depends_on({"checkout_code"})
+    :command(function(this, params)
+        local result = exec.run("cd /tmp/build && npm test")
+        return result.success, result.stdout
+    end)
+    :timeout("10m")
+    :retries(3, "exponential")
+    :build()
+
+local build_image = task("build_image")
+    :description("Build and push Docker image")
+    :depends_on({"run_tests"})
+    :command(function(this, params)
+        local docker = require("docker")
+        local success = docker.build({
+            path = "/tmp/build",
+            tag = "myapp:" .. params.git_sha,
+            push = true
+        })
+        return success, "Image built: myapp:" .. params.git_sha
+    end)
+    :timeout("15m")
+    :build()
+
+local deploy_staging = task("deploy_staging")
+    :description("Deploy to staging environment")
+    :depends_on({"build_image"})
+    :command(function(this, params)
+        local kubernetes = require("kubernetes")
+        local success = kubernetes.apply_manifest({
+            file = "/tmp/build/k8s/staging.yaml",
+            namespace = "staging",
+            image = "myapp:" .. params.git_sha
+        })
+        return success, "Deployed to staging"
+    end)
+    :timeout("10m")
+    :build()
+
+local integration_tests = task("integration_tests")
+    :description("Run integration tests")
+    :depends_on({"deploy_staging"})
+    :command(function(this, params)
+        local result = exec.run("./run-integration-tests.sh staging")
+        return result.success, result.stdout
+    end)
+    :timeout("20m")
+    :build()
+
+local deploy_production = task("deploy_production")
+    :description("Deploy to production")
+    :depends_on({"integration_tests"})
+    :run_if(function(this, params)
+        return params.branch == "main"
+    end)
+    :command(function(this, params)
+        local kubernetes = require("kubernetes")
+        local success = kubernetes.apply_manifest({
+            file = "/tmp/build/k8s/production.yaml",
+            namespace = "production",
+            image = "myapp:" .. params.git_sha
+        })
+        return success, "Deployed to production"
+    end)
+    :timeout("15m")
+    :build()
+
+workflow.define("gitops_pipeline")
+    :description("Complete GitOps CI/CD pipeline")
+    :version("1.0.0")
+    :tasks({
+        checkout_code,
+        run_tests,
+        build_image,
+        deploy_staging,
+        integration_tests,
+        deploy_production
+    })
+    :config({
+        timeout = "90m",
+        on_git_push = true
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("🎉 Pipeline completed successfully!")
+        else
+            log.error("❌ Pipeline failed")
+        end
+    end)
 ```
 
 ## 📊 **Module Reference**
@@ -1078,17 +1161,23 @@ workflow.define("gitops_pipeline", {
 Create a file called `hello.sloth`:
 
 ```lua
-task("hello")
-  :description("My first Sloth Runner task")
-  :command(function() 
-    log.info("🦥 Hello from Sloth Runner!")
-    return true 
-  end)
-  :build()
+local hello_task = task("hello")
+    :description("My first Sloth Runner task")
+    :command(function(this, params)
+        log.info("🦥 Hello from Sloth Runner!")
+        return true, "Greeting completed"
+    end)
+    :build()
 
 workflow.define("greeting")
-  :description("Simple greeting workflow")
-  :tasks({"hello"})
+    :description("Simple greeting workflow")
+    :version("1.0.0")
+    :tasks({hello_task})
+    :on_complete(function(success, results)
+        if success then
+            log.info("✅ Workflow completed!")
+        end
+    end)
 ```
 
 ### ▶️ Run Your Workflow
@@ -1493,15 +1582,18 @@ Ready to streamline your automation? Install Sloth Runner now!
     
     # Create your first workflow
     cat > hello.sloth << 'EOF'
-    task("greet")
-      :command(function() 
-        log.info("Hello World! 🚀") 
-        return true 
-      end)
-      :build()
-    
+    local greet_task = task("greet")
+        :description("Greeting task")
+        :command(function(this, params)
+            log.info("Hello World! 🚀")
+            return true, "Greeted successfully"
+        end)
+        :build()
+
     workflow.define("hello")
-      :tasks({"greet"})
+        :description("Hello World workflow")
+        :version("1.0.0")
+        :tasks({greet_task})
     EOF
     
     # Run it!

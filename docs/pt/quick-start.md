@@ -21,16 +21,21 @@ Crie um arquivo `hello.sloth`:
 ```lua
 local hello_task = task("hello")
     :description("Minha primeira task")
-    :command(function()
-        print("🦥 Olá do Sloth Runner!")
-        return true
+    :command(function(this, params)
+        log.info("🦥 Olá do Sloth Runner!")
+        return true, "Task executada com sucesso"
     end)
     :build()
 
-workflow.define("hello_world", {
-    description = "Meu primeiro workflow",
-    tasks = { hello_task }
-})
+workflow.define("hello_world")
+    :description("Meu primeiro workflow")
+    :version("1.0.0")
+    :tasks({ hello_task })
+    :on_complete(function(success, results)
+        if success then
+            log.info("✅ Workflow concluído!")
+        end
+    end)
 ```
 
 Execute:

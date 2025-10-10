@@ -12,13 +12,16 @@ A Modern DSL substitui a abordagem legada `Modern DSLs` por uma API mais intuiti
 -- meu_pipeline.sloth - Modern DSL
 local minha_tarefa = task("nome_da_tarefa")
     :description("Descrição da tarefa")
-    :command(function() ... end)
+    :command(function(this, params)
+        -- Lógica da tarefa
+        return true, "Tarefa concluída"
+    end)
     :build()
 
-workflow.define("nome_do_workflow", {
-    description = "Descrição do workflow - Modern DSL",
-    tasks = { minha_tarefa }
-})
+workflow.define("nome_do_workflow")
+    :description("Descrição do workflow - Modern DSL")
+    :version("1.0.0")
+    :tasks({ minha_tarefa })
 ```
 
 ---
@@ -66,21 +69,28 @@ local minha_tarefa = task("nome_da_tarefa")
 
 **Exemplo:**
 ```lua
-Modern DSLs = {
-  meu_grupo = {
-    description = "Um grupo que gerencia seu próprio diretório temporário.",
-    create_workdir_before_run = true,
-    clean_workdir_after_run = function(result)
-      if not result.success then
-        log.warn("O grupo falhou. O diretório de trabalho será mantido para depuração.")
-      end
-      return result.success -- Limpa apenas se tudo foi bem-sucedido
-    end,
-    tasks = {
-      -- Tarefas aqui
-    }
-  }
-}
+-- Workflow que gerencia seu próprio diretório temporário
+local setup_task = task("setup")
+    :description("Setup inicial")
+    :command(function(this, params)
+        log.info("Configurando ambiente...")
+        return true, "Setup completo"
+    end)
+    :build()
+
+workflow.define("meu_grupo")
+    :description("Um grupo que gerencia seu próprio diretório temporário")
+    :version("1.0.0")
+    :tasks({setup_task})
+    :config({
+        create_workdir_before_run = true,
+        clean_workdir_after_run = "on_success"
+    })
+    :on_complete(function(success, results)
+        if not success then
+            log.warn("O workflow falhou. O diretório de trabalho será mantido para depuração.")
+        end
+    end)
 ```
 
 ---
@@ -149,36 +159,39 @@ Isso é útil para pipelines de CI/CD, onde uma etapa de compilação pode gerar
 ### Exemplo de Artefatos
 
 ```lua
-Modern DSLs = {
-  ["ci-pipeline"] = {
-    description = "Demonstra o uso de artefatos.",
-    create_workdir_before_run = true,
-    tasks = {
-      {
-        name = "build",
-        description = "Cria um binário e o declara como um artefato.",
-        command = "echo 'conteudo_binario' > app.bin",
-        artifacts = {"app.bin"}
-      },
-      {
-        name = "test",
-        description = "Consome o binário para executar testes.",
-        depends_on = "build",
-        consumes = {"app.bin"},
-        command = function(params)
-          -- Neste ponto, 'app.bin' existe no workdir desta tarefa
-          local content, err = fs.read(params.workdir .. "/app.bin")
-          if content == "conteudo_binario" then
+local build_task = task("build")
+    :description("Cria um binário e o declara como um artefato")
+    :command(function(this, params)
+        exec.run("echo 'conteudo_binario' > app.bin")
+        return true, "Binário criado"
+    end)
+    :artifacts({"app.bin"})
+    :build()
+
+local test_task = task("test")
+    :description("Consome o binário para executar testes")
+    :depends_on({"build"})
+    :consumes({"app.bin"})
+    :command(function(this, params)
+        -- Neste ponto, 'app.bin' existe no workdir desta tarefa
+        local content = exec.run("cat app.bin")
+        if content:find("conteudo_binario") then
             log.info("Artefato consumido com sucesso!")
-            return true
-          else
+            return true, "Artefato validado"
+        else
             return false, "Conteúdo do artefato incorreto!"
-          end
         end
-      }
-    }
-  }
-}
+    end)
+    :build()
+
+workflow.define("ci_pipeline")
+    :description("Demonstra o uso de artefatos")
+    :version("1.0.0")
+    :tasks({build_task, test_task})
+    :config({
+        timeout = "10m",
+        create_workdir_before_run = true
+    })
 ```
 
 ---
@@ -193,20 +206,19 @@ Carrega outro arquivo Lua e retorna o valor que ele retorna. Este é o principal
 
 **Exemplo (`reusable_tasks.sloth`):**
 ```lua
--- Importa um módulo que retorna uma tabela de definições de tarefas
+-- Importa um módulo que retorna definições de tarefas
 local docker_tasks = import("shared/docker.sloth")
 
-Modern DSLs = {
-  main = {
-    tasks = {
-      {
-        -- Usa a tarefa 'build' do módulo importado
-        uses = docker_tasks.build,
-        params = { image_name = "my-app" }
-      }
-    }
-  }
-}
+-- Usa a tarefa importada com parâmetros personalizados
+local build_app = docker_tasks.build_image("my-app")
+    :description("Build da imagem Docker my-app")
+    :timeout("10m")
+    :build()
+
+workflow.define("main")
+    :description("Workflow principal usando tarefas reutilizáveis")
+    :version("1.0.0")
+    :tasks({build_app})
 ```
 
 ### `parallel(tasks)`
