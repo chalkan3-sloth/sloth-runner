@@ -8,6 +8,7 @@ Aqui você encontrará guias detalhados, referências de API e exemplos prático
 
 *   [Início Rápido](./getting-started.md)
 *   [Conceitos Essenciais](./core-concepts.md)
+*   [Arquitetura](./architecture.md) - **Arquitetura completa do sistema com diagramas**
 *   [Execução Distribuída de Tarefas](./distributed.md)
 *   [Comandos CLI](./CLI.md)
 *   [REPL Interativo](./repl.md)
