@@ -201,6 +201,7 @@ nav:
     - '🔧 Lua API': 'en/plugin-development'
   - '🗄️ State Management':
     - '📋 State Management Guide 🔥': 'state-management'
+    - '🏗️ Stack State Management 🔥': 'en/stack-state-management'
     - '🔄 Idempotency': 'idempotency'
   - '📖 Guides':
     - '✨ Using Values with delegate_to 🔥': 'guides/values-delegate-to'
@@ -260,6 +261,7 @@ nav:
       - '🎨 Web UI Completo': 'pt/web-ui-completo'
     - 'CLI': 'pt/CLI'
     - 'REPL': 'pt/repl'
+    - '🏗️ Gerenciamento de Estado de Stack 🔥': 'pt/stack-state-management'
     - 'Avançado': 'pt/advanced-features'
     - 'Exemplos': 'pt/advanced-examples'
     - 'Distribuído': 'pt/distributed'
