@@ -175,6 +175,7 @@ nav:
     - '📖 Reference Guide': 'modern-dsl/reference-guide'
   - '🔧 Modules':
     - '🔧 Module Index': 'modules/'
+    - '📚 Built-in Modules Reference 🔥': 'modules/README'
     - '📋 CLI: modules list 🔥': 'modules-list-command'
     - '🌍 Global Modules (No require!) 🔥': 'features/global-modules'
     - '⚡ Goroutine (Parallel) 🔥': 'modules/goroutine'
