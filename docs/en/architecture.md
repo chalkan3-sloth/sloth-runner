@@ -45,13 +45,13 @@ Sloth Runner is a **distributed task automation and orchestration platform** bui
 
 ```mermaid
 graph TB
-    subgraph "User Interface Layer"
+    subgraph UserInterface["User Interface Layer"]
         CLI[CLI Client]
         WebUI[Web UI]
         API[REST API]
     end
 
-    subgraph "Control Plane - Master Node"
+    subgraph ControlPlane["Control Plane - Master Node"]
         Master[Master Server]
         Registry[Agent Registry]
         Scheduler[Task Scheduler]
@@ -59,7 +59,7 @@ graph TB
         StackDB[(Stack Database)]
     end
 
-    subgraph "Execution Engine"
+    subgraph ExecutionEngine["Execution Engine"]
         Runner[Workflow Runner]
         LuaVM[Lua VM]
         Modules[Lua Modules]
@@ -67,13 +67,13 @@ graph TB
         Executor[Task Executor]
     end
 
-    subgraph "Data Plane - Agents"
+    subgraph DataPlane["Data Plane - Agents"]
         Agent1[Agent Node 1]
         Agent2[Agent Node 2]
         AgentN[Agent Node N]
     end
 
-    subgraph "External Systems"
+    subgraph ExternalSystems["External Systems"]
         Git[Git Repos]
         Cloud[Cloud APIs]
         SSH[SSH Targets]
@@ -207,18 +207,18 @@ Embeds Lua for DSL execution and module system.
 
 ```mermaid
 graph LR
-    subgraph "Lua VM"
+    subgraph LuaVM["Lua VM"]
         DSL[DSL Code] --> LuaState[Lua State]
         LuaState --> BuiltinFuncs[Built-in Functions]
         LuaState --> Modules[Lua Modules]
     end
 
-    subgraph "Go Bridge"
+    subgraph GoBridge["Go Bridge"]
         GoAPI[Go API]
         GoAPI --> LuaState
     end
 
-    subgraph "Module System"
+    subgraph ModuleSystem["Module System"]
         Modules --> Core[Core Modules]
         Modules --> External[External Modules]
 
@@ -306,7 +306,7 @@ Event-driven lifecycle management.
 
 ```mermaid
 graph LR
-    subgraph "Hook Types"
+    subgraph HookTypes["Hook Types"]
         PreTask[pre_task]
         PostTask[post_task]
         OnSuccess[on_success]
@@ -316,7 +316,7 @@ graph LR
         WorkflowComplete[workflow_complete]
     end
 
-    subgraph "Hook Execution"
+    subgraph HookExecution["Hook Execution"]
         Dispatcher[Event Dispatcher]
         Executor[Hook Executor]
     end
@@ -466,22 +466,22 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-    subgraph "Application Layer"
+    subgraph ApplicationLayer["Application Layer"]
         App[Application Code]
     end
 
-    subgraph "State API"
+    subgraph StateAPI["State API"]
         API[State API]
         Lock[Lock Manager]
         Cache[In-Memory Cache]
     end
 
-    subgraph "Storage Layer"
+    subgraph StorageLayer["Storage Layer"]
         SQLite[(SQLite DB)]
         Bolt[(BoltDB)]
     end
 
-    subgraph "Distribution Layer"
+    subgraph DistributionLayer["Distribution Layer"]
         Master[Master Node]
         Agent1[Agent 1]
         Agent2[Agent 2]
@@ -842,21 +842,21 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-    subgraph "Security Layers"
+    subgraph SecurityLayers["Security Layers"]
         TLS[TLS/mTLS]
         Auth[Authentication]
         Authz[Authorization]
         Audit[Audit Logging]
     end
 
-    subgraph "Auth Methods"
+    subgraph AuthMethods["Auth Methods"]
         APIKey[API Keys]
         JWT[JWT Tokens]
         SSH[SSH Keys]
         Cert[Client Certificates]
     end
 
-    subgraph "Authorization"
+    subgraph Authorization["Authorization"]
         RBAC[Role-Based Access]
         Policy[Policy Engine]
         Secrets[Secrets Management]
@@ -889,17 +889,17 @@ graph TB
 
 ```mermaid
 graph LR
-    subgraph "External"
+    subgraph External["External"]
         User[User]
         Agent[Remote Agent]
     end
 
-    subgraph "DMZ"
+    subgraph DMZ["DMZ"]
         LB[Load Balancer]
         Proxy[Reverse Proxy]
     end
 
-    subgraph "Internal Network"
+    subgraph InternalNetwork["Internal Network"]
         Master[Master Server]
         DB[(Database)]
         Agents[Internal Agents]
@@ -921,7 +921,7 @@ graph LR
 
 ```mermaid
 graph TB
-    subgraph "Single Server"
+    subgraph SingleServer["Single Server"]
         CLI[CLI]
         Master[Master]
         Agent[Local Agent]
@@ -941,24 +941,24 @@ graph TB
 
 ```mermaid
 graph TB
-    subgraph "Control Plane"
+    subgraph ControlPlane["Control Plane"]
         Master[Master Server]
         MasterDB[(PostgreSQL)]
         WebUI[Web UI]
     end
 
-    subgraph "Build Cluster"
+    subgraph BuildCluster["Build Cluster"]
         B1[Build Agent 1]
         B2[Build Agent 2]
         B3[Build Agent 3]
     end
 
-    subgraph "Deploy Cluster"
+    subgraph DeployCluster["Deploy Cluster"]
         D1[Deploy Agent 1]
         D2[Deploy Agent 2]
     end
 
-    subgraph "Test Cluster"
+    subgraph TestCluster["Test Cluster"]
         T1[Test Agent 1]
         T2[Test Agent 2]
     end

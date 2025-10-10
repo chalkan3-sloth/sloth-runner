@@ -45,13 +45,13 @@ Sloth Runner é uma **plataforma distribuída de automação e orquestração de
 
 ```mermaid
 graph TB
-    subgraph "Camada de Interface do Usuário"
+    subgraph CamadaDeInterfaceDoUsuário["Camada de Interface do Usuário"]
         CLI[Cliente CLI]
         WebUI[Interface Web]
         API[API REST]
     end
 
-    subgraph "Plano de Controle - Nó Master"
+    subgraph PlanoDeControle-NóMaster["Plano de Controle - Nó Master"]
         Master[Servidor Master]
         Registry[Registro de Agentes]
         Scheduler[Agendador de Tarefas]
@@ -59,7 +59,7 @@ graph TB
         StackDB[(Banco de Stack)]
     end
 
-    subgraph "Motor de Execução"
+    subgraph MotorDeExecução["Motor de Execução"]
         Runner[Executor de Workflow]
         LuaVM[VM Lua]
         Modules[Módulos Lua]
@@ -67,13 +67,13 @@ graph TB
         Executor[Executor de Tarefas]
     end
 
-    subgraph "Plano de Dados - Agentes"
+    subgraph PlanoDeDados-Agentes["Plano de Dados - Agentes"]
         Agent1[Nó Agente 1]
         Agent2[Nó Agente 2]
         AgentN[Nó Agente N]
     end
 
-    subgraph "Sistemas Externos"
+    subgraph SistemasExternos["Sistemas Externos"]
         Git[Repos Git]
         Cloud[APIs Cloud]
         SSH[Alvos SSH]
@@ -207,18 +207,18 @@ Embute Lua para execução de DSL e sistema de módulos.
 
 ```mermaid
 graph LR
-    subgraph "VM Lua"
+    subgraph VmLua["VM Lua"]
         DSL[Código DSL] --> LuaState[Estado Lua]
         LuaState --> BuiltinFuncs[Funções Built-in]
         LuaState --> Modules[Módulos Lua]
     end
 
-    subgraph "Ponte Go"
+    subgraph PonteGo["Ponte Go"]
         GoAPI[API Go]
         GoAPI --> LuaState
     end
 
-    subgraph "Sistema de Módulos"
+    subgraph SistemaDeMódulos["Sistema de Módulos"]
         Modules --> Core[Módulos Core]
         Modules --> External[Módulos Externos]
 
@@ -306,7 +306,7 @@ Gerenciamento de ciclo de vida orientado a eventos.
 
 ```mermaid
 graph LR
-    subgraph "Tipos de Hooks"
+    subgraph TiposDeHooks["Tipos de Hooks"]
         PreTask[pre_task]
         PostTask[post_task]
         OnSuccess[on_success]
@@ -316,7 +316,7 @@ graph LR
         WorkflowComplete[workflow_complete]
     end
 
-    subgraph "Execução de Hooks"
+    subgraph ExecuçãoDeHooks["Execução de Hooks"]
         Dispatcher[Dispatcher de Eventos]
         Executor[Executor de Hooks]
     end
@@ -466,22 +466,22 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-    subgraph "Camada de Aplicação"
+    subgraph CamadaDeAplicação["Camada de Aplicação"]
         App[Código da Aplicação]
     end
 
-    subgraph "API de Estado"
+    subgraph ApiDeEstado["API de Estado"]
         API[API de Estado]
         Lock[Gerenciador de Locks]
         Cache[Cache em Memória]
     end
 
-    subgraph "Camada de Armazenamento"
+    subgraph CamadaDeArmazenamento["Camada de Armazenamento"]
         SQLite[(BD SQLite)]
         Bolt[(BoltDB)]
     end
 
-    subgraph "Camada de Distribuição"
+    subgraph CamadaDeDistribuição["Camada de Distribuição"]
         Master[Nó Master]
         Agent1[Agente 1]
         Agent2[Agente 2]
@@ -701,21 +701,21 @@ erDiagram
 
 ```mermaid
 graph TB
-    subgraph "Camadas de Segurança"
+    subgraph CamadasDeSegurança["Camadas de Segurança"]
         TLS[TLS/mTLS]
         Auth[Autenticação]
         Authz[Autorização]
         Audit[Log de Auditoria]
     end
 
-    subgraph "Métodos de Autenticação"
+    subgraph MetodosAutenticacao["Métodos de Autenticação"]
         APIKey[Chaves API]
         JWT[Tokens JWT]
         SSH[Chaves SSH]
         Cert[Certificados de Cliente]
     end
 
-    subgraph "Autorização"
+    subgraph Autorizacao["Autorização"]
         RBAC[Controle Baseado em Papéis]
         Policy[Motor de Políticas]
         Secrets[Gerenciamento de Secrets]
@@ -743,7 +743,7 @@ graph TB
 
 ```mermaid
 graph TB
-    subgraph "Servidor Único"
+    subgraph ServidorÚnico["Servidor Único"]
         CLI[CLI]
         Master[Master]
         Agent[Agente Local]
@@ -763,24 +763,24 @@ graph TB
 
 ```mermaid
 graph TB
-    subgraph "Plano de Controle"
+    subgraph PlanoDeControle["Plano de Controle"]
         Master[Servidor Master]
         MasterDB[(PostgreSQL)]
         WebUI[Interface Web]
     end
 
-    subgraph "Cluster de Build"
+    subgraph ClusterDeBuild["Cluster de Build"]
         B1[Agente Build 1]
         B2[Agente Build 2]
         B3[Agente Build 3]
     end
 
-    subgraph "Cluster de Deploy"
+    subgraph ClusterDeDeploy["Cluster de Deploy"]
         D1[Agente Deploy 1]
         D2[Agente Deploy 2]
     end
 
-    subgraph "Cluster de Testes"
+    subgraph ClusterDeTestes["Cluster de Testes"]
         T1[Agente Teste 1]
         T2[Agente Teste 2]
     end
