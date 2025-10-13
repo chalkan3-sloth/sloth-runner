@@ -14,6 +14,7 @@ import (
 type GoroutineModule struct {
 	info         CoreModuleInfo
 	pools        map[string]*goroutinePool
+	channels     map[string]*luaChannel
 	mu           sync.RWMutex
 	globalCtx    context.Context
 	globalCancel context.CancelFunc
@@ -49,6 +50,23 @@ type taskResult struct {
 	err     error
 }
 
+// luaChannel wraps a Go channel for use in Lua
+type luaChannel struct {
+	ch        chan lua.LValue
+	capacity  int
+	closed    bool
+	closeMu   sync.Mutex
+	direction string // "bidirectional", "send", "receive"
+}
+
+// selectCase represents a case in a select statement
+type selectCase struct {
+	caseType string // "send", "receive", "default"
+	channel  *luaChannel
+	value    lua.LValue // for send operations
+	fn       *lua.LFunction
+}
+
 // NewGoroutineModule creates a new goroutine module
 func NewGoroutineModule() *GoroutineModule {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -65,6 +83,7 @@ func NewGoroutineModule() *GoroutineModule {
 	return &GoroutineModule{
 		info:         info,
 		pools:        make(map[string]*goroutinePool),
+		channels:     make(map[string]*luaChannel),
 		globalCtx:    ctx,
 		globalCancel: cancel,
 	}
@@ -94,6 +113,17 @@ func (g *GoroutineModule) Loader(L *lua.LState) int {
 		"await_all":   g.luaAwaitAll,
 		"sleep":       g.luaSleep,
 		"timeout":     g.luaTimeout,
+		// Channel operations
+		"channel":        g.luaChannelMake,
+		"channel_send":   g.luaChannelSend,
+		"channel_receive": g.luaChannelReceive,
+		"channel_close":  g.luaChannelClose,
+		"channel_len":    g.luaChannelLen,
+		"channel_cap":    g.luaChannelCap,
+		"select":         g.luaSelect,
+		// Mutex operations
+		"mutex":    g.luaMutex,
+		"rwmutex":  g.luaRWMutex,
 	})
 	
 	L.Push(goroutineTable)
@@ -666,15 +696,535 @@ func (p *goroutinePool) close() {
 	p.wg.Wait()
 }
 
-// Cleanup closes all pools
+// Cleanup closes all pools and channels
 func (g *GoroutineModule) Cleanup() {
 	g.globalCancel()
-	
+
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	
+
 	for name, pool := range g.pools {
 		pool.close()
 		delete(g.pools, name)
 	}
+
+	for name, ch := range g.channels {
+		ch.closeMu.Lock()
+		if !ch.closed {
+			close(ch.ch)
+			ch.closed = true
+		}
+		ch.closeMu.Unlock()
+		delete(g.channels, name)
+	}
+}
+
+// ============================================================================
+// CHANNEL OPERATIONS
+// ============================================================================
+
+// luaChannelMake creates a new channel
+// Usage:
+//   local ch = goroutine.channel()           -- unbuffered
+//   local ch = goroutine.channel(10)         -- buffered with capacity 10
+//   local ch = goroutine.channel(10, "send") -- send-only channel
+func (g *GoroutineModule) luaChannelMake(L *lua.LState) int {
+	capacity := L.OptInt(1, 0)
+	direction := L.OptString(2, "bidirectional") // "bidirectional", "send", "receive"
+
+	if capacity < 0 {
+		L.ArgError(1, "capacity must be non-negative")
+		return 0
+	}
+
+	if direction != "bidirectional" && direction != "send" && direction != "receive" {
+		L.ArgError(2, "direction must be 'bidirectional', 'send', or 'receive'")
+		return 0
+	}
+
+	ch := &luaChannel{
+		ch:        make(chan lua.LValue, capacity),
+		capacity:  capacity,
+		closed:    false,
+		direction: direction,
+	}
+
+	// Create userdata
+	ud := L.NewUserData()
+	ud.Value = ch
+
+	// Create metatable with methods
+	mt := L.NewTable()
+
+	// send method: ch:send(value)
+	L.SetField(mt, "send", L.NewFunction(func(L *lua.LState) int {
+		ch := L.CheckUserData(1).Value.(*luaChannel)
+		if ch.direction == "receive" {
+			L.RaiseError("cannot send on receive-only channel")
+			return 0
+		}
+
+		value := L.Get(2)
+
+		ch.closeMu.Lock()
+		closed := ch.closed
+		ch.closeMu.Unlock()
+
+		if closed {
+			L.Push(lua.LFalse)
+			L.Push(lua.LString("send on closed channel"))
+			return 2
+		}
+
+		ch.ch <- value
+		L.Push(lua.LTrue)
+		return 1
+	}))
+
+	// receive method: local value, ok = ch:receive()
+	L.SetField(mt, "receive", L.NewFunction(func(L *lua.LState) int {
+		ch := L.CheckUserData(1).Value.(*luaChannel)
+		if ch.direction == "send" {
+			L.RaiseError("cannot receive on send-only channel")
+			return 0
+		}
+
+		value, ok := <-ch.ch
+		if !ok {
+			L.Push(lua.LNil)
+			L.Push(lua.LFalse)
+			return 2
+		}
+
+		L.Push(value)
+		L.Push(lua.LTrue)
+		return 2
+	}))
+
+	// try_send method: local ok = ch:try_send(value) -- non-blocking
+	L.SetField(mt, "try_send", L.NewFunction(func(L *lua.LState) int {
+		ch := L.CheckUserData(1).Value.(*luaChannel)
+		if ch.direction == "receive" {
+			L.RaiseError("cannot send on receive-only channel")
+			return 0
+		}
+
+		value := L.Get(2)
+
+		ch.closeMu.Lock()
+		closed := ch.closed
+		ch.closeMu.Unlock()
+
+		if closed {
+			L.Push(lua.LFalse)
+			L.Push(lua.LString("send on closed channel"))
+			return 2
+		}
+
+		select {
+		case ch.ch <- value:
+			L.Push(lua.LTrue)
+			return 1
+		default:
+			L.Push(lua.LFalse)
+			return 1
+		}
+	}))
+
+	// try_receive method: local value, ok = ch:try_receive() -- non-blocking
+	L.SetField(mt, "try_receive", L.NewFunction(func(L *lua.LState) int {
+		ch := L.CheckUserData(1).Value.(*luaChannel)
+		if ch.direction == "send" {
+			L.RaiseError("cannot receive on send-only channel")
+			return 0
+		}
+
+		select {
+		case value, ok := <-ch.ch:
+			if !ok {
+				L.Push(lua.LNil)
+				L.Push(lua.LFalse)
+				return 2
+			}
+			L.Push(value)
+			L.Push(lua.LTrue)
+			return 2
+		default:
+			L.Push(lua.LNil)
+			L.Push(lua.LFalse)
+			return 2
+		}
+	}))
+
+	// close method: ch:close()
+	L.SetField(mt, "close", L.NewFunction(func(L *lua.LState) int {
+		ch := L.CheckUserData(1).Value.(*luaChannel)
+
+		ch.closeMu.Lock()
+		defer ch.closeMu.Unlock()
+
+		if ch.closed {
+			L.Push(lua.LFalse)
+			L.Push(lua.LString("channel already closed"))
+			return 2
+		}
+
+		close(ch.ch)
+		ch.closed = true
+		L.Push(lua.LTrue)
+		return 1
+	}))
+
+	// len method: local len = ch:len()
+	L.SetField(mt, "len", L.NewFunction(func(L *lua.LState) int {
+		ch := L.CheckUserData(1).Value.(*luaChannel)
+		L.Push(lua.LNumber(len(ch.ch)))
+		return 1
+	}))
+
+	// cap method: local cap = ch:cap()
+	L.SetField(mt, "cap", L.NewFunction(func(L *lua.LState) int {
+		ch := L.CheckUserData(1).Value.(*luaChannel)
+		L.Push(lua.LNumber(ch.capacity))
+		return 1
+	}))
+
+	// is_closed method: local closed = ch:is_closed()
+	L.SetField(mt, "is_closed", L.NewFunction(func(L *lua.LState) int {
+		ch := L.CheckUserData(1).Value.(*luaChannel)
+		ch.closeMu.Lock()
+		closed := ch.closed
+		ch.closeMu.Unlock()
+		L.Push(lua.LBool(closed))
+		return 1
+	}))
+
+	L.SetField(mt, "__index", mt)
+	L.SetMetatable(ud, mt)
+
+	L.Push(ud)
+	return 1
+}
+
+// luaChannelSend sends a value to a channel (standalone function)
+// Usage: goroutine.channel_send(ch, value)
+func (g *GoroutineModule) luaChannelSend(L *lua.LState) int {
+	ud := L.CheckUserData(1)
+	ch := ud.Value.(*luaChannel)
+	value := L.Get(2)
+
+	if ch.direction == "receive" {
+		L.RaiseError("cannot send on receive-only channel")
+		return 0
+	}
+
+	ch.closeMu.Lock()
+	closed := ch.closed
+	ch.closeMu.Unlock()
+
+	if closed {
+		L.Push(lua.LFalse)
+		L.Push(lua.LString("send on closed channel"))
+		return 2
+	}
+
+	ch.ch <- value
+	L.Push(lua.LTrue)
+	return 1
+}
+
+// luaChannelReceive receives a value from a channel (standalone function)
+// Usage: local value, ok = goroutine.channel_receive(ch)
+func (g *GoroutineModule) luaChannelReceive(L *lua.LState) int {
+	ud := L.CheckUserData(1)
+	ch := ud.Value.(*luaChannel)
+
+	if ch.direction == "send" {
+		L.RaiseError("cannot receive on send-only channel")
+		return 0
+	}
+
+	value, ok := <-ch.ch
+	if !ok {
+		L.Push(lua.LNil)
+		L.Push(lua.LFalse)
+		return 2
+	}
+
+	L.Push(value)
+	L.Push(lua.LTrue)
+	return 2
+}
+
+// luaChannelClose closes a channel (standalone function)
+// Usage: goroutine.channel_close(ch)
+func (g *GoroutineModule) luaChannelClose(L *lua.LState) int {
+	ud := L.CheckUserData(1)
+	ch := ud.Value.(*luaChannel)
+
+	ch.closeMu.Lock()
+	defer ch.closeMu.Unlock()
+
+	if ch.closed {
+		L.Push(lua.LFalse)
+		L.Push(lua.LString("channel already closed"))
+		return 2
+	}
+
+	close(ch.ch)
+	ch.closed = true
+	L.Push(lua.LTrue)
+	return 1
+}
+
+// luaChannelLen returns the number of elements in the channel buffer
+// Usage: local len = goroutine.channel_len(ch)
+func (g *GoroutineModule) luaChannelLen(L *lua.LState) int {
+	ud := L.CheckUserData(1)
+	ch := ud.Value.(*luaChannel)
+	L.Push(lua.LNumber(len(ch.ch)))
+	return 1
+}
+
+// luaChannelCap returns the capacity of the channel
+// Usage: local cap = goroutine.channel_cap(ch)
+func (g *GoroutineModule) luaChannelCap(L *lua.LState) int {
+	ud := L.CheckUserData(1)
+	ch := ud.Value.(*luaChannel)
+	L.Push(lua.LNumber(ch.capacity))
+	return 1
+}
+
+// luaSelect implements select statement for multiplexing channel operations
+// Usage:
+//   goroutine.select({
+//     { channel = ch1, receive = true, handler = function(value) ... end },
+//     { channel = ch2, send = value, handler = function() ... end },
+//     { default = true, handler = function() ... end }
+//   })
+func (g *GoroutineModule) luaSelect(L *lua.LState) int {
+	cases := L.CheckTable(1)
+
+	var selectCases []selectCase
+	var defaultCase *selectCase
+
+	// Parse cases
+	cases.ForEach(func(k, v lua.LValue) {
+		if caseTable, ok := v.(*lua.LTable); ok {
+			sc := selectCase{}
+
+			// Check if it's a default case
+			if defaultVal := caseTable.RawGetString("default"); defaultVal != lua.LNil {
+				if defaultVal == lua.LTrue {
+					sc.caseType = "default"
+					sc.fn = caseTable.RawGetString("handler").(*lua.LFunction)
+					defaultCase = &sc
+					return
+				}
+			}
+
+			// Get channel
+			chUD := caseTable.RawGetString("channel").(*lua.LUserData)
+			sc.channel = chUD.Value.(*luaChannel)
+
+			// Determine operation type
+			if receiveVal := caseTable.RawGetString("receive"); receiveVal == lua.LTrue {
+				sc.caseType = "receive"
+			} else if sendVal := caseTable.RawGetString("send"); sendVal != lua.LNil {
+				sc.caseType = "send"
+				sc.value = sendVal
+			}
+
+			sc.fn = caseTable.RawGetString("handler").(*lua.LFunction)
+			selectCases = append(selectCases, sc)
+		}
+	})
+
+	// Execute select
+	if len(selectCases) == 0 && defaultCase != nil {
+		// Only default case
+		if err := L.CallByParam(lua.P{
+			Fn:      defaultCase.fn,
+			NRet:    0,
+			Protect: true,
+		}); err != nil {
+			L.RaiseError("error in default handler: %v", err)
+		}
+		return 0
+	}
+
+	// Build reflection select cases
+	selectCh := make(chan int, 1)
+
+	for i, sc := range selectCases {
+		idx := i
+		case_ := sc
+
+		go func() {
+			if case_.caseType == "receive" {
+				value, ok := <-case_.channel.ch
+				if ok {
+					// Execute handler with received value
+					if err := L.CallByParam(lua.P{
+						Fn:      case_.fn,
+						NRet:    0,
+						Protect: true,
+					}, value); err != nil {
+						fmt.Printf("Error in receive handler: %v\n", err)
+					}
+					select {
+					case selectCh <- idx:
+					default:
+					}
+				}
+			} else if case_.caseType == "send" {
+				case_.channel.ch <- case_.value
+				// Execute handler
+				if err := L.CallByParam(lua.P{
+					Fn:      case_.fn,
+					NRet:    0,
+					Protect: true,
+				}); err != nil {
+					fmt.Printf("Error in send handler: %v\n", err)
+				}
+				select {
+				case selectCh <- idx:
+				default:
+				}
+			}
+		}()
+	}
+
+	// Wait for first case to complete or use default
+	select {
+	case <-selectCh:
+		// One of the cases completed
+	default:
+		if defaultCase != nil {
+			if err := L.CallByParam(lua.P{
+				Fn:      defaultCase.fn,
+				NRet:    0,
+				Protect: true,
+			}); err != nil {
+				L.RaiseError("error in default handler: %v", err)
+			}
+		}
+	}
+
+	return 0
+}
+
+// ============================================================================
+// MUTEX OPERATIONS
+// ============================================================================
+
+// luaMutex creates a new mutex
+// Usage:
+//   local mu = goroutine.mutex()
+//   mu:lock()
+//   -- critical section
+//   mu:unlock()
+func (g *GoroutineModule) luaMutex(L *lua.LState) int {
+	mu := &sync.Mutex{}
+
+	ud := L.NewUserData()
+	ud.Value = mu
+
+	// Create metatable with methods
+	mt := L.NewTable()
+
+	// lock method: mu:lock()
+	L.SetField(mt, "lock", L.NewFunction(func(L *lua.LState) int {
+		mu := L.CheckUserData(1).Value.(*sync.Mutex)
+		mu.Lock()
+		return 0
+	}))
+
+	// unlock method: mu:unlock()
+	L.SetField(mt, "unlock", L.NewFunction(func(L *lua.LState) int {
+		mu := L.CheckUserData(1).Value.(*sync.Mutex)
+		mu.Unlock()
+		return 0
+	}))
+
+	// try_lock method: local ok = mu:try_lock() -- non-blocking
+	L.SetField(mt, "try_lock", L.NewFunction(func(L *lua.LState) int {
+		mu := L.CheckUserData(1).Value.(*sync.Mutex)
+		locked := mu.TryLock()
+		L.Push(lua.LBool(locked))
+		return 1
+	}))
+
+	L.SetField(mt, "__index", mt)
+	L.SetMetatable(ud, mt)
+
+	L.Push(ud)
+	return 1
+}
+
+// luaRWMutex creates a new read-write mutex
+// Usage:
+//   local rwmu = goroutine.rwmutex()
+//   rwmu:rlock()     -- read lock
+//   rwmu:runlock()   -- read unlock
+//   rwmu:lock()      -- write lock
+//   rwmu:unlock()    -- write unlock
+func (g *GoroutineModule) luaRWMutex(L *lua.LState) int {
+	rwmu := &sync.RWMutex{}
+
+	ud := L.NewUserData()
+	ud.Value = rwmu
+
+	// Create metatable with methods
+	mt := L.NewTable()
+
+	// lock method: rwmu:lock() -- write lock
+	L.SetField(mt, "lock", L.NewFunction(func(L *lua.LState) int {
+		rwmu := L.CheckUserData(1).Value.(*sync.RWMutex)
+		rwmu.Lock()
+		return 0
+	}))
+
+	// unlock method: rwmu:unlock() -- write unlock
+	L.SetField(mt, "unlock", L.NewFunction(func(L *lua.LState) int {
+		rwmu := L.CheckUserData(1).Value.(*sync.RWMutex)
+		rwmu.Unlock()
+		return 0
+	}))
+
+	// rlock method: rwmu:rlock() -- read lock
+	L.SetField(mt, "rlock", L.NewFunction(func(L *lua.LState) int {
+		rwmu := L.CheckUserData(1).Value.(*sync.RWMutex)
+		rwmu.RLock()
+		return 0
+	}))
+
+	// runlock method: rwmu:runlock() -- read unlock
+	L.SetField(mt, "runlock", L.NewFunction(func(L *lua.LState) int {
+		rwmu := L.CheckUserData(1).Value.(*sync.RWMutex)
+		rwmu.RUnlock()
+		return 0
+	}))
+
+	// try_lock method: local ok = rwmu:try_lock() -- non-blocking write lock
+	L.SetField(mt, "try_lock", L.NewFunction(func(L *lua.LState) int {
+		rwmu := L.CheckUserData(1).Value.(*sync.RWMutex)
+		locked := rwmu.TryLock()
+		L.Push(lua.LBool(locked))
+		return 1
+	}))
+
+	// try_rlock method: local ok = rwmu:try_rlock() -- non-blocking read lock
+	L.SetField(mt, "try_rlock", L.NewFunction(func(L *lua.LState) int {
+		rwmu := L.CheckUserData(1).Value.(*sync.RWMutex)
+		locked := rwmu.TryRLock()
+		L.Push(lua.LBool(locked))
+		return 1
+	}))
+
+	L.SetField(mt, "__index", mt)
+	L.SetMetatable(ud, mt)
+
+	L.Push(ud)
+	return 1
 }

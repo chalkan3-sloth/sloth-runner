@@ -631,15 +631,19 @@ func RegisterModulesGlobally(L *lua.LState, agentClient interface{}) {
 	loadModuleGlobally("state", StateLoader)
 	loadModuleGlobally("systemd", SystemdLoader)
 	loadModuleGlobally("infra_test", NewInfraTestModule().Loader)
-	
+
+	// Register goroutine module globally for parallel execution
+	goroutineModule := coremodules.NewGoroutineModule()
+	loadModuleGlobally("goroutine", goroutineModule.Loader)
+
 	// Core modules that are already registered globally by their Open* functions
 	// data, fs, net, exec, log, git, python, gcp, aws - already global
-	
+
 	// SSH, http, strings, math, crypto, time, security, observability are already registered globally
 	// by their respective Register* functions
-	
+
 	// db and network are also registered directly as globals
-	
+
 	// Register stack management functions
 	RegisterStackFunctions(L)
 }

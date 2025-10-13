@@ -1,0 +1,393 @@
+-- Goroutine Channels Examples
+-- Demonstrates channel usage for concurrent programming
+
+workflow.define("channels_demo", {
+  description = "Demonstrate goroutine channels and communication patterns",
+  tasks = {
+    -- Example 1: Simple Producer-Consumer
+    producer_consumer = {
+      description = "Producer-consumer pattern with unbuffered channel",
+      command = function()
+        log.info("=== Example 1: Producer-Consumer ===")
+
+        -- Create unbuffered channel
+        local ch = goroutine.channel()
+
+        -- Producer goroutine
+        goroutine.spawn(function()
+          for i = 1, 5 do
+            log.info("Producer: sending " .. i)
+            ch:send(i)
+            goroutine.sleep(100)
+          end
+          ch:close()
+          log.info("Producer: channel closed")
+        end)
+
+        -- Consumer (main goroutine)
+        goroutine.sleep(50) -- Let producer start first
+
+        while true do
+          local value, ok = ch:receive()
+          if not ok then
+            log.info("Consumer: channel closed, exiting")
+            break
+          end
+          log.info("Consumer: received " .. tostring(value))
+        end
+
+        return true, "Producer-consumer completed"
+      end
+    },
+
+    -- Example 2: Buffered Channel
+    buffered_channel = {
+      description = "Using buffered channels for non-blocking sends",
+      command = function()
+        log.info("=== Example 2: Buffered Channel ===")
+
+        -- Create buffered channel with capacity 3
+        local ch = goroutine.channel(3)
+
+        -- Send without blocking
+        log.info("Sending 3 values to buffered channel...")
+        ch:send("first")
+        ch:send("second")
+        ch:send("third")
+        log.info("All values sent (no blocking!)")
+
+        -- Check buffer status
+        log.info("Channel length: " .. ch:len() .. " / " .. ch:cap())
+
+        -- Receive all values
+        log.info("Receiving values...")
+        while ch:len() > 0 do
+          local value, ok = ch:receive()
+          if ok then
+            log.info("Received: " .. value)
+          end
+        end
+
+        ch:close()
+        return true, "Buffered channel demo completed"
+      end
+    },
+
+    -- Example 3: Non-blocking Operations
+    non_blocking = {
+      description = "Non-blocking send and receive with try operations",
+      command = function()
+        log.info("=== Example 3: Non-Blocking Operations ===")
+
+        local ch = goroutine.channel(2)
+
+        -- Try sending
+        local ok = ch:try_send("message1")
+        log.info("First try_send: " .. tostring(ok))
+
+        ok = ch:try_send("message2")
+        log.info("Second try_send: " .. tostring(ok))
+
+        -- Buffer is full, this should fail
+        ok = ch:try_send("message3")
+        log.info("Third try_send (should fail): " .. tostring(ok))
+
+        -- Try receiving
+        local value, ok = ch:try_receive()
+        if ok then
+          log.info("try_receive got: " .. value)
+        end
+
+        -- Now we have space, try sending again
+        ok = ch:try_send("message3")
+        log.info("Fourth try_send (should succeed): " .. tostring(ok))
+
+        ch:close()
+        return true, "Non-blocking operations completed"
+      end
+    },
+
+    -- Example 4: Multiple Producers
+    multiple_producers = {
+      description = "Multiple goroutines sending to same channel",
+      command = function()
+        log.info("=== Example 4: Multiple Producers ===")
+
+        local ch = goroutine.channel(10)
+        local producers = 3
+
+        -- Spawn multiple producers
+        for i = 1, producers do
+          local producer_id = i
+          goroutine.spawn(function()
+            for j = 1, 3 do
+              local msg = "Producer " .. producer_id .. " - Message " .. j
+              ch:send(msg)
+              log.info("Sent: " .. msg)
+              goroutine.sleep(math.random(50, 150))
+            end
+          end)
+        end
+
+        -- Collect messages
+        goroutine.sleep(100) -- Let producers start
+        local messages = {}
+
+        for i = 1, producers * 3 do
+          local value, ok = ch:receive()
+          if ok then
+            table.insert(messages, value)
+            log.info("Received: " .. value)
+          end
+        end
+
+        ch:close()
+        log.info("Collected " .. #messages .. " messages")
+        return true, "Multiple producers completed"
+      end
+    },
+
+    -- Example 5: Fan-Out Fan-In Pattern
+    fan_out_fan_in = {
+      description = "Fan-out to workers, fan-in results",
+      command = function()
+        log.info("=== Example 5: Fan-Out Fan-In ===")
+
+        local jobs = goroutine.channel(10)
+        local results = goroutine.channel(10)
+
+        -- Worker function
+        local worker = function(id)
+          while true do
+            local job, ok = jobs:receive()
+            if not ok then
+              log.info("Worker " .. id .. " finished")
+              break
+            end
+
+            log.info("Worker " .. id .. " processing job: " .. job)
+            goroutine.sleep(50)
+
+            local result = "Result from worker " .. id .. " for job " .. job
+            results:send(result)
+          end
+        end
+
+        -- Spawn workers (fan-out)
+        local num_workers = 3
+        for i = 1, num_workers do
+          local worker_id = i
+          goroutine.spawn(function()
+            worker(worker_id)
+          end)
+        end
+
+        -- Send jobs
+        local num_jobs = 9
+        for i = 1, num_jobs do
+          jobs:send("Job-" .. i)
+        end
+        jobs:close()
+
+        -- Collect results (fan-in)
+        goroutine.sleep(200) -- Wait for processing
+        local collected = {}
+        for i = 1, num_jobs do
+          local result, ok = results:try_receive()
+          if ok then
+            table.insert(collected, result)
+            log.info("Collected: " .. result)
+          end
+        end
+
+        results:close()
+        log.info("Collected " .. #collected .. " results")
+        return true, "Fan-out fan-in completed"
+      end
+    },
+
+    -- Example 6: Pipeline Pattern
+    pipeline = {
+      description = "Pipeline pattern with channels",
+      command = function()
+        log.info("=== Example 6: Pipeline ===")
+
+        -- Stage 1: Generate numbers
+        local generate = function()
+          local out = goroutine.channel(5)
+          goroutine.spawn(function()
+            for i = 1, 5 do
+              log.info("Generate: " .. i)
+              out:send(i)
+              goroutine.sleep(50)
+            end
+            out:close()
+          end)
+          return out
+        end
+
+        -- Stage 2: Square numbers
+        local square = function(input)
+          local out = goroutine.channel(5)
+          goroutine.spawn(function()
+            while true do
+              local num, ok = input:receive()
+              if not ok then
+                break
+              end
+              local result = num * num
+              log.info("Square: " .. num .. " -> " .. result)
+              out:send(result)
+            end
+            out:close()
+          end)
+          return out
+        end
+
+        -- Stage 3: Format output
+        local format = function(input)
+          local out = goroutine.channel(5)
+          goroutine.spawn(function()
+            while true do
+              local num, ok = input:receive()
+              if not ok then
+                break
+              end
+              local result = "Result: " .. num
+              log.info("Format: " .. result)
+              out:send(result)
+            end
+            out:close()
+          end)
+          return out
+        end
+
+        -- Build pipeline
+        local numbers = generate()
+        local squared = square(numbers)
+        local formatted = format(squared)
+
+        -- Consume final output
+        goroutine.sleep(100)
+        local results = {}
+        while true do
+          local value, ok = formatted:receive()
+          if not ok then
+            break
+          end
+          table.insert(results, value)
+          log.info("Final: " .. value)
+        end
+
+        log.info("Pipeline processed " .. #results .. " values")
+        return true, "Pipeline completed"
+      end
+    },
+
+    -- Example 7: Timeout Pattern
+    timeout_pattern = {
+      description = "Using channels with timeout",
+      command = function()
+        log.info("=== Example 7: Timeout Pattern ===")
+
+        local ch = goroutine.channel()
+
+        -- Slow sender
+        goroutine.spawn(function()
+          goroutine.sleep(500)
+          ch:send("This message arrives late")
+          ch:close()
+        end)
+
+        -- Try to receive with timeout
+        local timeout_ch = goroutine.channel()
+
+        goroutine.spawn(function()
+          goroutine.sleep(200)
+          timeout_ch:send("timeout")
+          timeout_ch:close()
+        end)
+
+        -- Wait for either message or timeout
+        goroutine.sleep(50)
+
+        local got_message = false
+        local value, ok = ch:try_receive()
+        if ok then
+          log.info("Got message: " .. value)
+          got_message = true
+        else
+          log.info("No message yet, waiting for timeout...")
+          goroutine.sleep(200)
+          value, ok = timeout_ch:receive()
+          if ok then
+            log.info("Operation timed out!")
+          end
+        end
+
+        return true, "Timeout pattern completed"
+      end
+    },
+
+    -- Example 8: Quit Channel
+    quit_channel = {
+      description = "Using quit channel for graceful shutdown",
+      command = function()
+        log.info("=== Example 8: Quit Channel ===")
+
+        local data = goroutine.channel(5)
+        local quit = goroutine.channel()
+
+        -- Worker that can be stopped
+        goroutine.spawn(function()
+          local count = 0
+          while true do
+            -- Check for quit signal
+            local signal, ok = quit:try_receive()
+            if ok then
+              log.info("Worker received quit signal, shutting down...")
+              break
+            end
+
+            -- Do work
+            count = count + 1
+            local msg = "Work item " .. count
+            log.info("Worker producing: " .. msg)
+            data:send(msg)
+            goroutine.sleep(100)
+
+            if count >= 5 then
+              break
+            end
+          end
+          data:close()
+          log.info("Worker finished")
+        end)
+
+        -- Receive data
+        goroutine.sleep(300) -- Let worker produce some items
+
+        local received = 0
+        while true do
+          local value, ok = data:try_receive()
+          if ok then
+            received = received + 1
+            log.info("Received: " .. value)
+          else
+            break
+          end
+        end
+
+        -- Send quit signal if needed
+        if not data:is_closed() then
+          log.info("Sending quit signal...")
+          quit:send(true)
+        end
+
+        quit:close()
+        log.info("Received " .. received .. " items before quit")
+        return true, "Quit channel completed"
+      end
+    }
+  }
+})

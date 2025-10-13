@@ -1,0 +1,394 @@
+-- Goroutine Select Statement Examples
+-- Demonstrates advanced channel multiplexing with select
+
+workflow.define("select_demo", {
+  description = "Demonstrate goroutine.select() for channel multiplexing",
+  tasks = {
+    -- Example 1: Basic Select
+    basic_select = {
+      description = "Basic select with multiple channels",
+      command = function()
+        log.info("=== Example 1: Basic Select ===")
+
+        local ch1 = goroutine.channel()
+        local ch2 = goroutine.channel()
+
+        -- Send to ch1 after delay
+        goroutine.spawn(function()
+          goroutine.sleep(100)
+          ch1:send("Message from channel 1")
+          ch1:close()
+        end)
+
+        -- Send to ch2 after shorter delay
+        goroutine.spawn(function()
+          goroutine.sleep(50)
+          ch2:send("Message from channel 2")
+          ch2:close()
+        end)
+
+        -- Wait a bit for goroutines to start
+        goroutine.sleep(20)
+
+        -- Select will receive from whichever channel is ready first
+        goroutine.select({
+          {
+            channel = ch1,
+            receive = true,
+            handler = function(value)
+              log.info("Received from ch1: " .. value)
+            end
+          },
+          {
+            channel = ch2,
+            receive = true,
+            handler = function(value)
+              log.info("Received from ch2: " .. value)
+            end
+          }
+        })
+
+        goroutine.sleep(200) -- Wait for cleanup
+        return true, "Basic select completed"
+      end
+    },
+
+    -- Example 2: Select with Default
+    select_with_default = {
+      description = "Select with default case for non-blocking",
+      command = function()
+        log.info("=== Example 2: Select with Default ===")
+
+        local ch = goroutine.channel()
+
+        -- Try to receive from empty channel
+        log.info("Attempting to receive from empty channel...")
+
+        goroutine.select({
+          {
+            channel = ch,
+            receive = true,
+            handler = function(value)
+              log.info("Received: " .. value)
+            end
+          },
+          {
+            default = true,
+            handler = function()
+              log.info("Channel is empty, executing default case")
+            end
+          }
+        })
+
+        -- Now send a value and try again
+        ch:send("Hello")
+        log.info("Sent value to channel, trying again...")
+
+        goroutine.select({
+          {
+            channel = ch,
+            receive = true,
+            handler = function(value)
+              log.info("Received: " .. value)
+            end
+          },
+          {
+            default = true,
+            handler = function()
+              log.info("Default case (shouldn't execute)")
+            end
+          }
+        })
+
+        ch:close()
+        return true, "Select with default completed"
+      end
+    },
+
+    -- Example 3: Select with Send
+    select_with_send = {
+      description = "Select for sending to channels",
+      command = function()
+        log.info("=== Example 3: Select with Send ===")
+
+        local ch1 = goroutine.channel(1)
+        local ch2 = goroutine.channel(1)
+
+        -- Consumer for ch1
+        goroutine.spawn(function()
+          goroutine.sleep(50)
+          local value, ok = ch1:receive()
+          if ok then
+            log.info("ch1 consumer received: " .. value)
+          end
+          ch1:close()
+        end)
+
+        -- Consumer for ch2
+        goroutine.spawn(function()
+          goroutine.sleep(100)
+          local value, ok = ch2:receive()
+          if ok then
+            log.info("ch2 consumer received: " .. value)
+          end
+          ch2:close()
+        end)
+
+        goroutine.sleep(20)
+
+        -- Select will send to whichever channel is ready first
+        log.info("Attempting to send via select...")
+
+        goroutine.select({
+          {
+            channel = ch1,
+            send = "Message for channel 1",
+            handler = function()
+              log.info("Sent to ch1")
+            end
+          },
+          {
+            channel = ch2,
+            send = "Message for channel 2",
+            handler = function()
+              log.info("Sent to ch2")
+            end
+          }
+        })
+
+        goroutine.sleep(200)
+        return true, "Select with send completed"
+      end
+    },
+
+    -- Example 4: Timeout with Select
+    timeout_select = {
+      description = "Implementing timeout with select",
+      command = function()
+        log.info("=== Example 4: Timeout with Select ===")
+
+        local data = goroutine.channel()
+        local timeout = goroutine.channel()
+
+        -- Slow operation
+        goroutine.spawn(function()
+          log.info("Starting slow operation...")
+          goroutine.sleep(300)
+          data:send("Data arrived (late)")
+          data:close()
+        end)
+
+        -- Timeout timer
+        goroutine.spawn(function()
+          goroutine.sleep(150)
+          timeout:send("timeout")
+          timeout:close()
+        end)
+
+        goroutine.sleep(50)
+
+        log.info("Waiting for data or timeout...")
+
+        goroutine.select({
+          {
+            channel = data,
+            receive = true,
+            handler = function(value)
+              log.info("SUCCESS: Received data: " .. value)
+            end
+          },
+          {
+            channel = timeout,
+            receive = true,
+            handler = function(value)
+              log.info("TIMEOUT: Operation took too long")
+            end
+          }
+        })
+
+        goroutine.sleep(200)
+        return true, "Timeout select completed"
+      end
+    },
+
+    -- Example 5: Worker Pool with Select
+    worker_pool_select = {
+      description = "Worker pool using select for job distribution",
+      command = function()
+        log.info("=== Example 5: Worker Pool with Select ===")
+
+        local jobs = goroutine.channel(10)
+        local results = goroutine.channel(10)
+        local done = goroutine.channel()
+
+        -- Worker function
+        local create_worker = function(id)
+          goroutine.spawn(function()
+            log.info("Worker " .. id .. " started")
+
+            while true do
+              goroutine.select({
+                {
+                  channel = jobs,
+                  receive = true,
+                  handler = function(job)
+                    log.info("Worker " .. id .. " processing: " .. job)
+                    goroutine.sleep(math.random(50, 150))
+                    results:send("Result of " .. job .. " by worker " .. id)
+                  end
+                },
+                {
+                  channel = done,
+                  receive = true,
+                  handler = function()
+                    log.info("Worker " .. id .. " shutting down")
+                    return
+                  end
+                }
+              })
+
+              -- Check if done signal received
+              if done:is_closed() then
+                break
+              end
+            end
+          end)
+        end
+
+        -- Create workers
+        for i = 1, 3 do
+          create_worker(i)
+        end
+
+        -- Send jobs
+        log.info("Sending jobs...")
+        for i = 1, 6 do
+          jobs:send("Job-" .. i)
+        end
+
+        -- Collect results
+        goroutine.sleep(100)
+
+        local collected = {}
+        for i = 1, 6 do
+          local result, ok = results:try_receive()
+          if ok then
+            table.insert(collected, result)
+            log.info("Collected: " .. result)
+          end
+        end
+
+        -- Signal workers to stop
+        done:close()
+
+        jobs:close()
+        results:close()
+
+        log.info("Collected " .. #collected .. " results")
+        return true, "Worker pool with select completed"
+      end
+    },
+
+    -- Example 6: Rate Limiting
+    rate_limiting = {
+      description = "Rate limiting using channels and select",
+      command = function()
+        log.info("=== Example 6: Rate Limiting ===")
+
+        local requests = goroutine.channel(10)
+        local limiter = goroutine.channel(3)
+
+        -- Fill rate limiter
+        for i = 1, 3 do
+          limiter:send(true)
+        end
+
+        -- Refill limiter periodically
+        goroutine.spawn(function()
+          for i = 1, 10 do
+            goroutine.sleep(100)
+            local ok = limiter:try_send(true)
+            if ok then
+              log.info("Refilled rate limiter")
+            end
+          end
+        end)
+
+        -- Request handler
+        local handle_request = function(req_id)
+          log.info("Request " .. req_id .. " waiting for rate limit token...")
+
+          -- Wait for rate limiter token
+          local token, ok = limiter:receive()
+          if ok then
+            log.info("Request " .. req_id .. " processing...")
+            goroutine.sleep(50)
+            log.info("Request " .. req_id .. " completed")
+          end
+        end
+
+        -- Send 8 requests
+        for i = 1, 8 do
+          local req_id = i
+          goroutine.spawn(function()
+            handle_request(req_id)
+          end)
+          goroutine.sleep(20)
+        end
+
+        goroutine.sleep(1000)
+        limiter:close()
+        requests:close()
+
+        return true, "Rate limiting completed"
+      end
+    },
+
+    -- Example 7: Priority Channels
+    priority_channels = {
+      description = "Implementing priority using select",
+      command = function()
+        log.info("=== Example 7: Priority Channels ===")
+
+        local high_priority = goroutine.channel(5)
+        local low_priority = goroutine.channel(5)
+
+        -- Add messages
+        high_priority:send("HIGH-1")
+        low_priority:send("LOW-1")
+        low_priority:send("LOW-2")
+        high_priority:send("HIGH-2")
+        low_priority:send("LOW-3")
+
+        log.info("Processing messages with priority...")
+
+        -- Process with priority (check high first)
+        local processed = 0
+        while processed < 5 do
+          -- Try high priority first
+          local value, ok = high_priority:try_receive()
+          if ok then
+            log.info("Processed (HIGH PRIORITY): " .. value)
+            processed = processed + 1
+          else
+            -- Fall back to low priority
+            value, ok = low_priority:try_receive()
+            if ok then
+              log.info("Processed (low priority): " .. value)
+              processed = processed + 1
+            else
+              break
+            end
+          end
+          goroutine.sleep(50)
+        end
+
+        high_priority:close()
+        low_priority:close()
+
+        log.info("Processed " .. processed .. " messages")
+        return true, "Priority channels completed"
+      end
+    }
+  }
+})

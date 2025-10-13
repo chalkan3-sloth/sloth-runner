@@ -1057,6 +1057,613 @@ sloth-runner run -f /tmp/quick_goroutines.sloth
 
 ---
 
+## 🔀 **Channels: Safe Goroutine Communication** 🚀
+
+### **Go-Style Channels for Concurrent Workflows**
+
+Sloth Runner now includes **full channel support** inspired by Go's concurrency model! Channels provide a safe, elegant way to communicate between goroutines, enabling powerful concurrent patterns like pipelines, fan-out/fan-in, worker pools, and more.
+
+```
+┌─────────────┐                  ┌─────────────┐
+│  Goroutine  │  ─── Channel ──> │  Goroutine  │
+│  Producer   │    (FIFO Queue)  │  Consumer   │
+└─────────────┘                  └─────────────┘
+```
+
+#### 🌟 **Why Channels?**
+
+- ✅ **Thread-Safe**: No locks needed - channels handle synchronization
+- ✅ **Elegant Patterns**: Producer-consumer, pipelines, fan-out/fan-in
+- ✅ **Buffered & Unbuffered**: Sync or async communication
+- ✅ **Select Statement**: Multiplex operations on multiple channels
+- ✅ **Non-Blocking Options**: try_send() and try_receive()
+
+#### 💡 **Quick Example: Producer-Consumer**
+
+```lua
+workflow("channel-demo")
+    :task("producer-consumer", function()
+        -- Create an unbuffered channel
+        local ch = goroutine.channel()
+
+        -- Producer goroutine
+        goroutine.spawn(function()
+            for i = 1, 5 do
+                log.info("📤 Producer sending: " .. i)
+                ch:send(i)
+                goroutine.sleep(100)
+            end
+            ch:close()
+        end)
+
+        -- Consumer (main goroutine)
+        while true do
+            local value, ok = ch:receive()
+            if not ok then
+                log.info("✅ Channel closed, done!")
+                break
+            end
+            log.info("📥 Consumer received: " .. value)
+        end
+
+        return true
+    end)
+```
+
+**Output:**
+```
+📤 Producer sending: 1
+📥 Consumer received: 1
+📤 Producer sending: 2
+📥 Consumer received: 2
+...
+✅ Channel closed, done!
+```
+
+#### 🎯 **Channel Types**
+
+##### 1️⃣ **Unbuffered Channels** (Synchronous)
+```lua
+local ch = goroutine.channel()  -- Blocks until receiver is ready
+ch:send("Hello")  -- Sender waits for receiver
+```
+
+```
+Goroutine A          Channel          Goroutine B
+    │                   │                  │
+    │──── send() ───────┤ [waiting...] ────│
+    │     BLOCKED       │                  │
+    │                   │──── receive() ───│
+    └───── unblocked ───┴──────────────────┘
+```
+
+##### 2️⃣ **Buffered Channels** (Asynchronous)
+```lua
+local ch = goroutine.channel(10)  -- Buffer capacity: 10
+ch:send("msg1")  -- No blocking if buffer has space
+ch:send("msg2")
+ch:send("msg3")
+log.info("Buffer: " .. ch:len() .. "/" .. ch:cap())  -- Output: 3/10
+```
+
+```
+┌─────────────────────────────┐
+│  Channel Buffer (cap=10)    │
+│  [msg1][msg2][msg3][ ][ ]..│
+│   ↑ send        ↑ receive   │
+└─────────────────────────────┘
+```
+
+##### 3️⃣ **Directional Channels** (Type Safety)
+```lua
+local ch_send = goroutine.channel(5, "send")      -- Send-only
+local ch_recv = goroutine.channel(5, "receive")   -- Receive-only
+local ch_both = goroutine.channel(5, "bidirectional")  -- Both (default)
+```
+
+#### 🔥 **Advanced Patterns**
+
+##### **Pattern 1: Fan-Out / Fan-In** (Distribute work to multiple workers)
+
+```lua
+local jobs = goroutine.channel(100)
+local results = goroutine.channel(100)
+
+-- Worker function
+local worker = function(id)
+    while true do
+        local job, ok = jobs:receive()
+        if not ok then break end
+
+        log.info("🔨 Worker " .. id .. " processing: " .. job)
+        goroutine.sleep(50)  -- Simulate work
+        results:send("Result of " .. job)
+    end
+end
+
+-- Spawn 5 workers (FAN-OUT)
+for i = 1, 5 do
+    local worker_id = i
+    goroutine.spawn(function() worker(worker_id) end)
+end
+
+-- Send 20 jobs
+for i = 1, 20 do
+    jobs:send("Job-" .. i)
+end
+jobs:close()
+
+-- Collect results (FAN-IN)
+for i = 1, 20 do
+    local result, ok = results:receive()
+    if ok then log.info("✅ " .. result) end
+end
+```
+
+**Visual:**
+```
+        Jobs Channel
+             │
+    ┌────────┼────────┬────────┬────────┐
+    │        │        │        │        │
+    ▼        ▼        ▼        ▼        ▼
+Worker-1  Worker-2  Worker-3  Worker-4  Worker-5
+    │        │        │        │        │
+    └────────┴────────┴────────┴────────┘
+                  │
+           Results Channel
+```
+
+##### **Pattern 2: Pipeline** (Multi-stage processing)
+
+```lua
+-- Stage 1: Generate numbers
+local generate = function()
+    local out = goroutine.channel(5)
+    goroutine.spawn(function()
+        for i = 1, 10 do out:send(i) end
+        out:close()
+    end)
+    return out
+end
+
+-- Stage 2: Square numbers
+local square = function(input)
+    local out = goroutine.channel(5)
+    goroutine.spawn(function()
+        while true do
+            local num, ok = input:receive()
+            if not ok then break end
+            out:send(num * num)
+        end
+        out:close()
+    end)
+    return out
+end
+
+-- Stage 3: Format
+local format = function(input)
+    local out = goroutine.channel(5)
+    goroutine.spawn(function()
+        while true do
+            local num, ok = input:receive()
+            if not ok then break end
+            out:send("Result: " .. num)
+        end
+        out:close()
+    end)
+    return out
+end
+
+-- Build and run pipeline
+local numbers = generate()
+local squared = square(numbers)
+local formatted = format(squared)
+
+while true do
+    local result, ok = formatted:receive()
+    if not ok then break end
+    log.info(result)  -- Output: Result: 1, Result: 4, Result: 9, ...
+end
+```
+
+**Visual:**
+```
+┌──────────┐    ┌─────────┐    ┌──────────┐
+│ Generate │───▶│ Square  │───▶│  Format  │───▶ Output
+│  1..10   │    │  x²     │    │ "Result" │
+└──────────┘    └─────────┘    └──────────┘
+  channel          channel         channel
+```
+
+##### **Pattern 3: Select Statement** (Multiplex multiple channels)
+
+```lua
+local ch1 = goroutine.channel()
+local ch2 = goroutine.channel()
+local timeout = goroutine.channel()
+
+-- Send to different channels with delays
+goroutine.spawn(function()
+    goroutine.sleep(100)
+    ch1:send("Fast message")
+end)
+
+goroutine.spawn(function()
+    goroutine.sleep(300)
+    ch2:send("Slow message")
+end)
+
+goroutine.spawn(function()
+    goroutine.sleep(200)
+    timeout:send("timeout")
+end)
+
+-- Select waits for first available channel
+goroutine.select({
+    {
+        channel = ch1,
+        receive = true,
+        handler = function(value)
+            log.info("✅ Got fast: " .. value)
+        end
+    },
+    {
+        channel = ch2,
+        receive = true,
+        handler = function(value)
+            log.info("✅ Got slow: " .. value)
+        end
+    },
+    {
+        channel = timeout,
+        receive = true,
+        handler = function()
+            log.warn("⏱️  Operation timed out!")
+        end
+    },
+    {
+        default = true,
+        handler = function()
+            log.info("🔄 No channel ready yet")
+        end
+    }
+})
+```
+
+##### **Pattern 4: Rate Limiting** (Control request rate)
+
+```lua
+local requests = goroutine.channel(100)
+local limiter = goroutine.channel(3)  -- 3 tokens
+
+-- Fill rate limiter with tokens
+for i = 1, 3 do limiter:send(true) end
+
+-- Refill tokens periodically (3 per second)
+goroutine.spawn(function()
+    while true do
+        goroutine.sleep(333)  -- ~3 per second
+        limiter:try_send(true)  -- Add token if space available
+    end
+end)
+
+-- Process requests with rate limiting
+local handle_request = function(id)
+    local token, ok = limiter:receive()  -- Wait for token
+    if ok then
+        log.info("🌐 Processing request " .. id)
+        goroutine.sleep(50)
+        log.info("✅ Request " .. id .. " complete")
+    end
+end
+
+-- Send 10 requests (will be rate-limited)
+for i = 1, 10 do
+    local req_id = i
+    goroutine.spawn(function() handle_request(req_id) end)
+end
+```
+
+#### 📚 **Complete Channel API**
+
+| Operation | Description | Blocking | Returns |
+|-----------|-------------|----------|---------|
+| `goroutine.channel()` | Create unbuffered channel | - | channel |
+| `goroutine.channel(10)` | Create buffered channel (cap=10) | - | channel |
+| `ch:send(value)` | Send value | ✅ Yes | `true` or `false, error` |
+| `ch:receive()` | Receive value | ✅ Yes | `value, ok` |
+| `ch:try_send(value)` | Send (non-blocking) | ❌ No | `true/false` |
+| `ch:try_receive()` | Receive (non-blocking) | ❌ No | `value, ok` |
+| `ch:close()` | Close channel | ❌ No | `true` or `false, error` |
+| `ch:len()` | Buffer length | ❌ No | `number` |
+| `ch:cap()` | Buffer capacity | ❌ No | `number` |
+| `ch:is_closed()` | Check if closed | ❌ No | `boolean` |
+| `goroutine.select({...})` | Multiplex channels | ✅ Yes | - |
+
+#### 🎓 **Best Practices**
+
+```lua
+-- ✅ DO: Close channels when done
+local ch = goroutine.channel()
+-- ... use channel
+ch:close()
+
+-- ✅ DO: Check channel closed in receive loop
+while true do
+    local value, ok = ch:receive()
+    if not ok then break end  -- Channel closed
+    process(value)
+end
+
+-- ✅ DO: Use buffered channels for performance
+local ch = goroutine.channel(100)  -- Less blocking
+
+-- ❌ DON'T: Send on closed channel
+ch:close()
+ch:send("value")  -- ERROR!
+
+-- ✅ DO: Check before sending
+if not ch:is_closed() then
+    ch:send("value")
+end
+
+-- ✅ DO: Use select for timeouts
+goroutine.select({
+    { channel = data_ch, receive = true, handler = process_data },
+    { channel = timeout_ch, receive = true, handler = handle_timeout },
+})
+```
+
+#### 🚀 **Try It Now!**
+
+```bash
+# Run producer-consumer example
+sloth-runner run producer_consumer --file examples/goroutine_channels_example.sloth --yes
+
+# Run select statement examples
+sloth-runner run basic_select --file examples/goroutine_select_example.sloth --yes
+
+# See all 15 examples
+sloth-runner run --file examples/goroutine_channels_example.sloth --yes
+```
+
+#### 📖 **Learn More**
+
+- 📘 [Complete Channel Documentation](./docs/goroutine_channels.md)
+- 💻 [15+ Working Examples](./examples/goroutine_channels_example.sloth)
+- 🎯 [Select Statement Guide](./examples/goroutine_select_example.sloth)
+
+**Channels bring the power of Go's concurrency model to your infrastructure automation!** 🔥
+
+---
+
+## 🔒 **Mutexes: Thread-Safe Data Protection** 🔥
+
+### **Protect Shared Data with Mutex & RWMutex**
+
+Quando múltiplas goroutines acessam os mesmos dados, você precisa de **mutexes** para evitar **race conditions**. O Sloth Runner fornece `Mutex` e `RWMutex` completos inspirados no Go!
+
+```
+Without Mutex:                 With Mutex:
+┌──────────────┐              ┌──────────────┐
+│ Goroutine 1  │─┐            │ Goroutine 1  │──┐
+│ Goroutine 2  │─┼→ ⚠️ RACE!  │ Goroutine 2  │  ├→ ✅ Safe!
+│ Goroutine 3  │─┘            │ Goroutine 3  │──┘
+└──────────────┘              └──────────────┘
+  shared_data                   mu:lock()
+                                shared_data
+                                mu:unlock()
+```
+
+### 🎯 **Quick Example: Protecting a Counter**
+
+```lua
+workflow("mutex-demo")
+    :task("safe-counter", function()
+        local counter = 0
+        local mu = goroutine.mutex()
+        local wg = goroutine.wait_group()
+
+        -- Spawn 10 goroutines incrementing counter
+        wg:add(10)
+        for i = 1, 10 do
+            goroutine.spawn(function()
+                for j = 1, 100 do
+                    mu:lock()
+                    counter = counter + 1  -- 🔒 Protected!
+                    mu:unlock()
+                end
+                wg:done()
+            end)
+        end
+
+        wg:wait()
+        log.info("Final count: " .. counter)  -- ✅ Always 1000!
+        return true
+    end)
+```
+
+**Without mutex**: `counter = 943` ❌ (race condition!)
+**With mutex**: `counter = 1000` ✅ (correct!)
+
+### 🔑 **Mutex API**
+
+| Method | Description | Blocking | Example |
+|--------|-------------|----------|---------|
+| `goroutine.mutex()` | Create a mutex | - | `local mu = goroutine.mutex()` |
+| `mu:lock()` | Acquire exclusive lock | ✅ Yes | `mu:lock()` |
+| `mu:unlock()` | Release lock | ❌ No | `mu:unlock()` |
+| `mu:try_lock()` | Try to lock (non-blocking) | ❌ No | `if mu:try_lock() then ... end` |
+
+### 📖 **RWMutex: Read-Write Mutex**
+
+**RWMutex** permite múltiplos leitores simultâneos, mas escritores têm acesso exclusivo:
+
+```
+┌─────────────────────────────────────────┐
+│  Read Locks (Multiple Concurrent)      │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐│
+│  │Reader 1 │  │Reader 2 │  │Reader 3 ││
+│  └─────────┘  └─────────┘  └─────────┘│
+│     ↓              ↓              ↓    │
+│  All reading shared_data at same time! │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│  Write Lock (Exclusive)                 │
+│  ┌─────────┐                            │
+│  │Writer   │  ← Blocks all others       │
+│  └─────────┘                            │
+│     ↓                                   │
+│  Exclusive access to shared_data        │
+└─────────────────────────────────────────┘
+```
+
+#### **RWMutex Example**
+
+```lua
+local config = { timeout = 30, retries = 3 }
+local rwmu = goroutine.rwmutex()
+
+-- 🔵 Multiple readers (concurrent!)
+for i = 1, 10 do
+    goroutine.spawn(function()
+        rwmu:rlock()
+        log.info("Timeout: " .. config.timeout)  -- All read together
+        rwmu:runlock()
+    end)
+end
+
+-- 🔴 One writer (exclusive!)
+goroutine.spawn(function()
+    rwmu:lock()
+    config.timeout = 60  -- Exclusive access
+    rwmu:unlock()
+end)
+```
+
+### 🔑 **RWMutex API**
+
+| Method | Description | Blocking | Example |
+|--------|-------------|----------|---------|
+| `goroutine.rwmutex()` | Create RWMutex | - | `local rwmu = goroutine.rwmutex()` |
+| `rwmu:rlock()` | Acquire read lock | ✅ Yes | `rwmu:rlock()` |
+| `rwmu:runlock()` | Release read lock | ❌ No | `rwmu:runlock()` |
+| `rwmu:lock()` | Acquire write lock | ✅ Yes | `rwmu:lock()` |
+| `rwmu:unlock()` | Release write lock | ❌ No | `rwmu:unlock()` |
+| `rwmu:try_rlock()` | Try read lock (non-blocking) | ❌ No | `if rwmu:try_rlock() then ... end` |
+| `rwmu:try_lock()` | Try write lock (non-blocking) | ❌ No | `if rwmu:try_lock() then ... end` |
+
+### 💡 **Advanced Pattern: Mutex + Channels**
+
+Combine mutexes (for data protection) with channels (for communication):
+
+```lua
+local shared_map = {}
+local mu = goroutine.mutex()
+local results = goroutine.channel(10)
+
+-- Worker: updates map and sends notification
+local worker = function(id)
+    local key = "worker_" .. id
+    local value = id * 100
+
+    -- 🔒 Protect shared map
+    mu:lock()
+    shared_map[key] = value
+    mu:unlock()
+
+    -- 📨 Notify via channel
+    results:send("Worker " .. id .. " done")
+end
+
+-- Spawn workers
+for i = 1, 5 do
+    goroutine.spawn(function() worker(i) end)
+end
+
+-- Collect notifications
+for i = 1, 5 do
+    local msg = results:receive()
+    log.info(msg)
+end
+```
+
+### 🛡️ **Deadlock Prevention with Try Lock**
+
+Use `try_lock()` to avoid deadlocks:
+
+```lua
+local safe_double_lock = function(mu1, mu2)
+    for attempt = 1, 5 do
+        mu1:lock()
+
+        local got_second = mu2:try_lock()
+        if got_second then
+            -- ✅ Success! Have both locks
+            -- ... do work ...
+            mu2:unlock()
+            mu1:unlock()
+            return true
+        else
+            -- ⚠️ Couldn't get second lock, back off
+            mu1:unlock()
+            goroutine.sleep(math.random(10, 50))
+        end
+    end
+    return false
+end
+```
+
+### ✅ **When to Use What?**
+
+| Use Case | Solution | Why |
+|----------|----------|-----|
+| Protecting shared mutable data | `Mutex` | Exclusive access for safety |
+| Many reads, few writes | `RWMutex` | Concurrent reads for performance |
+| Communication between goroutines | `Channel` | Message passing |
+| Waiting for goroutines to finish | `WaitGroup` | Synchronization |
+
+### 📦 **Complete Examples**
+
+The mutex examples file includes:
+
+1. ✅ **Basic Mutex** - Protecting shared counter
+2. 🔐 **Critical Section** - Protecting data structures
+3. ⚡ **Try Lock** - Non-blocking lock attempts
+4. 📖 **RWMutex Readers** - Concurrent readers
+5. ✍️ **RWMutex Writers** - Exclusive writer access
+6. ⚡ **RWMutex Try Lock** - Non-blocking RWMutex
+7. 🔄 **Mutex + Channels** - Combined pattern
+8. 🛡️ **Deadlock Prevention** - Safe multi-lock
+
+#### 🚀 **Try It Now!**
+
+```bash
+# Basic mutex example
+sloth-runner run basic_mutex --file examples/goroutine_mutex_example.sloth --yes
+
+# RWMutex example
+sloth-runner run rwmutex_readers --file examples/goroutine_mutex_example.sloth --yes
+
+# Deadlock prevention
+sloth-runner run deadlock_prevention --file examples/goroutine_mutex_example.sloth --yes
+
+# Run all 8 examples
+sloth-runner run --file examples/goroutine_mutex_example.sloth --yes
+```
+
+#### 📖 **Learn More**
+
+- 📘 [Complete Mutex Documentation](./docs/goroutine_mutex.md)
+- 💻 [8 Working Examples](./examples/goroutine_mutex_example.sloth)
+- 🔒 [Best Practices & Patterns](./docs/goroutine_mutex.md#best-practices)
+
+**Protect your data, prevent race conditions, and build rock-solid concurrent workflows!** 🔥
+
+---
+
 ## 🧪 **Infrastructure Testing with infra_test** 🔥
 
 ### **Test-Driven Infrastructure as Code**

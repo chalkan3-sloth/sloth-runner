@@ -1,0 +1,392 @@
+-- Goroutine Mutex Examples
+-- Demonstrates mutex and rwmutex usage for protecting shared data
+
+workflow.define("mutex_demo", {
+  description = "Demonstrate goroutine mutex and rwmutex for thread-safe operations",
+  tasks = {
+    -- Example 1: Basic Mutex - Protecting shared counter
+    basic_mutex = {
+      description = "Basic mutex usage to protect shared counter",
+      command = function()
+        log.info("=== Example 1: Basic Mutex ===")
+
+        -- Shared counter (without mutex, this would have race conditions)
+        local counter = 0
+        local mu = goroutine.mutex()
+        local wg = goroutine.wait_group()
+
+        -- Spawn 10 goroutines that increment counter
+        wg:add(10)
+        for i = 1, 10 do
+          goroutine.spawn(function()
+            for j = 1, 100 do
+              mu:lock()
+              counter = counter + 1
+              mu:unlock()
+            end
+            wg:done()
+          end)
+        end
+
+        wg:wait()
+        log.info("Final counter value: " .. counter)
+        log.info("Expected: 1000, Got: " .. counter)
+
+        return true, "Basic mutex completed with counter = " .. counter
+      end
+    },
+
+    -- Example 2: Mutex with Critical Section
+    critical_section = {
+      description = "Protecting critical section with mutex",
+      command = function()
+        log.info("=== Example 2: Critical Section ===")
+
+        local shared_data = {}
+        local mu = goroutine.mutex()
+        local wg = goroutine.wait_group()
+
+        -- Writer goroutines
+        wg:add(5)
+        for i = 1, 5 do
+          local writer_id = i
+          goroutine.spawn(function()
+            mu:lock()
+            log.info("Writer " .. writer_id .. " acquired lock")
+
+            -- Critical section: modify shared data
+            table.insert(shared_data, "Data from writer " .. writer_id)
+            goroutine.sleep(50) -- Simulate work
+
+            log.info("Writer " .. writer_id .. " releasing lock")
+            mu:unlock()
+
+            wg:done()
+          end)
+        end
+
+        wg:wait()
+
+        log.info("Shared data has " .. #shared_data .. " entries")
+        for i, data in ipairs(shared_data) do
+          log.info("  [" .. i .. "] " .. data)
+        end
+
+        return true, "Critical section completed"
+      end
+    },
+
+    -- Example 3: Try Lock (Non-blocking)
+    try_lock = {
+      description = "Non-blocking try_lock demonstration",
+      command = function()
+        log.info("=== Example 3: Try Lock ===")
+
+        local mu = goroutine.mutex()
+        local wg = goroutine.wait_group()
+
+        -- First goroutine acquires lock
+        wg:add(2)
+        goroutine.spawn(function()
+          mu:lock()
+          log.info("Goroutine 1: Acquired lock, holding for 200ms")
+          goroutine.sleep(200)
+          log.info("Goroutine 1: Releasing lock")
+          mu:unlock()
+          wg:done()
+        end)
+
+        -- Second goroutine tries to acquire lock (will fail)
+        goroutine.sleep(50) -- Let first goroutine acquire lock first
+
+        goroutine.spawn(function()
+          log.info("Goroutine 2: Trying to acquire lock (non-blocking)...")
+          local acquired = mu:try_lock()
+
+          if acquired then
+            log.info("Goroutine 2: SUCCESS - Got the lock!")
+            mu:unlock()
+          else
+            log.info("Goroutine 2: FAILED - Lock is busy, doing other work instead")
+            goroutine.sleep(100)
+            log.info("Goroutine 2: Trying again...")
+
+            -- Try again after some time
+            acquired = mu:try_lock()
+            if acquired then
+              log.info("Goroutine 2: SUCCESS - Got the lock on second try!")
+              mu:unlock()
+            else
+              log.info("Goroutine 2: Still busy, giving up")
+            end
+          end
+
+          wg:done()
+        end)
+
+        wg:wait()
+        return true, "Try lock completed"
+      end
+    },
+
+    -- Example 4: RWMutex - Multiple Readers
+    rwmutex_readers = {
+      description = "RWMutex allowing multiple concurrent readers",
+      command = function()
+        log.info("=== Example 4: RWMutex Multiple Readers ===")
+
+        local shared_value = "Initial Value"
+        local rwmu = goroutine.rwmutex()
+        local wg = goroutine.wait_group()
+
+        -- Spawn 5 reader goroutines (can read concurrently)
+        wg:add(5)
+        for i = 1, 5 do
+          local reader_id = i
+          goroutine.spawn(function()
+            rwmu:rlock()
+            log.info("Reader " .. reader_id .. " reading: '" .. shared_value .. "'")
+            goroutine.sleep(100) -- Simulate reading
+            log.info("Reader " .. reader_id .. " done reading")
+            rwmu:runlock()
+            wg:done()
+          end)
+        end
+
+        wg:wait()
+        log.info("All readers completed (they ran concurrently!)")
+
+        return true, "RWMutex readers completed"
+      end
+    },
+
+    -- Example 5: RWMutex - Writers Block Readers
+    rwmutex_writers = {
+      description = "RWMutex showing writers block all readers",
+      command = function()
+        log.info("=== Example 5: RWMutex Writers Block Readers ===")
+
+        local shared_value = 0
+        local rwmu = goroutine.rwmutex()
+        local wg = goroutine.wait_group()
+
+        -- Writer goroutine (exclusive access)
+        wg:add(1)
+        goroutine.spawn(function()
+          rwmu:lock()
+          log.info("Writer: Acquired write lock (exclusive)")
+
+          for i = 1, 5 do
+            shared_value = shared_value + 1
+            log.info("Writer: Updated value to " .. shared_value)
+            goroutine.sleep(50)
+          end
+
+          log.info("Writer: Releasing write lock")
+          rwmu:unlock()
+          wg:done()
+        end)
+
+        -- Readers try to read while writer is writing
+        goroutine.sleep(20) -- Let writer start first
+
+        wg:add(3)
+        for i = 1, 3 do
+          local reader_id = i
+          goroutine.spawn(function()
+            log.info("Reader " .. reader_id .. ": Waiting for read lock...")
+            rwmu:rlock()
+            log.info("Reader " .. reader_id .. ": Got read lock, value = " .. shared_value)
+            rwmu:runlock()
+            wg:done()
+          end)
+        end
+
+        wg:wait()
+        log.info("Final value: " .. shared_value)
+
+        return true, "RWMutex writers completed"
+      end
+    },
+
+    -- Example 6: RWMutex Try Lock
+    rwmutex_try_lock = {
+      description = "Non-blocking try_lock and try_rlock for RWMutex",
+      command = function()
+        log.info("=== Example 6: RWMutex Try Lock ===")
+
+        local rwmu = goroutine.rwmutex()
+        local wg = goroutine.wait_group()
+
+        -- Acquire read lock
+        wg:add(2)
+        goroutine.spawn(function()
+          rwmu:rlock()
+          log.info("Reader: Acquired read lock, holding for 200ms")
+          goroutine.sleep(200)
+          log.info("Reader: Releasing read lock")
+          rwmu:runlock()
+          wg:done()
+        end)
+
+        goroutine.sleep(50)
+
+        -- Try to acquire write lock (should fail while read lock is held)
+        goroutine.spawn(function()
+          log.info("Writer: Trying to acquire write lock...")
+          local acquired = rwmu:try_lock()
+
+          if acquired then
+            log.info("Writer: Got write lock!")
+            rwmu:unlock()
+          else
+            log.info("Writer: Failed (readers have locks), waiting...")
+            goroutine.sleep(200)
+
+            log.info("Writer: Trying again...")
+            acquired = rwmu:try_lock()
+            if acquired then
+              log.info("Writer: SUCCESS - Got write lock!")
+              rwmu:unlock()
+            end
+          end
+
+          wg:done()
+        end)
+
+        wg:wait()
+        return true, "RWMutex try lock completed"
+      end
+    },
+
+    -- Example 7: Mutex with Channels - Synchronization Pattern
+    mutex_with_channels = {
+      description = "Combining mutex with channels for complex synchronization",
+      command = function()
+        log.info("=== Example 7: Mutex with Channels ===")
+
+        local shared_map = {}
+        local mu = goroutine.mutex()
+        local results = goroutine.channel(10)
+        local wg = goroutine.wait_group()
+
+        -- Worker function: process data and update shared map
+        local worker = function(id)
+          for i = 1, 3 do
+            local key = "worker_" .. id .. "_item_" .. i
+            local value = id * 100 + i
+
+            -- Lock mutex to safely update shared map
+            mu:lock()
+            shared_map[key] = value
+            log.info("Worker " .. id .. ": Stored " .. key .. " = " .. value)
+            mu:unlock()
+
+            -- Send result through channel
+            results:send("Worker " .. id .. " processed item " .. i)
+
+            goroutine.sleep(math.random(50, 100))
+          end
+        end
+
+        -- Spawn 3 workers
+        wg:add(3)
+        for i = 1, 3 do
+          local worker_id = i
+          goroutine.spawn(function()
+            worker(worker_id)
+            wg:done()
+          end)
+        end
+
+        -- Collect results from channel
+        goroutine.spawn(function()
+          for i = 1, 9 do
+            local result, ok = results:receive()
+            if ok then
+              log.info("Main: " .. result)
+            end
+          end
+        end)
+
+        wg:wait()
+        results:close()
+
+        -- Print final map
+        log.info("Final shared map:")
+        mu:lock()
+        local count = 0
+        for k, v in pairs(shared_map) do
+          log.info("  " .. k .. " = " .. v)
+          count = count + 1
+        end
+        mu:unlock()
+
+        log.info("Total entries in map: " .. count)
+
+        return true, "Mutex with channels completed"
+      end
+    },
+
+    -- Example 8: Deadlock Prevention
+    deadlock_prevention = {
+      description = "Using try_lock to prevent deadlocks",
+      command = function()
+        log.info("=== Example 8: Deadlock Prevention ===")
+
+        local mu1 = goroutine.mutex()
+        local mu2 = goroutine.mutex()
+        local wg = goroutine.wait_group()
+
+        -- Safe approach: use try_lock and back off
+        local safe_double_lock = function(name, first, second)
+          log.info(name .. ": Attempting to acquire both locks...")
+
+          local max_attempts = 5
+          for attempt = 1, max_attempts do
+            first:lock()
+            log.info(name .. ": Got first lock")
+
+            local got_second = second:try_lock()
+            if got_second then
+              log.info(name .. ": Got second lock - SUCCESS!")
+
+              -- Critical section with both locks
+              goroutine.sleep(50)
+
+              second:unlock()
+              first:unlock()
+              log.info(name .. ": Released both locks")
+              return true
+            else
+              log.info(name .. ": Couldn't get second lock, backing off...")
+              first:unlock()
+              goroutine.sleep(math.random(10, 50)) -- Random backoff
+            end
+          end
+
+          log.info(name .. ": Failed after " .. max_attempts .. " attempts")
+          return false
+        end
+
+        -- Goroutine 1: tries to acquire mu1 then mu2
+        wg:add(2)
+        goroutine.spawn(function()
+          safe_double_lock("Goroutine-1", mu1, mu2)
+          wg:done()
+        end)
+
+        -- Goroutine 2: tries to acquire mu2 then mu1 (opposite order)
+        goroutine.spawn(function()
+          safe_double_lock("Goroutine-2", mu2, mu1)
+          wg:done()
+        end)
+
+        wg:wait()
+        log.info("Deadlock prevention completed successfully!")
+
+        return true, "Deadlock prevention completed"
+      end
+    }
+  }
+})
