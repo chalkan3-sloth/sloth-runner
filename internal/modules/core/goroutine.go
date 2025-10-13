@@ -773,37 +773,8 @@ func (g *GoroutineModule) Cleanup() {
 // CHANNEL OPERATIONS
 // ============================================================================
 
-// luaChannelMake creates a new channel
-// Usage:
-//   local ch = goroutine.channel()           -- unbuffered
-//   local ch = goroutine.channel(10)         -- buffered with capacity 10
-//   local ch = goroutine.channel(10, "send") -- send-only channel
-func (g *GoroutineModule) luaChannelMake(L *lua.LState) int {
-	capacity := L.OptInt(1, 0)
-	direction := L.OptString(2, "bidirectional") // "bidirectional", "send", "receive"
-
-	if capacity < 0 {
-		L.ArgError(1, "capacity must be non-negative")
-		return 0
-	}
-
-	if direction != "bidirectional" && direction != "send" && direction != "receive" {
-		L.ArgError(2, "direction must be 'bidirectional', 'send', or 'receive'")
-		return 0
-	}
-
-	ch := &luaChannel{
-		ch:        make(chan lua.LValue, capacity),
-		capacity:  capacity,
-		closed:    false,
-		direction: direction,
-	}
-
-	// Create userdata
-	ud := L.NewUserData()
-	ud.Value = ch
-
-	// Create metatable with methods
+// createChannelMetatable creates a metatable with all channel methods
+func (g *GoroutineModule) createChannelMetatable(L *lua.LState) *lua.LTable {
 	mt := L.NewTable()
 
 	// send method: ch:send(value)
@@ -982,6 +953,41 @@ func (g *GoroutineModule) luaChannelMake(L *lua.LState) int {
 	}))
 
 	L.SetField(mt, "__index", mt)
+	return mt
+}
+
+// luaChannelMake creates a new channel
+// Usage:
+//   local ch = goroutine.channel()           -- unbuffered
+//   local ch = goroutine.channel(10)         -- buffered with capacity 10
+//   local ch = goroutine.channel(10, "send") -- send-only channel
+func (g *GoroutineModule) luaChannelMake(L *lua.LState) int {
+	capacity := L.OptInt(1, 0)
+	direction := L.OptString(2, "bidirectional") // "bidirectional", "send", "receive"
+
+	if capacity < 0 {
+		L.ArgError(1, "capacity must be non-negative")
+		return 0
+	}
+
+	if direction != "bidirectional" && direction != "send" && direction != "receive" {
+		L.ArgError(2, "direction must be 'bidirectional', 'send', or 'receive'")
+		return 0
+	}
+
+	ch := &luaChannel{
+		ch:        make(chan lua.LValue, capacity),
+		capacity:  capacity,
+		closed:    false,
+		direction: direction,
+	}
+
+	// Create userdata
+	ud := L.NewUserData()
+	ud.Value = ch
+
+	// Set metatable with all channel methods
+	mt := g.createChannelMetatable(L)
 	L.SetMetatable(ud, mt)
 
 	L.Push(ud)
@@ -1959,11 +1965,16 @@ func (g *GoroutineModule) luaPipeline(L *lua.LState) int {
 				direction: "bidirectional",
 			}
 
+			// Create a separate WaitGroup for this stage
+			stageWg := &sync.WaitGroup{}
+
 			// Launch workers for this stage
 			for i := 0; i < workers; i++ {
 				wg.Add(1)
+				stageWg.Add(1)
 				go func(input, output *luaChannel, processFn *lua.LFunction) {
 					defer wg.Done()
+					defer stageWg.Done()
 
 					newL := lua.NewState()
 					defer newL.Close()
@@ -1995,29 +2006,32 @@ func (g *GoroutineModule) luaPipeline(L *lua.LState) int {
 				}(currentCh, outputCh, fn)
 			}
 
+			// Close this stage's output channel when all its workers are done
+			go func(output *luaChannel, stageWg *sync.WaitGroup) {
+				stageWg.Wait()
+				output.closeMu.Lock()
+				if !output.closed {
+					close(output.ch)
+					output.closed = true
+				}
+				output.closeMu.Unlock()
+			}(outputCh, stageWg)
+
 			// This stage's output becomes next stage's input
 			currentCh = outputCh
 		}
 	})
 
-	// Close final output when all done
-	go func() {
-		wg.Wait()
-		currentCh.closeMu.Lock()
-		if !currentCh.closed {
-			close(currentCh.ch)
-			currentCh.closed = true
-		}
-		currentCh.closeMu.Unlock()
-	}()
+	// Note: Each stage closes its own output channel when all its workers complete,
+	// so the final output channel (currentCh) will be automatically closed by the
+	// last stage's cleanup goroutine.
 
 	// Return final output channel
 	finalUD := L.NewUserData()
 	finalUD.Value = currentCh
 
-	// Set metatable (reuse channel metatable)
-	finalMT := L.NewTable()
-	L.SetField(finalMT, "__index", finalMT)
+	// Set metatable with all channel methods
+	finalMT := g.createChannelMetatable(L)
 	L.SetMetatable(finalUD, finalMT)
 
 	L.Push(finalUD)
@@ -2074,8 +2088,8 @@ func (g *GoroutineModule) luaFanOut(L *lua.LState) int {
 		outUD := L.NewUserData()
 		outUD.Value = outCh
 
-		outMT := L.NewTable()
-		L.SetField(outMT, "__index", outMT)
+		// Set metatable with all channel methods
+		outMT := g.createChannelMetatable(L)
 		L.SetMetatable(outUD, outMT)
 
 		outputTable.RawSetInt(i+1, outUD)
@@ -2142,8 +2156,8 @@ func (g *GoroutineModule) luaFanIn(L *lua.LState) int {
 	fanInUD := L.NewUserData()
 	fanInUD.Value = output
 
-	fanInMT := L.NewTable()
-	L.SetField(fanInMT, "__index", fanInMT)
+	// Set metatable with all channel methods
+	fanInMT := g.createChannelMetatable(L)
 	L.SetMetatable(fanInUD, fanInMT)
 
 	L.Push(fanInUD)
