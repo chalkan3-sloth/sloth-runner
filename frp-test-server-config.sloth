@@ -1,0 +1,173 @@
+-- FRP Server Installation and Configuration Test
+-- Test FRP server setup on do-sloth-runner-01
+
+local check_system = task("check_system")
+    :description("Check system information")
+    :command(function()
+        log.info("Checking system information...")
+
+        local result = exec.run([[
+            echo "=== System Information ==="
+            uname -a
+            echo ""
+            echo "=== Architecture ==="
+            uname -m
+            echo ""
+            echo "=== Available Memory ==="
+            free -h
+            echo ""
+            echo "=== Disk Space ==="
+            df -h /
+        ]])
+
+        if result.success then
+            log.info("System information:\n" .. result.output)
+            return true, result.output
+        else
+            log.error("Failed to get system information")
+            return false, result.error
+        end
+    end)
+    :build()
+
+local setup_frps = task("setup_frps")
+    :description("Setup FRP server")
+    :depends_on({"check_system"})
+    :command(function()
+        log.info("Setting up FRP server...")
+
+        -- Configure FRP server using the frp.server function
+        local config = {
+            version = "0.61.1",
+            bind_port = 7000,
+            dashboard_port = 7500,
+            dashboard_user = "admin",
+            dashboard_pwd = "admin123",
+            token = "my-secret-token-123",
+            subdomain_host = "frp.example.com",
+            log_file = "/var/log/frps.log",
+            log_level = "info",
+            enable_prometheus = true,
+            authentication_timeout = 900,
+            tcp_mux = true,
+            max_pool_count = 5
+        }
+
+        log.info("Installing FRP with configuration:")
+        for k, v in pairs(config) do
+            log.info("  " .. k .. ": " .. tostring(v))
+        end
+
+        local success, result = frp.server(config)
+
+        if success then
+            log.info("✓ FRP server setup successful!")
+            return true, "FRP server configured successfully"
+        else
+            log.error("✗ FRP server setup failed: " .. tostring(result))
+            return false, result
+        end
+    end)
+    :build()
+
+local verify_frps_running = task("verify_frps_running")
+    :description("Verify FRP server is running")
+    :depends_on({"setup_frps"})
+    :command(function()
+        log.info("Verifying FRP server status...")
+
+        local result = exec.run([[
+            echo "=== Checking FRP Server Status ==="
+            systemctl status frps --no-pager || true
+            echo ""
+            echo "=== Checking FRP Server Process ==="
+            ps aux | grep frps | grep -v grep || echo "Process not found"
+            echo ""
+            echo "=== Checking Listening Ports ==="
+            netstat -tuln | grep -E ':(7000|7500)' || ss -tuln | grep -E ':(7000|7500)' || echo "Ports not found"
+            echo ""
+            echo "=== Checking FRP Configuration ==="
+            if [ -f /etc/frp/frps.toml ]; then
+                cat /etc/frp/frps.toml
+            elif [ -f /etc/frp/frps.ini ]; then
+                cat /etc/frp/frps.ini
+            else
+                echo "Config not found"
+            fi
+            echo ""
+            echo "=== Checking FRP Logs ==="
+            if [ -f /var/log/frps.log ]; then
+                tail -n 20 /var/log/frps.log
+            else
+                journalctl -u frps -n 20 --no-pager || echo "No logs found"
+            fi
+        ]])
+
+        if result.success then
+            log.info("Verification output:\n" .. result.output)
+
+            -- Check if ports are listening
+            if string.find(result.output, ":7000") and string.find(result.output, ":7500") then
+                log.info("✓ FRP server is listening on ports 7000 and 7500")
+                return true, result.output
+            else
+                log.warn("⚠ FRP server ports may not be listening properly")
+                return true, result.output
+            end
+        else
+            log.error("Failed to verify FRP server")
+            return false, result.error
+        end
+    end)
+    :build()
+
+local test_dashboard_access = task("test_dashboard_access")
+    :description("Test dashboard accessibility")
+    :depends_on({"verify_frps_running"})
+    :command(function()
+        log.info("Testing dashboard access...")
+
+        local result = exec.run([[
+            echo "=== Testing Dashboard Access ==="
+            curl -s -o /dev/null -w "HTTP Status: %{http_code}\n" http://localhost:7500 || echo "Dashboard not accessible"
+        ]])
+
+        if result.success then
+            log.info("Dashboard test result:\n" .. result.output)
+
+            if string.find(result.output, "200") or string.find(result.output, "401") then
+                log.info("✓ Dashboard is accessible!")
+                return true, "Dashboard is running"
+            else
+                log.warn("⚠ Dashboard response: " .. result.output)
+                return true, result.output
+            end
+        else
+            log.error("Failed to test dashboard")
+            return false, result.error
+        end
+    end)
+    :build()
+
+workflow
+    .define("frp_server_test")
+    :description("Install and configure FRP server on do-sloth-runner-01")
+    :version("1.0.0")
+    :tasks({
+        check_system,
+        setup_frps,
+        verify_frps_running,
+        test_dashboard_access
+    })
+    :config({
+        timeout = "10m",
+        workdir = "/tmp"
+    })
+    :on_complete(function(success, results)
+        if success then
+            print("\n✅ FRP Server setup completed successfully!")
+            print("FRP Server is running and configured")
+        else
+            print("\n❌ FRP Server setup failed")
+        end
+    end)

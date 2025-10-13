@@ -1,0 +1,56 @@
+-- FRP Module Simple Test
+-- Test FRP module on remote agent using CLI --delegate-to
+
+name = "frp-test"
+version = "1.0.0"
+description = "Test FRP module on remote agent"
+
+group "test_frp" {
+    description = "Test FRP module functions"
+
+    task "test_frp_module" {
+        description = "Check if FRP module is available"
+        command = function(this, params, input)
+            log.info("Testing FRP module...")
+
+            -- Get hostname
+            local hostname_result = exec.run("hostname")
+            local hostname = "unknown"
+            if hostname_result.success then
+                hostname = hostname_result.output:gsub("\n", "")
+                log.info("Running on host: " .. hostname)
+            end
+
+            -- Test if frp module exists
+            if frp == nil then
+                log.error("FRP module is NOT registered!")
+                return false, "FRP module not found on " .. hostname
+            end
+            log.info("✓ FRP module is registered")
+
+            -- Test frp.server
+            if type(frp.server) ~= "function" then
+                log.error("frp.server is not a function!")
+                return false, "frp.server not available"
+            end
+            log.info("✓ frp.server() is available")
+
+            -- Test frp.client
+            if type(frp.client) ~= "function" then
+                log.error("frp.client is not a function!")
+                return false, "frp.client not available"
+            end
+            log.info("✓ frp.client() is available")
+
+            -- Test frp.install
+            if type(frp.install) ~= "function" then
+                log.error("frp.install is not a function!")
+                return false, "frp.install not available"
+            end
+            log.info("✓ frp.install() is available")
+
+            log.info("All FRP module tests passed on " .. hostname .. "!")
+            return true, "FRP module working on " .. hostname
+        end
+    }
+}

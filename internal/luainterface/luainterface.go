@@ -531,6 +531,13 @@ func registerAllModulesInternal(L *lua.LState, agentClient interface{}) {
 	// Register Firewall module for firewall management
 	RegisterFirewallModule(L)
 
+	// Register infrastructure modules (LVM, RAID, Sysctl, Cron, NFS/SMB)
+	RegisterLVMModule(L)
+	RegisterRAIDModule(L)
+	RegisterSysctlModule(L)
+	RegisterCronModule(L)
+	RegisterNFSSMBModule(L)
+
 	// Register Stow module for dotfiles management (as PreloadModule for require compatibility)
 	stowModule := NewStowModule(nil)
 	L.PreloadModule("stow", stowModule.Loader)

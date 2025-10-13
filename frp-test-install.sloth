@@ -1,0 +1,25 @@
+-- Simple FRP Installation Test
+
+local install_frp = task("install_frp")
+    :description("Install FRP binaries")
+    :command(function()
+        log.info("Installing FRP...")
+        local result, err = frp.install("latest")
+
+        if err then
+            log.error("Installation failed: " .. err)
+            return false, err
+        end
+
+        log.info("✓ FRP installed successfully!")
+        log.info(result)
+        return true, "FRP installed"
+    end)
+    :build()
+
+workflow
+    .define("frp_install_test")
+    :description("Test FRP installation")
+    :version("1.0.0")
+    :tasks({install_frp})
+    :config({timeout = "10m"})

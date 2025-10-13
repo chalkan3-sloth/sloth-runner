@@ -1,0 +1,64 @@
+-- Quick FRP Check
+
+local verify_frp = task("verify_frp")
+    :description("Verify FRP installation and configuration")
+    :command(function()
+        log.info("Checking FRP server...")
+
+        -- Check service status
+        local svc = exec.run("systemctl is-active frps 2>&1")
+        log.info("Service status: " .. svc.output)
+
+        -- Check if ports are listening
+        local ports = exec.run("ss -tuln | grep -E ':(7000|7500)'")
+        if ports.success then
+            log.info("✓ FRP ports are listening:\n" .. ports.output)
+        else
+            log.warn("⚠ Ports may not be listening yet")
+        end
+
+        -- Check for FRP process
+        local proc = exec.run("pgrep -a frps")
+        if proc.success then
+            log.info("✓ FRP process running:\n" .. proc.output)
+        else
+            log.warn("⚠ No FRP process found")
+        end
+
+        -- Check configuration file
+        local cfg = exec.run("test -f /etc/frp/frps.toml && cat /etc/frp/frps.toml || echo 'No config found'")
+        log.info("Configuration:\n" .. cfg.output)
+
+        -- Test dashboard accessibility
+        local dash = exec.run("curl -s -o /dev/null -w '%{http_code}' http://localhost:7500")
+        if dash.success then
+            log.info("Dashboard HTTP status: " .. dash.output)
+            if dash.output:match("200") or dash.output:match("401") then
+                log.info("✓ Dashboard is accessible!")
+            end
+        end
+
+        -- Check FRP binary
+        local binary = exec.run("ls -lh /usr/local/bin/frps 2>/dev/null || echo 'Binary not found'")
+        log.info("FRP binary: " .. binary.output)
+
+        return true, "FRP check complete"
+    end)
+    :build()
+
+workflow
+    .define("frp_check")
+    :description("Quick FRP status check")
+    :version("1.0.0")
+    :tasks({verify_frp})
+    :config({
+        timeout = "2m",
+        workdir = "/tmp"
+    })
+    :on_complete(function(success, results)
+        if success then
+            print("\n✅ FRP verification completed!")
+        else
+            print("\n❌ FRP verification failed")
+        end
+    end)

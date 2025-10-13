@@ -12,6 +12,8 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	lua "github.com/yuin/gopher-lua"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"gopkg.in/yaml.v3"
 
 	"github.com/chalkan3-sloth/sloth-runner/cmd/sloth-runner/services"
@@ -21,6 +23,7 @@ import (
 	"github.com/chalkan3-sloth/sloth-runner/internal/stack"
 	"github.com/chalkan3-sloth/sloth-runner/internal/taskrunner"
 	"github.com/chalkan3-sloth/sloth-runner/internal/types"
+	pb "github.com/chalkan3-sloth/sloth-runner/proto"
 	"github.com/pterm/pterm"
 )
 
@@ -753,8 +756,65 @@ func showExecutionPlanPreview(stackName, filePath string, taskGroups map[string]
 	return nil
 }
 
+// remoteAgentResolver implements AgentResolver by connecting to the master via gRPC
+type remoteAgentResolver struct {
+	masterAddr string
+	conn       *grpc.ClientConn
+	client     pb.AgentRegistryClient
+}
+
+// GetAgentAddress implements the AgentResolver interface
+func (r *remoteAgentResolver) GetAgentAddress(agentName string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := r.client.GetAgentInfo(ctx, &pb.GetAgentInfoRequest{
+		AgentName: agentName,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to get agent info from master: %w", err)
+	}
+
+	if !resp.Success || resp.AgentInfo == nil {
+		return "", fmt.Errorf("agent not found or inactive: %s", agentName)
+	}
+
+	return resp.AgentInfo.AgentAddress, nil
+}
+
+// Close closes the gRPC connection
+func (r *remoteAgentResolver) Close() error {
+	if r.conn != nil {
+		return r.conn.Close()
+	}
+	return nil
+}
+
 func createRemoteAgentResolver(masterAddr string) (interface{}, error) {
-	// This would be implemented with the agent resolver logic from main.go
-	// For now, returning nil to allow compilation
-	return nil, fmt.Errorf("not implemented")
+	// Check if master address is provided via environment variable
+	if envAddr := os.Getenv("SLOTH_RUNNER_MASTER_ADDR"); envAddr != "" {
+		masterAddr = envAddr
+	}
+
+	if masterAddr == "" {
+		return nil, fmt.Errorf("master address not provided")
+	}
+
+	// Create gRPC connection to master
+	conn, err := grpc.Dial(masterAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to master at %s: %w", masterAddr, err)
+	}
+
+	// Create gRPC client
+	client := pb.NewAgentRegistryClient(conn)
+
+	resolver := &remoteAgentResolver{
+		masterAddr: masterAddr,
+		conn:       conn,
+		client:     client,
+	}
+
+	slog.Debug("Created remote agent resolver", "master", masterAddr)
+	return resolver, nil
 }

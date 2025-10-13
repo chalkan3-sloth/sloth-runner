@@ -1,0 +1,231 @@
+-- Install FRP Client (frpc) on agents
+
+local install_frpc = task("install_frpc")
+    :description("Install FRP client binaries")
+    :command(function(this, params)
+        log.info("📦 Installing FRP client...")
+
+        local install_script = [[
+set -e
+
+# Get hostname
+HOSTNAME=$(hostname)
+echo "Installing FRP Client on ${HOSTNAME}..."
+
+# Determine architecture
+ARCH=$(uname -m)
+case $ARCH in
+    x86_64) ARCH="amd64" ;;
+    aarch64|arm64) ARCH="arm64" ;;
+    *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+esac
+
+# Determine OS
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+
+# Get latest version
+VERSION=$(curl -s https://api.github.com/repos/fatedier/frp/releases/latest | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+
+echo "Installing FRP version $VERSION for $OS-$ARCH..."
+
+# Download FRP
+DOWNLOAD_URL="https://github.com/fatedier/frp/releases/download/v${VERSION}/frp_${VERSION}_${OS}_${ARCH}.tar.gz"
+TMP_DIR=$(mktemp -d)
+cd "$TMP_DIR"
+
+curl -L "$DOWNLOAD_URL" -o frp.tar.gz
+tar -xzf frp.tar.gz
+cd frp_${VERSION}_${OS}_${ARCH}
+
+# Install binaries
+sudo mkdir -p /usr/local/bin
+sudo cp frpc /usr/local/bin/
+sudo chmod +x /usr/local/bin/frpc
+
+# Create config directory
+sudo mkdir -p /etc/frp
+
+echo "✅ FRP client $VERSION installed successfully on ${HOSTNAME}!"
+/usr/local/bin/frpc version
+]]
+
+        local stdout, stderr, failed = exec.run(install_script)
+
+        if not failed then
+            log.info("✅ FRP client installed successfully!")
+            log.info(stdout)
+            return true, "Installation completed"
+        else
+            log.error("❌ Installation failed!")
+            log.error(stderr)
+            return false, "Installation failed: " .. stderr
+        end
+    end)
+    :timeout("10m")
+    :build()
+
+local configure_frpc = task("configure_frpc")
+    :description("Configure FRP client for SSH tunnel")
+    :command(function(this, params)
+        log.info("⚙️  Configuring FRP client...")
+
+        -- Get hostname to use in tunnel name
+        local hostname_out, _, _ = exec.run("hostname")
+        local hostname = hostname_out and hostname_out:gsub("\n", "") or "unknown"
+
+        log.info("Configuring for hostname: " .. hostname)
+
+        local config_script = [[
+HOSTNAME=$(hostname)
+
+# Create FRP client configuration
+sudo tee /etc/frp/frpc.toml > /dev/null <<'EOF'
+serverAddr = "45.55.39.104"
+serverPort = 7000
+
+[[proxies]]
+name = "ssh-${HOSTNAME}"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 22
+remotePort = 0
+EOF
+
+echo "Configuration created at /etc/frp/frpc.toml"
+cat /etc/frp/frpc.toml
+]]
+
+        local stdout, stderr, failed = exec.run(config_script)
+
+        if not failed then
+            log.info("✅ Configuration created!")
+            log.info(stdout)
+            return true, "Configuration complete"
+        else
+            log.error("❌ Configuration failed!")
+            return false, "Configuration failed: " .. stderr
+        end
+    end)
+    :build()
+
+local create_service = task("create_service")
+    :description("Create systemd service for FRP client")
+    :command(function(this, params)
+        log.info("🔧 Creating systemd service...")
+
+        local service_script = [[
+# Create systemd service for frpc
+sudo tee /etc/systemd/system/frpc.service > /dev/null <<'EOF'
+[Unit]
+Description=FRP Client Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Restart=on-failure
+RestartSec=5s
+ExecStart=/usr/local/bin/frpc -c /etc/frp/frpc.toml
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Reload systemd
+sudo systemctl daemon-reload
+
+echo "✅ Systemd service created!"
+]]
+
+        local stdout, stderr, failed = exec.run(service_script)
+
+        if not failed then
+            log.info("✅ Service created successfully!")
+            return true, "Service created"
+        else
+            log.error("❌ Service creation failed!")
+            return false, "Service creation failed: " .. stderr
+        end
+    end)
+    :build()
+
+local start_frpc = task("start_frpc")
+    :description("Start FRP client service")
+    :command(function(this, params)
+        log.info("🚀 Starting FRP client service...")
+
+        local stdout, stderr, failed = exec.run("sudo systemctl enable frpc && sudo systemctl start frpc")
+
+        if not failed then
+            log.info("✅ FRP client service started!")
+
+            -- Wait a moment
+            exec.run("sleep 2")
+
+            -- Check status
+            local status_out, _, _ = exec.run("systemctl status frpc --no-pager | head -15")
+            log.info("Service status:\n" .. status_out)
+
+            return true, "Service started"
+        else
+            log.error("❌ Failed to start service!")
+            return false, "Service start failed: " .. stderr
+        end
+    end)
+    :build()
+
+local verify_frpc = task("verify_frpc")
+    :description("Verify FRP client installation")
+    :command(function(this, params)
+        log.info("🔍 Verifying FRP client installation...")
+
+        local hostname_out, _, _ = exec.run("hostname")
+        local hostname = hostname_out and hostname_out:gsub("\n", "") or "unknown"
+        log.info("Host: " .. hostname)
+
+        -- Check version
+        local ver_out, _, ver_failed = exec.run("/usr/local/bin/frpc version")
+        if not ver_failed then
+            log.info("✅ FRP client version: " .. ver_out)
+        end
+
+        -- Check service status
+        local svc_out, _, _ = exec.run("systemctl is-active frpc")
+        log.info("Service status: " .. svc_out)
+
+        -- Check config
+        local cfg_out, _, _ = exec.run("cat /etc/frp/frpc.toml")
+        log.info("Configuration:\n" .. cfg_out)
+
+        return true, "Verification complete"
+    end)
+    :build()
+
+-- Define workflow
+workflow.define("frpc_install")
+    :description("Install and configure FRP client")
+    :version("1.0.0")
+    :tasks({ install_frpc, configure_frpc, create_service, start_frpc, verify_frpc })
+    :config({
+        timeout = "15m"
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("")
+            log.info("=" .. string.rep("=", 60))
+            log.info("✅ FRP Client Installation Complete!")
+            log.info("=" .. string.rep("=", 60))
+            log.info("")
+            log.info("The FRP client is now running and connected to:")
+            log.info("  Server: 45.55.39.104:7000")
+            log.info("  Tunnel: SSH (port 22)")
+            log.info("")
+        else
+            log.error("")
+            log.error("=" .. string.rep("=", 60))
+            log.error("❌ FRP Client Installation Failed!")
+            log.error("=" .. string.rep("=", 60))
+            log.error("")
+        end
+        return true
+    end)

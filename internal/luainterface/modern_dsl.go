@@ -943,9 +943,61 @@ func (m *ModernDSL) workflowCallFunc(L *lua.LState) int {
 
 // Placeholder implementations for DSL functions
 func (m *ModernDSL) workflowDefineFunc(L *lua.LState) int {
-	// Modern DSL: workflow.define("name") - returns WorkflowBuilder for fluent chaining
+	// Modern DSL supports TWO syntaxes:
+	// 1. workflow.define("name") - returns WorkflowBuilder for fluent chaining
+	// 2. workflow.define("name", {table}) - registers workflow directly (table-based)
+
 	workflowName := L.CheckString(1)
 
+	// Check if second argument is a table (table-based syntax)
+	if L.GetTop() >= 2 {
+		workflowTable := L.CheckTable(2)
+
+		// Parse tasks from the table and set their names
+		tasksValue := workflowTable.RawGetString("tasks")
+		if tasksValue.Type() == lua.LTTable {
+			tasksTable := tasksValue.(*lua.LTable)
+
+			// Create a new tasks table with proper structure
+			newTasksTable := L.NewTable()
+			taskIndex := 1
+
+			// Iterate through all task definitions in the table
+			tasksTable.ForEach(func(key, value lua.LValue) {
+				if value.Type() == lua.LTTable {
+					taskTable := value.(*lua.LTable)
+
+					// Set the task name from the key if not already set
+					nameValue := taskTable.RawGetString("name")
+					if nameValue == lua.LNil && key.Type() == lua.LTString {
+						taskTable.RawSetString("name", key)
+					}
+
+					// Add to new tasks table with numeric index
+					newTasksTable.RawSetInt(taskIndex, taskTable)
+					taskIndex++
+				}
+			})
+
+			// Replace tasks table with the properly indexed one
+			workflowTable.RawSetString("tasks", newTasksTable)
+		}
+
+		// Register the workflow directly in __workflows__
+		workflows := L.GetGlobal("__workflows__")
+		if workflows.Type() != lua.LTTable {
+			workflows = L.NewTable()
+			L.SetGlobal("__workflows__", workflows)
+		}
+
+		// Add the workflow to __workflows__
+		workflows.(*lua.LTable).RawSetString(workflowName, workflowTable)
+
+		// Return nil (no fluent chaining for table-based syntax)
+		return 0
+	}
+
+	// Fluent API syntax: return WorkflowBuilder
 	builder := &WorkflowBuilder{
 		name:     workflowName,
 		config:   make(map[string]interface{}),

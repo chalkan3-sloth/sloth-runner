@@ -1,0 +1,494 @@
+-- NFS/SMB (File Sharing) Example
+-- This example demonstrates how to manage NFS and Samba file shares using sloth-runner
+
+-- ========================================
+-- NFS Examples
+-- ========================================
+
+-- Workflow for setting up NFS server
+workflow("nfs_server_setup")
+  :description("Configure NFS server with multiple exports")
+  :tasks({
+    -- Task 1: Create shared directories
+    task("create_nfs_directories")
+      :description("Create directories for NFS exports")
+      :command(function(this, params)
+        local directories = {
+          "/srv/nfs/public",
+          "/srv/nfs/private",
+          "/srv/nfs/backup"
+        }
+
+        for _, dir in ipairs(directories) do
+          local success = fs.mkdir(dir, {recursive = true})
+          if not success then
+            return false, "Failed to create directory: " .. dir
+          end
+          log.info("Created directory: " .. dir)
+
+          -- Set permissions
+          exec.sh("chmod 755 " .. dir)
+        end
+
+        return true, "NFS directories created"
+      end)
+      :build(),
+
+    -- Task 2: Export public directory (read/write for all)
+    task("export_public_directory")
+      :description("Export public directory with read/write access")
+      :depends_on("create_nfs_directories")
+      :command(function(this, params)
+        local success, msg = nfs.export({
+          path = "/srv/nfs/public",
+          clients = "*",
+          options = "rw,sync,no_subtree_check,no_root_squash"
+        })
+
+        if not success then
+          return false, "Failed to export public directory: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Public directory exported"
+      end)
+      :build(),
+
+    -- Task 3: Export private directory (read-only for specific network)
+    task("export_private_directory")
+      :description("Export private directory with restricted access")
+      :depends_on("create_nfs_directories")
+      :command(function(this, params)
+        local success, msg = nfs.export({
+          path = "/srv/nfs/private",
+          clients = "192.168.1.0/24",
+          options = "ro,sync,no_subtree_check"
+        })
+
+        if not success then
+          return false, "Failed to export private directory: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Private directory exported"
+      end)
+      :build(),
+
+    -- Task 4: Export backup directory (read/write for specific host)
+    task("export_backup_directory")
+      :description("Export backup directory for specific backup server")
+      :depends_on("create_nfs_directories")
+      :command(function(this, params)
+        local success, msg = nfs.export({
+          path = "/srv/nfs/backup",
+          clients = "192.168.1.100",
+          options = "rw,sync,no_subtree_check"
+        })
+
+        if not success then
+          return false, "Failed to export backup directory: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Backup directory exported"
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for NFS monitoring
+workflow("nfs_monitoring")
+  :description("Monitor NFS exports and status")
+  :tasks({
+    task("list_nfs_exports")
+      :description("List all NFS exports")
+      :command(function(this, params)
+        local exports, err = nfs.list_exports()
+        if err then
+          return false, "Failed to list exports: " .. err
+        end
+
+        log.info("NFS Exports:")
+        for i, export in ipairs(exports) do
+          log.info(string.format("  [%d] %s -> %s",
+            i, export.path, export.clients_options))
+        end
+
+        return true, "Listed " .. #exports .. " NFS exports"
+      end)
+      :build(),
+
+    task("check_specific_export")
+      :description("Check if specific path is exported")
+      :command(function(this, params)
+        local path = "/srv/nfs/public"
+
+        if nfs.is_exported(path) then
+          log.info(path .. " is currently exported")
+          return true, "Export exists"
+        else
+          log.warn(path .. " is not exported")
+          return false, "Export not found"
+        end
+      end)
+      :build(),
+  })
+  :build()
+
+-- ========================================
+-- Samba/SMB Examples
+-- ========================================
+
+-- Workflow for setting up Samba server
+workflow("samba_server_setup")
+  :description("Configure Samba server with multiple shares")
+  :tasks({
+    -- Task 1: Create shared directories
+    task("create_samba_directories")
+      :description("Create directories for Samba shares")
+      :command(function(this, params)
+        local directories = {
+          "/srv/samba/public",
+          "/srv/samba/documents",
+          "/srv/samba/projects"
+        }
+
+        for _, dir in ipairs(directories) do
+          local success = fs.mkdir(dir, {recursive = true})
+          if not success then
+            return false, "Failed to create directory: " .. dir
+          end
+          log.info("Created directory: " .. dir)
+
+          -- Set permissions
+          exec.sh("chmod 775 " .. dir)
+          exec.sh("chown root:sambashare " .. dir)
+        end
+
+        return true, "Samba directories created"
+      end)
+      :build(),
+
+    -- Task 2: Create public share (guest access)
+    task("create_public_share")
+      :description("Create public share with guest access")
+      :depends_on("create_samba_directories")
+      :command(function(this, params)
+        local success, msg = smb.share({
+          name = "Public",
+          path = "/srv/samba/public",
+          comment = "Public file share for all users",
+          writeable = true,
+          browseable = true,
+          guest_ok = true
+        })
+
+        if not success then
+          return false, "Failed to create public share: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Public share created"
+      end)
+      :build(),
+
+    -- Task 3: Create documents share (authenticated users only)
+    task("create_documents_share")
+      :description("Create documents share with authentication")
+      :depends_on("create_samba_directories")
+      :command(function(this, params)
+        local success, msg = smb.share({
+          name = "Documents",
+          path = "/srv/samba/documents",
+          comment = "Company documents",
+          writeable = true,
+          browseable = true,
+          guest_ok = false,
+          valid_users = "@staff"
+        })
+
+        if not success then
+          return false, "Failed to create documents share: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Documents share created"
+      end)
+      :build(),
+
+    -- Task 4: Create projects share (specific users)
+    task("create_projects_share")
+      :description("Create projects share for development team")
+      :depends_on("create_samba_directories")
+      :command(function(this, params)
+        local success, msg = smb.share({
+          name = "Projects",
+          path = "/srv/samba/projects",
+          comment = "Development projects",
+          writeable = true,
+          browseable = false,  -- Hidden from browse list
+          guest_ok = false,
+          valid_users = "alice, bob, charlie"
+        })
+
+        if not success then
+          return false, "Failed to create projects share: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Projects share created"
+      end)
+      :build(),
+
+    -- Task 5: Add Samba users
+    task("add_samba_users")
+      :description("Create Samba user accounts")
+      :command(function(this, params)
+        local users = {
+          {username = "alice", password = "AlicePass123"},
+          {username = "bob", password = "BobPass456"},
+          {username = "charlie", password = "CharliePass789"}
+        }
+
+        for _, user in ipairs(users) do
+          -- First create system user if not exists
+          exec.sh("useradd -M -s /sbin/nologin " .. user.username)
+
+          -- Add Samba user
+          local success, msg = smb.add_user(user.username, user.password)
+          if success then
+            log.info("Added Samba user: " .. user.username)
+          else
+            log.warn("Failed to add " .. user.username .. ": " .. msg)
+          end
+        end
+
+        return true, "Samba users added"
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for Samba monitoring
+workflow("samba_monitoring")
+  :description("Monitor Samba shares and status")
+  :tasks({
+    task("list_samba_shares")
+      :description("List all Samba shares")
+      :command(function(this, params)
+        local shares, err = smb.list_shares()
+        if err then
+          return false, "Failed to list shares: " .. err
+        end
+
+        log.info("Samba Shares:")
+        for i, share in ipairs(shares) do
+          log.info(string.format("  [%d] %s - %s",
+            i, share.name, share.path or "N/A"))
+          log.info(string.format("      Writeable: %s, Browseable: %s",
+            share.writeable or "N/A", share.browseable or "N/A"))
+        end
+
+        return true, "Listed " .. #shares .. " Samba shares"
+      end)
+      :build(),
+
+    task("check_specific_share")
+      :description("Check if specific share exists")
+      :command(function(this, params)
+        local share_name = "Documents"
+
+        if smb.is_shared(share_name) then
+          log.info("Share '" .. share_name .. "' exists")
+          return true, "Share exists"
+        else
+          log.warn("Share '" .. share_name .. "' not found")
+          return false, "Share not found"
+        end
+      end)
+      :build(),
+
+    task("check_samba_status")
+      :description("Check Samba service status")
+      :command(function(this, params)
+        local success, output = exec.sh("systemctl status smbd")
+        if success then
+          log.info("Samba service is running")
+          return true, "Samba active"
+        else
+          log.error("Samba service is not running")
+          return false, "Samba inactive"
+        end
+      end)
+      :build(),
+  })
+  :build()
+
+-- ========================================
+-- Combined NFS + Samba Setup
+-- ========================================
+
+-- Workflow for hybrid file server
+workflow("hybrid_file_server")
+  :description("Set up both NFS and Samba on same directories")
+  :tasks({
+    -- Task 1: Create shared directory
+    task("create_shared_directory")
+      :description("Create directory for both NFS and Samba")
+      :command(function(this, params)
+        local dir = "/srv/shared/data"
+        local success = fs.mkdir(dir, {recursive = true})
+        if not success then
+          return false, "Failed to create directory"
+        end
+
+        exec.sh("chmod 777 " .. dir)
+        log.info("Created shared directory: " .. dir)
+        return true, "Directory created"
+      end)
+      :build(),
+
+    -- Task 2: Export via NFS
+    task("export_via_nfs")
+      :description("Export directory via NFS")
+      :depends_on("create_shared_directory")
+      :command(function(this, params)
+        local success, msg = nfs.export({
+          path = "/srv/shared/data",
+          clients = "192.168.1.0/24",
+          options = "rw,sync,no_subtree_check"
+        })
+
+        if not success then
+          return false, "Failed to export via NFS: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Exported via NFS"
+      end)
+      :build(),
+
+    -- Task 3: Share via Samba
+    task("share_via_samba")
+      :description("Share directory via Samba")
+      :depends_on("create_shared_directory")
+      :command(function(this, params)
+        local success, msg = smb.share({
+          name = "SharedData",
+          path = "/srv/shared/data",
+          comment = "Shared data accessible via NFS and SMB",
+          writeable = true,
+          browseable = true,
+          guest_ok = true
+        })
+
+        if not success then
+          return false, "Failed to share via Samba: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Shared via Samba"
+      end)
+      :build(),
+
+    -- Task 4: Display access information
+    task("display_access_info")
+      :description("Display how to access the shared directory")
+      :depends_on("export_via_nfs", "share_via_samba")
+      :command(function(this, params)
+        local hostname = exec.sh("hostname"):gsub("\n", "")
+        local ip = exec.sh("hostname -I | awk '{print $1}'"):gsub("\n", "")
+
+        log.info("====== Shared Directory Access Information ======")
+        log.info("NFS Access:")
+        log.info("  mount " .. ip .. ":/srv/shared/data /mnt/nfs-share")
+        log.info("")
+        log.info("SMB Access:")
+        log.info("  Windows: \\\\" .. ip .. "\\SharedData")
+        log.info("  Linux: mount -t cifs //" .. ip .. "/SharedData /mnt/smb-share")
+        log.info("=================================================")
+
+        return true, "Access information displayed"
+      end)
+      :build(),
+  })
+  :build()
+
+-- ========================================
+-- Cleanup Workflows
+-- ========================================
+
+-- Workflow for removing NFS exports
+workflow("nfs_cleanup")
+  :description("Remove all NFS exports")
+  :tasks({
+    task("remove_exports")
+      :description("Remove NFS exports")
+      :command(function(this, params)
+        local paths = {
+          "/srv/nfs/public",
+          "/srv/nfs/private",
+          "/srv/nfs/backup",
+          "/srv/shared/data"
+        }
+
+        for _, path in ipairs(paths) do
+          local success, msg = nfs.unexport(path)
+          if success then
+            log.info("Removed NFS export: " .. path)
+          else
+            log.warn("Failed to remove " .. path .. ": " .. msg)
+          end
+        end
+
+        return true, "NFS exports removed"
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for removing Samba shares
+workflow("samba_cleanup")
+  :description("Remove all Samba shares and users")
+  :tasks({
+    task("remove_shares")
+      :description("Remove Samba shares")
+      :command(function(this, params)
+        local shares = {"Public", "Documents", "Projects", "SharedData"}
+
+        for _, share in ipairs(shares) do
+          local success, msg = smb.unshare(share)
+          if success then
+            log.info("Removed Samba share: " .. share)
+          else
+            log.warn("Failed to remove " .. share .. ": " .. msg)
+          end
+        end
+
+        return true, "Samba shares removed"
+      end)
+      :build(),
+
+    task("remove_users")
+      :description("Remove Samba users")
+      :depends_on("remove_shares")
+      :command(function(this, params)
+        local users = {"alice", "bob", "charlie"}
+
+        for _, username in ipairs(users) do
+          local success, msg = smb.remove_user(username)
+          if success then
+            log.info("Removed Samba user: " .. username)
+          else
+            log.warn("Failed to remove " .. username .. ": " .. msg)
+          end
+
+          -- Remove system user
+          exec.sh("userdel " .. username)
+        end
+
+        return true, "Samba users removed"
+      end)
+      :build(),
+  })
+  :build()

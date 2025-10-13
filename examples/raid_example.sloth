@@ -1,0 +1,323 @@
+-- RAID (mdadm) Example
+-- This example demonstrates how to manage software RAID arrays using sloth-runner
+
+-- Create a workflow for RAID array setup
+workflow("raid_array_setup")
+  :description("Configure RAID 5 array for file server")
+  :tasks({
+    -- Task 1: Create RAID 5 array
+    task("create_raid5_array")
+      :description("Create RAID 5 array with 4 disks")
+      :command(function(this, params)
+        local success, msg = raid.create({
+          name = "/dev/md0",
+          level = "5",
+          devices = {"/dev/sdc", "/dev/sdd", "/dev/sde", "/dev/sdf"},
+          metadata = "1.2"
+        })
+
+        if not success then
+          return false, "Failed to create RAID array: " .. msg
+        end
+
+        log.info("RAID 5 array /dev/md0 created successfully")
+        return true, msg
+      end)
+      :build(),
+
+    -- Task 2: Wait for sync to complete
+    task("wait_for_sync")
+      :description("Wait for RAID array to finish initial sync")
+      :depends_on("create_raid5_array")
+      :command(function(this, params)
+        log.info("Waiting for RAID sync to complete...")
+
+        -- Check sync status every 10 seconds
+        local max_attempts = 360  -- 1 hour max
+        local attempt = 0
+
+        while attempt < max_attempts do
+          local success, output = exec.sh("cat /proc/mdstat | grep -A 3 md0")
+          if success and not string.match(output, "recovery") and not string.match(output, "resync") then
+            log.info("RAID sync completed")
+            return true, "RAID array is ready"
+          end
+
+          log.info("Sync in progress... (attempt " .. attempt .. "/" .. max_attempts .. ")")
+          exec.sh("sleep 10")
+          attempt = attempt + 1
+        end
+
+        return false, "Timeout waiting for RAID sync"
+      end)
+      :timeout("2h")
+      :build(),
+
+    -- Task 3: Format and mount RAID array
+    task("format_and_mount")
+      :description("Format RAID array with ext4 and mount")
+      :depends_on("wait_for_sync")
+      :command(function(this, params)
+        -- Format with ext4
+        local success, output = exec.sh("mkfs.ext4 -F /dev/md0")
+        if not success then
+          return false, "Failed to format RAID array: " .. output
+        end
+        log.info("RAID array formatted with ext4")
+
+        -- Create mount point
+        fs.mkdir("/mnt/raid", {recursive = true})
+
+        -- Mount the array
+        success, output = exec.sh("mount /dev/md0 /mnt/raid")
+        if not success then
+          return false, "Failed to mount RAID array: " .. output
+        end
+
+        log.info("RAID array mounted at /mnt/raid")
+        return true, "RAID array formatted and mounted"
+      end)
+      :build(),
+
+    -- Task 4: Update /etc/mdadm.conf
+    task("update_mdadm_conf")
+      :description("Save RAID configuration to /etc/mdadm.conf")
+      :depends_on("create_raid5_array")
+      :command(function(this, params)
+        local success, output = exec.sh("mdadm --detail --scan >> /etc/mdadm/mdadm.conf")
+        if not success then
+          return false, "Failed to update mdadm.conf: " .. output
+        end
+
+        log.info("RAID configuration saved to /etc/mdadm.conf")
+        return true, "Configuration saved"
+      end)
+      :build(),
+
+    -- Task 5: Update initramfs
+    task("update_initramfs")
+      :description("Update initramfs to include RAID configuration")
+      :depends_on("update_mdadm_conf")
+      :command(function(this, params)
+        local success, output = exec.sh("update-initramfs -u")
+        if not success then
+          return false, "Failed to update initramfs: " .. output
+        end
+
+        log.info("Initramfs updated")
+        return true, "Initramfs updated successfully"
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for RAID monitoring
+workflow("raid_monitoring")
+  :description("Monitor RAID arrays and display status")
+  :tasks({
+    task("check_raid_status")
+      :description("Display detailed RAID array status")
+      :command(function(this, params)
+        local info, err = raid.detail("/dev/md0")
+        if err then
+          return false, "Failed to get RAID details: " .. err
+        end
+
+        log.info("RAID Array Details:")
+        log.info("  Name: " .. (info.name or "N/A"))
+        log.info("  Level: " .. (info.level or "N/A"))
+        log.info("  State: " .. (info.state or "N/A"))
+        log.info("  Devices: " .. (info.total_devices or "0") .. " total, " ..
+                 (info.active_devices or "0") .. " active")
+        log.info("  Size: " .. (info.array_size or "N/A"))
+
+        return true, "RAID status checked"
+      end)
+      :build(),
+
+    task("list_all_arrays")
+      :description("List all RAID arrays")
+      :command(function(this, params)
+        local arrays, err = raid.list()
+        if err then
+          return false, "Failed to list RAID arrays: " .. err
+        end
+
+        log.info("RAID Arrays:")
+        for i, array in ipairs(arrays) do
+          log.info(string.format("  [%d] %s - Level: %s, State: %s, Devices: %s",
+            i, array.name or "N/A", array.level or "N/A",
+            array.state or "N/A", array.devices or "N/A"))
+        end
+
+        return true, "Listed " .. #arrays .. " RAID arrays"
+      end)
+      :build(),
+
+    task("check_mdstat")
+      :description("Display /proc/mdstat")
+      :command(function(this, params)
+        local success, output = exec.sh("cat /proc/mdstat")
+        if not success then
+          return false, "Failed to read /proc/mdstat"
+        end
+
+        log.info("/proc/mdstat:")
+        log.info(output)
+
+        return true, "mdstat displayed"
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for RAID maintenance
+workflow("raid_maintenance")
+  :description("Perform RAID maintenance operations")
+  :tasks({
+    task("add_spare_device")
+      :description("Add spare device to RAID array")
+      :command(function(this, params)
+        local success, msg = raid.add_device("/dev/md0", "/dev/sdg")
+        if not success then
+          return false, "Failed to add spare device: " .. msg
+        end
+
+        log.info("Added /dev/sdg as spare device to /dev/md0")
+        return true, msg
+      end)
+      :build(),
+
+    task("simulate_disk_failure")
+      :description("Mark a disk as failed (for testing)")
+      :command(function(this, params)
+        local success, msg = raid.fail_device("/dev/md0", "/dev/sdc")
+        if not success then
+          return false, "Failed to mark device as failed: " .. msg
+        end
+
+        log.warn("Marked /dev/sdc as failed")
+        return true, msg
+      end)
+      :build(),
+
+    task("remove_failed_device")
+      :description("Remove failed device from array")
+      :depends_on("simulate_disk_failure")
+      :command(function(this, params)
+        local success, msg = raid.remove_device("/dev/md0", "/dev/sdc")
+        if not success then
+          return false, "Failed to remove device: " .. msg
+        end
+
+        log.info("Removed failed device /dev/sdc from array")
+        return true, msg
+      end)
+      :build(),
+
+    task("start_check")
+      :description("Start consistency check on RAID array")
+      :command(function(this, params)
+        local success, output = exec.sh("echo check > /sys/block/md0/md/sync_action")
+        if not success then
+          return false, "Failed to start check: " .. output
+        end
+
+        log.info("Started consistency check on /dev/md0")
+        return true, "Check started"
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for RAID 1 (mirroring) setup
+workflow("raid1_mirror_setup")
+  :description("Create RAID 1 mirror for system backup")
+  :tasks({
+    task("create_raid1_mirror")
+      :description("Create RAID 1 array with 2 disks")
+      :command(function(this, params)
+        local success, msg = raid.create({
+          name = "/dev/md1",
+          level = "1",
+          devices = {"/dev/sdh", "/dev/sdi"},
+          metadata = "1.2"
+        })
+
+        if not success then
+          return false, "Failed to create RAID 1 array: " .. msg
+        end
+
+        log.info("RAID 1 mirror /dev/md1 created successfully")
+        return true, msg
+      end)
+      :build(),
+
+    task("format_mirror")
+      :description("Format mirror with ext4")
+      :depends_on("create_raid1_mirror")
+      :command(function(this, params)
+        local success, output = exec.sh("mkfs.ext4 -F /dev/md1")
+        if not success then
+          return false, "Failed to format mirror: " .. output
+        end
+
+        log.info("RAID 1 mirror formatted")
+        return true, "Mirror ready for use"
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for stopping RAID arrays
+workflow("raid_cleanup")
+  :description("Stop and remove RAID arrays (DESTRUCTIVE)")
+  :tasks({
+    task("unmount_arrays")
+      :description("Unmount all RAID arrays")
+      :command(function(this, params)
+        exec.sh("umount /mnt/raid")
+        log.info("Unmounted RAID arrays")
+        return true, "Arrays unmounted"
+      end)
+      :build(),
+
+    task("stop_arrays")
+      :description("Stop all RAID arrays")
+      :depends_on("unmount_arrays")
+      :command(function(this, params)
+        local arrays = {"/dev/md0", "/dev/md1"}
+
+        for _, array in ipairs(arrays) do
+          local success, msg = raid.stop(array)
+          if success then
+            log.info("Stopped RAID array: " .. array)
+          else
+            log.warn("Failed to stop " .. array .. ": " .. msg)
+          end
+        end
+
+        return true, "RAID arrays stopped"
+      end)
+      :build(),
+
+    task("zero_superblocks")
+      :description("Zero RAID superblocks on devices")
+      :depends_on("stop_arrays")
+      :command(function(this, params)
+        local devices = {"/dev/sdc", "/dev/sdd", "/dev/sde", "/dev/sdf", "/dev/sdg", "/dev/sdh", "/dev/sdi"}
+
+        for _, device in ipairs(devices) do
+          local success, output = exec.sh("mdadm --zero-superblock " .. device)
+          if success then
+            log.info("Zeroed superblock: " .. device)
+          else
+            log.warn("Failed to zero " .. device)
+          end
+        end
+
+        return true, "Superblocks zeroed"
+      end)
+      :build(),
+  })
+  :build()

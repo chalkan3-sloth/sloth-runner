@@ -1,0 +1,352 @@
+-- Sysctl (Kernel Parameters) Example
+-- This example demonstrates how to manage kernel parameters using sloth-runner
+
+-- Workflow for network performance tuning
+workflow("network_performance_tuning")
+  :description("Optimize kernel parameters for network performance")
+  :tasks({
+    -- Task 1: Increase network buffer sizes
+    task("tune_network_buffers")
+      :description("Increase TCP buffer sizes for better throughput")
+      :command(function(this, params)
+        -- Set TCP read buffer sizes (min, default, max)
+        local success, msg = sysctl.set("net.ipv4.tcp_rmem", "4096 87380 16777216")
+        if not success then
+          return false, "Failed to set tcp_rmem: " .. msg
+        end
+        log.info("TCP read buffer: " .. msg)
+
+        -- Set TCP write buffer sizes
+        success, msg = sysctl.set("net.ipv4.tcp_wmem", "4096 65536 16777216")
+        if not success then
+          return false, "Failed to set tcp_wmem: " .. msg
+        end
+        log.info("TCP write buffer: " .. msg)
+
+        -- Set max socket receive buffer
+        success, msg = sysctl.set("net.core.rmem_max", "16777216")
+        if not success then
+          return false, "Failed to set rmem_max: " .. msg
+        end
+        log.info("Max receive buffer: " .. msg)
+
+        -- Set max socket send buffer
+        success, msg = sysctl.set("net.core.wmem_max", "16777216")
+        if not success then
+          return false, "Failed to set wmem_max: " .. msg
+        end
+        log.info("Max send buffer: " .. msg)
+
+        return true, "Network buffers optimized"
+      end)
+      :build(),
+
+    -- Task 2: Enable TCP optimizations
+    task("enable_tcp_optimizations")
+      :description("Enable various TCP optimizations")
+      :command(function(this, params)
+        local params_to_set = {
+          ["net.ipv4.tcp_window_scaling"] = 1,
+          ["net.ipv4.tcp_timestamps"] = 1,
+          ["net.ipv4.tcp_sack"] = 1,
+          ["net.ipv4.tcp_fastopen"] = 3,
+          ["net.ipv4.tcp_slow_start_after_idle"] = 0,
+        }
+
+        for param, value in pairs(params_to_set) do
+          local success, msg = sysctl.set(param, value)
+          if not success then
+            log.warn("Failed to set " .. param .. ": " .. msg)
+          else
+            log.info(msg)
+          end
+        end
+
+        return true, "TCP optimizations enabled"
+      end)
+      :build(),
+
+    -- Task 3: Make settings persistent
+    task("make_persistent")
+      :description("Save network tuning parameters persistently")
+      :depends_on("tune_network_buffers", "enable_tcp_optimizations")
+      :command(function(this, params)
+        local params_to_persist = {
+          "net.ipv4.tcp_rmem",
+          "net.ipv4.tcp_wmem",
+          "net.core.rmem_max",
+          "net.core.wmem_max",
+          "net.ipv4.tcp_window_scaling",
+          "net.ipv4.tcp_timestamps",
+          "net.ipv4.tcp_sack",
+          "net.ipv4.tcp_fastopen",
+          "net.ipv4.tcp_slow_start_after_idle",
+        }
+
+        for _, param in ipairs(params_to_persist) do
+          -- Get current value
+          local value, err = sysctl.get(param)
+          if not err then
+            local success, msg = sysctl.set_persistent(param, value)
+            if not success then
+              log.warn("Failed to persist " .. param .. ": " .. msg)
+            else
+              log.info("Persisted: " .. param)
+            end
+          end
+        end
+
+        return true, "Network settings persisted"
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for system security hardening
+workflow("security_hardening")
+  :description("Apply security-related kernel parameters")
+  :tasks({
+    task("enable_syn_cookies")
+      :description("Enable SYN cookies to protect against SYN floods")
+      :command(function(this, params)
+        local success, msg = sysctl.set_persistent("net.ipv4.tcp_syncookies", 1)
+        if not success then
+          return false, "Failed to enable SYN cookies: " .. msg
+        end
+
+        log.info(msg)
+        return true, "SYN cookies enabled"
+      end)
+      :build(),
+
+    task("disable_ip_forwarding")
+      :description("Disable IP forwarding for security")
+      :command(function(this, params)
+        local success, msg = sysctl.set_persistent("net.ipv4.ip_forward", 0)
+        if not success then
+          return false, "Failed to disable IP forwarding: " .. msg
+        end
+
+        log.info(msg)
+        return true, "IP forwarding disabled"
+      end)
+      :build(),
+
+    task("enable_rp_filter")
+      :description("Enable reverse path filtering")
+      :command(function(this, params)
+        local success, msg = sysctl.set_persistent("net.ipv4.conf.all.rp_filter", 1)
+        if not success then
+          return false, "Failed to enable rp_filter: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Reverse path filtering enabled"
+      end)
+      :build(),
+
+    task("disable_icmp_redirects")
+      :description("Disable ICMP redirects")
+      :command(function(this, params)
+        local params_to_set = {
+          "net.ipv4.conf.all.accept_redirects",
+          "net.ipv4.conf.default.accept_redirects",
+          "net.ipv6.conf.all.accept_redirects",
+          "net.ipv6.conf.default.accept_redirects",
+        }
+
+        for _, param in ipairs(params_to_set) do
+          local success, msg = sysctl.set_persistent(param, 0)
+          if not success then
+            log.warn("Failed to set " .. param .. ": " .. msg)
+          else
+            log.info("Disabled: " .. param)
+          end
+        end
+
+        return true, "ICMP redirects disabled"
+      end)
+      :build(),
+
+    task("enable_log_martians")
+      :description("Enable logging of martian packets")
+      :command(function(this, params)
+        local success, msg = sysctl.set_persistent("net.ipv4.conf.all.log_martians", 1)
+        if not success then
+          return false, "Failed to enable log_martians: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Martian packet logging enabled"
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for database server tuning
+workflow("database_tuning")
+  :description("Optimize kernel parameters for database workloads")
+  :tasks({
+    task("increase_shared_memory")
+      :description("Increase shared memory limits for database")
+      :command(function(this, params)
+        -- Set kernel.shmmax to 8GB
+        local success, msg = sysctl.set_persistent("kernel.shmmax", "8589934592")
+        if not success then
+          return false, "Failed to set shmmax: " .. msg
+        end
+        log.info(msg)
+
+        -- Set kernel.shmall
+        success, msg = sysctl.set_persistent("kernel.shmall", "4194304")
+        if not success then
+          return false, "Failed to set shmall: " .. msg
+        end
+        log.info(msg)
+
+        return true, "Shared memory limits increased"
+      end)
+      :build(),
+
+    task("tune_vm_parameters")
+      :description("Tune virtual memory parameters")
+      :command(function(this, params)
+        -- Set swappiness (lower = less swap usage)
+        local success, msg = sysctl.set_persistent("vm.swappiness", 10)
+        if not success then
+          return false, "Failed to set swappiness: " .. msg
+        end
+        log.info(msg)
+
+        -- Set dirty ratio
+        success, msg = sysctl.set_persistent("vm.dirty_ratio", 15)
+        if not success then
+          return false, "Failed to set dirty_ratio: " .. msg
+        end
+        log.info(msg)
+
+        -- Set dirty background ratio
+        success, msg = sysctl.set_persistent("vm.dirty_background_ratio", 5)
+        if not success then
+          return false, "Failed to set dirty_background_ratio: " .. msg
+        end
+        log.info(msg)
+
+        return true, "VM parameters tuned"
+      end)
+      :build(),
+
+    task("increase_file_descriptors")
+      :description("Increase file descriptor limits")
+      :command(function(this, params)
+        local success, msg = sysctl.set_persistent("fs.file-max", "2097152")
+        if not success then
+          return false, "Failed to set file-max: " .. msg
+        end
+        log.info(msg)
+
+        return true, "File descriptor limit increased"
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for monitoring kernel parameters
+workflow("sysctl_monitoring")
+  :description("Display and monitor kernel parameters")
+  :tasks({
+    task("list_network_params")
+      :description("List network-related kernel parameters")
+      :command(function(this, params)
+        local params_list, err = sysctl.list("net.")
+        if err then
+          return false, "Failed to list parameters: " .. err
+        end
+
+        log.info("Network Kernel Parameters:")
+        local count = 0
+        for i, param in ipairs(params_list) do
+          if count < 20 then  -- Limit output
+            log.info("  " .. param.name .. " = " .. param.value)
+            count = count + 1
+          end
+        end
+
+        return true, "Listed " .. #params_list .. " network parameters (showing first 20)"
+      end)
+      :build(),
+
+    task("check_specific_params")
+      :description("Check specific kernel parameters")
+      :command(function(this, params)
+        local params_to_check = {
+          "net.ipv4.tcp_rmem",
+          "net.ipv4.tcp_wmem",
+          "vm.swappiness",
+          "kernel.shmmax",
+          "fs.file-max",
+        }
+
+        log.info("Current Kernel Parameters:")
+        for _, param in ipairs(params_to_check) do
+          local value, err = sysctl.get(param)
+          if not err then
+            log.info("  " .. param .. " = " .. value)
+          else
+            log.warn("  " .. param .. " - Error: " .. err)
+          end
+        end
+
+        return true, "Parameter check complete"
+      end)
+      :build(),
+
+    task("validate_parameter")
+      :description("Validate that a parameter exists")
+      :command(function(this, params)
+        local param = "net.ipv4.tcp_congestion_control"
+
+        if sysctl.exists(param) then
+          local value, err = sysctl.get(param)
+          log.info(param .. " exists with value: " .. (value or "unknown"))
+          return true, "Parameter exists"
+        else
+          log.warn(param .. " does not exist")
+          return false, "Parameter not found"
+        end
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for applying all system settings
+workflow("apply_all_settings")
+  :description("Apply all sysctl settings from config files")
+  :tasks({
+    task("reload_sysctl")
+      :description("Reload sysctl from /etc/sysctl.conf")
+      :command(function(this, params)
+        local success, msg = sysctl.reload()
+        if not success then
+          return false, "Failed to reload sysctl: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Sysctl configuration reloaded"
+      end)
+      :build(),
+
+    task("apply_system_wide")
+      :description("Apply all sysctl settings from /etc/sysctl.d/")
+      :command(function(this, params)
+        local success, msg = sysctl.apply()
+        if not success then
+          return false, "Failed to apply settings: " .. msg
+        end
+
+        log.info(msg)
+        return true, "All sysctl settings applied"
+      end)
+      :build(),
+  })
+  :build()

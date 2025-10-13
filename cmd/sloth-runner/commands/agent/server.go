@@ -565,15 +565,11 @@ func (s *agentServer) ExecuteTask(ctx context.Context, in *pb.ExecuteTaskRequest
 
 	slog.Info("Agent parsed task groups", "count", len(taskGroups))
 
-	// Change to the workspace directory so file operations work correctly
-	originalDir, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get current directory: %w", err)
-	}
-	if err := os.Chdir(workDir); err != nil {
-		return nil, fmt.Errorf("failed to change to workspace directory: %w", err)
-	}
-	defer os.Chdir(originalDir)
+	// DO NOT change to workspace directory - this isolates execution from the real system
+	// Instead, set workspace path as environment variable so file operations can use it
+	// System-level operations (cron, sysctl, etc.) MUST run in the real system context
+	os.Setenv("SLOTH_WORKSPACE", workDir)
+	slog.Info("Workspace path set as environment variable", "workspace", workDir)
 
 	// Filter the task group to contain only the specified task
 	targetTaskName := in.GetTaskName()

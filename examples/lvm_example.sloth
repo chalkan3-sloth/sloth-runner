@@ -1,0 +1,259 @@
+-- LVM (Logical Volume Manager) Example
+-- This example demonstrates how to manage LVM storage using sloth-runner
+
+-- Create a workflow for LVM management
+workflow("lvm_storage_setup")
+  :description("Configure LVM storage for database server")
+  :tasks({
+    -- Task 1: Create physical volumes
+    task("create_physical_volumes")
+      :description("Initialize physical volumes on /dev/sdb and /dev/sdc")
+      :command(function(this, params)
+        local devices = {"/dev/sdb", "/dev/sdc"}
+
+        for _, device in ipairs(devices) do
+          local success, msg = lvm.pv_create(device)
+          if not success then
+            return false, "Failed to create PV on " .. device .. ": " .. msg
+          end
+          log.info("Created physical volume: " .. device)
+        end
+
+        return true, "Physical volumes created successfully"
+      end)
+      :build(),
+
+    -- Task 2: Create volume group
+    task("create_volume_group")
+      :description("Create volume group 'vg_data' from physical volumes")
+      :depends_on("create_physical_volumes")
+      :command(function(this, params)
+        local success, msg = lvm.vg_create("vg_data", {"/dev/sdb", "/dev/sdc"})
+        if not success then
+          return false, "Failed to create volume group: " .. msg
+        end
+
+        log.info("Volume group 'vg_data' created")
+        return true, msg
+      end)
+      :build(),
+
+    -- Task 3: Create logical volumes
+    task("create_logical_volumes")
+      :description("Create logical volumes for database and logs")
+      :depends_on("create_volume_group")
+      :command(function(this, params)
+        -- Create LV for database (50% of VG)
+        local success, msg = lvm.lv_create("vg_data", "lv_database", "50%VG")
+        if not success then
+          return false, "Failed to create database LV: " .. msg
+        end
+        log.info("Created logical volume: lv_database (50%VG)")
+
+        -- Create LV for logs (20% of VG)
+        success, msg = lvm.lv_create("vg_data", "lv_logs", "20%VG")
+        if not success then
+          return false, "Failed to create logs LV: " .. msg
+        end
+        log.info("Created logical volume: lv_logs (20%VG)")
+
+        return true, "Logical volumes created successfully"
+      end)
+      :build(),
+
+    -- Task 4: Format filesystems
+    task("format_filesystems")
+      :description("Format logical volumes with ext4")
+      :depends_on("create_logical_volumes")
+      :command(function(this, params)
+        local volumes = {
+          {path = "/dev/vg_data/lv_database", mount = "/var/lib/database"},
+          {path = "/dev/vg_data/lv_logs", mount = "/var/log/database"}
+        }
+
+        for _, vol in ipairs(volumes) do
+          -- Format with ext4
+          local cmd = string.format("mkfs.ext4 -F %s", vol.path)
+          local success, output = exec.sh(cmd)
+          if not success then
+            return false, "Failed to format " .. vol.path .. ": " .. output
+          end
+
+          -- Create mount point
+          fs.mkdir(vol.mount, {recursive = true})
+
+          -- Mount the volume
+          cmd = string.format("mount %s %s", vol.path, vol.mount)
+          success, output = exec.sh(cmd)
+          if not success then
+            return false, "Failed to mount " .. vol.path .. ": " .. output
+          end
+
+          log.info("Formatted and mounted: " .. vol.path .. " -> " .. vol.mount)
+        end
+
+        return true, "Filesystems formatted and mounted"
+      end)
+      :build(),
+
+    -- Task 5: Create snapshot
+    task("create_snapshot")
+      :description("Create snapshot of database volume for backup")
+      :depends_on("format_filesystems")
+      :command(function(this, params)
+        local success, msg = lvm.lv_snapshot("vg_data", "lv_database", "lv_database_snap", "5G")
+        if not success then
+          return false, "Failed to create snapshot: " .. msg
+        end
+
+        log.info("Snapshot created: lv_database_snap (5G)")
+        return true, msg
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for LVM monitoring
+workflow("lvm_monitoring")
+  :description("Monitor LVM volumes and display information")
+  :tasks({
+    task("list_physical_volumes")
+      :description("List all physical volumes")
+      :command(function(this, params)
+        local pvs, err = lvm.pv_list()
+        if err then
+          return false, "Failed to list PVs: " .. err
+        end
+
+        log.info("Physical Volumes:")
+        for i, pv in ipairs(pvs) do
+          log.info(string.format("  [%d] %s - Size: %s, VG: %s",
+            i, pv.name or "N/A", pv.size or "N/A", pv.vg or "none"))
+        end
+
+        return true, "Listed " .. #pvs .. " physical volumes"
+      end)
+      :build(),
+
+    task("list_volume_groups")
+      :description("List all volume groups")
+      :command(function(this, params)
+        local vgs, err = lvm.vg_list()
+        if err then
+          return false, "Failed to list VGs: " .. err
+        end
+
+        log.info("Volume Groups:")
+        for i, vg in ipairs(vgs) do
+          log.info(string.format("  [%d] %s - Size: %s, Free: %s",
+            i, vg.name or "N/A", vg.size or "N/A", vg.free or "N/A"))
+        end
+
+        return true, "Listed " .. #vgs .. " volume groups"
+      end)
+      :build(),
+
+    task("list_logical_volumes")
+      :description("List all logical volumes")
+      :command(function(this, params)
+        local lvs, err = lvm.lv_list()
+        if err then
+          return false, "Failed to list LVs: " .. err
+        end
+
+        log.info("Logical Volumes:")
+        for i, lv in ipairs(lvs) do
+          log.info(string.format("  [%d] %s - Size: %s, VG: %s",
+            i, lv.name or "N/A", lv.size or "N/A", lv.vg or "N/A"))
+        end
+
+        return true, "Listed " .. #lvs .. " logical volumes"
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for extending volume
+workflow("extend_lv")
+  :description("Extend logical volume size")
+  :tasks({
+    task("extend_database_volume")
+      :description("Extend database volume by 10G")
+      :command(function(this, params)
+        local success, msg = lvm.lv_extend("vg_data", "lv_database", "+10G")
+        if not success then
+          return false, "Failed to extend LV: " .. msg
+        end
+
+        -- Resize filesystem
+        local resize_success, resize_msg = exec.sh("resize2fs /dev/vg_data/lv_database")
+        if not resize_success then
+          return false, "LV extended but filesystem resize failed: " .. resize_msg
+        end
+
+        log.info("Extended lv_database by 10G and resized filesystem")
+        return true, "Volume extended successfully"
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for cleanup
+workflow("lvm_cleanup")
+  :description("Remove LVM setup (DESTRUCTIVE)")
+  :tasks({
+    task("remove_logical_volumes")
+      :description("Remove all logical volumes")
+      :command(function(this, params)
+        local volumes = {"lv_database_snap", "lv_database", "lv_logs"}
+
+        for _, lv in ipairs(volumes) do
+          -- Unmount if mounted
+          exec.sh("umount /dev/vg_data/" .. lv)
+
+          local success, msg = lvm.lv_remove("vg_data", lv)
+          if success then
+            log.info("Removed logical volume: " .. lv)
+          else
+            log.warn("Failed to remove " .. lv .. ": " .. msg)
+          end
+        end
+
+        return true, "Logical volumes removed"
+      end)
+      :build(),
+
+    task("remove_volume_group")
+      :description("Remove volume group")
+      :depends_on("remove_logical_volumes")
+      :command(function(this, params)
+        local success, msg = lvm.vg_remove("vg_data")
+        if not success then
+          return false, "Failed to remove VG: " .. msg
+        end
+
+        log.info("Removed volume group: vg_data")
+        return true, msg
+      end)
+      :build(),
+
+    task("remove_physical_volumes")
+      :description("Remove physical volumes")
+      :depends_on("remove_volume_group")
+      :command(function(this, params)
+        local devices = {"/dev/sdb", "/dev/sdc"}
+
+        for _, device in ipairs(devices) do
+          local success, msg = lvm.pv_remove(device)
+          if success then
+            log.info("Removed physical volume: " .. device)
+          else
+            log.warn("Failed to remove " .. device .. ": " .. msg)
+          end
+        end
+
+        return true, "Physical volumes removed"
+      end)
+      :build(),
+  })
+  :build()

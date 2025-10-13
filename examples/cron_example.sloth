@@ -1,0 +1,417 @@
+-- Cron (Job Scheduling) Example
+-- This example demonstrates how to manage cron jobs using sloth-runner
+
+-- Workflow for setting up backup cron jobs
+workflow("setup_backup_jobs")
+  :description("Configure automated backup cron jobs")
+  :tasks({
+    -- Task 1: Daily database backup
+    task("setup_database_backup")
+      :description("Schedule daily database backup at 2 AM")
+      :command(function(this, params)
+        local success, msg = cron.add({
+          name = "database_backup",
+          schedule = "0 2 * * *",  -- Every day at 2:00 AM
+          command = "/opt/scripts/backup_database.sh",
+          user = "postgres"
+        })
+
+        if not success then
+          return false, "Failed to add database backup job: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Database backup job scheduled"
+      end)
+      :build(),
+
+    -- Task 2: Weekly log rotation
+    task("setup_log_rotation")
+      :description("Schedule weekly log rotation on Sundays")
+      :command(function(this, params)
+        local success, msg = cron.add({
+          name = "log_rotation",
+          schedule = "@weekly",  -- Every Sunday at midnight
+          command = "/usr/sbin/logrotate /etc/logrotate.conf",
+          user = "root"
+        })
+
+        if not success then
+          return false, "Failed to add log rotation job: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Log rotation job scheduled"
+      end)
+      :build(),
+
+    -- Task 3: Hourly monitoring check
+    task("setup_monitoring_check")
+      :description("Schedule hourly system monitoring")
+      :command(function(this, params)
+        local success, msg = cron.add({
+          name = "system_monitoring",
+          schedule = "0 * * * *",  -- Every hour
+          command = "/usr/local/bin/monitor_system.py --alert-threshold 90",
+          user = "monitoring"
+        })
+
+        if not success then
+          return false, "Failed to add monitoring job: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Monitoring job scheduled"
+      end)
+      :build(),
+
+    -- Task 4: Every 15 minutes health check
+    task("setup_health_check")
+      :description("Schedule health check every 15 minutes")
+      :command(function(this, params)
+        local success, msg = cron.add({
+          name = "health_check",
+          schedule = "*/15 * * * *",  -- Every 15 minutes
+          command = "/opt/health/check.sh >> /var/log/health.log 2>&1"
+        })
+
+        if not success then
+          return false, "Failed to add health check job: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Health check job scheduled"
+      end)
+      :build(),
+
+    -- Task 5: Monthly cleanup
+    task("setup_monthly_cleanup")
+      :description("Schedule monthly cleanup on 1st of each month")
+      :command(function(this, params)
+        local success, msg = cron.add({
+          name = "monthly_cleanup",
+          schedule = "@monthly",  -- 1st day of month at midnight
+          command = "find /tmp -type f -mtime +30 -delete"
+        })
+
+        if not success then
+          return false, "Failed to add cleanup job: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Monthly cleanup job scheduled"
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for managing existing cron jobs
+workflow("manage_cron_jobs")
+  :description("List and manage existing cron jobs")
+  :tasks({
+    task("list_all_jobs")
+      :description("List all cron jobs for current user")
+      :command(function(this, params)
+        local jobs, err = cron.list()
+        if err then
+          return false, "Failed to list cron jobs: " .. err
+        end
+
+        log.info("Cron Jobs:")
+        for i, job in ipairs(jobs) do
+          local status = job.enabled and "enabled" or "disabled"
+          log.info(string.format("  [%d] %s - %s [%s]",
+            i, job.name, job.schedule, status))
+          log.info(string.format("      Command: %s", job.command))
+        end
+
+        return true, "Listed " .. #jobs .. " cron jobs"
+      end)
+      :build(),
+
+    task("check_job_exists")
+      :description("Check if specific job exists")
+      :command(function(this, params)
+        local job_name = "database_backup"
+
+        if cron.exists(job_name) then
+          log.info("Cron job '" .. job_name .. "' exists")
+          return true, "Job found"
+        else
+          log.warn("Cron job '" .. job_name .. "' not found")
+          return false, "Job not found"
+        end
+      end)
+      :build(),
+
+    task("disable_job")
+      :description("Temporarily disable a cron job")
+      :command(function(this, params)
+        local success, msg = cron.disable("system_monitoring")
+        if not success then
+          return false, "Failed to disable job: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Job disabled"
+      end)
+      :build(),
+
+    task("enable_job")
+      :description("Re-enable a disabled cron job")
+      :command(function(this, params)
+        local success, msg = cron.enable("system_monitoring")
+        if not success then
+          return false, "Failed to enable job: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Job enabled"
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for application deployment automation
+workflow("deployment_automation")
+  :description("Set up cron jobs for automated deployments")
+  :tasks({
+    task("setup_staging_deploy")
+      :description("Deploy to staging every weeknight at 11 PM")
+      :command(function(this, params)
+        local success, msg = cron.add({
+          name = "staging_deploy",
+          schedule = "0 23 * * 1-5",  -- Monday-Friday at 11 PM
+          command = "cd /opt/app && git pull && ./deploy.sh staging",
+          user = "deployer"
+        })
+
+        if not success then
+          return false, "Failed to add staging deploy job: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Staging deployment scheduled"
+      end)
+      :build(),
+
+    task("setup_production_deploy")
+      :description("Deploy to production every Saturday at 3 AM")
+      :command(function(this, params)
+        local success, msg = cron.add({
+          name = "production_deploy",
+          schedule = "0 3 * * 6",  -- Saturday at 3 AM
+          command = "cd /opt/app && git checkout main && git pull && ./deploy.sh production",
+          user = "deployer"
+        })
+
+        if not success then
+          return false, "Failed to add production deploy job: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Production deployment scheduled"
+      end)
+      :build(),
+
+    task("setup_cache_warming")
+      :description("Warm application cache after deployment")
+      :command(function(this, params)
+        local success, msg = cron.add({
+          name = "cache_warming",
+          schedule = "15 3 * * 6",  -- Saturday at 3:15 AM (15 min after deploy)
+          command = "curl -s http://localhost:8080/api/warm-cache",
+          user = "www-data"
+        })
+
+        if not success then
+          return false, "Failed to add cache warming job: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Cache warming scheduled"
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for validating cron schedules
+workflow("validate_cron_schedules")
+  :description("Validate cron schedule expressions")
+  :tasks({
+    task("validate_valid_schedules")
+      :description("Test valid cron schedule expressions")
+      :command(function(this, params)
+        local valid_schedules = {
+          "@hourly",
+          "@daily",
+          "@weekly",
+          "@monthly",
+          "0 2 * * *",
+          "*/15 * * * *",
+          "0 0 1 * *",
+          "30 4 1,15 * 5",
+        }
+
+        log.info("Validating cron schedules:")
+        for _, schedule in ipairs(valid_schedules) do
+          local success, msg = cron.validate_schedule(schedule)
+          if success then
+            log.info("  ✓ " .. schedule)
+          else
+            log.error("  ✗ " .. schedule .. " - " .. msg)
+          end
+        end
+
+        return true, "Validation complete"
+      end)
+      :build(),
+
+    task("validate_invalid_schedules")
+      :description("Test invalid cron schedule expressions")
+      :command(function(this, params)
+        local invalid_schedules = {
+          "not a schedule",
+          "60 * * * *",  -- Invalid minute
+          "* 25 * * *",  -- Invalid hour
+          "* * 32 * *",  -- Invalid day
+          "* * * 13 *",  -- Invalid month
+        }
+
+        log.info("Testing invalid schedules:")
+        local all_failed = true
+        for _, schedule in ipairs(invalid_schedules) do
+          local success, msg = cron.validate_schedule(schedule)
+          if not success then
+            log.info("  ✓ Correctly rejected: " .. schedule)
+          else
+            log.error("  ✗ Incorrectly accepted: " .. schedule)
+            all_failed = false
+          end
+        end
+
+        if all_failed then
+          return true, "All invalid schedules correctly rejected"
+        else
+          return false, "Some invalid schedules were accepted"
+        end
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for cleanup
+workflow("cleanup_cron_jobs")
+  :description("Remove all managed cron jobs")
+  :tasks({
+    task("list_jobs_to_remove")
+      :description("List jobs that will be removed")
+      :command(function(this, params)
+        local jobs, err = cron.list()
+        if err then
+          return false, "Failed to list cron jobs: " .. err
+        end
+
+        log.info("Jobs to be removed:")
+        for _, job in ipairs(jobs) do
+          log.info("  - " .. job.name)
+        end
+
+        return true, "Found " .. #jobs .. " jobs"
+      end)
+      :build(),
+
+    task("remove_jobs")
+      :description("Remove all scheduled jobs")
+      :depends_on("list_jobs_to_remove")
+      :command(function(this, params)
+        local jobs_to_remove = {
+          "database_backup",
+          "log_rotation",
+          "system_monitoring",
+          "health_check",
+          "monthly_cleanup",
+          "staging_deploy",
+          "production_deploy",
+          "cache_warming",
+        }
+
+        local removed_count = 0
+        for _, job_name in ipairs(jobs_to_remove) do
+          local success, msg = cron.remove(job_name)
+          if success then
+            log.info("Removed: " .. job_name)
+            removed_count = removed_count + 1
+          else
+            log.warn("Failed to remove " .. job_name .. ": " .. msg)
+          end
+        end
+
+        return true, "Removed " .. removed_count .. " cron jobs"
+      end)
+      :build(),
+  })
+  :build()
+
+-- Workflow for maintenance window automation
+workflow("maintenance_window")
+  :description("Schedule maintenance tasks during off-hours")
+  :tasks({
+    task("setup_db_optimization")
+      :description("Run database optimization during maintenance window")
+      :command(function(this, params)
+        local success, msg = cron.add({
+          name = "db_optimization",
+          schedule = "0 3 * * 0",  -- Sunday at 3 AM
+          command = "psql -U postgres -d production -c 'VACUUM ANALYZE;'",
+          user = "postgres"
+        })
+
+        if not success then
+          return false, "Failed to schedule optimization: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Database optimization scheduled"
+      end)
+      :build(),
+
+    task("setup_index_rebuild")
+      :description("Rebuild indexes during maintenance window")
+      :command(function(this, params)
+        local success, msg = cron.add({
+          name = "index_rebuild",
+          schedule = "30 3 * * 0",  -- Sunday at 3:30 AM
+          command = "/opt/scripts/rebuild_indexes.sh",
+          user = "postgres"
+        })
+
+        if not success then
+          return false, "Failed to schedule index rebuild: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Index rebuild scheduled"
+      end)
+      :build(),
+
+    task("setup_backup_verification")
+      :description("Verify backups during maintenance window")
+      :command(function(this, params)
+        local success, msg = cron.add({
+          name = "backup_verification",
+          schedule = "0 4 * * 0",  -- Sunday at 4 AM
+          command = "/opt/scripts/verify_backups.sh --email admin@example.com",
+          user = "backup"
+        })
+
+        if not success then
+          return false, "Failed to schedule backup verification: " .. msg
+        end
+
+        log.info(msg)
+        return true, "Backup verification scheduled"
+      end)
+      :build(),
+  })
+  :build()

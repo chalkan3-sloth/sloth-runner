@@ -1,0 +1,193 @@
+-- Install FRP Server on Agent
+
+local install_frp = task("install_frp")
+    :description("Install FRP server binaries")
+    :command(function(this, params)
+        log.info("📦 Installing FRP server...")
+
+        -- Installation script
+        local install_script = [[
+set -e
+
+# Determine architecture
+ARCH=$(uname -m)
+case $ARCH in
+    x86_64) ARCH="amd64" ;;
+    aarch64|arm64) ARCH="arm64" ;;
+    *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+esac
+
+# Determine OS
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+
+# Get latest version
+VERSION=$(curl -s https://api.github.com/repos/fatedier/frp/releases/latest | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+
+echo "Installing FRP version $VERSION for $OS-$ARCH..."
+
+# Download FRP
+DOWNLOAD_URL="https://github.com/fatedier/frp/releases/download/v${VERSION}/frp_${VERSION}_${OS}_${ARCH}.tar.gz"
+TMP_DIR=$(mktemp -d)
+cd "$TMP_DIR"
+
+curl -L "$DOWNLOAD_URL" -o frp.tar.gz
+tar -xzf frp.tar.gz
+cd frp_${VERSION}_${OS}_${ARCH}
+
+# Install binaries
+sudo mkdir -p /usr/local/bin
+sudo cp frps /usr/local/bin/
+sudo cp frpc /usr/local/bin/
+sudo chmod +x /usr/local/bin/frps /usr/local/bin/frpc
+
+# Create config directory
+sudo mkdir -p /etc/frp
+
+# Create systemd service for frps
+sudo tee /etc/systemd/system/frps.service > /dev/null <<'EOF'
+[Unit]
+Description=FRP Server Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Restart=on-failure
+RestartSec=5s
+ExecStart=/usr/local/bin/frps -c /etc/frp/frps.toml
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Reload systemd
+sudo systemctl daemon-reload
+
+# Clean up
+cd /
+rm -rf "$TMP_DIR"
+
+echo "✅ FRP $VERSION installed successfully!"
+/usr/local/bin/frps --version
+]]
+
+        local stdout, stderr, failed = exec.run(install_script)
+
+        if not failed then
+            log.info("✅ FRP installed successfully!")
+            log.info(stdout)
+            return true, "Installation completed"
+        else
+            log.error("❌ Installation failed!")
+            log.error(stderr)
+            return false, "Installation failed: " .. stderr
+        end
+    end)
+    :timeout("10m")
+    :build()
+
+local configure_frp = task("configure_frp")
+    :description("Create FRP server configuration")
+    :command(function(this, params)
+        log.info("⚙️  Creating FRP server configuration...")
+
+        local config = [[
+bindPort = 7000
+vhostHTTPPort = 8080
+vhostHTTPSPort = 8443
+
+webServer.addr = "0.0.0.0"
+webServer.port = 7500
+webServer.user = "admin"
+webServer.password = "admin"
+]]
+
+        local stdout, stderr, failed = exec.run("sudo tee /etc/frp/frps.toml > /dev/null", config)
+
+        if not failed then
+            log.info("✅ Configuration created!")
+            return true, "Configuration complete"
+        else
+            log.error("❌ Configuration failed!")
+            return false, "Configuration failed: " .. stderr
+        end
+    end)
+    :build()
+
+local start_frp = task("start_frp")
+    :description("Start FRP server service")
+    :command(function(this, params)
+        log.info("🚀 Starting FRP server service...")
+
+        -- Enable and start service
+        local stdout, stderr, failed = exec.run("sudo systemctl enable frps && sudo systemctl start frps")
+
+        if not failed then
+            log.info("✅ FRP service started!")
+
+            -- Wait a moment for service to start
+            exec.run("sleep 2")
+
+            -- Check status
+            local status_out, _, _ = exec.run("systemctl status frps")
+            log.info("Service status:\n" .. status_out)
+
+            return true, "Service started"
+        else
+            log.error("❌ Failed to start service!")
+            return false, "Service start failed: " .. stderr
+        end
+    end)
+    :build()
+
+local verify_frp = task("verify_frp")
+    :description("Verify FRP installation")
+    :command(function(this, params)
+        log.info("🔍 Verifying FRP installation...")
+
+        -- Check version
+        local ver_out, _, ver_failed = exec.run("/usr/local/bin/frps --version")
+        if not ver_failed then
+            log.info("✅ FRP version: " .. ver_out)
+        end
+
+        -- Check service status
+        local svc_out, _, _ = exec.run("systemctl is-active frps")
+        log.info("Service status: " .. svc_out)
+
+        -- Check listening ports
+        local port_out, _, _ = exec.run("ss -tuln | grep -E ':(7000|7500)' || echo 'No ports listening yet'")
+        log.info("Listening ports:\n" .. port_out)
+
+        return true, "Verification complete"
+    end)
+    :build()
+
+-- Define workflow
+workflow.define("frp_server_install")
+    :description("Install and configure FRP server")
+    :version("1.0.0")
+    :tasks({ install_frp, configure_frp, start_frp, verify_frp })
+    :config({
+        timeout = "15m"
+    })
+    :on_complete(function(success, results)
+        if success then
+            log.info("")
+            log.info("=" .. string.rep("=", 60))
+            log.info("✅ FRP Server Installation Complete!")
+            log.info("=" .. string.rep("=", 60))
+            log.info("")
+            log.info("Dashboard: http://<server-ip>:7500")
+            log.info("Username: admin")
+            log.info("Password: admin")
+            log.info("")
+        else
+            log.error("")
+            log.error("=" .. string.rep("=", 60))
+            log.error("❌ FRP Installation Failed!")
+            log.error("=" .. string.rep("=", 60))
+            log.error("")
+        end
+        return true
+    end)

@@ -1,0 +1,116 @@
+-- Install FRP on do-sloth-runner-01
+
+log.info("🚀 Starting FRP installation...")
+
+local install_task = task("install_frp_binaries")
+    :description("Install FRP server binaries")
+    :command(function(this, params)
+        local exec = require("exec")
+
+        log.info("📦 Downloading and installing FRP...")
+
+        -- Installation script
+        local install_script = [[
+set -e
+
+# Determine architecture
+ARCH=$(uname -m)
+case $ARCH in
+    x86_64) ARCH="amd64" ;;
+    aarch64|arm64) ARCH="arm64" ;;
+    *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
+esac
+
+# Determine OS
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+
+# Get latest version
+VERSION=$(curl -s https://api.github.com/repos/fatedier/frp/releases/latest | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/')
+
+echo "Installing FRP version $VERSION for $OS-$ARCH..."
+
+# Download FRP
+DOWNLOAD_URL="https://github.com/fatedier/frp/releases/download/v${VERSION}/frp_${VERSION}_${OS}_${ARCH}.tar.gz"
+TMP_DIR=$(mktemp -d)
+cd "$TMP_DIR"
+
+curl -L "$DOWNLOAD_URL" -o frp.tar.gz
+tar -xzf frp.tar.gz
+cd frp_${VERSION}_${OS}_${ARCH}
+
+# Install binaries
+sudo mkdir -p /usr/local/bin
+sudo cp frps /usr/local/bin/
+sudo cp frpc /usr/local/bin/
+sudo chmod +x /usr/local/bin/frps /usr/local/bin/frpc
+
+# Create config directory
+sudo mkdir -p /etc/frp
+
+# Create systemd service for frps
+sudo tee /etc/systemd/system/frps.service > /dev/null <<'EOF'
+[Unit]
+Description=FRP Server Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Restart=on-failure
+RestartSec=5s
+ExecStart=/usr/local/bin/frps -c /etc/frp/frps.toml
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Reload systemd
+sudo systemctl daemon-reload
+
+# Clean up
+cd /
+rm -rf "$TMP_DIR"
+
+echo "✅ FRP $VERSION installed successfully!"
+/usr/local/bin/frps --version
+]]
+
+        local result = exec.run(install_script)
+
+        if result.exit_code == 0 then
+            log.info("✅ FRP installed successfully!")
+            log.info(result.stdout)
+            return true, "Installation completed"
+        else
+            log.error("❌ Installation failed!")
+            log.error(result.stderr)
+            return false, "Installation failed: " .. result.stderr
+        end
+    end)
+    :timeout("10m")
+    :build()
+
+-- Execute the installation
+log.info("")
+local success, message = install_task:run()
+
+if success then
+    log.info("")
+    log.info("=" .. string.rep("=", 60))
+    log.info("✅ FRP Installation Complete!")
+    log.info("=" .. string.rep("=", 60))
+    log.info("")
+    log.info("Next steps:")
+    log.info("  1. Create FRP server configuration: /etc/frp/frps.toml")
+    log.info("  2. Enable service: systemctl enable frps")
+    log.info("  3. Start service: systemctl start frps")
+    log.info("")
+else
+    log.error("")
+    log.error("=" .. string.rep("=", 60))
+    log.error("❌ FRP Installation Failed!")
+    log.error("=" .. string.rep("=", 60))
+    log.error("")
+    log.error("Error: " .. (message or "unknown"))
+    log.error("")
+end

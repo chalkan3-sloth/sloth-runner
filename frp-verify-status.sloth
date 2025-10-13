@@ -1,0 +1,41 @@
+-- Quick FRP Status Verification
+
+local verify_status = task("verify_frp_status")
+    :description("Verify FRP server status")
+    :command(function()
+        log.info("Checking FRP server status...")
+
+        -- Check if frps service exists and is active
+        local service_status = exec.run("systemctl status frps --no-pager 2>&1 || echo 'Service not found'")
+        log.info("=== Service Status ===\n" .. service_status.output)
+
+        -- Check listening ports
+        local ports = exec.run("ss -tuln | grep -E ':(7000|7500)' || echo 'No ports found'")
+        log.info("=== Listening Ports ===\n" .. ports.output)
+
+        -- Check FRP configuration file
+        local config = exec.run("cat /etc/frp/frps.toml 2>/dev/null || cat /etc/frp/frps.ini 2>/dev/null || echo 'Config not found'")
+        log.info("=== FRP Configuration ===\n" .. config.output)
+
+        -- Check FRP process
+        local process = exec.run("ps aux | grep '[f]rps' || echo 'Process not found'")
+        log.info("=== FRP Process ===\n" .. process.output)
+
+        -- Check FRP version
+        local version = exec.run("ls -la /usr/local/bin/frps 2>/dev/null || echo 'Binary not found'")
+        log.info("=== FRP Binary ===\n" .. version.output)
+
+        -- Try to access dashboard
+        local dashboard = exec.run("curl -s -o /dev/null -w 'HTTP Status: %{http_code}' http://localhost:7500 2>&1")
+        log.info("=== Dashboard Test ===\n" .. dashboard.output)
+
+        return true, "Verification complete"
+    end)
+    :build()
+
+workflow
+    .define("frp_status_check")
+    :description("Check FRP server status")
+    :version("1.0.0")
+    :tasks({verify_status})
+    :config({timeout = "2m"})

@@ -1,0 +1,94 @@
+-- FRP Module Test
+-- Test FRP module on remote agent
+
+workflow({
+    name = "test_frp",
+    description = "Test FRP module on remote agent",
+    version = "1.0.0",
+    tasks = {
+        {
+            name = "test_frp_module",
+            description = "Check if FRP module is available",
+            timeout = "60s",
+            run = function()
+                log.info("Testing FRP module...")
+
+                -- Get hostname
+                local hostname_result = exec.run("hostname")
+                local hostname = "unknown"
+                if hostname_result.success then
+                    hostname = hostname_result.output:gsub("\n", "")
+                    log.info("Running on host: " .. hostname)
+                end
+
+                -- Test if frp module exists
+                if frp == nil then
+                    log.error("FRP module is NOT registered!")
+                    return {
+                        failed = true,
+                        message = "FRP module not found on " .. hostname
+                    }
+                end
+                log.info("✓ FRP module is registered")
+
+                -- Test frp.server
+                if type(frp.server) ~= "function" then
+                    log.error("frp.server is not a function!")
+                    return {
+                        failed = true,
+                        message = "frp.server not available"
+                    }
+                end
+                log.info("✓ frp.server() is available")
+
+                -- Test frp.client
+                if type(frp.client) ~= "function" then
+                    log.error("frp.client is not a function!")
+                    return {
+                        failed = true,
+                        message = "frp.client not available"
+                    }
+                end
+                log.info("✓ frp.client() is available")
+
+                -- Test frp.install
+                if type(frp.install) ~= "function" then
+                    log.error("frp.install is not a function!")
+                    return {
+                        failed = true,
+                        message = "frp.install not available"
+                    }
+                end
+                log.info("✓ frp.install() is available")
+
+                -- Test creating server instance
+                local server = frp.server("test-server")
+                if server == nil then
+                    log.error("Failed to create server instance!")
+                    return {
+                        failed = true,
+                        message = "Server instance creation failed"
+                    }
+                end
+                log.info("✓ Server instance created successfully")
+
+                -- Test creating client instance
+                local client = frp.client("test-client")
+                if client == nil then
+                    log.error("Failed to create client instance!")
+                    return {
+                        failed = true,
+                        message = "Client instance creation failed"
+                    }
+                end
+                log.info("✓ Client instance created successfully")
+
+                log.info("All FRP module tests passed on " .. hostname .. "!")
+                return {
+                    changed = false,
+                    message = "FRP module working on " .. hostname
+                }
+            end
+        }
+    }
+})
