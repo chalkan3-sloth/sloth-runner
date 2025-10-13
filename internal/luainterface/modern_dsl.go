@@ -800,116 +800,27 @@ func (m *ModernDSL) registerSecurityPolicies(L *lua.LState) {
 
 // Task builder function implementations
 func (m *ModernDSL) taskBuilderFunc(L *lua.LState) int {
-	// Accept both task("name") and task({name = "name"}) syntax
-	var name string
-	var description string
-	var delegateTo string
-	var user string
-	var runFunc *lua.LFunction
-	
-	firstArg := L.Get(1)
-	if firstArg.Type() == lua.LTString {
-		// Old syntax: task("name")
-		name = L.CheckString(1)
-	} else if firstArg.Type() == lua.LTTable {
-		// New syntax: task({name = "name", description = "...", delegate_to = "...", user = "...", run = function() ... })
-		tbl := L.CheckTable(1)
-		nameVal := tbl.RawGetString("name")
-		if nameVal.Type() != lua.LTString {
-			L.RaiseError("task table must have a 'name' field")
-			return 0
-		}
-		name = nameVal.String()
-		
-		// Optional description
-		descVal := tbl.RawGetString("description")
-		if descVal.Type() == lua.LTString {
-			description = descVal.String()
-		}
-		
-		// Optional delegate_to
-		delegateToVal := tbl.RawGetString("delegate_to")
-		if delegateToVal.Type() == lua.LTString {
-			delegateTo = delegateToVal.String()
-		}
-		
-		// Optional user
-		userVal := tbl.RawGetString("user")
-		if userVal.Type() == lua.LTString {
-			user = userVal.String()
-		}
-		
-		// Optional run function
-		runVal := tbl.RawGetString("run")
-		if runVal.Type() == lua.LTFunction {
-			runFunc = runVal.(*lua.LFunction)
-		}
-	} else {
-		L.RaiseError("task() expects either a string or a table as first argument")
-		return 0
-	}
-	
+	// Modern DSL: task("name") - returns TaskBuilder for fluent chaining
+	name := L.CheckString(1)
+
 	builder := &TaskBuilder{
 		definition: &TaskDefinition{
 			Name:        name,
-			Description: description,
-			User:        user,
+			Description: "",
+			User:        "",
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
-			Metadata:    make(map[string]interface{}), // Initialize metadata map
+			Metadata:    make(map[string]interface{}),
 		},
 		context: &BuildContext{},
 		chain:   []BuildStep{},
 	}
-	
-	// Set delegate_to if provided
-	if delegateTo != "" {
-		builder.definition.Delegation.Agent = delegateTo
-	}
-	
-	// If run function is provided, immediately build the task
-	if runFunc != nil {
-		builder.definition.Command = runFunc
-		
-		// Convert TaskDefinition to Lua table compatible with parseLuaTask
-		taskTable := L.NewTable()
-		
-		// Basic fields
-		taskTable.RawSetString("name", lua.LString(builder.definition.Name))
-		taskTable.RawSetString("description", lua.LString(builder.definition.Description))
-		taskTable.RawSetString("workdir", lua.LString(builder.definition.Workdir))
-		
-		// User field
-		if builder.definition.User != "" {
-			taskTable.RawSetString("user", lua.LString(builder.definition.User))
-		}
-		
-		// Command
-		taskTable.RawSetString("command", runFunc)
-		
-		// Timeout
-		if builder.definition.Timeout > 0 {
-			taskTable.RawSetString("timeout", lua.LString(builder.definition.Timeout.String()))
-		}
-		
-		// Delegation - Convert DelegationConfig to delegate_to
-		if builder.definition.Delegation.Agent != "" {
-			taskTable.RawSetString("delegate_to", lua.LString(builder.definition.Delegation.Agent))
-		}
-		
-		// Register task globally for workflow
-		L.SetGlobal(fmt.Sprintf("__task_%s", name), taskTable)
-		
-		// Return nil (task was auto-built)
-		L.Push(lua.LNil)
-		return 1
-	}
-	
+
 	m.mu.Lock()
 	m.builders[name] = builder
 	m.mu.Unlock()
-	
-	// Return task builder userdata
+
+	// Return task builder userdata for fluent chaining
 	ud := L.NewUserData()
 	ud.Value = builder
 	L.SetMetatable(ud, L.GetTypeMetatable("TaskBuilder"))
@@ -1024,204 +935,29 @@ func NewTaskRegistry() *TaskRegistry {
 
 // workflowCallFunc handles workflow() being called as a function
 func (m *ModernDSL) workflowCallFunc(L *lua.LState) int {
-	// workflow is the table itself (argument 1)
-	// The actual first user argument is at position 2
-	if L.GetTop() < 2 {
-		L.RaiseError("workflow() requires a name or configuration table")
-		return 0
-	}
-
-	firstArg := L.Get(2)
-
-	// Check if it's workflow("name") or workflow({name = "name", ...})
-	if firstArg.Type() == lua.LTString {
-		// workflow("name") - return builder
-		workflowName := firstArg.String()
-		builder := &WorkflowBuilder{
-			name:     workflowName,
-			config:   make(map[string]interface{}),
-			metadata: make(map[string]interface{}),
-		}
-
-		ud := L.NewUserData()
-		ud.Value = builder
-		L.SetMetatable(ud, L.GetTypeMetatable("WorkflowBuilder"))
-		L.Push(ud)
-		return 1
-	} else if firstArg.Type() == lua.LTTable {
-		// workflow({name = "name", tasks = {...}, ...}) - direct definition
-		configTable := firstArg.(*lua.LTable)
-
-		nameVal := configTable.RawGetString("name")
-		if nameVal.Type() != lua.LTString {
-			L.RaiseError("workflow configuration must have a 'name' field")
-			return 0
-		}
-		workflowName := nameVal.String()
-
-		// Get __workflows__ table
-		workflows := L.GetGlobal("__workflows__")
-		if workflows.Type() != lua.LTTable {
-			workflows = L.NewTable()
-			L.SetGlobal("__workflows__", workflows)
-		}
-
-		// Create workflow structure
-		workflowTable := L.NewTable()
-
-		// Set description
-		if desc := configTable.RawGetString("description"); desc.Type() == lua.LTString {
-			workflowTable.RawSetString("description", desc)
-		}
-
-		// Set version
-		if version := configTable.RawGetString("version"); version.Type() == lua.LTString {
-			workflowTable.RawSetString("version", version)
-		}
-
-		// Set workdir
-		if workdir := configTable.RawGetString("workdir"); workdir.Type() == lua.LTString {
-			workflowTable.RawSetString("workdir", workdir)
-		}
-
-		// Set delegate_to
-		if delegateTo := configTable.RawGetString("delegate_to"); delegateTo != lua.LNil {
-			workflowTable.RawSetString("delegate_to", delegateTo)
-		}
-
-		// Set create_workdir_before_run
-		if createWorkdir := configTable.RawGetString("create_workdir_before_run"); createWorkdir != lua.LNil {
-			workflowTable.RawSetString("create_workdir_before_run", createWorkdir)
-		}
-
-		// Set clean_workdir_after_run
-		if cleanWorkdir := configTable.RawGetString("clean_workdir_after_run"); cleanWorkdir != lua.LNil {
-			workflowTable.RawSetString("clean_workdir_after_run", cleanWorkdir)
-		}
-
-		// Convert tasks
-		if tasksValue := configTable.RawGetString("tasks"); tasksValue.Type() == lua.LTTable {
-			tasksTable := L.NewTable()
-			taskIndex := 1
-
-			tasksValue.(*lua.LTable).ForEach(func(_, taskValue lua.LValue) {
-				// Check if it's a task table or a task name reference
-				if taskValue.Type() == lua.LTString {
-					// Task reference by name
-					taskName := taskValue.String()
-					taskGlobal := L.GetGlobal(fmt.Sprintf("__task_%s", taskName))
-					if taskGlobal.Type() == lua.LTTable {
-						tasksTable.RawSetInt(taskIndex, taskGlobal)
-						taskIndex++
-					}
-				} else if taskValue.Type() == lua.LTTable {
-					// Direct task table
-					tasksTable.RawSetInt(taskIndex, taskValue)
-					taskIndex++
-				}
-			})
-
-			workflowTable.RawSetString("tasks", tasksTable)
-		}
-
-		// Add to __workflows__
-		workflows.(*lua.LTable).RawSetString(workflowName, workflowTable)
-
-		return 0
-	}
-
-	L.RaiseError("workflow() expects either a string or a table as first argument")
+	// Modern DSL: workflow is called through workflow.define()
+	// This function should not be used directly
+	L.RaiseError("workflow() is not supported. Use workflow.define(\"name\") instead")
 	return 0
 }
 
 // Placeholder implementations for DSL functions
 func (m *ModernDSL) workflowDefineFunc(L *lua.LState) int {
+	// Modern DSL: workflow.define("name") - returns WorkflowBuilder for fluent chaining
 	workflowName := L.CheckString(1)
 
-	// Check if second argument is a table (direct config syntax) or if it's missing (fluent syntax)
-	if L.GetTop() >= 2 && L.Get(2).Type() == lua.LTTable {
-		// Direct table-based syntax: workflow.define("name", {...})
-		workflowConfig := L.CheckTable(2)
-
-		// Get existing __workflows__ table or create it
-		workflows := L.GetGlobal("__workflows__")
-		if workflows.Type() != lua.LTTable {
-			workflows = L.NewTable()
-			L.SetGlobal("__workflows__", workflows)
-		}
-
-		// Create workflow structure
-		workflowTable := L.NewTable()
-
-		// Set description
-		if desc := workflowConfig.RawGetString("description"); desc != lua.LNil {
-			workflowTable.RawSetString("description", desc)
-		}
-
-		// Convert Modern DSL tasks to workflow format
-		if tasksValue := workflowConfig.RawGetString("tasks"); tasksValue.Type() == lua.LTTable {
-			tasksTable := L.NewTable()
-			taskIndex := 1
-
-			tasksValue.(*lua.LTable).ForEach(func(_, taskValue lua.LValue) {
-				if taskValue.Type() == lua.LTUserData {
-					taskUD := taskValue.(*lua.LUserData)
-					if taskDef, ok := taskUD.Value.(*TaskDefinition); ok {
-						// Create task structure
-						taskTable := L.NewTable()
-						taskTable.RawSetString("name", lua.LString(taskDef.Name))
-						taskTable.RawSetString("description", lua.LString(taskDef.Description))
-
-						// Convert command
-						if taskDef.Command != nil {
-							if luaValue, ok := taskDef.Command.(lua.LValue); ok {
-								taskTable.RawSetString("command", luaValue)
-							}
-						}
-
-						// Add user if specified
-						if taskDef.User != "" {
-							taskTable.RawSetString("user", lua.LString(taskDef.User))
-						}
-
-						// Add workdir if specified
-						if taskDef.Workdir != "" {
-							taskTable.RawSetString("workdir", lua.LString(taskDef.Workdir))
-						}
-
-						// Convert delegate_to
-						if taskDef.Delegation.Agent != "" {
-							taskTable.RawSetString("delegate_to", lua.LString(taskDef.Delegation.Agent))
-						}
-
-						tasksTable.RawSetInt(taskIndex, taskTable)
-						taskIndex++
-					}
-				}
-			})
-
-			workflowTable.RawSetString("tasks", tasksTable)
-		}
-
-		// Add workflow to __workflows__
-		workflows.(*lua.LTable).RawSetString(workflowName, workflowTable)
-
-		return 0
-	} else {
-		// Fluent syntax - return WorkflowBuilder: workflow.define("name")
-		builder := &WorkflowBuilder{
-			name:     workflowName,
-			config:   make(map[string]interface{}),
-			metadata: make(map[string]interface{}),
-		}
-
-		// Return workflow builder userdata
-		ud := L.NewUserData()
-		ud.Value = builder
-		L.SetMetatable(ud, L.GetTypeMetatable("WorkflowBuilder"))
-		L.Push(ud)
-		return 1
+	builder := &WorkflowBuilder{
+		name:     workflowName,
+		config:   make(map[string]interface{}),
+		metadata: make(map[string]interface{}),
 	}
+
+	// Return workflow builder userdata for fluent chaining
+	ud := L.NewUserData()
+	ud.Value = builder
+	L.SetMetatable(ud, L.GetTypeMetatable("WorkflowBuilder"))
+	L.Push(ud)
+	return 1
 }
 func (m *ModernDSL) workflowParallelFunc(L *lua.LState) int    { return 0 }
 func (m *ModernDSL) workflowSequenceFunc(L *lua.LState) int    { return 0 }

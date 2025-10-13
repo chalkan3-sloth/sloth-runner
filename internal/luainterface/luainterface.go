@@ -527,7 +527,10 @@ func registerAllModulesInternal(L *lua.LState, agentClient interface{}) {
 	
 	// Register Incus module for container/VM management
 	RegisterIncusModule(L)
-	
+
+	// Register Firewall module for firewall management
+	RegisterFirewallModule(L)
+
 	// Register Stow module for dotfiles management (as PreloadModule for require compatibility)
 	stowModule := NewStowModule(nil)
 	L.PreloadModule("stow", stowModule.Loader)

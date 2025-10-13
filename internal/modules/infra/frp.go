@@ -3,10 +3,8 @@ package infra
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/pelletier/go-toml/v2"
@@ -172,7 +170,7 @@ func serverSaveConfig(L *lua.LState) int {
 	// Create directory if needed
 	dir := filepath.Dir(server.configPath)
 	mkdirCmd := fmt.Sprintf("mkdir -p %s", dir)
-	_, err = executeCommandWithAgent(server.agentClient, mkdirCmd, server.target)
+	_, err = executeCommandWithExec(L, mkdirCmd)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to create config directory: %v", err)))
@@ -181,7 +179,7 @@ func serverSaveConfig(L *lua.LState) int {
 
 	// Write config file
 	writeCmd := fmt.Sprintf("cat > %s << 'EOF'\n%s\nEOF", server.configPath, string(tomlData))
-	result, err := executeCommandWithAgent(server.agentClient, writeCmd, server.target)
+	result, err := executeCommandWithExec(L, writeCmd)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
@@ -199,7 +197,7 @@ func serverLoadConfig(L *lua.LState) int {
 
 	// Read config file
 	readCmd := fmt.Sprintf("cat %s", server.configPath)
-	output, err := executeCommandWithAgent(server.agentClient, readCmd, server.target)
+	output, err := executeCommandWithExec(L, readCmd)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
@@ -228,10 +226,9 @@ func serverLoadConfig(L *lua.LState) int {
 
 // serverStart starts the FRP server service (action method)
 func serverStart(L *lua.LState) int {
-	server := checkFrpServer(L, 1)
 
 	cmd := fmt.Sprintf("systemctl start frps")
-	result, err := executeCommandWithAgent(server.agentClient, cmd, server.target)
+	result, err := executeCommandWithExec(L, cmd)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to start frps: %v", err)))
@@ -245,10 +242,9 @@ func serverStart(L *lua.LState) int {
 
 // serverStop stops the FRP server service (action method)
 func serverStop(L *lua.LState) int {
-	server := checkFrpServer(L, 1)
 
 	cmd := fmt.Sprintf("systemctl stop frps")
-	result, err := executeCommandWithAgent(server.agentClient, cmd, server.target)
+	result, err := executeCommandWithExec(L, cmd)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to stop frps: %v", err)))
@@ -262,10 +258,9 @@ func serverStop(L *lua.LState) int {
 
 // serverRestart restarts the FRP server service (action method)
 func serverRestart(L *lua.LState) int {
-	server := checkFrpServer(L, 1)
 
 	cmd := fmt.Sprintf("systemctl restart frps")
-	result, err := executeCommandWithAgent(server.agentClient, cmd, server.target)
+	result, err := executeCommandWithExec(L, cmd)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to restart frps: %v", err)))
@@ -279,10 +274,9 @@ func serverRestart(L *lua.LState) int {
 
 // serverStatus gets the FRP server service status (action method)
 func serverStatus(L *lua.LState) int {
-	server := checkFrpServer(L, 1)
 
 	cmd := fmt.Sprintf("systemctl status frps")
-	result, err := executeCommandWithAgent(server.agentClient, cmd, server.target)
+	result, err := executeCommandWithExec(L, cmd)
 	if err != nil {
 		// Status command returns non-zero if service is stopped, but output is still useful
 		L.Push(lua.LString(result))
@@ -394,7 +388,7 @@ echo "FRP $VERSION installed successfully!"
 /usr/local/bin/frps --version
 `, server.version)
 
-	result, err := executeCommandWithAgent(server.agentClient, installScript, server.target)
+	result, err := executeCommandWithExec(L, installScript)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to install FRP: %v", err)))
@@ -408,10 +402,9 @@ echo "FRP $VERSION installed successfully!"
 
 // serverEnable enables FRP server service to start on boot (action method)
 func serverEnable(L *lua.LState) int {
-	server := checkFrpServer(L, 1)
 
 	cmd := fmt.Sprintf("systemctl enable frps")
-	result, err := executeCommandWithAgent(server.agentClient, cmd, server.target)
+	result, err := executeCommandWithExec(L, cmd)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to enable frps: %v", err)))
@@ -425,10 +418,9 @@ func serverEnable(L *lua.LState) int {
 
 // serverDisable disables FRP server service from starting on boot (action method)
 func serverDisable(L *lua.LState) int {
-	server := checkFrpServer(L, 1)
 
 	cmd := fmt.Sprintf("systemctl disable frps")
-	result, err := executeCommandWithAgent(server.agentClient, cmd, server.target)
+	result, err := executeCommandWithExec(L, cmd)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to disable frps: %v", err)))
@@ -618,7 +610,7 @@ func clientSaveConfig(L *lua.LState) int {
 	// Create directory if needed
 	dir := filepath.Dir(client.configPath)
 	mkdirCmd := fmt.Sprintf("mkdir -p %s", dir)
-	_, err = executeCommandWithAgent(client.agentClient, mkdirCmd, client.target)
+	_, err = executeCommandWithExec(L, mkdirCmd)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to create config directory: %v", err)))
@@ -627,7 +619,7 @@ func clientSaveConfig(L *lua.LState) int {
 
 	// Write config file
 	writeCmd := fmt.Sprintf("cat > %s << 'EOF'\n%s\nEOF", client.configPath, string(tomlData))
-	result, err := executeCommandWithAgent(client.agentClient, writeCmd, client.target)
+	result, err := executeCommandWithExec(L, writeCmd)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
@@ -645,7 +637,7 @@ func clientLoadConfig(L *lua.LState) int {
 
 	// Read config file
 	readCmd := fmt.Sprintf("cat %s", client.configPath)
-	output, err := executeCommandWithAgent(client.agentClient, readCmd, client.target)
+	output, err := executeCommandWithExec(L, readCmd)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
@@ -674,10 +666,9 @@ func clientLoadConfig(L *lua.LState) int {
 
 // clientStart starts the FRP client service (action method)
 func clientStart(L *lua.LState) int {
-	client := checkFrpClient(L, 1)
 
 	cmd := fmt.Sprintf("systemctl start frpc")
-	result, err := executeCommandWithAgent(client.agentClient, cmd, client.target)
+	result, err := executeCommandWithExec(L, cmd)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to start frpc: %v", err)))
@@ -691,10 +682,9 @@ func clientStart(L *lua.LState) int {
 
 // clientStop stops the FRP client service (action method)
 func clientStop(L *lua.LState) int {
-	client := checkFrpClient(L, 1)
 
 	cmd := fmt.Sprintf("systemctl stop frpc")
-	result, err := executeCommandWithAgent(client.agentClient, cmd, client.target)
+	result, err := executeCommandWithExec(L, cmd)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to stop frpc: %v", err)))
@@ -708,10 +698,9 @@ func clientStop(L *lua.LState) int {
 
 // clientRestart restarts the FRP client service (action method)
 func clientRestart(L *lua.LState) int {
-	client := checkFrpClient(L, 1)
 
 	cmd := fmt.Sprintf("systemctl restart frpc")
-	result, err := executeCommandWithAgent(client.agentClient, cmd, client.target)
+	result, err := executeCommandWithExec(L, cmd)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to restart frpc: %v", err)))
@@ -725,10 +714,9 @@ func clientRestart(L *lua.LState) int {
 
 // clientStatus gets the FRP client service status (action method)
 func clientStatus(L *lua.LState) int {
-	client := checkFrpClient(L, 1)
 
 	cmd := fmt.Sprintf("systemctl status frpc")
-	result, err := executeCommandWithAgent(client.agentClient, cmd, client.target)
+	result, err := executeCommandWithExec(L, cmd)
 	if err != nil {
 		// Status command returns non-zero if service is stopped, but output is still useful
 		L.Push(lua.LString(result))
@@ -840,7 +828,7 @@ echo "FRP $VERSION installed successfully!"
 /usr/local/bin/frpc --version
 `, client.version)
 
-	result, err := executeCommandWithAgent(client.agentClient, installScript, client.target)
+	result, err := executeCommandWithExec(L, installScript)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to install FRP: %v", err)))
@@ -854,10 +842,9 @@ echo "FRP $VERSION installed successfully!"
 
 // clientEnable enables FRP client service to start on boot (action method)
 func clientEnable(L *lua.LState) int {
-	client := checkFrpClient(L, 1)
 
 	cmd := fmt.Sprintf("systemctl enable frpc")
-	result, err := executeCommandWithAgent(client.agentClient, cmd, client.target)
+	result, err := executeCommandWithExec(L, cmd)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to enable frpc: %v", err)))
@@ -871,10 +858,9 @@ func clientEnable(L *lua.LState) int {
 
 // clientDisable disables FRP client service from starting on boot (action method)
 func clientDisable(L *lua.LState) int {
-	client := checkFrpClient(L, 1)
 
 	cmd := fmt.Sprintf("systemctl disable frpc")
-	result, err := executeCommandWithAgent(client.agentClient, cmd, client.target)
+	result, err := executeCommandWithExec(L, cmd)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to disable frpc: %v", err)))
@@ -895,11 +881,6 @@ func (m *FrpModule) install(L *lua.LState) int {
 	version := "latest"
 	if L.GetTop() >= 1 {
 		version = L.CheckString(1)
-	}
-
-	target := ""
-	if L.GetTop() >= 2 {
-		target = L.CheckString(2)
 	}
 
 	installScript := fmt.Sprintf(`
@@ -996,7 +977,7 @@ echo "FRP $VERSION installed successfully!"
 /usr/local/bin/frps --version
 `, version)
 
-	result, err := executeCommandWithAgent(m.agentClient, installScript, target)
+	result, err := executeCommandWithExec(L, installScript)
 	if err != nil {
 		L.Push(lua.LNil)
 		L.Push(lua.LString(fmt.Sprintf("failed to install FRP: %v", err)))
@@ -1012,38 +993,67 @@ echo "FRP $VERSION installed successfully!"
 // Helper Functions
 // ============================================================================
 
-// executeCommandWithAgent executes a command locally or on a remote agent
-func executeCommandWithAgent(agentClient interface{}, cmd string, target string) (string, error) {
+// executeCommandWithExec executes a command using the Lua exec.run() function
+// This ensures proper delegation when running on remote agents
+func executeCommandWithExec(L *lua.LState, cmd string) (string, error) {
+	// Get the global exec module
+	execMod := L.GetGlobal("exec")
+	if execMod.Type() == lua.LTNil {
+		// Fallback to local execution if exec module not available
+		return executeCommandLocal(cmd)
+	}
+
+	// Get the run function from exec module
+	runFunc := L.GetField(execMod, "run")
+	if runFunc.Type() != lua.LTFunction {
+		return executeCommandLocal(cmd)
+	}
+
+	// Call exec.run(cmd)
+	L.Push(runFunc)
+	L.Push(lua.LString(cmd))
+	if err := L.PCall(1, 2, nil); err != nil {
+		return "", fmt.Errorf("exec.run failed: %v", err)
+	}
+
+	// Get result table
+	result := L.Get(-2)
+	errValue := L.Get(-1)
+	L.Pop(2)
+
+	// Check for error
+	if errValue.Type() != lua.LTNil {
+		return "", fmt.Errorf("exec.run returned error: %s", errValue.String())
+	}
+
+	// Extract output from result
+	if resultTbl, ok := result.(*lua.LTable); ok {
+		stdout := L.GetField(resultTbl, "stdout")
+		success := L.GetField(resultTbl, "success")
+
+		output := stdout.String()
+
+		if success.Type() == lua.LTBool && !bool(success.(lua.LBool)) {
+			stderr := L.GetField(resultTbl, "stderr")
+			return output, fmt.Errorf("command failed: %s", stderr.String())
+		}
+
+		return output, nil
+	}
+
+	return "", fmt.Errorf("unexpected result type from exec.run")
+}
+
+// executeCommandLocal executes a command locally (fallback)
+func executeCommandLocal(cmd string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	// Get HOME environment variable
-	home := os.Getenv("HOME")
-	if home == "" {
-		home = "/root"
-	}
-
-	// Wrap command with environment setup
-	wrappedCmd := fmt.Sprintf("export HOME='%s' && %s", home, cmd)
-
-	if target != "" {
-		// Execute on remote agent via SSH
-		sshCmd := fmt.Sprintf("ssh %s '%s'", target, strings.ReplaceAll(wrappedCmd, "'", "'\\''"))
-		execCmd := exec.CommandContext(ctx, "bash", "-c", sshCmd)
-		output, err := execCmd.CombinedOutput()
-		if err != nil {
-			return "", fmt.Errorf("command failed on agent %s: %v - %s", target, err, string(output))
-		}
-		return string(output), nil
-	}
-
-	// Execute locally
-	execCmd := exec.CommandContext(ctx, "bash", "-c", wrappedCmd)
+	execCmd := exec.CommandContext(ctx, "bash", "-c", cmd)
 	output, err := execCmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("command failed: %v - %s", err, string(output))
+		return string(output), fmt.Errorf("command failed: %v", err)
 	}
-
 	return string(output), nil
 }
 

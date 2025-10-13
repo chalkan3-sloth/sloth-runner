@@ -1,0 +1,388 @@
+-- Exemplo de uso do módulo Firewall
+-- Este arquivo demonstra como usar o módulo firewall com fluent API
+-- O módulo é idempotente: executar múltiplas vezes tem o mesmo efeito
+
+-- ============================================================================
+-- Detectar o backend de firewall disponível
+-- ============================================================================
+local backend = firewall.detect()
+print("Backend de firewall detectado: " .. backend)
+
+-- ============================================================================
+-- Exemplo 1: Usando funções de conveniência (simples e idempotente)
+-- ============================================================================
+workflow.define("simple_firewall_rules", {
+    description = "Configurar regras básicas de firewall",
+    tasks = {
+        detect_firewall = task({
+            description = "Detectar backend de firewall",
+            command = function()
+                local backend = firewall.detect()
+                print("Backend detectado: " .. backend)
+                return true, "Backend: " .. backend
+            end
+        }),
+
+        allow_ssh = task({
+            description = "Permitir SSH (porta 22/tcp)",
+            command = function()
+                local result, err = firewall.allow_port(22, "tcp")
+                if err then
+                    return false, "Erro ao permitir SSH: " .. err
+                end
+                return true, result
+            end
+        }),
+
+        allow_http = task({
+            description = "Permitir HTTP (porta 80/tcp)",
+            command = function()
+                local result, err = firewall.allow_port(80, "tcp")
+                if err then
+                    return false, "Erro ao permitir HTTP: " .. err
+                end
+                return true, result
+            end
+        }),
+
+        allow_https = task({
+            description = "Permitir HTTPS (porta 443/tcp)",
+            command = function()
+                local result, err = firewall.allow_port(443, "tcp")
+                if err then
+                    return false, "Erro ao permitir HTTPS: " .. err
+                end
+                return true, result
+            end
+        }),
+
+        allow_lan_network = task({
+            description = "Permitir tráfego da rede LAN",
+            command = function()
+                local result, err = firewall.allow_from("192.168.1.0/24")
+                if err then
+                    return false, "Erro ao permitir rede LAN: " .. err
+                end
+                return true, result
+            end
+        }),
+    }
+})
+
+-- ============================================================================
+-- Exemplo 2: Usando Fluent API (avançado e flexível)
+-- ============================================================================
+workflow.define("advanced_firewall_rules", {
+    description = "Configurar regras avançadas de firewall com Fluent API",
+    tasks = {
+        configure_ssh_rule = task({
+            description = "Configurar regra SSH com restrição de IP",
+            command = function()
+                -- Criar uma regra que permite SSH apenas da rede LAN
+                local result, err = firewall.rule()
+                    :allow()
+                    :port(22)
+                    :protocol("tcp")
+                    :from("192.168.1.0/24")
+                    :zone("public")
+                    :comment("SSH access from LAN only")
+                    :apply()
+
+                if err then
+                    return false, "Erro ao configurar SSH: " .. err
+                end
+                return true, result
+            end
+        }),
+
+        configure_web_range = task({
+            description = "Permitir range de portas para aplicações web",
+            command = function()
+                -- Permitir range de portas 8000-9000 para apps web
+                local result, err = firewall.rule()
+                    :allow()
+                    :port_range("8000:9000")
+                    :protocol("tcp")
+                    :zone("public")
+                    :comment("Web applications port range")
+                    :apply()
+
+                if err then
+                    return false, "Erro ao configurar range de portas: " .. err
+                end
+                return true, result
+            end
+        }),
+
+        block_telnet = task({
+            description = "Bloquear Telnet (porta 23)",
+            command = function()
+                -- Bloquear Telnet por segurança
+                local result, err = firewall.rule()
+                    :deny()
+                    :port(23)
+                    :protocol("tcp")
+                    :comment("Block insecure Telnet")
+                    :apply()
+
+                if err then
+                    return false, "Erro ao bloquear Telnet: " .. err
+                end
+                return true, result
+            end
+        }),
+
+        configure_output_rule = task({
+            description = "Configurar regra de saída",
+            command = function()
+                -- Permitir saída HTTPS
+                local result, err = firewall.rule()
+                    :allow()
+                    :port(443)
+                    :protocol("tcp")
+                    :direction("out")
+                    :chain("OUTPUT")
+                    :comment("Allow outbound HTTPS")
+                    :apply()
+
+                if err then
+                    return false, "Erro ao configurar regra de saída: " .. err
+                end
+                return true, result
+            end
+        }),
+    }
+})
+
+-- ============================================================================
+-- Exemplo 3: Gerenciamento de Firewall
+-- ============================================================================
+workflow.define("firewall_management", {
+    description = "Gerenciar o serviço de firewall",
+    tasks = {
+        enable_firewall = task({
+            description = "Habilitar firewall",
+            command = function()
+                local result, err = firewall.enable()
+                if err then
+                    return false, "Erro ao habilitar firewall: " .. err
+                end
+                return true, result
+            end
+        }),
+
+        check_status = task({
+            description = "Verificar status do firewall",
+            command = function()
+                local result, err = firewall.status()
+                if err then
+                    return false, "Erro ao verificar status: " .. err
+                end
+                print("Status do firewall:\n" .. result)
+                return true, "Status verificado"
+            end
+        }),
+
+        list_rules = task({
+            description = "Listar regras do firewall",
+            command = function()
+                local result, err = firewall.list()
+                if err then
+                    return false, "Erro ao listar regras: " .. err
+                end
+                print("Regras do firewall:\n" .. result)
+                return true, "Regras listadas"
+            end
+        }),
+
+        save_rules = task({
+            description = "Salvar regras do firewall",
+            command = function()
+                local result, err = firewall.save()
+                if err then
+                    return false, "Erro ao salvar regras: " .. err
+                end
+                return true, result
+            end
+        }),
+    }
+})
+
+-- ============================================================================
+-- Exemplo 4: Verificação de Idempotência
+-- ============================================================================
+workflow.define("test_idempotency", {
+    description = "Testar idempotência das regras de firewall",
+    tasks = {
+        add_rule_first_time = task({
+            description = "Adicionar regra pela primeira vez",
+            command = function()
+                local result, err = firewall.allow_port(8080, "tcp")
+                if err then
+                    return false, "Erro: " .. err
+                end
+                print("Primeira execução: " .. result)
+                return true, result
+            end
+        }),
+
+        add_rule_second_time = task({
+            description = "Adicionar mesma regra novamente (deve ser idempotente)",
+            command = function()
+                local result, err = firewall.allow_port(8080, "tcp")
+                if err then
+                    return false, "Erro: " .. err
+                end
+                print("Segunda execução: " .. result)
+                return true, result
+            end
+        }),
+
+        check_rule_exists = task({
+            description = "Verificar se a regra existe",
+            command = function()
+                local rule = firewall.rule()
+                    :allow()
+                    :port(8080)
+                    :protocol("tcp")
+
+                local exists, err = rule:exists()
+                if err then
+                    return false, "Erro ao verificar: " .. err
+                end
+
+                if exists then
+                    print("✓ Regra existe no firewall (idempotente)")
+                    return true, "Regra confirmada"
+                else
+                    return false, "Regra não encontrada"
+                end
+            end
+        }),
+    }
+})
+
+-- ============================================================================
+-- Exemplo 5: Configuração Completa de Servidor Web
+-- ============================================================================
+workflow.define("web_server_firewall", {
+    description = "Configurar firewall completo para servidor web",
+    tasks = {
+        allow_web_ports = task({
+            description = "Permitir portas HTTP e HTTPS",
+            command = function()
+                local results = {}
+
+                -- HTTP
+                local http_result, http_err = firewall.allow_port(80, "tcp")
+                if http_err then
+                    return false, "Erro HTTP: " .. http_err
+                end
+                table.insert(results, "HTTP: " .. http_result)
+
+                -- HTTPS
+                local https_result, https_err = firewall.allow_port(443, "tcp")
+                if https_err then
+                    return false, "Erro HTTPS: " .. https_err
+                end
+                table.insert(results, "HTTPS: " .. https_result)
+
+                return true, table.concat(results, "\n")
+            end
+        }),
+
+        allow_ssh_from_admin = task({
+            description = "Permitir SSH apenas do IP do administrador",
+            command = function()
+                local result, err = firewall.rule()
+                    :allow()
+                    :port(22)
+                    :protocol("tcp")
+                    :from("203.0.113.10")  -- IP do admin
+                    :comment("Admin SSH access")
+                    :apply()
+
+                if err then
+                    return false, "Erro: " .. err
+                end
+                return true, result
+            end
+        }),
+
+        block_common_attacks = task({
+            description = "Bloquear portas comuns de ataque",
+            command = function()
+                local ports_to_block = {23, 135, 139, 445, 3389}
+                local results = {}
+
+                for _, port in ipairs(ports_to_block) do
+                    local result, err = firewall.rule()
+                        :deny()
+                        :port(port)
+                        :protocol("tcp")
+                        :comment("Block common attack port " .. port)
+                        :apply()
+
+                    if err then
+                        return false, "Erro ao bloquear porta " .. port .. ": " .. err
+                    end
+                    table.insert(results, "Bloqueada porta " .. port)
+                end
+
+                return true, table.concat(results, "\n")
+            end
+        }),
+
+        final_status = task({
+            description = "Verificar configuração final",
+            command = function()
+                local result, err = firewall.list()
+                if err then
+                    return false, "Erro ao listar regras: " .. err
+                end
+
+                print("\n=== Configuração Final do Firewall ===")
+                print(result)
+                print("=====================================\n")
+
+                return true, "Firewall configurado com sucesso"
+            end
+        }),
+    }
+})
+
+-- ============================================================================
+-- Exemplo 6: Uso com Delegação (Executar em Agente Remoto)
+-- ============================================================================
+workflow.define("remote_firewall_config", {
+    description = "Configurar firewall em servidor remoto",
+    delegate_to = "web-server-01",  -- Nome do agente remoto
+    tasks = {
+        configure_remote_firewall = task({
+            description = "Configurar firewall no servidor remoto",
+            command = function()
+                -- Todas as operações serão executadas no agente remoto
+                local results = {}
+
+                -- Detectar backend no servidor remoto
+                local backend = firewall.detect()
+                table.insert(results, "Backend remoto: " .. backend)
+
+                -- Configurar regras
+                local ssh_result, ssh_err = firewall.allow_port(22, "tcp")
+                if ssh_err then
+                    return false, "Erro SSH: " .. ssh_err
+                end
+                table.insert(results, ssh_result)
+
+                local http_result, http_err = firewall.allow_port(80, "tcp")
+                if http_err then
+                    return false, "Erro HTTP: " .. http_err
+                end
+                table.insert(results, http_result)
+
+                return true, table.concat(results, "\n")
+            end
+        }),
+    }
+})
