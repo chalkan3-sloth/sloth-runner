@@ -1,0 +1,402 @@
+-- Goroutine Context Examples
+-- Demonstrates context usage for cancellation, timeouts, and lifecycle management
+
+workflow.define("context_demo", {
+  description = "Demonstrate context for cancellation and timeout management",
+  tasks = {
+    -- Example 1: Basic Context with Cancellation
+    basic_cancel = {
+      description = "Basic context cancellation",
+      command = function()
+        log.info("=== Example 1: Basic Context Cancellation ===")
+
+        local ctx = goroutine.context()
+        local wg = goroutine.wait_group()
+
+        -- Worker that respects cancellation
+        wg:add(1)
+        goroutine.spawn(function()
+          log.info("Worker: Starting long task...")
+          for i = 1, 10 do
+            if ctx:is_cancelled() then
+              log.info("Worker: Cancelled at iteration " .. i)
+              wg:done()
+              return
+            end
+            log.info("Worker: Iteration " .. i)
+            goroutine.sleep(200)
+          end
+          log.info("Worker: Task completed")
+          wg:done()
+        end)
+
+        -- Cancel after 1 second
+        goroutine.sleep(1000)
+        log.info("Main: Cancelling context...")
+        ctx:cancel()
+
+        wg:wait()
+        log.info("Example completed")
+
+        return true, "Basic cancellation completed"
+      end
+    },
+
+    -- Example 2: Context with Timeout
+    timeout_context = {
+      description = "Using context with automatic timeout",
+      command = function()
+        log.info("=== Example 2: Context with Timeout ===")
+
+        local ctx = goroutine.context()
+        local timeoutCtx = ctx:with_timeout(1000)  -- 1 second timeout
+        local wg = goroutine.wait_group()
+
+        -- Worker that will be interrupted by timeout
+        wg:add(1)
+        goroutine.spawn(function()
+          log.info("Worker: Starting 3-second task...")
+          for i = 1, 30 do
+            if timeoutCtx:is_cancelled() then
+              local err = timeoutCtx:err()
+              log.info("Worker: Context cancelled: " .. (err or "no error"))
+              wg:done()
+              return
+            end
+            log.info("Worker: Working... (" .. i .. "/30)")
+            goroutine.sleep(100)
+          end
+          log.info("Worker: Task completed normally")
+          wg:done()
+        end)
+
+        wg:wait()
+        log.info("Example completed")
+
+        return true, "Timeout context completed"
+      end
+    },
+
+    -- Example 3: Context with Deadline
+    deadline_context = {
+      description = "Using context with specific deadline",
+      command = function()
+        log.info("=== Example 3: Context with Deadline ===")
+
+        local ctx = goroutine.context()
+        -- Set deadline to 2 seconds from now
+        local deadline_ms = os.time() * 1000 + 2000
+        local deadlineCtx = ctx:with_deadline(deadline_ms)
+
+        log.info("Setting deadline for 2 seconds from now...")
+
+        local wg = goroutine.wait_group()
+
+        -- Worker respecting deadline
+        wg:add(1)
+        goroutine.spawn(function()
+          log.info("Worker: Starting work...")
+          local iteration = 0
+          while not deadlineCtx:is_cancelled() do
+            iteration = iteration + 1
+            log.info("Worker: Iteration " .. iteration)
+            goroutine.sleep(300)
+          end
+
+          local err = deadlineCtx:err()
+          log.info("Worker: Stopped due to: " .. (err or "no error"))
+          wg:done()
+        end)
+
+        wg:wait()
+        log.info("Example completed")
+
+        return true, "Deadline context completed"
+      end
+    },
+
+    -- Example 4: Cascading Cancellation
+    cascading_cancel = {
+      description = "Parent context cancels all child contexts",
+      command = function()
+        log.info("=== Example 4: Cascading Cancellation ===")
+
+        local parentCtx = goroutine.context()
+        local wg = goroutine.wait_group()
+
+        -- Create multiple child contexts
+        for i = 1, 3 do
+          local worker_id = i
+          local childCtx, childCancel = parentCtx:with_cancel()
+
+          wg:add(1)
+          goroutine.spawn(function()
+            log.info("Worker " .. worker_id .. ": Starting...")
+            local iteration = 0
+            while not childCtx:is_cancelled() do
+              iteration = iteration + 1
+              log.info("Worker " .. worker_id .. ": Iteration " .. iteration)
+              goroutine.sleep(200)
+            end
+            log.info("Worker " .. worker_id .. ": Cancelled")
+            wg:done()
+          end)
+        end
+
+        -- Cancel parent after 1 second (cascades to all children)
+        goroutine.sleep(1000)
+        log.info("Main: Cancelling parent context (all workers will stop)...")
+        parentCtx:cancel()
+
+        wg:wait()
+        log.info("All workers stopped")
+
+        return true, "Cascading cancellation completed"
+      end
+    },
+
+    -- Example 5: Context with Retry Logic
+    retry_with_context = {
+      description = "Retry logic respecting context cancellation",
+      command = function()
+        log.info("=== Example 5: Retry with Context ===")
+
+        local ctx = goroutine.context()
+        local timeoutCtx = ctx:with_timeout(3000)  -- 3 second timeout
+
+        local attempts = 0
+        local max_attempts = 10
+        local success = false
+
+        log.info("Attempting operation with retries (max " .. max_attempts .. " attempts)...")
+
+        while attempts < max_attempts and not timeoutCtx:is_cancelled() do
+          attempts = attempts + 1
+          log.info("Attempt " .. attempts .. "/" .. max_attempts)
+
+          -- Simulate operation that fails randomly
+          if math.random() > 0.7 then
+            log.info("Attempt " .. attempts .. ": SUCCESS!")
+            success = true
+            break
+          else
+            log.info("Attempt " .. attempts .. ": Failed, retrying...")
+            goroutine.sleep(400)
+          end
+        end
+
+        if timeoutCtx:is_cancelled() then
+          log.info("Operation timed out after " .. attempts .. " attempts")
+        elseif success then
+          log.info("Operation succeeded after " .. attempts .. " attempts")
+        else
+          log.info("Operation failed after max attempts")
+        end
+
+        return true, "Retry with context completed"
+      end
+    },
+
+    -- Example 6: Context with Resource Cleanup
+    context_cleanup = {
+      description = "Using context to trigger resource cleanup",
+      command = function()
+        log.info("=== Example 6: Context with Resource Cleanup ===")
+
+        local ctx = goroutine.context()
+        local wg = goroutine.wait_group()
+
+        -- Resource manager goroutine
+        wg:add(1)
+        goroutine.spawn(function()
+          log.info("ResourceManager: Initializing resources...")
+          local resources_active = true
+
+          -- Simulate resource usage
+          local cleanup_wg = goroutine.wait_group()
+          cleanup_wg:add(3)
+
+          -- Resource 1
+          goroutine.spawn(function()
+            while not ctx:is_cancelled() do
+              log.info("Resource 1: Working...")
+              goroutine.sleep(300)
+            end
+            log.info("Resource 1: Cleaning up...")
+            goroutine.sleep(100)
+            log.info("Resource 1: Cleaned up")
+            cleanup_wg:done()
+          end)
+
+          -- Resource 2
+          goroutine.spawn(function()
+            while not ctx:is_cancelled() do
+              log.info("Resource 2: Working...")
+              goroutine.sleep(400)
+            end
+            log.info("Resource 2: Cleaning up...")
+            goroutine.sleep(150)
+            log.info("Resource 2: Cleaned up")
+            cleanup_wg:done()
+          end)
+
+          -- Resource 3
+          goroutine.spawn(function()
+            while not ctx:is_cancelled() do
+              log.info("Resource 3: Working...")
+              goroutine.sleep(500)
+            end
+            log.info("Resource 3: Cleaning up...")
+            goroutine.sleep(200)
+            log.info("Resource 3: Cleaned up")
+            cleanup_wg:done()
+          end)
+
+          -- Wait for cleanup
+          cleanup_wg:wait()
+          log.info("ResourceManager: All resources cleaned up")
+          wg:done()
+        end)
+
+        -- Run for 2 seconds then trigger cleanup
+        goroutine.sleep(2000)
+        log.info("Main: Initiating shutdown...")
+        ctx:cancel()
+
+        wg:wait()
+        log.info("Shutdown complete")
+
+        return true, "Context cleanup completed"
+      end
+    },
+
+    -- Example 7: Multiple Contexts with Different Timeouts
+    multi_context_timeout = {
+      description = "Multiple operations with different timeout requirements",
+      command = function()
+        log.info("=== Example 7: Multiple Contexts with Different Timeouts ===")
+
+        local baseCtx = goroutine.context()
+        local wg = goroutine.wait_group()
+
+        -- Fast operation (500ms timeout)
+        wg:add(1)
+        goroutine.spawn(function()
+          local ctx = baseCtx:with_timeout(500)
+          log.info("FastOp: Starting (timeout: 500ms)...")
+
+          local completed = false
+          for i = 1, 5 do
+            if ctx:is_cancelled() then
+              log.info("FastOp: Timed out at iteration " .. i)
+              break
+            end
+            log.info("FastOp: Step " .. i)
+            goroutine.sleep(200)  -- Will likely timeout
+            completed = true
+          end
+
+          if completed then
+            log.info("FastOp: Completed successfully")
+          end
+          wg:done()
+        end)
+
+        -- Medium operation (2s timeout)
+        wg:add(1)
+        goroutine.spawn(function()
+          local ctx = baseCtx:with_timeout(2000)
+          log.info("MediumOp: Starting (timeout: 2s)...")
+
+          local completed = false
+          for i = 1, 5 do
+            if ctx:is_cancelled() then
+              log.info("MediumOp: Timed out at iteration " .. i)
+              break
+            end
+            log.info("MediumOp: Step " .. i)
+            goroutine.sleep(300)
+          end
+
+          log.info("MediumOp: Completed successfully")
+          wg:done()
+        end)
+
+        -- Slow operation (5s timeout)
+        wg:add(1)
+        goroutine.spawn(function()
+          local ctx = baseCtx:with_timeout(5000)
+          log.info("SlowOp: Starting (timeout: 5s)...")
+
+          for i = 1, 10 do
+            if ctx:is_cancelled() then
+              log.info("SlowOp: Timed out at iteration " .. i)
+              break
+            end
+            log.info("SlowOp: Step " .. i)
+            goroutine.sleep(400)
+          end
+
+          log.info("SlowOp: Completed successfully")
+          wg:done()
+        end)
+
+        wg:wait()
+        log.info("All operations completed")
+
+        return true, "Multi-context timeout completed"
+      end
+    },
+
+    -- Example 8: Context with Deadline Checking
+    deadline_monitoring = {
+      description = "Monitoring time until deadline",
+      command = function()
+        log.info("=== Example 8: Deadline Monitoring ===")
+
+        local ctx = goroutine.context()
+        local deadline_ms = os.time() * 1000 + 3000  -- 3 seconds from now
+        local deadlineCtx = ctx:with_deadline(deadline_ms)
+
+        -- Check deadline
+        local dl, has_deadline = deadlineCtx:deadline()
+        if has_deadline then
+          local now_ms = os.time() * 1000
+          local remaining_ms = dl - now_ms
+          log.info("Deadline set: " .. remaining_ms .. "ms remaining")
+        else
+          log.info("No deadline set")
+        end
+
+        local wg = goroutine.wait_group()
+
+        -- Worker that monitors time remaining
+        wg:add(1)
+        goroutine.spawn(function()
+          log.info("Worker: Monitoring deadline...")
+
+          while not deadlineCtx:is_cancelled() do
+            local dl, has_deadline = deadlineCtx:deadline()
+            if has_deadline then
+              local now_ms = os.time() * 1000
+              local remaining_ms = dl - now_ms
+              log.info("Worker: Time remaining: " .. remaining_ms .. "ms")
+            end
+
+            goroutine.sleep(500)
+          end
+
+          log.info("Worker: Deadline reached!")
+          local err = deadlineCtx:err()
+          log.info("Worker: Error: " .. (err or "none"))
+          wg:done()
+        end)
+
+        wg:wait()
+        log.info("Monitoring completed")
+
+        return true, "Deadline monitoring completed"
+      end
+    }
+  }
+})

@@ -1,0 +1,410 @@
+-- Goroutine Condition Variable Examples
+-- Demonstrates condition variables for complex synchronization
+
+workflow.define("cond_demo", {
+  description = "Demonstrate condition variables for goroutine synchronization",
+  tasks = {
+    -- Example 1: Basic Condition Variable - Producer/Consumer
+    basic_cond = {
+      description = "Basic condition variable with signal",
+      command = function()
+        log.info("=== Example 1: Basic Condition Variable ===")
+
+        local cond = goroutine.cond()
+        local mu = cond:get_mutex()
+        local ready = false
+        local data = nil
+
+        -- Consumer goroutine (waits for data)
+        goroutine.spawn(function()
+          log.info("Consumer: Waiting for data...")
+
+          mu:lock()
+          while not ready do
+            log.info("Consumer: Not ready, waiting...")
+            cond:wait()  -- Releases lock, waits for signal, re-acquires lock
+          end
+          log.info("Consumer: Data received: " .. data)
+          mu:unlock()
+        end)
+
+        -- Give consumer time to start waiting
+        goroutine.sleep(100)
+
+        -- Producer goroutine (produces data)
+        log.info("Producer: Preparing data...")
+        goroutine.sleep(200)
+
+        mu:lock()
+        data = "Hello from producer!"
+        ready = true
+        log.info("Producer: Data ready, signaling...")
+        cond:signal()  -- Wake up the waiting consumer
+        mu:unlock()
+
+        goroutine.sleep(100)
+        log.info("Example completed")
+
+        return true, "Basic condition variable completed"
+      end
+    },
+
+    -- Example 2: Broadcast - Multiple Waiters
+    broadcast_example = {
+      description = "Using broadcast to wake all waiters",
+      command = function()
+        log.info("=== Example 2: Broadcast to Multiple Waiters ===")
+
+        local cond = goroutine.cond()
+        local mu = cond:get_mutex()
+        local ready = false
+        local wg = goroutine.wait_group()
+
+        -- Spawn 5 worker goroutines waiting for signal
+        wg:add(5)
+        for i = 1, 5 do
+          local worker_id = i
+          goroutine.spawn(function()
+            mu:lock()
+            while not ready do
+              log.info("Worker " .. worker_id .. ": Waiting...")
+              cond:wait()
+            end
+            log.info("Worker " .. worker_id .. ": GO! Starting work")
+            mu:unlock()
+
+            -- Simulate work
+            goroutine.sleep(math.random(100, 200))
+            log.info("Worker " .. worker_id .. ": Work completed")
+            wg:done()
+          end)
+        end
+
+        -- Give workers time to start waiting
+        goroutine.sleep(200)
+
+        -- Coordinator signals all workers
+        log.info("Coordinator: All workers ready, broadcasting START signal...")
+        mu:lock()
+        ready = true
+        cond:broadcast()  -- Wake up ALL waiting workers
+        mu:unlock()
+
+        wg:wait()
+        log.info("All workers completed!")
+
+        return true, "Broadcast example completed"
+      end
+    },
+
+    -- Example 3: Bounded Queue (Producer-Consumer)
+    bounded_queue = {
+      description = "Bounded queue using condition variables",
+      command = function()
+        log.info("=== Example 3: Bounded Queue ===")
+
+        local cond = goroutine.cond()
+        local mu = cond:get_mutex()
+        local queue = {}
+        local max_size = 3
+        local wg = goroutine.wait_group()
+
+        -- Producer function
+        local produce = function(id, items)
+          for i = 1, items do
+            local item = "Item-" .. id .. "-" .. i
+
+            mu:lock()
+            -- Wait while queue is full
+            while #queue >= max_size do
+              log.info("Producer " .. id .. ": Queue full, waiting...")
+              cond:wait()
+            end
+
+            -- Add item to queue
+            table.insert(queue, item)
+            log.info("Producer " .. id .. ": Produced " .. item ..  " (queue: " .. #queue .. ")")
+
+            cond:signal()  -- Signal that item is available
+            mu:unlock()
+
+            goroutine.sleep(math.random(50, 150))
+          end
+        end
+
+        -- Consumer function
+        local consume = function(id, items)
+          for i = 1, items do
+            mu:lock()
+            -- Wait while queue is empty
+            while #queue == 0 do
+              log.info("Consumer " .. id .. ": Queue empty, waiting...")
+              cond:wait()
+            end
+
+            -- Remove item from queue
+            local item = table.remove(queue, 1)
+            log.info("Consumer " .. id .. ": Consumed " .. item .. " (queue: " .. #queue .. ")")
+
+            cond:signal()  -- Signal that space is available
+            mu:unlock()
+
+            goroutine.sleep(math.random(100, 200))
+          end
+        end
+
+        -- Spawn 2 producers and 2 consumers
+        wg:add(4)
+
+        goroutine.spawn(function()
+          produce(1, 5)
+          wg:done()
+        end)
+
+        goroutine.spawn(function()
+          produce(2, 5)
+          wg:done()
+        end)
+
+        goroutine.spawn(function()
+          consume(1, 5)
+          wg:done()
+        end)
+
+        goroutine.spawn(function()
+          consume(2, 5)
+          wg:done()
+        end)
+
+        wg:wait()
+        log.info("Bounded queue example completed. Final queue size: " .. #queue)
+
+        return true, "Bounded queue completed"
+      end
+    },
+
+    -- Example 4: Barrier Pattern
+    barrier_pattern = {
+      description = "Implementing barrier with condition variable",
+      command = function()
+        log.info("=== Example 4: Barrier Pattern ===")
+
+        local cond = goroutine.cond()
+        local mu = cond:get_mutex()
+        local arrived = 0
+        local num_workers = 5
+        local wg = goroutine.wait_group()
+
+        -- Worker function with barrier
+        local worker = function(id)
+          -- Phase 1: Do some work
+          log.info("Worker " .. id .. ": Phase 1 starting...")
+          goroutine.sleep(math.random(100, 300))
+          log.info("Worker " .. id .. ": Phase 1 complete")
+
+          -- Barrier: Wait for all workers to complete phase 1
+          mu:lock()
+          arrived = arrived + 1
+          log.info("Worker " .. id .. ": Arrived at barrier (" .. arrived .. "/" .. num_workers .. ")")
+
+          if arrived == num_workers then
+            log.info("Worker " .. id .. ": Last to arrive, broadcasting...")
+            cond:broadcast()  -- Wake everyone up
+          else
+            -- Wait for others
+            while arrived < num_workers do
+              cond:wait()
+            end
+          end
+          mu:unlock()
+
+          -- Phase 2: Do more work (all workers start together)
+          log.info("Worker " .. id .. ": Phase 2 starting...")
+          goroutine.sleep(math.random(50, 150))
+          log.info("Worker " .. id .. ": Phase 2 complete")
+        end
+
+        -- Spawn workers
+        wg:add(num_workers)
+        for i = 1, num_workers do
+          local worker_id = i
+          goroutine.spawn(function()
+            worker(worker_id)
+            wg:done()
+          end)
+        end
+
+        wg:wait()
+        log.info("All workers passed barrier and completed!")
+
+        return true, "Barrier pattern completed"
+      end
+    },
+
+    -- Example 5: Readers-Writers with Condition Variables
+    readers_writers = {
+      description = "Readers-writers problem using condition variables",
+      command = function()
+        log.info("=== Example 5: Readers-Writers ===")
+
+        local cond = goroutine.cond()
+        local mu = cond:get_mutex()
+        local readers = 0
+        local writing = false
+        local data = 0
+        local wg = goroutine.wait_group()
+
+        -- Reader function
+        local reader = function(id)
+          mu:lock()
+          -- Wait while someone is writing
+          while writing do
+            log.info("Reader " .. id .. ": Writer active, waiting...")
+            cond:wait()
+          end
+
+          readers = readers + 1
+          log.info("Reader " .. id .. ": Reading data = " .. data .. " (readers: " .. readers .. ")")
+          mu:unlock()
+
+          -- Simulate reading
+          goroutine.sleep(100)
+
+          mu:lock()
+          readers = readers - 1
+          if readers == 0 then
+            cond:broadcast()  -- Last reader signals writers
+          end
+          log.info("Reader " .. id .. ": Done reading")
+          mu:unlock()
+        end
+
+        -- Writer function
+        local writer = function(id)
+          mu:lock()
+          -- Wait while readers are reading or another writer is writing
+          while readers > 0 or writing do
+            log.info("Writer " .. id .. ": Waiting for access...")
+            cond:wait()
+          end
+
+          writing = true
+          log.info("Writer " .. id .. ": Writing...")
+          mu:unlock()
+
+          -- Simulate writing
+          goroutine.sleep(150)
+          data = data + 1
+
+          mu:lock()
+          writing = false
+          log.info("Writer " .. id .. ": Done writing, data = " .. data)
+          cond:broadcast()  -- Signal all waiters
+          mu:unlock()
+        end
+
+        -- Spawn readers and writers
+        wg:add(7)
+
+        for i = 1, 4 do
+          local reader_id = i
+          goroutine.spawn(function()
+            reader(reader_id)
+            wg:done()
+          end)
+          goroutine.sleep(30)
+        end
+
+        for i = 1, 3 do
+          local writer_id = i
+          goroutine.spawn(function()
+            writer(writer_id)
+            wg:done()
+          end)
+          goroutine.sleep(80)
+        end
+
+        wg:wait()
+        log.info("Readers-writers completed. Final data: " .. data)
+
+        return true, "Readers-writers completed"
+      end
+    },
+
+    -- Example 6: Event Notification System
+    event_notification = {
+      description = "Event notification system with condition variables",
+      command = function()
+        log.info("=== Example 6: Event Notification System ===")
+
+        local cond = goroutine.cond()
+        local mu = cond:get_mutex()
+        local events = {}
+        local shutdown = false
+        local wg = goroutine.wait_group()
+
+        -- Subscriber function
+        local subscriber = function(id)
+          while true do
+            mu:lock()
+
+            -- Wait for events or shutdown
+            while #events == 0 and not shutdown do
+              cond:wait()
+            end
+
+            if shutdown and #events == 0 then
+              log.info("Subscriber " .. id .. ": Shutting down")
+              mu:unlock()
+              break
+            end
+
+            -- Process event
+            local event = table.remove(events, 1)
+            log.info("Subscriber " .. id .. ": Received event: " .. event)
+            mu:unlock()
+
+            -- Simulate processing
+            goroutine.sleep(50)
+          end
+        end
+
+        -- Spawn 3 subscribers
+        wg:add(3)
+        for i = 1, 3 do
+          local sub_id = i
+          goroutine.spawn(function()
+            subscriber(sub_id)
+            wg:done()
+          end)
+        end
+
+        goroutine.sleep(100)
+
+        -- Publisher: send events
+        for i = 1, 9 do
+          mu:lock()
+          local event = "Event-" .. i
+          table.insert(events, event)
+          log.info("Publisher: Posted " .. event)
+          cond:signal()  -- Wake one subscriber
+          mu:unlock()
+          goroutine.sleep(math.random(100, 200))
+        end
+
+        -- Shutdown
+        goroutine.sleep(200)
+        mu:lock()
+        shutdown = true
+        log.info("Publisher: Sending shutdown signal")
+        cond:broadcast()  -- Wake all subscribers
+        mu:unlock()
+
+        wg:wait()
+        log.info("Event notification system shutdown complete")
+
+        return true, "Event notification completed"
+      end
+    }
+  }
+})

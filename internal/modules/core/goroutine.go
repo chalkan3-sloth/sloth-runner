@@ -67,6 +67,42 @@ type selectCase struct {
 	fn       *lua.LFunction
 }
 
+// luaSemaphore wraps a semaphore for use in Lua
+type luaSemaphore struct {
+	ch chan struct{}
+	capacity int
+}
+
+// luaAtomicInt64 wraps an atomic int64 for use in Lua
+type luaAtomicInt64 struct {
+	value int64
+}
+
+// luaOnce wraps sync.Once for use in Lua
+type luaOnce struct {
+	once sync.Once
+}
+
+// luaCond wraps sync.Cond for use in Lua
+type luaCond struct {
+	cond *sync.Cond
+	mu   *sync.Mutex
+}
+
+// luaContext wraps context.Context for use in Lua
+type luaContext struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+// pipelineStage represents a stage in a processing pipeline
+type pipelineStage struct {
+	fn       *lua.LFunction
+	workers  int
+	inputCh  *luaChannel
+	outputCh *luaChannel
+}
+
 // NewGoroutineModule creates a new goroutine module
 func NewGoroutineModule() *GoroutineModule {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -121,9 +157,23 @@ func (g *GoroutineModule) Loader(L *lua.LState) int {
 		"channel_len":    g.luaChannelLen,
 		"channel_cap":    g.luaChannelCap,
 		"select":         g.luaSelect,
+		"select_timeout": g.luaSelectTimeout,
 		// Mutex operations
 		"mutex":    g.luaMutex,
 		"rwmutex":  g.luaRWMutex,
+		// Semaphore operations
+		"semaphore": g.luaSemaphore,
+		// Atomic operations
+		"atomic_int": g.luaAtomicInt,
+		// Synchronization primitives
+		"once": g.luaOnce,
+		"cond":  g.luaCond,
+		// Context operations
+		"context": g.luaContext,
+		// Pipeline operations
+		"pipeline": g.luaPipeline,
+		"fan_out":  g.luaFanOut,
+		"fan_in":   g.luaFanIn,
 	})
 	
 	L.Push(goroutineTable)
@@ -899,6 +949,38 @@ func (g *GoroutineModule) luaChannelMake(L *lua.LState) int {
 		return 1
 	}))
 
+	// range method: ch:range(function(value) ... end) -- iterate until channel closes
+	L.SetField(mt, "range", L.NewFunction(func(L *lua.LState) int {
+		ch := L.CheckUserData(1).Value.(*luaChannel)
+		if ch.direction == "send" {
+			L.RaiseError("cannot range over send-only channel")
+			return 0
+		}
+
+		fn := L.CheckFunction(2)
+
+		// Iterate over channel until closed
+		for {
+			value, ok := <-ch.ch
+			if !ok {
+				// Channel closed, stop iteration
+				break
+			}
+
+			// Call handler function with value
+			if err := L.CallByParam(lua.P{
+				Fn:      fn,
+				NRet:    0,
+				Protect: true,
+			}, value); err != nil {
+				L.RaiseError("error in range handler: %v", err)
+				return 0
+			}
+		}
+
+		return 0
+	}))
+
 	L.SetField(mt, "__index", mt)
 	L.SetMetatable(ud, mt)
 
@@ -1114,6 +1196,133 @@ func (g *GoroutineModule) luaSelect(L *lua.LState) int {
 	return 0
 }
 
+// luaSelectTimeout implements select with timeout for multiplexing channel operations
+// Usage:
+//   local timedout, result = goroutine.select_timeout(timeout_ms, {
+//     { channel = ch1, receive = true, handler = function(value) ... end },
+//     { channel = ch2, send = value, handler = function() ... end },
+//   })
+// Returns: timedout (boolean), result (value from handler if any)
+func (g *GoroutineModule) luaSelectTimeout(L *lua.LState) int {
+	timeoutMs := L.CheckInt(1)
+	cases := L.CheckTable(2)
+
+	var selectCases []selectCase
+
+	// Parse cases
+	cases.ForEach(func(k, v lua.LValue) {
+		if caseTable, ok := v.(*lua.LTable); ok {
+			sc := selectCase{}
+
+			// Get channel
+			chUD := caseTable.RawGetString("channel").(*lua.LUserData)
+			sc.channel = chUD.Value.(*luaChannel)
+
+			// Determine operation type
+			if receiveVal := caseTable.RawGetString("receive"); receiveVal == lua.LTrue {
+				sc.caseType = "receive"
+			} else if sendVal := caseTable.RawGetString("send"); sendVal != lua.LNil {
+				sc.caseType = "send"
+				sc.value = sendVal
+			}
+
+			sc.fn = caseTable.RawGetString("handler").(*lua.LFunction)
+			selectCases = append(selectCases, sc)
+		}
+	})
+
+	if len(selectCases) == 0 {
+		L.Push(lua.LTrue) // Timed out immediately (no cases)
+		L.Push(lua.LNil)
+		return 2
+	}
+
+	// Create timeout context
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutMs)*time.Millisecond)
+	defer cancel()
+
+	// Result channel
+	type selectResult struct {
+		idx     int
+		success bool
+		err     error
+	}
+	resultCh := make(chan selectResult, 1)
+
+	// Launch goroutines for each case
+	for i, sc := range selectCases {
+		idx := i
+		case_ := sc
+
+		go func() {
+			if case_.caseType == "receive" {
+				select {
+				case value, ok := <-case_.channel.ch:
+					if ok {
+						// Execute handler with received value
+						if err := L.CallByParam(lua.P{
+							Fn:      case_.fn,
+							NRet:    0,
+							Protect: true,
+						}, value); err != nil {
+							select {
+							case resultCh <- selectResult{idx: idx, success: false, err: err}:
+							case <-ctx.Done():
+							}
+							return
+						}
+						select {
+						case resultCh <- selectResult{idx: idx, success: true}:
+						case <-ctx.Done():
+						}
+					}
+				case <-ctx.Done():
+					return
+				}
+			} else if case_.caseType == "send" {
+				select {
+				case case_.channel.ch <- case_.value:
+					// Execute handler
+					if err := L.CallByParam(lua.P{
+						Fn:      case_.fn,
+						NRet:    0,
+						Protect: true,
+					}); err != nil {
+						select {
+						case resultCh <- selectResult{idx: idx, success: false, err: err}:
+						case <-ctx.Done():
+						}
+						return
+					}
+					select {
+					case resultCh <- selectResult{idx: idx, success: true}:
+					case <-ctx.Done():
+					}
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
+	}
+
+	// Wait for first result or timeout
+	select {
+	case result := <-resultCh:
+		if result.err != nil {
+			L.Push(lua.LFalse) // Not timed out
+			L.Push(lua.LString(result.err.Error()))
+			return 2
+		}
+		L.Push(lua.LFalse) // Not timed out
+		L.Push(lua.LNumber(result.idx))
+		return 2
+	case <-ctx.Done():
+		L.Push(lua.LTrue) // Timed out
+		L.Push(lua.LNil)
+		return 2
+	}
+}
+
 // ============================================================================
 // MUTEX OPERATIONS
 // ============================================================================
@@ -1226,5 +1435,717 @@ func (g *GoroutineModule) luaRWMutex(L *lua.LState) int {
 	L.SetMetatable(ud, mt)
 
 	L.Push(ud)
+	return 1
+}
+
+// ============================================================================
+// SEMAPHORE OPERATIONS
+// ============================================================================
+
+// luaSemaphore creates a new semaphore
+// Usage:
+//   local sem = goroutine.semaphore(5)  -- Capacity of 5
+//   sem:acquire()   -- Acquire a token (blocks if at capacity)
+//   -- Use resource
+//   sem:release()   -- Release token
+func (g *GoroutineModule) luaSemaphore(L *lua.LState) int {
+	capacity := L.CheckInt(1)
+
+	if capacity <= 0 {
+		L.ArgError(1, "capacity must be positive")
+		return 0
+	}
+
+	sem := &luaSemaphore{
+		ch:       make(chan struct{}, capacity),
+		capacity: capacity,
+	}
+
+	// Fill semaphore with initial tokens
+	for i := 0; i < capacity; i++ {
+		sem.ch <- struct{}{}
+	}
+
+	// Create userdata
+	ud := L.NewUserData()
+	ud.Value = sem
+
+	// Create metatable with methods
+	mt := L.NewTable()
+
+	// acquire method: sem:acquire() -- blocks if no tokens available
+	L.SetField(mt, "acquire", L.NewFunction(func(L *lua.LState) int {
+		sem := L.CheckUserData(1).Value.(*luaSemaphore)
+		<-sem.ch // Wait for token
+		return 0
+	}))
+
+	// release method: sem:release() -- returns a token
+	L.SetField(mt, "release", L.NewFunction(func(L *lua.LState) int {
+		sem := L.CheckUserData(1).Value.(*luaSemaphore)
+		select {
+		case sem.ch <- struct{}{}:
+			// Token released
+		default:
+			L.RaiseError("semaphore: release without acquire")
+		}
+		return 0
+	}))
+
+	// try_acquire method: local ok = sem:try_acquire() -- non-blocking
+	L.SetField(mt, "try_acquire", L.NewFunction(func(L *lua.LState) int {
+		sem := L.CheckUserData(1).Value.(*luaSemaphore)
+		select {
+		case <-sem.ch:
+			L.Push(lua.LTrue)
+			return 1
+		default:
+			L.Push(lua.LFalse)
+			return 1
+		}
+	}))
+
+	// available method: local count = sem:available() -- how many tokens available
+	L.SetField(mt, "available", L.NewFunction(func(L *lua.LState) int {
+		sem := L.CheckUserData(1).Value.(*luaSemaphore)
+		L.Push(lua.LNumber(len(sem.ch)))
+		return 1
+	}))
+
+	// capacity method: local cap = sem:capacity() -- total capacity
+	L.SetField(mt, "capacity", L.NewFunction(func(L *lua.LState) int {
+		sem := L.CheckUserData(1).Value.(*luaSemaphore)
+		L.Push(lua.LNumber(sem.capacity))
+		return 1
+	}))
+
+	L.SetField(mt, "__index", mt)
+	L.SetMetatable(ud, mt)
+
+	L.Push(ud)
+	return 1
+}
+
+// ============================================================================
+// ATOMIC OPERATIONS
+// ============================================================================
+
+// luaAtomicInt creates a new atomic integer
+// Usage:
+//   local counter = goroutine.atomic_int(0)  -- Initialize with 0
+//   counter:add(1)       -- Atomic increment
+//   counter:load()       -- Read value
+//   counter:store(10)    -- Set value
+//   counter:swap(20)     -- Swap and return old value
+//   counter:compare_and_swap(10, 20)  -- CAS operation
+func (g *GoroutineModule) luaAtomicInt(L *lua.LState) int {
+	initialValue := L.OptInt64(1, 0)
+
+	atomicInt := &luaAtomicInt64{
+		value: initialValue,
+	}
+
+	// Create userdata
+	ud := L.NewUserData()
+	ud.Value = atomicInt
+
+	// Create metatable with methods
+	mt := L.NewTable()
+
+	// add method: counter:add(delta) -- atomic add, returns new value
+	L.SetField(mt, "add", L.NewFunction(func(L *lua.LState) int {
+		ai := L.CheckUserData(1).Value.(*luaAtomicInt64)
+		delta := L.CheckInt64(2)
+		newValue := atomic.AddInt64(&ai.value, delta)
+		L.Push(lua.LNumber(newValue))
+		return 1
+	}))
+
+	// load method: local val = counter:load() -- atomic load
+	L.SetField(mt, "load", L.NewFunction(func(L *lua.LState) int {
+		ai := L.CheckUserData(1).Value.(*luaAtomicInt64)
+		value := atomic.LoadInt64(&ai.value)
+		L.Push(lua.LNumber(value))
+		return 1
+	}))
+
+	// store method: counter:store(value) -- atomic store
+	L.SetField(mt, "store", L.NewFunction(func(L *lua.LState) int {
+		ai := L.CheckUserData(1).Value.(*luaAtomicInt64)
+		value := L.CheckInt64(2)
+		atomic.StoreInt64(&ai.value, value)
+		return 0
+	}))
+
+	// swap method: local old = counter:swap(new) -- atomic swap, returns old value
+	L.SetField(mt, "swap", L.NewFunction(func(L *lua.LState) int {
+		ai := L.CheckUserData(1).Value.(*luaAtomicInt64)
+		newValue := L.CheckInt64(2)
+		oldValue := atomic.SwapInt64(&ai.value, newValue)
+		L.Push(lua.LNumber(oldValue))
+		return 1
+	}))
+
+	// compare_and_swap method: local swapped = counter:compare_and_swap(old, new)
+	L.SetField(mt, "compare_and_swap", L.NewFunction(func(L *lua.LState) int {
+		ai := L.CheckUserData(1).Value.(*luaAtomicInt64)
+		oldValue := L.CheckInt64(2)
+		newValue := L.CheckInt64(3)
+		swapped := atomic.CompareAndSwapInt64(&ai.value, oldValue, newValue)
+		L.Push(lua.LBool(swapped))
+		return 1
+	}))
+
+	L.SetField(mt, "__index", mt)
+	L.SetMetatable(ud, mt)
+
+	L.Push(ud)
+	return 1
+}
+
+// ============================================================================
+// SYNCHRONIZATION PRIMITIVES
+// ============================================================================
+
+// luaOnce creates a sync.Once for one-time initialization
+// Usage:
+//   local once = goroutine.once()
+//   once:call(function()
+//     log.info("This runs only once")
+//   end)
+func (g *GoroutineModule) luaOnce(L *lua.LState) int {
+	onceObj := &luaOnce{
+		once: sync.Once{},
+	}
+
+	// Create userdata
+	ud := L.NewUserData()
+	ud.Value = onceObj
+
+	// Create metatable with methods
+	mt := L.NewTable()
+
+	// call method: once:call(function() ... end) -- execute function only once
+	L.SetField(mt, "call", L.NewFunction(func(L *lua.LState) int {
+		onceObj := L.CheckUserData(1).Value.(*luaOnce)
+		fn := L.CheckFunction(2)
+
+		onceObj.once.Do(func() {
+			if err := L.CallByParam(lua.P{
+				Fn:      fn,
+				NRet:    0,
+				Protect: true,
+			}); err != nil {
+				fmt.Printf("Error in once function: %v\n", err)
+			}
+		})
+
+		return 0
+	}))
+
+	L.SetField(mt, "__index", mt)
+	L.SetMetatable(ud, mt)
+
+	L.Push(ud)
+	return 1
+}
+
+// ============================================================================
+// CONDITION VARIABLES
+// ============================================================================
+
+// luaCond creates a condition variable for complex synchronization
+// Usage:
+//   local cond = goroutine.cond()
+//   local mu = cond:get_mutex()  -- Get associated mutex
+//   
+//   -- Waiter goroutine
+//   mu:lock()
+//   while not condition do
+//     cond:wait()  -- Releases lock, waits for signal, re-acquires lock
+//   end
+//   mu:unlock()
+//   
+//   -- Signaler goroutine
+//   mu:lock()
+//   condition = true
+//   cond:signal()     -- Wake one waiter
+//   -- or cond:broadcast()  -- Wake all waiters
+//   mu:unlock()
+func (g *GoroutineModule) luaCond(L *lua.LState) int {
+	mu := &sync.Mutex{}
+	condObj := &luaCond{
+		cond: sync.NewCond(mu),
+		mu:   mu,
+	}
+
+	// Create userdata
+	ud := L.NewUserData()
+	ud.Value = condObj
+
+	// Create metatable with methods
+	mt := L.NewTable()
+
+	// wait method: cond:wait() -- releases lock, waits for signal, re-acquires lock
+	L.SetField(mt, "wait", L.NewFunction(func(L *lua.LState) int {
+		cond := L.CheckUserData(1).Value.(*luaCond)
+		cond.cond.Wait()
+		return 0
+	}))
+
+	// signal method: cond:signal() -- wakes one waiting goroutine
+	L.SetField(mt, "signal", L.NewFunction(func(L *lua.LState) int {
+		cond := L.CheckUserData(1).Value.(*luaCond)
+		cond.cond.Signal()
+		return 0
+	}))
+
+	// broadcast method: cond:broadcast() -- wakes all waiting goroutines
+	L.SetField(mt, "broadcast", L.NewFunction(func(L *lua.LState) int {
+		cond := L.CheckUserData(1).Value.(*luaCond)
+		cond.cond.Broadcast()
+		return 0
+	}))
+
+	// get_mutex method: local mu = cond:get_mutex() -- returns associated mutex
+	L.SetField(mt, "get_mutex", L.NewFunction(func(L *lua.LState) int {
+		cond := L.CheckUserData(1).Value.(*luaCond)
+		
+		// Create mutex userdata
+		muUd := L.NewUserData()
+		muUd.Value = cond.mu
+
+		// Create metatable for mutex
+		muMt := L.NewTable()
+
+		// lock method
+		L.SetField(muMt, "lock", L.NewFunction(func(L *lua.LState) int {
+			mu := L.CheckUserData(1).Value.(*sync.Mutex)
+			mu.Lock()
+			return 0
+		}))
+
+		// unlock method
+		L.SetField(muMt, "unlock", L.NewFunction(func(L *lua.LState) int {
+			mu := L.CheckUserData(1).Value.(*sync.Mutex)
+			mu.Unlock()
+			return 0
+		}))
+
+		// try_lock method
+		L.SetField(muMt, "try_lock", L.NewFunction(func(L *lua.LState) int {
+			mu := L.CheckUserData(1).Value.(*sync.Mutex)
+			locked := mu.TryLock()
+			L.Push(lua.LBool(locked))
+			return 1
+		}))
+
+		L.SetField(muMt, "__index", muMt)
+		L.SetMetatable(muUd, muMt)
+
+		L.Push(muUd)
+		return 1
+	}))
+
+	L.SetField(mt, "__index", mt)
+	L.SetMetatable(ud, mt)
+
+	L.Push(ud)
+	return 1
+}
+
+// ============================================================================
+// CONTEXT OPERATIONS
+// ============================================================================
+
+// luaContext creates a new context for cancellation and timeout management
+// Usage:
+//   -- Background context
+//   local ctx = goroutine.context()
+//
+//   -- Context with cancellation
+//   local ctx, cancel = goroutine.context()
+//   cancel()  -- Cancel the context
+//
+//   -- Context with timeout (milliseconds)
+//   local ctx = ctx:with_timeout(5000)
+//
+//   -- Context with deadline (milliseconds since epoch)
+//   local ctx = ctx:with_deadline(os.time() * 1000 + 5000)
+//
+//   -- Check if context is cancelled
+//   if ctx:is_cancelled() then ... end
+//
+//   -- Get error (returns "context canceled" or "context deadline exceeded")
+//   local err = ctx:err()
+func (g *GoroutineModule) luaContext(L *lua.LState) int {
+	// Create background context with cancel
+	ctx, cancel := context.WithCancel(context.Background())
+
+	ctxObj := &luaContext{
+		ctx:    ctx,
+		cancel: cancel,
+	}
+
+	// Create userdata
+	ud := L.NewUserData()
+	ud.Value = ctxObj
+
+	// Create metatable with methods
+	mt := L.NewTable()
+
+	// with_cancel method: local childCtx, cancel = ctx:with_cancel()
+	L.SetField(mt, "with_cancel", L.NewFunction(func(L *lua.LState) int {
+		parentCtx := L.CheckUserData(1).Value.(*luaContext)
+		childCtx, childCancel := context.WithCancel(parentCtx.ctx)
+
+		child := &luaContext{
+			ctx:    childCtx,
+			cancel: childCancel,
+		}
+
+		childUd := L.NewUserData()
+		childUd.Value = child
+		L.SetMetatable(childUd, mt)
+
+		// Create cancel function
+		cancelFn := L.NewFunction(func(L *lua.LState) int {
+			childCancel()
+			return 0
+		})
+
+		L.Push(childUd)
+		L.Push(cancelFn)
+		return 2
+	}))
+
+	// with_timeout method: local ctx = ctx:with_timeout(milliseconds)
+	L.SetField(mt, "with_timeout", L.NewFunction(func(L *lua.LState) int {
+		parentCtx := L.CheckUserData(1).Value.(*luaContext)
+		ms := L.CheckInt(2)
+
+		childCtx, childCancel := context.WithTimeout(parentCtx.ctx, time.Duration(ms)*time.Millisecond)
+
+		child := &luaContext{
+			ctx:    childCtx,
+			cancel: childCancel,
+		}
+
+		childUd := L.NewUserData()
+		childUd.Value = child
+		L.SetMetatable(childUd, mt)
+
+		L.Push(childUd)
+		return 1
+	}))
+
+	// with_deadline method: local ctx = ctx:with_deadline(deadline_ms)
+	L.SetField(mt, "with_deadline", L.NewFunction(func(L *lua.LState) int {
+		parentCtx := L.CheckUserData(1).Value.(*luaContext)
+		deadlineMs := L.CheckInt64(2)
+
+		// Convert milliseconds since epoch to time.Time
+		deadline := time.Unix(0, deadlineMs*int64(time.Millisecond))
+
+		childCtx, childCancel := context.WithDeadline(parentCtx.ctx, deadline)
+
+		child := &luaContext{
+			ctx:    childCtx,
+			cancel: childCancel,
+		}
+
+		childUd := L.NewUserData()
+		childUd.Value = child
+		L.SetMetatable(childUd, mt)
+
+		L.Push(childUd)
+		return 1
+	}))
+
+	// is_cancelled method: local cancelled = ctx:is_cancelled()
+	L.SetField(mt, "is_cancelled", L.NewFunction(func(L *lua.LState) int {
+		ctxObj := L.CheckUserData(1).Value.(*luaContext)
+		select {
+		case <-ctxObj.ctx.Done():
+			L.Push(lua.LTrue)
+		default:
+			L.Push(lua.LFalse)
+		}
+		return 1
+	}))
+
+	// err method: local err = ctx:err() -- returns error message if cancelled
+	L.SetField(mt, "err", L.NewFunction(func(L *lua.LState) int {
+		ctxObj := L.CheckUserData(1).Value.(*luaContext)
+		err := ctxObj.ctx.Err()
+		if err != nil {
+			L.Push(lua.LString(err.Error()))
+		} else {
+			L.Push(lua.LNil)
+		}
+		return 1
+	}))
+
+	// cancel method: ctx:cancel()
+	L.SetField(mt, "cancel", L.NewFunction(func(L *lua.LState) int {
+		ctxObj := L.CheckUserData(1).Value.(*luaContext)
+		if ctxObj.cancel != nil {
+			ctxObj.cancel()
+		}
+		return 0
+	}))
+
+	// deadline method: local deadline_ms, ok = ctx:deadline()
+	L.SetField(mt, "deadline", L.NewFunction(func(L *lua.LState) int {
+		ctxObj := L.CheckUserData(1).Value.(*luaContext)
+		deadline, ok := ctxObj.ctx.Deadline()
+		if ok {
+			// Convert to milliseconds since epoch
+			ms := deadline.UnixNano() / int64(time.Millisecond)
+			L.Push(lua.LNumber(ms))
+			L.Push(lua.LTrue)
+			return 2
+		}
+		L.Push(lua.LNil)
+		L.Push(lua.LFalse)
+		return 2
+	}))
+
+	L.SetField(mt, "__index", mt)
+	L.SetMetatable(ud, mt)
+
+	L.Push(ud)
+	return 1
+}
+
+// ============================================================================
+// PIPELINE OPERATIONS
+// ============================================================================
+
+// luaPipeline creates a processing pipeline from input to output through stages
+// Usage:
+//   local output = goroutine.pipeline(input_ch, {
+//     { workers = 2, fn = function(value) return value * 2 end },
+//     { workers = 3, fn = function(value) return value + 1 end }
+//   })
+func (g *GoroutineModule) luaPipeline(L *lua.LState) int {
+	// Get input channel
+	inputUD := L.CheckUserData(1)
+	inputCh := inputUD.Value.(*luaChannel)
+
+	// Get stages table
+	stagesTable := L.CheckTable(2)
+
+	currentCh := inputCh
+	var wg sync.WaitGroup
+
+	// Process each stage
+	stagesTable.ForEach(func(k, v lua.LValue) {
+		if stageTable, ok := v.(*lua.LTable); ok {
+			// Get workers count (default 1)
+			workers := 1
+			if w := stageTable.RawGetString("workers"); w != lua.LNil {
+				workers = int(w.(lua.LNumber))
+			}
+
+			// Get processing function
+			fn := stageTable.RawGetString("fn").(*lua.LFunction)
+
+			// Create output channel for this stage
+			outputCh := &luaChannel{
+				ch:        make(chan lua.LValue, 10),
+				capacity:  10,
+				closed:    false,
+				direction: "bidirectional",
+			}
+
+			// Launch workers for this stage
+			for i := 0; i < workers; i++ {
+				wg.Add(1)
+				go func(input, output *luaChannel, processFn *lua.LFunction) {
+					defer wg.Done()
+
+					newL := lua.NewState()
+					defer newL.Close()
+
+					for {
+						value, ok := <-input.ch
+						if !ok {
+							return
+						}
+
+						// Process value
+						err := newL.CallByParam(lua.P{
+							Fn:      processFn,
+							NRet:    1,
+							Protect: true,
+						}, value)
+
+						if err != nil {
+							fmt.Printf("Pipeline stage error: %v\n", err)
+							continue
+						}
+
+						result := newL.Get(-1)
+						newL.Pop(1)
+
+						// Send to next stage
+						output.ch <- result
+					}
+				}(currentCh, outputCh, fn)
+			}
+
+			// This stage's output becomes next stage's input
+			currentCh = outputCh
+		}
+	})
+
+	// Close final output when all done
+	go func() {
+		wg.Wait()
+		currentCh.closeMu.Lock()
+		if !currentCh.closed {
+			close(currentCh.ch)
+			currentCh.closed = true
+		}
+		currentCh.closeMu.Unlock()
+	}()
+
+	// Return final output channel
+	finalUD := L.NewUserData()
+	finalUD.Value = currentCh
+
+	// Set metatable (reuse channel metatable)
+	finalMT := L.NewTable()
+	L.SetField(finalMT, "__index", finalMT)
+	L.SetMetatable(finalUD, finalMT)
+
+	L.Push(finalUD)
+	return 1
+}
+
+// luaFanOut distributes work from one channel to multiple output channels
+// Usage:
+//   local outputs = goroutine.fan_out(input_ch, 3) -- Creates 3 output channels
+func (g *GoroutineModule) luaFanOut(L *lua.LState) int {
+	inputUD := L.CheckUserData(1)
+	inputCh := inputUD.Value.(*luaChannel)
+	numOutputs := L.CheckInt(2)
+
+	if numOutputs <= 0 {
+		L.ArgError(2, "number of outputs must be positive")
+		return 0
+	}
+
+	// Create output channels
+	outputs := make([]*luaChannel, numOutputs)
+	for i := 0; i < numOutputs; i++ {
+		outputs[i] = &luaChannel{
+			ch:        make(chan lua.LValue, 10),
+			capacity:  10,
+			closed:    false,
+			direction: "bidirectional",
+		}
+	}
+
+	// Fan out goroutine
+	go func() {
+		for value := range inputCh.ch {
+			// Send to all outputs
+			for _, outCh := range outputs {
+				outCh.ch <- value
+			}
+		}
+
+		// Close all outputs when input closes
+		for _, outCh := range outputs {
+			outCh.closeMu.Lock()
+			if !outCh.closed {
+				close(outCh.ch)
+				outCh.closed = true
+			}
+			outCh.closeMu.Unlock()
+		}
+	}()
+
+	// Return table of output channels
+	outputTable := L.NewTable()
+	for i, outCh := range outputs {
+		outUD := L.NewUserData()
+		outUD.Value = outCh
+
+		outMT := L.NewTable()
+		L.SetField(outMT, "__index", outMT)
+		L.SetMetatable(outUD, outMT)
+
+		outputTable.RawSetInt(i+1, outUD)
+	}
+
+	L.Push(outputTable)
+	return 1
+}
+
+// luaFanIn merges multiple input channels into one output channel
+// Usage:
+//   local merged = goroutine.fan_in({ch1, ch2, ch3})
+func (g *GoroutineModule) luaFanIn(L *lua.LState) int {
+	inputsTable := L.CheckTable(1)
+
+	// Collect input channels
+	var inputs []*luaChannel
+	inputsTable.ForEach(func(k, v lua.LValue) {
+		if ud, ok := v.(*lua.LUserData); ok {
+			if ch, ok := ud.Value.(*luaChannel); ok {
+				inputs = append(inputs, ch)
+			}
+		}
+	})
+
+	if len(inputs) == 0 {
+		L.ArgError(1, "at least one input channel required")
+		return 0
+	}
+
+	// Create output channel
+	output := &luaChannel{
+		ch:        make(chan lua.LValue, 10),
+		capacity:  10,
+		closed:    false,
+		direction: "bidirectional",
+	}
+
+	var wg sync.WaitGroup
+
+	// Fan in goroutines (one per input)
+	for _, inputCh := range inputs {
+		wg.Add(1)
+		go func(in *luaChannel) {
+			defer wg.Done()
+			for value := range in.ch {
+				output.ch <- value
+			}
+		}(inputCh)
+	}
+
+	// Close output when all inputs are done
+	go func() {
+		wg.Wait()
+		output.closeMu.Lock()
+		if !output.closed {
+			close(output.ch)
+			output.closed = true
+		}
+		output.closeMu.Unlock()
+	}()
+
+	// Return output channel
+	fanInUD := L.NewUserData()
+	fanInUD.Value = output
+
+	fanInMT := L.NewTable()
+	L.SetField(fanInMT, "__index", fanInMT)
+	L.SetMetatable(fanInUD, fanInMT)
+
+	L.Push(fanInUD)
 	return 1
 }

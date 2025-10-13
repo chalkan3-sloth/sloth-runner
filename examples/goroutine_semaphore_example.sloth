@@ -1,0 +1,445 @@
+-- Goroutine Semaphore Examples
+-- Demonstrates semaphore usage for resource limiting and concurrency control
+
+workflow.define("semaphore_demo", {
+  description = "Demonstrate goroutine semaphore for limiting concurrent access to resources",
+  tasks = {
+    -- Example 1: Basic Semaphore - Rate Limiting
+    basic_semaphore = {
+      description = "Basic semaphore usage for rate limiting",
+      command = function()
+        log.info("=== Example 1: Basic Semaphore ===")
+
+        -- Create semaphore with capacity of 3 (max 3 concurrent operations)
+        local sem = goroutine.semaphore(3)
+        local wg = goroutine.wait_group()
+
+        log.info("Semaphore capacity: " .. sem:capacity())
+        log.info("Initial available tokens: " .. sem:available())
+
+        -- Spawn 10 goroutines, but only 3 can run concurrently
+        wg:add(10)
+        for i = 1, 10 do
+          local task_id = i
+          goroutine.spawn(function()
+            log.info("Task " .. task_id .. ": Waiting for semaphore token...")
+            sem:acquire()
+            log.info("Task " .. task_id .. ": Got token! Available: " .. sem:available())
+
+            -- Simulate work
+            goroutine.sleep(200)
+
+            log.info("Task " .. task_id .. ": Releasing token")
+            sem:release()
+            wg:done()
+          end)
+          goroutine.sleep(20) -- Stagger startup
+        end
+
+        wg:wait()
+        log.info("All tasks completed. Final available: " .. sem:available())
+
+        return true, "Basic semaphore completed"
+      end
+    },
+
+    -- Example 2: Connection Pool
+    connection_pool = {
+      description = "Using semaphore to limit database connections",
+      command = function()
+        log.info("=== Example 2: Connection Pool ===")
+
+        -- Simulate database with max 5 connections
+        local max_connections = 5
+        local db_sem = goroutine.semaphore(max_connections)
+        local wg = goroutine.wait_group()
+        local total_queries = 15
+
+        log.info("Database connection pool: max " .. max_connections .. " connections")
+
+        -- Simulate query function
+        local execute_query = function(query_id)
+          log.info("Query " .. query_id .. ": Requesting connection...")
+          db_sem:acquire()
+          log.info("Query " .. query_id .. ": Connected! (Available connections: " .. db_sem:available() .. ")")
+
+          -- Simulate query execution
+          goroutine.sleep(math.random(100, 300))
+
+          log.info("Query " .. query_id .. ": Query completed, releasing connection")
+          db_sem:release()
+        end
+
+        -- Execute multiple queries
+        wg:add(total_queries)
+        for i = 1, total_queries do
+          local query_id = i
+          goroutine.spawn(function()
+            execute_query(query_id)
+            wg:done()
+          end)
+          goroutine.sleep(30)
+        end
+
+        wg:wait()
+        log.info("All queries completed")
+
+        return true, "Connection pool example completed"
+      end
+    },
+
+    -- Example 3: Try Acquire (Non-blocking)
+    try_acquire = {
+      description = "Non-blocking try_acquire for graceful degradation",
+      command = function()
+        log.info("=== Example 3: Try Acquire (Non-blocking) ===")
+
+        local sem = goroutine.semaphore(2)
+        local wg = goroutine.wait_group()
+        local success_count = 0
+        local failed_count = 0
+
+        -- Spawn 5 goroutines trying to acquire immediately
+        wg:add(5)
+        for i = 1, 5 do
+          local task_id = i
+          goroutine.spawn(function()
+            log.info("Task " .. task_id .. ": Trying to acquire token (non-blocking)...")
+            local acquired = sem:try_acquire()
+
+            if acquired then
+              success_count = success_count + 1
+              log.info("Task " .. task_id .. ": SUCCESS - Got token!")
+
+              -- Do work
+              goroutine.sleep(150)
+
+              sem:release()
+              log.info("Task " .. task_id .. ": Released token")
+            else
+              failed_count = failed_count + 1
+              log.info("Task " .. task_id .. ": FAILED - No token available, doing alternative work")
+              goroutine.sleep(50)
+            end
+
+            wg:done()
+          end)
+        end
+
+        wg:wait()
+        log.info("Results: " .. success_count .. " succeeded, " .. failed_count .. " failed")
+
+        return true, "Try acquire completed"
+      end
+    },
+
+    -- Example 4: Worker Pool
+    worker_pool = {
+      description = "Limited worker pool using semaphore",
+      command = function()
+        log.info("=== Example 4: Worker Pool ===")
+
+        local max_workers = 4
+        local worker_sem = goroutine.semaphore(max_workers)
+        local jobs = goroutine.channel(20)
+        local results = goroutine.channel(20)
+        local wg = goroutine.wait_group()
+
+        log.info("Starting worker pool with " .. max_workers .. " workers")
+
+        -- Worker function
+        local worker = function(job_id)
+          worker_sem:acquire()
+          log.info("Worker processing job " .. job_id .. " (Active workers: " .. (max_workers - worker_sem:available()) .. ")")
+
+          -- Simulate processing
+          local result = job_id * job_id
+          goroutine.sleep(math.random(100, 200))
+
+          results:send("Job " .. job_id .. " result: " .. result)
+          worker_sem:release()
+        end
+
+        -- Spawn job processors
+        local num_jobs = 12
+        wg:add(num_jobs)
+        for i = 1, num_jobs do
+          jobs:send(i)
+        end
+
+        for i = 1, num_jobs do
+          local job_id, ok = jobs:receive()
+          if ok then
+            goroutine.spawn(function()
+              worker(job_id)
+              wg:done()
+            end)
+          end
+        end
+
+        -- Collect results
+        goroutine.spawn(function()
+          for i = 1, num_jobs do
+            local result, ok = results:receive()
+            if ok then
+              log.info("Result: " .. result)
+            end
+          end
+        end)
+
+        wg:wait()
+        jobs:close()
+        results:close()
+
+        log.info("Worker pool completed all jobs")
+
+        return true, "Worker pool completed"
+      end
+    },
+
+    -- Example 5: Rate Limiter
+    rate_limiter = {
+      description = "API rate limiting with semaphore",
+      command = function()
+        log.info("=== Example 5: Rate Limiter ===")
+
+        -- Allow 5 requests per "time window"
+        local rate_limit = 5
+        local limiter = goroutine.semaphore(rate_limit)
+        local wg = goroutine.wait_group()
+
+        -- Refill tokens periodically
+        local refill_running = true
+        goroutine.spawn(function()
+          while refill_running do
+            goroutine.sleep(1000)
+            -- Try to refill tokens
+            for i = 1, rate_limit do
+              local acquired = limiter:try_acquire()
+              if not acquired then
+                break -- Already at capacity
+              end
+            end
+            log.info("Rate limiter refilled (Available: " .. limiter:available() .. ")")
+          end
+        end)
+
+        -- Simulate API requests
+        local make_request = function(req_id)
+          log.info("Request " .. req_id .. ": Waiting for rate limit token...")
+          limiter:acquire()
+          log.info("Request " .. req_id .. ": Processing (Remaining: " .. limiter:available() .. ")")
+
+          -- Simulate request
+          goroutine.sleep(100)
+        end
+
+        -- Make 15 requests (more than rate limit)
+        wg:add(15)
+        for i = 1, 15 do
+          local req_id = i
+          goroutine.spawn(function()
+            make_request(req_id)
+            wg:done()
+          end)
+          goroutine.sleep(50)
+        end
+
+        wg:wait()
+        refill_running = false
+        log.info("All requests processed")
+
+        return true, "Rate limiter completed"
+      end
+    },
+
+    -- Example 6: Semaphore with Channels
+    semaphore_with_channels = {
+      description = "Combining semaphore with channels for coordinated access",
+      command = function()
+        log.info("=== Example 6: Semaphore with Channels ===")
+
+        local sem = goroutine.semaphore(3)
+        local jobs = goroutine.channel(10)
+        local done = goroutine.channel(10)
+        local wg = goroutine.wait_group()
+
+        -- Producer: sends jobs
+        goroutine.spawn(function()
+          for i = 1, 10 do
+            jobs:send("Job-" .. i)
+            log.info("Producer: Queued Job-" .. i)
+            goroutine.sleep(30)
+          end
+          jobs:close()
+        end)
+
+        -- Worker pool
+        local process_job = function(job_name)
+          sem:acquire()
+          log.info("Worker: Processing " .. job_name .. " (Active: " .. (3 - sem:available()) .. ")")
+
+          -- Simulate work
+          goroutine.sleep(200)
+
+          done:send(job_name .. " completed")
+          sem:release()
+        end
+
+        -- Spawn workers
+        wg:add(1)
+        goroutine.spawn(function()
+          while true do
+            local job, ok = jobs:receive()
+            if not ok then
+              break
+            end
+            local job_name = job
+            goroutine.spawn(function()
+              process_job(job_name)
+            end)
+          end
+          wg:done()
+        end)
+
+        -- Collect results
+        wg:add(1)
+        goroutine.spawn(function()
+          local completed = 0
+          while completed < 10 do
+            local result, ok = done:receive()
+            if ok then
+              log.info("Result: " .. result)
+              completed = completed + 1
+            end
+          end
+          wg:done()
+        end)
+
+        wg:wait()
+        done:close()
+        log.info("All jobs processed through semaphore-controlled workers")
+
+        return true, "Semaphore with channels completed"
+      end
+    },
+
+    -- Example 7: Resource Pool with Timeout
+    resource_pool_timeout = {
+      description = "Resource acquisition with timeout using try_acquire",
+      command = function()
+        log.info("=== Example 7: Resource Pool with Timeout ===")
+
+        local resource_sem = goroutine.semaphore(2)
+        local wg = goroutine.wait_group()
+
+        -- Function to acquire with timeout
+        local acquire_with_timeout = function(task_id, timeout_ms)
+          log.info("Task " .. task_id .. ": Trying to acquire resource (timeout: " .. timeout_ms .. "ms)")
+
+          local start_time = 0
+          local elapsed = 0
+
+          while elapsed < timeout_ms do
+            local acquired = resource_sem:try_acquire()
+            if acquired then
+              log.info("Task " .. task_id .. ": Got resource after " .. elapsed .. "ms")
+              return true
+            end
+
+            goroutine.sleep(50)
+            elapsed = elapsed + 50
+          end
+
+          log.info("Task " .. task_id .. ": TIMEOUT after " .. timeout_ms .. "ms")
+          return false
+        end
+
+        -- Spawn tasks with different timeouts
+        wg:add(5)
+
+        -- First two will get resources immediately
+        for i = 1, 2 do
+          local task_id = i
+          goroutine.spawn(function()
+            if acquire_with_timeout(task_id, 500) then
+              goroutine.sleep(300) -- Hold resource
+              resource_sem:release()
+              log.info("Task " .. task_id .. ": Released resource")
+            end
+            wg:done()
+          end)
+        end
+
+        goroutine.sleep(50)
+
+        -- Next three will compete with timeouts
+        for i = 3, 5 do
+          local task_id = i
+          goroutine.spawn(function()
+            if acquire_with_timeout(task_id, 200) then
+              goroutine.sleep(100)
+              resource_sem:release()
+              log.info("Task " .. task_id .. ": Released resource")
+            end
+            wg:done()
+          end)
+        end
+
+        wg:wait()
+        log.info("Resource pool timeout example completed")
+
+        return true, "Resource pool timeout completed"
+      end
+    },
+
+    -- Example 8: Monitoring Semaphore State
+    monitor_semaphore = {
+      description = "Monitoring semaphore availability and usage",
+      command = function()
+        log.info("=== Example 8: Monitoring Semaphore State ===")
+
+        local sem = goroutine.semaphore(5)
+        local wg = goroutine.wait_group()
+        local monitoring = true
+
+        -- Monitor goroutine
+        goroutine.spawn(function()
+          while monitoring do
+            local available = sem:available()
+            local capacity = sem:capacity()
+            local in_use = capacity - available
+            log.info("Monitor: " .. in_use .. "/" .. capacity .. " tokens in use (" .. available .. " available)")
+            goroutine.sleep(100)
+          end
+        end)
+
+        -- Workers with varying durations
+        wg:add(8)
+        for i = 1, 8 do
+          local worker_id = i
+          local duration = math.random(200, 400)
+          goroutine.spawn(function()
+            sem:acquire()
+            log.info("Worker " .. worker_id .. ": Started (will run for " .. duration .. "ms)")
+
+            goroutine.sleep(duration)
+
+            log.info("Worker " .. worker_id .. ": Finished")
+            sem:release()
+            wg:done()
+          end)
+          goroutine.sleep(50)
+        end
+
+        wg:wait()
+        monitoring = false
+        goroutine.sleep(150) -- Let monitor print final state
+
+        log.info("Monitoring completed. Final state: " .. sem:available() .. "/" .. sem:capacity() .. " available")
+
+        return true, "Semaphore monitoring completed"
+      end
+    }
+  }
+})

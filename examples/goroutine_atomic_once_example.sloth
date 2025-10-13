@@ -1,0 +1,385 @@
+-- Goroutine Atomic Operations and Once Examples
+-- Demonstrates atomic operations and sync.Once for concurrency control
+
+workflow.define("atomic_once_demo", {
+  description = "Demonstrate atomic operations and once synchronization",
+  tasks = {
+    -- Example 1: Atomic Counter (Race-Free)
+    atomic_counter = {
+      description = "Using atomic integer for thread-safe counter",
+      command = function()
+        log.info("=== Example 1: Atomic Counter ===")
+
+        local counter = goroutine.atomic_int(0)
+        local wg = goroutine.wait_group()
+
+        log.info("Initial value: " .. counter:load())
+
+        -- Spawn 10 goroutines incrementing counter
+        wg:add(10)
+        for i = 1, 10 do
+          goroutine.spawn(function()
+            for j = 1, 100 do
+              counter:add(1)  -- Atomic increment
+            end
+            wg:done()
+          end)
+        end
+
+        wg:wait()
+        local final = counter:load()
+        log.info("Final counter value: " .. final)
+        log.info("Expected: 1000, Got: " .. final .. " ✓")
+
+        return true, "Atomic counter completed with value = " .. final
+      end
+    },
+
+    -- Example 2: Atomic Add (Delta Operations)
+    atomic_operations = {
+      description = "Various atomic operations (add, load, store, swap, CAS)",
+      command = function()
+        log.info("=== Example 2: Atomic Operations ===")
+
+        local num = goroutine.atomic_int(10)
+
+        -- Add operation
+        log.info("Initial: " .. num:load())
+        local new_val = num:add(5)
+        log.info("After add(5): " .. new_val)
+
+        -- Store operation
+        num:store(100)
+        log.info("After store(100): " .. num:load())
+
+        -- Swap operation
+        local old_val = num:swap(200)
+        log.info("Swapped: old=" .. old_val .. ", new=" .. num:load())
+
+        -- Compare and Swap (CAS)
+        local swapped = num:compare_and_swap(200, 300)
+        log.info("CAS(200->300): " .. tostring(swapped) .. ", value=" .. num:load())
+
+        -- Failed CAS (wrong old value)
+        swapped = num:compare_and_swap(200, 400)
+        log.info("CAS(200->400): " .. tostring(swapped) .. " (should be false), value=" .. num:load())
+
+        return true, "Atomic operations completed"
+      end
+    },
+
+    -- Example 3: Atomic vs Mutex Performance
+    atomic_vs_mutex = {
+      description = "Compare performance: atomic vs mutex",
+      command = function()
+        log.info("=== Example 3: Atomic vs Mutex Performance ===")
+
+        local iterations = 1000
+        local goroutines = 10
+
+        -- Test 1: Using atomic
+        local atomic_counter = goroutine.atomic_int(0)
+        local wg1 = goroutine.wait_group()
+
+        local start_time = os.clock()
+        wg1:add(goroutines)
+        for i = 1, goroutines do
+          goroutine.spawn(function()
+            for j = 1, iterations do
+              atomic_counter:add(1)
+            end
+            wg1:done()
+          end)
+        end
+        wg1:wait()
+        local atomic_time = (os.clock() - start_time) * 1000
+
+        log.info("Atomic: " .. atomic_counter:load() .. " increments in " ..
+                 string.format("%.2f", atomic_time) .. "ms")
+
+        -- Test 2: Using mutex
+        local mutex_counter = 0
+        local mu = goroutine.mutex()
+        local wg2 = goroutine.wait_group()
+
+        start_time = os.clock()
+        wg2:add(goroutines)
+        for i = 1, goroutines do
+          goroutine.spawn(function()
+            for j = 1, iterations do
+              mu:lock()
+              mutex_counter = mutex_counter + 1
+              mu:unlock()
+            end
+            wg2:done()
+          end)
+        end
+        wg2:wait()
+        local mutex_time = (os.clock() - start_time) * 1000
+
+        log.info("Mutex:  " .. mutex_counter .. " increments in " ..
+                 string.format("%.2f", mutex_time) .. "ms")
+
+        local speedup = mutex_time / atomic_time
+        log.info("Atomic is " .. string.format("%.2fx", speedup) .. " faster")
+
+        return true, "Performance comparison completed"
+      end
+    },
+
+    -- Example 4: Sync.Once - One-Time Initialization
+    once_init = {
+      description = "Using sync.Once for one-time initialization",
+      command = function()
+        log.info("=== Example 4: Sync.Once - One-Time Init ===")
+
+        local config = nil
+        local once = goroutine.once()
+        local wg = goroutine.wait_group()
+
+        -- Function that should run only once
+        local init_config = function()
+          log.info("Initializing configuration (this should print only once)...")
+          goroutine.sleep(100)  -- Simulate expensive operation
+          config = { host = "localhost", port = 8080 }
+          log.info("Configuration initialized!")
+        end
+
+        -- Spawn 5 goroutines all trying to initialize
+        wg:add(5)
+        for i = 1, 5 do
+          local goroutine_id = i
+          goroutine.spawn(function()
+            log.info("Goroutine " .. goroutine_id .. ": Calling init...")
+            once:call(init_config)
+            log.info("Goroutine " .. goroutine_id .. ": After init, config is " ..
+                     (config and "ready" or "nil"))
+            wg:done()
+          end)
+        end
+
+        wg:wait()
+        log.info("All goroutines finished. Config: " .. config.host .. ":" .. config.port)
+
+        return true, "Once initialization completed"
+      end
+    },
+
+    -- Example 5: Once with Lazy Singleton
+    once_singleton = {
+      description = "Implementing lazy singleton with sync.Once",
+      command = function()
+        log.info("=== Example 5: Lazy Singleton Pattern ===")
+
+        local database = nil
+        local once = goroutine.once()
+
+        local get_database = function()
+          once:call(function()
+            log.info("Creating database connection (expensive operation)...")
+            goroutine.sleep(200)
+            database = {
+              connection = "db://localhost:5432",
+              connected = true,
+              queries = 0
+            }
+            log.info("Database connection created!")
+          end)
+          return database
+        end
+
+        local wg = goroutine.wait_group()
+
+        -- Multiple goroutines accessing database
+        wg:add(3)
+        for i = 1, 3 do
+          local worker_id = i
+          goroutine.spawn(function()
+            log.info("Worker " .. worker_id .. ": Getting database...")
+            local db = get_database()
+            log.info("Worker " .. worker_id .. ": Got database: " .. db.connection)
+
+            -- Simulate query
+            goroutine.sleep(50)
+            db.queries = db.queries + 1
+
+            wg:done()
+          end)
+          goroutine.sleep(30)  -- Stagger starts
+        end
+
+        wg:wait()
+        log.info("Total queries executed: " .. database.queries)
+
+        return true, "Singleton pattern completed"
+      end
+    },
+
+    -- Example 6: Atomic with Channels
+    atomic_with_channels = {
+      description = "Combining atomic operations with channels",
+      command = function()
+        log.info("=== Example 6: Atomic with Channels ===")
+
+        local processed = goroutine.atomic_int(0)
+        local failed = goroutine.atomic_int(0)
+        local jobs = goroutine.channel(20)
+        local wg = goroutine.wait_group()
+
+        -- Worker function
+        local worker = function(id)
+          while true do
+            local job, ok = jobs:receive()
+            if not ok then break end
+
+            log.info("Worker " .. id .. ": Processing job " .. job)
+
+            -- Simulate processing
+            goroutine.sleep(math.random(50, 150))
+
+            -- Random success/failure
+            if math.random() > 0.3 then
+              processed:add(1)
+              log.info("Worker " .. id .. ": Job " .. job .. " ✓")
+            else
+              failed:add(1)
+              log.info("Worker " .. id .. ": Job " .. job .. " ✗")
+            end
+          end
+        end
+
+        -- Spawn 3 workers
+        wg:add(3)
+        for i = 1, 3 do
+          local worker_id = i
+          goroutine.spawn(function()
+            worker(worker_id)
+            wg:done()
+          end)
+        end
+
+        -- Send 10 jobs
+        for i = 1, 10 do
+          jobs:send("Job-" .. i)
+        end
+        jobs:close()
+
+        wg:wait()
+        log.info("Results: " .. processed:load() .. " processed, " ..
+                 failed:load() .. " failed")
+
+        return true, "Atomic with channels completed"
+      end
+    },
+
+    -- Example 7: CAS (Compare-And-Swap) Loop
+    cas_loop = {
+      description = "Using CAS for lock-free updates",
+      command = function()
+        log.info("=== Example 7: CAS Loop (Lock-Free) ===")
+
+        local value = goroutine.atomic_int(0)
+        local wg = goroutine.wait_group()
+
+        -- Lock-free increment using CAS
+        local safe_increment = function()
+          while true do
+            local old = value:load()
+            local new = old + 1
+            if value:compare_and_swap(old, new) then
+              return new
+            end
+            -- CAS failed, retry (someone else modified it)
+          end
+        end
+
+        -- Spawn 5 goroutines using CAS
+        wg:add(5)
+        for i = 1, 5 do
+          local goroutine_id = i
+          goroutine.spawn(function()
+            for j = 1, 20 do
+              local new_val = safe_increment()
+              if j % 5 == 0 then
+                log.info("Goroutine " .. goroutine_id .. ": incremented to " .. new_val)
+              end
+            end
+            wg:done()
+          end)
+        end
+
+        wg:wait()
+        log.info("Final value (CAS): " .. value:load() .. " (expected: 100)")
+
+        return true, "CAS loop completed"
+      end
+    },
+
+    -- Example 8: Multiple Once Objects
+    multiple_once = {
+      description = "Using multiple Once objects for different initializations",
+      command = function()
+        log.info("=== Example 8: Multiple Once Objects ===")
+
+        local db_once = goroutine.once()
+        local cache_once = goroutine.once()
+        local logger_once = goroutine.once()
+
+        local db = nil
+        local cache = nil
+        local logger = nil
+
+        -- Different initialization functions
+        local init_db = function()
+          log.info("Initializing database...")
+          goroutine.sleep(100)
+          db = { name = "PostgreSQL", ready = true }
+        end
+
+        local init_cache = function()
+          log.info("Initializing cache...")
+          goroutine.sleep(80)
+          cache = { name = "Redis", ready = true }
+        end
+
+        local init_logger = function()
+          log.info("Initializing logger...")
+          goroutine.sleep(50)
+          logger = { name = "LogSystem", ready = true }
+        end
+
+        local wg = goroutine.wait_group()
+
+        -- Spawn multiple goroutines initializing different components
+        wg:add(6)
+        for i = 1, 2 do
+          goroutine.spawn(function()
+            db_once:call(init_db)
+            log.info("DB initialized: " .. (db and db.name or "nil"))
+            wg:done()
+          end)
+
+          goroutine.spawn(function()
+            cache_once:call(init_cache)
+            log.info("Cache initialized: " .. (cache and cache.name or "nil"))
+            wg:done()
+          end)
+
+          goroutine.spawn(function()
+            logger_once:call(init_logger)
+            log.info("Logger initialized: " .. (logger and logger.name or "nil"))
+            wg:done()
+          end)
+        end
+
+        wg:wait()
+        log.info("All components initialized!")
+        log.info("  DB: " .. (db and db.name or "nil"))
+        log.info("  Cache: " .. (cache and cache.name or "nil"))
+        log.info("  Logger: " .. (logger and logger.name or "nil"))
+
+        return true, "Multiple once objects completed"
+      end
+    }
+  }
+})
