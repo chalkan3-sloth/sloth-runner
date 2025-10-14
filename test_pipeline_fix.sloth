@@ -1,0 +1,62 @@
+-- Test Pipeline Fix
+-- Verifica se os channels retornados pelo pipeline têm os métodos corretos
+
+workflow.define("test_pipeline_fix", {
+  description = "Test that pipeline returns channels with proper methods",
+  tasks = {
+    test_pipeline = {
+      description = "Test pipeline functionality",
+      command = function()
+        log.info("=== Testing Pipeline Fix ===")
+
+        -- Create input channel
+        local input = goroutine.channel(10)
+
+        -- Create pipeline with 2 stages
+        local output = goroutine.pipeline(input, {
+          {
+            workers = 1,
+            fn = function(x)
+              return x * 2
+            end
+          },
+          {
+            workers = 1,
+            fn = function(x)
+              return x + 10
+            end
+          }
+        })
+
+        -- Feed data to pipeline
+        goroutine.spawn(function()
+          for i = 1, 5 do
+            input:send(i)
+            log.info("Sent: " .. i)
+          end
+          input:close()
+        end)
+
+        -- Consume output using range (this will fail if metatable is not set correctly)
+        local results = {}
+        output:range(function(value)
+          table.insert(results, value)
+          log.info("Received: " .. value)
+        end)
+
+        log.info("Pipeline test completed!")
+        log.info("Results count: " .. #results)
+
+        -- Verify results (1*2+10=12, 2*2+10=14, 3*2+10=16, 4*2+10=18, 5*2+10=20)
+        local expected = {12, 14, 16, 18, 20}
+        for i, v in ipairs(expected) do
+          if results[i] ~= v then
+            return false, "Expected " .. v .. " but got " .. (results[i] or "nil")
+          end
+        end
+
+        return true, "Pipeline fix verified!"
+      end
+    }
+  }
+})

@@ -1,0 +1,40 @@
+-- Simple test for Context implementation
+
+workflow.define("test_context", {
+  description = "Test context cancellation and timeout",
+  tasks = {
+    test_basic = {
+      description = "Test basic context operations",
+      command = function()
+        log.info("Testing context creation...")
+        local ctx = goroutine.context()
+
+        log.info("Context created successfully")
+        log.info("Is cancelled: " .. tostring(ctx:is_cancelled()))
+
+        -- Test cancellation
+        log.info("Cancelling context...")
+        ctx:cancel()
+
+        log.info("Is cancelled after cancel: " .. tostring(ctx:is_cancelled()))
+
+        local err = ctx:err()
+        log.info("Error after cancel: " .. (err or "nil"))
+
+        -- Test timeout
+        log.info("\nTesting timeout context...")
+        local ctx2 = goroutine.context()
+        local timeoutCtx = ctx2:with_timeout(500)
+
+        log.info("Waiting for timeout...")
+        goroutine.sleep(600)
+
+        log.info("Is cancelled after timeout: " .. tostring(timeoutCtx:is_cancelled()))
+        local err2 = timeoutCtx:err()
+        log.info("Error after timeout: " .. (err2 or "nil"))
+
+        return true, "Context test completed successfully"
+      end
+    }
+  }
+})
