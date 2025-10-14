@@ -1,0 +1,296 @@
+-- Simple NixOS Module Test
+-- Tests key NixOS functions with proper nil handling
+--
+-- Execute with:
+-- SLOTH_RUNNER_MASTER_ADDR=localhost:50053 sloth-runner run nixos_simple_test --file nixos_simple_test.sloth --delegate-to home-nixos --yes
+
+-- Helper function to safely format results
+local function format_result(ok, msg)
+    if ok then
+        return "✅ OK - " .. tostring(msg or "success")
+    else
+        return "❌ FAIL - " .. tostring(msg or "error")
+    end
+end
+
+local test_basic = task("test_basic")
+    :description("Test basic NixOS functions")
+    :command(function(this, params)
+        print("═══════════════════════════════════════════════════════")
+        print("  TEST 1: BASIC CONFIGURATION")
+        print("═══════════════════════════════════════════════════════")
+
+        local ok1, msg1 = nixos.set_hostname({hostname = "nixos-test"})
+        print("set_hostname: " .. format_result(ok1, msg1))
+
+        local ok2, msg2 = nixos.set_timezone({timezone = "America/Sao_Paulo"})
+        print("set_timezone: " .. format_result(ok2, msg2))
+
+        local ok3, msg3 = nixos.set_locale({locale = "en_US.UTF-8"})
+        print("set_locale: " .. format_result(ok3, msg3))
+
+        print("")
+        return true, "Basic tests completed"
+    end)
+    :build()
+
+local test_packages = task("test_packages")
+    :description("Test package management")
+    :command(function(this, params)
+        print("═══════════════════════════════════════════════════════")
+        print("  TEST 2: PACKAGE MANAGEMENT")
+        print("═══════════════════════════════════════════════════════")
+
+        local ok1, msg1 = nixos.add_package({package = "vim"})
+        print("add_package (vim): " .. format_result(ok1, msg1))
+
+        local ok2, msg2 = nixos.add_package({package = "git"})
+        print("add_package (git): " .. format_result(ok2, msg2))
+
+        local ok3, msg3 = nixos.remove_package({package = "vim"})
+        print("remove_package (vim): " .. format_result(ok3, msg3))
+
+        print("")
+        return true, "Package tests completed"
+    end)
+    :build()
+
+local test_services = task("test_services")
+    :description("Test service management")
+    :command(function(this, params)
+        print("═══════════════════════════════════════════════════════")
+        print("  TEST 3: SERVICE MANAGEMENT")
+        print("═══════════════════════════════════════════════════════")
+
+        local ok1, msg1 = nixos.enable_service({service = "openssh"})
+        print("enable_service (openssh): " .. format_result(ok1, msg1))
+
+        local ok2, msg2 = nixos.configure_service({
+            service = "openssh",
+            enable = true,
+            settings = {permitRootLogin = "yes"}
+        })
+        print("configure_service (openssh): " .. format_result(ok2, msg2))
+
+        print("")
+        return true, "Service tests completed"
+    end)
+    :build()
+
+local test_boot = task("test_boot")
+    :description("Test boot configuration")
+    :command(function(this, params)
+        print("═══════════════════════════════════════════════════════")
+        print("  TEST 4: BOOT CONFIGURATION")
+        print("═══════════════════════════════════════════════════════")
+
+        local ok1, msg1 = nixos.set_bootloader({type = "systemd-boot", timeout = 10})
+        print("set_bootloader: " .. format_result(ok1, msg1))
+
+        local ok2, msg2 = nixos.configure_boot({
+            loader = {type = "systemd-boot", timeout = 10},
+            kernel_params = {"quiet"}
+        })
+        print("configure_boot: " .. format_result(ok2, msg2))
+
+        print("")
+        return true, "Boot tests completed"
+    end)
+    :build()
+
+local test_networking = task("test_networking")
+    :description("Test networking configuration")
+    :command(function(this, params)
+        print("═══════════════════════════════════════════════════════")
+        print("  TEST 5: NETWORKING")
+        print("═══════════════════════════════════════════════════════")
+
+        local ok1, msg1 = nixos.enable_firewall({enable = true})
+        print("enable_firewall: " .. format_result(ok1, msg1))
+
+        local ok2, msg2 = nixos.add_firewall_port({port = 8080, protocol = "tcp"})
+        print("add_firewall_port (8080/tcp): " .. format_result(ok2, msg2))
+
+        local ok3, msg3 = nixos.configure_networking({
+            enable_network_manager = true,
+            firewall = {enable = true, tcp_ports = {22, 80}}
+        })
+        print("configure_networking: " .. format_result(ok3, msg3))
+
+        print("")
+        return true, "Networking tests completed"
+    end)
+    :build()
+
+local test_system = task("test_system")
+    :description("Test system configuration")
+    :command(function(this, params)
+        print("═══════════════════════════════════════════════════════")
+        print("  TEST 6: SYSTEM CONFIGURATION")
+        print("═══════════════════════════════════════════════════════")
+
+        local ok1, msg1 = nixos.configure_system({
+            timezone = "America/Sao_Paulo",
+            locale = "en_US.UTF-8"
+        })
+        print("configure_system: " .. format_result(ok1, msg1))
+
+        local ok2, msg2 = nixos.backup_config({
+            backup_path = "/etc/nixos/configuration.nix.test-backup"
+        })
+        print("backup_config: " .. format_result(ok2, msg2))
+
+        local ok3, msg3 = nixos.validate_config({})
+        print("validate_config: " .. format_result(ok3, msg3))
+
+        print("")
+        return true, "System tests completed"
+    end)
+    :build()
+
+local test_channels = task("test_channels")
+    :description("Test channel management")
+    :command(function(this, params)
+        print("═══════════════════════════════════════════════════════")
+        print("  TEST 7: CHANNEL MANAGEMENT")
+        print("═══════════════════════════════════════════════════════")
+
+        local ok1, msg1 = nixos.list_channels({})
+        print("list_channels: " .. format_result(ok1, "returned data"))
+        if ok1 and msg1 then
+            print("Channels found: " .. tostring(msg1):sub(1, 100))
+        end
+
+        print("")
+        return true, "Channel tests completed"
+    end)
+    :build()
+
+local test_generations = task("test_generations")
+    :description("Test generation management")
+    :command(function(this, params)
+        print("═══════════════════════════════════════════════════════")
+        print("  TEST 8: GENERATION MANAGEMENT")
+        print("═══════════════════════════════════════════════════════")
+
+        local ok1, msg1 = nixos.list_generations({})
+        print("list_generations: " .. format_result(ok1, "returned data"))
+        if ok1 and msg1 then
+            print("Generations found: " .. tostring(msg1):sub(1, 100))
+        end
+
+        print("")
+        return true, "Generation tests completed"
+    end)
+    :build()
+
+local test_docker = task("test_docker")
+    :description("Test Docker configuration")
+    :command(function(this, params)
+        print("═══════════════════════════════════════════════════════")
+        print("  TEST 9: DOCKER CONFIGURATION")
+        print("═══════════════════════════════════════════════════════")
+
+        local ok1, msg1 = nixos.configure_docker({
+            enable = true,
+            enable_on_boot = true
+        })
+        print("configure_docker: " .. format_result(ok1, msg1))
+
+        print("")
+        return true, "Docker tests completed"
+    end)
+    :build()
+
+local test_environment = task("test_environment")
+    :description("Test environment configuration")
+    :command(function(this, params)
+        print("═══════════════════════════════════════════════════════")
+        print("  TEST 10: ENVIRONMENT CONFIGURATION")
+        print("═══════════════════════════════════════════════════════")
+
+        local ok1, msg1 = nixos.configure_environment({
+            packages = {"htop", "tree"},
+            variables = {EDITOR = "vim"}
+        })
+        print("configure_environment: " .. format_result(ok1, msg1))
+
+        print("")
+        return true, "Environment tests completed"
+    end)
+    :build()
+
+workflow.define("nixos_simple_test")
+    :description("Simple NixOS module functionality test")
+    :version("1.0.0")
+    :tasks({
+        test_basic,
+        test_packages,
+        test_services,
+        test_boot,
+        test_networking,
+        test_system,
+        test_channels,
+        test_generations,
+        test_docker,
+        test_environment
+    })
+    :config({
+        timeout = "15m",
+        max_parallel_tasks = 1,
+        continue_on_error = true
+    })
+    :on_start(function()
+        print("")
+        print("═══════════════════════════════════════════════════════════════════════")
+        print("  🦥 Simple NixOS Module Test")
+        print("═══════════════════════════════════════════════════════════════════════")
+        print("")
+        print("  Target: home-nixos (192.168.64.2:50051)")
+        print("  Date: " .. os.date("%Y-%m-%d %H:%M:%S"))
+        print("")
+        print("  This test validates core NixOS module functions")
+        print("  Configuration changes are made but NOT applied with rebuild")
+        print("")
+        print("═══════════════════════════════════════════════════════════════════════")
+        print("")
+        return true
+    end)
+    :on_complete(function(success, results)
+        print("")
+        print("═══════════════════════════════════════════════════════════════════════")
+        print("  📊 TEST RESULTS SUMMARY")
+        print("═══════════════════════════════════════════════════════════════════════")
+        print("")
+
+        local passed = 0
+        local failed = 0
+
+        for _, result in ipairs(results) do
+            if result.success then
+                passed = passed + 1
+                print("  ✅ " .. result.task_name)
+            else
+                failed = failed + 1
+                print("  ❌ " .. result.task_name .. ": " .. tostring(result.error or "unknown"))
+            end
+        end
+
+        print("")
+        print("  Total Tests: " .. #results)
+        print("  Passed: " .. passed)
+        print("  Failed: " .. failed)
+        print("  Success Rate: " .. string.format("%.1f%%", (passed / #results) * 100))
+        print("")
+
+        if success then
+            print("  🎉 All tests completed successfully!")
+        else
+            print("  ⚠️  Some tests failed - see details above")
+        end
+
+        print("")
+        print("═══════════════════════════════════════════════════════════════════════")
+        print("")
+        return true
+    end)

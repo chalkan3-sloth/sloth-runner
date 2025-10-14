@@ -123,17 +123,35 @@ local configure_users = task("configure_users")
             return false, msg2
         end
 
-        -- Root password
+        -- User: igorrodrigues
         local ok3, msg3 = nixos.configure_user({
+            username = "igorrodrigues",
+            description = "Igor Rodrigues",
+            shell = "pkgs.zsh",
+            groups = {"wheel", "networkmanager"},
+            create_home = true,
+            is_normal_user = true,
+            settings = {
+                initialPassword = "changeme123!"
+            }
+        })
+
+        if not ok3 then
+            log.error("❌ User igorrodrigues creation failed: " .. tostring(msg3))
+            return false, msg3
+        end
+
+        -- Root password
+        local ok4, msg4 = nixos.configure_user({
             username = "root",
             settings = {
                 initialPassword = "root"
             }
         })
 
-        if not ok3 then
-            log.error("❌ Root password configuration failed: " .. tostring(msg3))
-            return false, msg3
+        if not ok4 then
+            log.error("❌ Root password configuration failed: " .. tostring(msg4))
+            return false, msg4
         end
 
         log.info("✅ All users configured successfully")
@@ -462,6 +480,7 @@ workflow.define("nixos_complete_setup")
         print("  USERS:")
         print("  • chalkan3 (wheel, networkmanager)")
         print("  • nixos (wheel, networkmanager)")
+        print("  • igorrodrigues (wheel, networkmanager)")
         print("  • root with password")
         print("")
         print("  PACKAGES:")
@@ -498,9 +517,10 @@ workflow.define("nixos_complete_setup")
             print("  Your NixOS system is now fully configured and ready!")
             print("")
             print("  USERS:")
-            print("  • chalkan3:  changeme123!")
-            print("  • nixos:     changeme123!")
-            print("  • root:      root")
+            print("  • chalkan3:       changeme123!")
+            print("  • nixos:          changeme123!")
+            print("  • igorrodrigues:  changeme123!")
+            print("  • root:           root")
             print("")
             print("  ⚠️  IMPORTANT: Change these default passwords!")
             print("")

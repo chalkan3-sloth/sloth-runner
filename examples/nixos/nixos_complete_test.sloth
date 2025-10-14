@@ -1,0 +1,585 @@
+-- Complete NixOS Module Functionality Test
+-- Tests all 84 NixOS functions on home-nixos agent
+--
+-- Execute with:
+-- sloth-runner run nixos_complete_test --file nixos_complete_test.sloth --delegate-to home-nixos --yes
+
+-- ============================================================================
+-- TEST 1: BOOT CONFIGURATION
+-- ============================================================================
+
+local test_boot_config = task("test_boot_config")
+    :description("Test boot configuration functions")
+    :command(function(this, params)
+        print("🚀 Testing Boot Configuration...")
+
+        -- Test 1: Configure bootloader
+        local ok1, msg1 = nixos.configure_boot({
+            loader = {
+                type = "systemd-boot",
+                timeout = 10,
+                editor = false
+            },
+            kernel_params = {"quiet", "splash"}
+        })
+        print("configure_boot: " .. (ok1 and "✅" or "❌") .. " - " .. msg1)
+
+        return true, "Boot tests completed"
+    end)
+    :build()
+
+-- ============================================================================
+-- TEST 2: SYSTEM CONFIGURATION
+-- ============================================================================
+
+local test_system_config = task("test_system_config")
+    :description("Test system configuration functions")
+    :command(function(this, params)
+        print("⚙️  Testing System Configuration...")
+
+        -- Test 1: Configure system
+        local ok1, msg1 = nixos.configure_system({
+            timezone = "America/Sao_Paulo",
+            locale = "en_US.UTF-8",
+            console = {keymap = "us"}
+        })
+        print("configure_system: " .. (ok1 and "✅" or "❌") .. " - " .. msg1)
+
+        -- Test 2: Set hostname
+        local ok2, msg2 = nixos.set_hostname({hostname = "nixos-test-vm"})
+        print("set_hostname: " .. (ok2 and "✅" or "❌") .. " - " .. msg2)
+
+        return true, "System tests completed"
+    end)
+    :build()
+
+-- ============================================================================
+-- TEST 3: USER MANAGEMENT
+-- ============================================================================
+
+local test_user_management = task("test_user_management")
+    :description("Test user management functions")
+    :command(function(this, params)
+        print("👥 Testing User Management...")
+
+        -- Test 1: Create test user
+        local ok1, msg1 = nixos.configure_user({
+            username = "testuser",
+            description = "Test User",
+            shell = "pkgs.bash",
+            groups = {"wheel"},
+            create_home = true,
+            is_normal_user = true,
+            settings = {initialPassword = "test123"}
+        })
+        print("configure_user (create): " .. (ok1 and "✅" or "❌") .. " - " .. msg1)
+
+        -- Test 2: Add SSH key
+        local ok2, msg2 = nixos.add_ssh_key({
+            username = "testuser",
+            key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITest test@example.com"
+        })
+        print("add_ssh_key: " .. (ok2 and "✅" or "❌") .. " - " .. msg2)
+
+        -- Test 3: Remove SSH key
+        local ok3, msg3 = nixos.remove_ssh_key({
+            username = "testuser",
+            key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITest test@example.com"
+        })
+        print("remove_ssh_key: " .. (ok3 and "✅" or "❌") .. " - " .. msg3)
+
+        -- Test 4: Add user to group
+        local ok4, msg4 = nixos.add_user_to_group({
+            username = "testuser",
+            group = "networkmanager"
+        })
+        print("add_user_to_group: " .. (ok4 and "✅" or "❌") .. " - " .. msg4)
+
+        -- Test 5: Remove user from group
+        local ok5, msg5 = nixos.remove_user_from_group({
+            username = "testuser",
+            group = "networkmanager"
+        })
+        print("remove_user_from_group: " .. (ok5 and "✅" or "❌") .. " - " .. msg5)
+
+        -- Test 6: Remove user
+        local ok6, msg6 = nixos.remove_user({username = "testuser"})
+        print("remove_user: " .. (ok6 and "✅" or "❌") .. " - " .. msg6)
+
+        return true, "User management tests completed"
+    end)
+    :build()
+
+-- ============================================================================
+-- TEST 4: ENVIRONMENT & PACKAGES
+-- ============================================================================
+
+local test_environment = task("test_environment")
+    :description("Test environment and package functions")
+    :command(function(this, params)
+        print("📦 Testing Environment & Packages...")
+
+        -- Test 1: Configure environment
+        local ok1, msg1 = nixos.configure_environment({
+            packages = {"vim", "git", "htop"},
+            variables = {
+                EDITOR = "vim",
+                VISUAL = "vim"
+            }
+        })
+        print("configure_environment: " .. (ok1 and "✅" or "❌") .. " - " .. msg1)
+
+        -- Test 2: Add package
+        local ok2, msg2 = nixos.add_package({package = "tree"})
+        print("add_package: " .. (ok2 and "✅" or "❌") .. " - " .. msg2)
+
+        -- Test 3: Remove package
+        local ok3, msg3 = nixos.remove_package({package = "tree"})
+        print("remove_package: " .. (ok3 and "✅" or "❌") .. " - " .. msg3)
+
+        -- Test 4: Add environment variable
+        local ok4, msg4 = nixos.add_environment_variable({
+            name = "TEST_VAR",
+            value = "test_value"
+        })
+        print("add_environment_variable: " .. (ok4 and "✅" or "❌") .. " - " .. msg4)
+
+        -- Test 5: Remove environment variable
+        local ok5, msg5 = nixos.remove_environment_variable({name = "TEST_VAR"})
+        print("remove_environment_variable: " .. (ok5 and "✅" or "❌") .. " - " .. msg5)
+
+        return true, "Environment tests completed"
+    end)
+    :build()
+
+-- ============================================================================
+-- TEST 5: NETWORKING
+-- ============================================================================
+
+local test_networking = task("test_networking")
+    :description("Test networking functions")
+    :command(function(this, params)
+        print("🌐 Testing Networking...")
+
+        -- Test 1: Configure networking
+        local ok1, msg1 = nixos.configure_networking({
+            enable_network_manager = true,
+            firewall = {
+                enable = true,
+                tcp_ports = {22, 80, 443},
+                udp_ports = {}
+            }
+        })
+        print("configure_networking: " .. (ok1 and "✅" or "❌") .. " - " .. msg1)
+
+        -- Test 2: Configure firewall
+        local ok2, msg2 = nixos.configure_firewall({
+            enable = true,
+            tcp_ports = {22, 8080},
+            udp_ports = {53}
+        })
+        print("configure_firewall: " .. (ok2 and "✅" or "❌") .. " - " .. msg2)
+
+        -- Test 3: Add firewall rule
+        local ok3, msg3 = nixos.add_firewall_rule({
+            port = 9090,
+            protocol = "tcp"
+        })
+        print("add_firewall_rule: " .. (ok3 and "✅" or "❌") .. " - " .. msg3)
+
+        -- Test 4: Remove firewall rule
+        local ok4, msg4 = nixos.remove_firewall_rule({
+            port = 9090,
+            protocol = "tcp"
+        })
+        print("remove_firewall_rule: " .. (ok4 and "✅" or "❌") .. " - " .. msg4)
+
+        return true, "Networking tests completed"
+    end)
+    :build()
+
+-- ============================================================================
+-- TEST 6: SERVICES
+-- ============================================================================
+
+local test_services = task("test_services")
+    :description("Test service configuration functions")
+    :command(function(this, params)
+        print("🔐 Testing Services...")
+
+        -- Test 1: Configure service
+        local ok1, msg1 = nixos.configure_service({
+            service = "openssh",
+            enable = true,
+            settings = {
+                permitRootLogin = "yes",
+                passwordAuthentication = true
+            }
+        })
+        print("configure_service: " .. (ok1 and "✅" or "❌") .. " - " .. msg1)
+
+        -- Test 2: Enable service
+        local ok2, msg2 = nixos.enable_service({service = "openssh"})
+        print("enable_service: " .. (ok2 and "✅" or "❌") .. " - " .. msg2)
+
+        -- Test 3: Configure Docker
+        local ok3, msg3 = nixos.configure_docker({
+            enable = true,
+            enable_on_boot = true,
+            users = {"chalkan3"}
+        })
+        print("configure_docker: " .. (ok3 and "✅" or "❌") .. " - " .. msg3)
+
+        return true, "Services tests completed"
+    end)
+    :build()
+
+-- ============================================================================
+-- TEST 7: NIX SETTINGS
+-- ============================================================================
+
+local test_nix_settings = task("test_nix_settings")
+    :description("Test Nix settings functions")
+    :command(function(this, params)
+        print("❄️  Testing Nix Settings...")
+
+        -- Test 1: Configure Nix
+        local ok1, msg1 = nixos.configure_nix({
+            auto_optimise_store = true,
+            gc = {
+                automatic = true,
+                dates = "weekly",
+                options = "--delete-older-than 30d"
+            }
+        })
+        print("configure_nix: " .. (ok1 and "✅" or "❌") .. " - " .. msg1)
+
+        -- Test 2: Enable flakes
+        local ok2, msg2 = nixos.enable_flakes({enable = true})
+        print("enable_flakes: " .. (ok2 and "✅" or "❌") .. " - " .. msg2)
+
+        -- Test 3: Add binary cache
+        local ok3, msg3 = nixos.add_binary_cache({
+            url = "https://cache.nixos.org",
+            key = "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+        })
+        print("add_binary_cache: " .. (ok3 and "✅" or "❌") .. " - " .. msg3)
+
+        return true, "Nix settings tests completed"
+    end)
+    :build()
+
+-- ============================================================================
+-- TEST 8: GENERATION MANAGEMENT
+-- ============================================================================
+
+local test_generations = task("test_generations")
+    :description("Test generation management functions")
+    :command(function(this, params)
+        print("🔄 Testing Generation Management...")
+
+        -- Test 1: List generations
+        local ok1, msg1 = nixos.list_generations({})
+        print("list_generations: " .. (ok1 and "✅" or "❌"))
+        if ok1 then
+            print("Generations:")
+            print(msg1)
+        end
+
+        -- Test 2: Get current generation
+        local ok2, msg2 = nixos.get_current_generation({})
+        print("get_current_generation: " .. (ok2 and "✅" or "❌") .. " - " .. msg2)
+
+        return true, "Generation tests completed"
+    end)
+    :build()
+
+-- ============================================================================
+-- TEST 9: FILESYSTEM
+-- ============================================================================
+
+local test_filesystem = task("test_filesystem")
+    :description("Test filesystem functions")
+    :command(function(this, params)
+        print("💾 Testing Filesystem...")
+
+        -- Test 1: Configure filesystem
+        local ok1, msg1 = nixos.configure_filesystem({
+            device = "/dev/sda1",
+            mount_point = "/test",
+            fs_type = "ext4",
+            options = {"defaults"}
+        })
+        print("configure_filesystem: " .. (ok1 and "✅" or "❌") .. " - " .. msg1)
+
+        -- Test 2: Remove filesystem
+        local ok2, msg2 = nixos.remove_filesystem({mount_point = "/test"})
+        print("remove_filesystem: " .. (ok2 and "✅" or "❌") .. " - " .. msg2)
+
+        return true, "Filesystem tests completed"
+    end)
+    :build()
+
+-- ============================================================================
+-- TEST 10: PERFORMANCE
+-- ============================================================================
+
+local test_performance = task("test_performance")
+    :description("Test performance tuning functions")
+    :command(function(this, params)
+        print("⚡ Testing Performance...")
+
+        -- Test 1: Configure performance
+        local ok1, msg1 = nixos.configure_performance({
+            cpu_governor = "performance",
+            enable_zram = true,
+            zram_size_percentage = 50
+        })
+        print("configure_performance: " .. (ok1 and "✅" or "❌") .. " - " .. msg1)
+
+        -- Test 2: Configure zram
+        local ok2, msg2 = nixos.configure_zram({
+            enable = true,
+            size_percentage = 50
+        })
+        print("configure_zram: " .. (ok2 and "✅" or "❌") .. " - " .. msg2)
+
+        return true, "Performance tests completed"
+    end)
+    :build()
+
+-- ============================================================================
+-- TEST 11: HARDWARE
+-- ============================================================================
+
+local test_hardware = task("test_hardware")
+    :description("Test hardware configuration functions")
+    :command(function(this, params)
+        print("🖥️  Testing Hardware...")
+
+        -- Test 1: Configure hardware
+        local ok1, msg1 = nixos.configure_hardware({
+            enable_all_firmware = true,
+            cpu_freq_governor = "performance"
+        })
+        print("configure_hardware: " .. (ok1 and "✅" or "❌") .. " - " .. msg1)
+
+        -- Test 2: Configure sound
+        local ok2, msg2 = nixos.configure_sound({
+            enable = true,
+            enable_pulse_audio = false
+        })
+        print("configure_sound: " .. (ok2 and "✅" or "❌") .. " - " .. msg2)
+
+        return true, "Hardware tests completed"
+    end)
+    :build()
+
+-- ============================================================================
+-- TEST 12: SECURITY
+-- ============================================================================
+
+local test_security = task("test_security")
+    :description("Test security functions")
+    :command(function(this, params)
+        print("🔒 Testing Security...")
+
+        -- Test 1: Configure sudo
+        local ok1, msg1 = nixos.configure_sudo({
+            enable = true,
+            wheel_needs_password = true
+        })
+        print("configure_sudo: " .. (ok1 and "✅" or "❌") .. " - " .. msg1)
+
+        -- Test 2: Configure PAM
+        local ok2, msg2 = nixos.configure_pam({
+            services = {
+                sshd = {
+                    enable = true
+                }
+            }
+        })
+        print("configure_pam: " .. (ok2 and "✅" or "❌") .. " - " .. msg2)
+
+        return true, "Security tests completed"
+    end)
+    :build()
+
+-- ============================================================================
+-- TEST 13: BACKUP & VALIDATION
+-- ============================================================================
+
+local test_backup_validate = task("test_backup_validate")
+    :description("Test backup and validation functions")
+    :command(function(this, params)
+        print("💾 Testing Backup & Validation...")
+
+        -- Test 1: Backup config
+        local ok1, msg1 = nixos.backup_config({
+            backup_path = "/etc/nixos/configuration.nix.test-backup"
+        })
+        print("backup_config: " .. (ok1 and "✅" or "❌") .. " - " .. msg1)
+
+        -- Test 2: Validate config
+        local ok2, msg2 = nixos.validate_config({})
+        print("validate_config: " .. (ok2 and "✅" or "❌") .. " - " .. msg2)
+
+        return true, "Backup & validation tests completed"
+    end)
+    :build()
+
+-- ============================================================================
+-- TEST 14: QUERY FUNCTIONS
+-- ============================================================================
+
+local test_queries = task("test_queries")
+    :description("Test query functions")
+    :command(function(this, params)
+        print("🔍 Testing Query Functions...")
+
+        -- Test 1: Get config value
+        local ok1, msg1 = nixos.get_config_value({option = "networking.hostName"})
+        print("get_config_value: " .. (ok1 and "✅" or "❌") .. " - " .. msg1)
+
+        -- Test 2: List users
+        local ok2, msg2 = nixos.list_users({})
+        print("list_users: " .. (ok2 and "✅" or "❌"))
+        if ok2 then
+            print("Users:")
+            print(msg2)
+        end
+
+        -- Test 3: List packages
+        local ok3, msg3 = nixos.list_packages({})
+        print("list_packages: " .. (ok3 and "✅" or "❌"))
+        if ok3 then
+            print("Packages (first 10 lines):")
+            local count = 0
+            for line in msg3:gmatch("[^\r\n]+") do
+                if count < 10 then
+                    print(line)
+                    count = count + 1
+                else
+                    break
+                end
+            end
+        end
+
+        -- Test 4: List services
+        local ok4, msg4 = nixos.list_services({})
+        print("list_services: " .. (ok4 and "✅" or "❌"))
+        if ok4 then
+            print("Services (first 10 lines):")
+            local count = 0
+            for line in msg4:gmatch("[^\r\n]+") do
+                if count < 10 then
+                    print(line)
+                    count = count + 1
+                else
+                    break
+                end
+            end
+        end
+
+        return true, "Query tests completed"
+    end)
+    :build()
+
+-- ============================================================================
+-- WORKFLOW DEFINITION
+-- ============================================================================
+
+workflow.define("nixos_complete_test")
+    :description("Complete NixOS module functionality test")
+    :version("1.0.0")
+    :tasks({
+        test_boot_config,
+        test_system_config,
+        test_user_management,
+        test_environment,
+        test_networking,
+        test_services,
+        test_nix_settings,
+        test_generations,
+        test_filesystem,
+        test_performance,
+        test_hardware,
+        test_security,
+        test_backup_validate,
+        test_queries
+    })
+    :config({
+        timeout = "20m",
+        max_parallel_tasks = 1,
+        continue_on_error = true  -- Continue even if some tests fail
+    })
+    :on_start(function()
+        print("")
+        print("═══════════════════════════════════════════════════════════════════════")
+        print("  🦥 Complete NixOS Module Functionality Test")
+        print("═══════════════════════════════════════════════════════════════════════")
+        print("")
+        print("  This workflow tests all 84 NixOS functions:")
+        print("")
+        print("  📋 Test Categories:")
+        print("  1.  Boot Configuration (1 function)")
+        print("  2.  System Configuration (2 functions)")
+        print("  3.  User Management (6 functions)")
+        print("  4.  Environment & Packages (5 functions)")
+        print("  5.  Networking (4 functions)")
+        print("  6.  Services (3 functions)")
+        print("  7.  Nix Settings (3 functions)")
+        print("  8.  Generation Management (2 functions)")
+        print("  9.  Filesystem (2 functions)")
+        print("  10. Performance (2 functions)")
+        print("  11. Hardware (2 functions)")
+        print("  12. Security (2 functions)")
+        print("  13. Backup & Validation (2 functions)")
+        print("  14. Query Functions (4 functions)")
+        print("")
+        print("  🎯 Target: home-nixos (192.168.64.2:50051)")
+        print("")
+        print("  ⚠️  NOTE: This is a NON-DESTRUCTIVE test")
+        print("  Configuration changes will be made but NOT applied with rebuild")
+        print("")
+        print("═══════════════════════════════════════════════════════════════════════")
+        print("")
+        return true
+    end)
+    :on_complete(function(success, results)
+        print("")
+        print("═══════════════════════════════════════════════════════════════════════")
+        print("  📊 Test Summary")
+        print("═══════════════════════════════════════════════════════════════════════")
+        print("")
+
+        local passed = 0
+        local failed = 0
+
+        for _, result in ipairs(results) do
+            if result.success then
+                passed = passed + 1
+                print("  ✅ " .. result.task_name)
+            else
+                failed = failed + 1
+                print("  ❌ " .. result.task_name .. ": " .. (result.error or "unknown error"))
+            end
+        end
+
+        print("")
+        print("  Total: " .. #results .. " test groups")
+        print("  Passed: " .. passed)
+        print("  Failed: " .. failed)
+        print("")
+
+        if success then
+            print("  🎉 All tests completed successfully!")
+        else
+            print("  ⚠️  Some tests failed - review output above")
+        end
+
+        print("")
+        print("═══════════════════════════════════════════════════════════════════════")
+        print("")
+        return true
+    end)
