@@ -10,6 +10,71 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+// findNixBlock finds a complete Nix block by counting braces
+// Returns the start index, end index, and the matched content
+func findNixBlock(content, pattern string) (int, int, string) {
+	re := regexp.MustCompile(pattern)
+	matches := re.FindStringIndex(content)
+	if matches == nil {
+		return -1, -1, ""
+	}
+
+	start := matches[0]
+	// Find the opening brace after the pattern
+	openBrace := strings.Index(content[start:], "{")
+	if openBrace == -1 {
+		return -1, -1, ""
+	}
+
+	braceStart := start + openBrace
+	braceCount := 0
+	inString := false
+	escape := false
+
+	for i := braceStart; i < len(content); i++ {
+		ch := content[i]
+
+		if escape {
+			escape = false
+			continue
+		}
+
+		if ch == '\\' {
+			escape = true
+			continue
+		}
+
+		if ch == '"' {
+			inString = !inString
+			continue
+		}
+
+		if !inString {
+			if ch == '{' {
+				braceCount++
+			} else if ch == '}' {
+				braceCount--
+				if braceCount == 0 {
+					// Find the semicolon after the closing brace
+					semicolon := i + 1
+					if semicolon < len(content) && content[semicolon] == ';' {
+						return start, semicolon + 1, content[start : semicolon+1]
+					}
+					return start, i + 1, content[start : i+1]
+				}
+			}
+		}
+	}
+
+	return -1, -1, ""
+}
+
+// extractUserBlock extracts a specific user block from users.users
+func extractUserBlock(content, username string) (int, int, string) {
+	pattern := fmt.Sprintf(`users\.users\.%s\s*=\s*\{`, regexp.QuoteMeta(username))
+	return findNixBlock(content, pattern)
+}
+
 // RegisterNixOSModule registers the NixOS management module in the Lua state
 func RegisterNixOSModule(L *lua.LState) {
 	// Create nixos module table
@@ -643,11 +708,17 @@ func buildUserConfig(username, description, shell string, groups []string, isNor
 }
 
 func insertUserIntoConfig(content, userConfig string) string {
-	// Try to find users.users section
-	usersPattern := regexp.MustCompile(`(users\.users\s*=\s*{[^}]*)(};)`)
-	if usersPattern.MatchString(content) {
+	// Try to find users.users section using proper Nix block parsing
+	start, end, block := findNixBlock(content, `users\.users\s*=\s*\{`)
+
+	if start >= 0 && end >= 0 {
 		// Insert before closing };
-		return usersPattern.ReplaceAllString(content, "${1}\n"+userConfig+"${2}")
+		// Find the last } before the semicolon
+		lastBrace := strings.LastIndex(block, "}")
+		if lastBrace >= 0 {
+			insertPoint := start + lastBrace
+			return content[:insertPoint] + "\n" + userConfig + content[insertPoint:]
+		}
 	}
 
 	// If users.users doesn't exist, create it
@@ -678,10 +749,19 @@ func insertUserIntoConfig(content, userConfig string) string {
 }
 
 func removeUserFromConfig(content, username string) string {
-	// Remove the entire user block
-	pattern := fmt.Sprintf(`\s*users\.users\.%s\s*=\s*{[^}]*};\s*`, regexp.QuoteMeta(username))
-	re := regexp.MustCompile(pattern)
-	return re.ReplaceAllString(content, "")
+	// Remove the entire user block using proper Nix block parsing
+	start, end, _ := extractUserBlock(content, username)
+	if start >= 0 && end >= 0 {
+		// Also remove any leading/trailing whitespace
+		for start > 0 && (content[start-1] == ' ' || content[start-1] == '\t') {
+			start--
+		}
+		if end < len(content) && content[end] == '\n' {
+			end++
+		}
+		return content[:start] + content[end:]
+	}
+	return content
 }
 
 func userHasSSHKey(configPath, username, sshKey string) (bool, error) {
@@ -1725,14 +1805,13 @@ func nixosConfigureUser(L *lua.LState) int {
 
 	userConfig.WriteString("  };\n")
 
-	// Check if user already exists
-	userPattern := fmt.Sprintf(`users\.users\.%s\s*=\s*\{[^}]*\};`, regexp.QuoteMeta(username))
-	re := regexp.MustCompile(userPattern)
+	// Check if user already exists using proper Nix block parsing
+	start, end, _ := extractUserBlock(configStr, username)
 
 	var newContent string
-	if re.MatchString(configStr) {
+	if start >= 0 && end >= 0 {
 		// Replace existing user config
-		newContent = re.ReplaceAllString(configStr, strings.TrimSpace(userConfig.String()))
+		newContent = configStr[:start] + strings.TrimSpace(userConfig.String()) + configStr[end:]
 	} else {
 		// Add new user config
 		newContent = insertUserIntoConfig(configStr, userConfig.String())
