@@ -112,7 +112,11 @@ func (m *MockExecuteCommandClient) CloseSend() error {
 
 // MockAgentClient is a mock implementation of pb.AgentClient
 type MockAgentClient struct {
-	UpdateAgentFunc func(ctx context.Context, in *pb.UpdateAgentRequest, opts ...grpc.CallOption) (*pb.UpdateAgentResponse, error)
+	UpdateAgentFunc     func(ctx context.Context, in *pb.UpdateAgentRequest, opts ...grpc.CallOption) (*pb.UpdateAgentResponse, error)
+	RegisterWatcherFunc func(ctx context.Context, in *pb.RegisterWatcherRequest, opts ...grpc.CallOption) (*pb.RegisterWatcherResponse, error)
+	ListWatchersFunc    func(ctx context.Context, in *pb.ListWatchersRequest, opts ...grpc.CallOption) (*pb.ListWatchersResponse, error)
+	GetWatcherFunc      func(ctx context.Context, in *pb.GetWatcherRequest, opts ...grpc.CallOption) (*pb.GetWatcherResponse, error)
+	RemoveWatcherFunc   func(ctx context.Context, in *pb.RemoveWatcherRequest, opts ...grpc.CallOption) (*pb.RemoveWatcherResponse, error)
 }
 
 func (m *MockAgentClient) ExecuteTask(ctx context.Context, in *pb.ExecuteTaskRequest, opts ...grpc.CallOption) (*pb.ExecuteTaskResponse, error) {
@@ -136,6 +140,46 @@ func (m *MockAgentClient) UpdateAgent(ctx context.Context, in *pb.UpdateAgentReq
 		Message:    "Update successful",
 		OldVersion: "1.0.0",
 		NewVersion: "1.1.0",
+	}, nil
+}
+
+func (m *MockAgentClient) RegisterWatcher(ctx context.Context, in *pb.RegisterWatcherRequest, opts ...grpc.CallOption) (*pb.RegisterWatcherResponse, error) {
+	if m.RegisterWatcherFunc != nil {
+		return m.RegisterWatcherFunc(ctx, in, opts...)
+	}
+	return &pb.RegisterWatcherResponse{
+		Success:   true,
+		Message:   "Watcher registered successfully",
+		WatcherId: "mock-watcher-id",
+	}, nil
+}
+
+func (m *MockAgentClient) ListWatchers(ctx context.Context, in *pb.ListWatchersRequest, opts ...grpc.CallOption) (*pb.ListWatchersResponse, error) {
+	if m.ListWatchersFunc != nil {
+		return m.ListWatchersFunc(ctx, in, opts...)
+	}
+	return &pb.ListWatchersResponse{
+		Watchers: []*pb.WatcherConfig{},
+	}, nil
+}
+
+func (m *MockAgentClient) GetWatcher(ctx context.Context, in *pb.GetWatcherRequest, opts ...grpc.CallOption) (*pb.GetWatcherResponse, error) {
+	if m.GetWatcherFunc != nil {
+		return m.GetWatcherFunc(ctx, in, opts...)
+	}
+	return &pb.GetWatcherResponse{
+		Found:   true,
+		Watcher: &pb.WatcherConfig{},
+	}, nil
+}
+
+func (m *MockAgentClient) RemoveWatcher(ctx context.Context, in *pb.RemoveWatcherRequest, opts ...grpc.CallOption) (*pb.RemoveWatcherResponse, error) {
+	if m.RemoveWatcherFunc != nil {
+		return m.RemoveWatcherFunc(ctx, in, opts...)
+	}
+	return &pb.RemoveWatcherResponse{
+		Success: true,
+		Message: "Watcher removed successfully",
 	}, nil
 }
 
