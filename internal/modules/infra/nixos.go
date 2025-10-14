@@ -96,6 +96,75 @@ func RegisterNixOSModule(L *lua.LState) {
 	// Declarative containers and VMs
 	L.SetField(nixosModule, "test_config", L.NewFunction(nixosTestConfig))
 
+	// Boot and Hardware configuration
+	L.SetField(nixosModule, "configure_boot", L.NewFunction(nixosConfigureBoot))
+	L.SetField(nixosModule, "configure_hardware", L.NewFunction(nixosConfigureHardware))
+	L.SetField(nixosModule, "configure_kernel", L.NewFunction(nixosConfigureKernel))
+
+	// Virtualization
+	L.SetField(nixosModule, "configure_libvirt", L.NewFunction(nixosConfigureLibvirt))
+	L.SetField(nixosModule, "create_vm", L.NewFunction(nixosCreateVM))
+
+	// Backup and snapshots
+	L.SetField(nixosModule, "configure_backup", L.NewFunction(nixosConfigureBackup))
+	L.SetField(nixosModule, "create_snapshot", L.NewFunction(nixosCreateSnapshot))
+
+	// Monitoring and logging
+	L.SetField(nixosModule, "configure_monitoring", L.NewFunction(nixosConfigureMonitoring))
+	L.SetField(nixosModule, "configure_journald", L.NewFunction(nixosConfigureJournald))
+	L.SetField(nixosModule, "configure_logrotate", L.NewFunction(nixosConfigureLogrotate))
+
+	// Desktop environment
+	L.SetField(nixosModule, "configure_xserver", L.NewFunction(nixosConfigureXServer))
+	L.SetField(nixosModule, "configure_desktop", L.NewFunction(nixosConfigureDesktop))
+	L.SetField(nixosModule, "configure_display_manager", L.NewFunction(nixosConfigureDisplayManager))
+	L.SetField(nixosModule, "configure_audio", L.NewFunction(nixosConfigureAudio))
+
+	// Database servers
+	L.SetField(nixosModule, "configure_postgresql", L.NewFunction(nixosConfigurePostgreSQL))
+	L.SetField(nixosModule, "configure_mysql", L.NewFunction(nixosConfigureMySQL))
+	L.SetField(nixosModule, "configure_redis", L.NewFunction(nixosConfigureRedis))
+	L.SetField(nixosModule, "configure_mongodb", L.NewFunction(nixosConfigureMongoDB))
+
+	// Web servers
+	L.SetField(nixosModule, "configure_apache", L.NewFunction(nixosConfigureApache))
+	L.SetField(nixosModule, "configure_caddy", L.NewFunction(nixosConfigureCaddy))
+
+	// Mail, DNS, DHCP servers
+	L.SetField(nixosModule, "configure_mail_server", L.NewFunction(nixosConfigureMailServer))
+	L.SetField(nixosModule, "configure_dns", L.NewFunction(nixosConfigureDNS))
+	L.SetField(nixosModule, "configure_dhcp", L.NewFunction(nixosConfigureDHCP))
+
+	// File sharing
+	L.SetField(nixosModule, "configure_nfs", L.NewFunction(nixosConfigureNFS))
+	L.SetField(nixosModule, "configure_samba", L.NewFunction(nixosConfigureSamba))
+
+	// LDAP
+	L.SetField(nixosModule, "configure_ldap", L.NewFunction(nixosConfigureLDAP))
+
+	// Certificates and ACME
+	L.SetField(nixosModule, "configure_acme", L.NewFunction(nixosConfigureACME))
+	L.SetField(nixosModule, "add_certificate", L.NewFunction(nixosAddCertificate))
+
+	// Proxy and load balancing
+	L.SetField(nixosModule, "configure_haproxy", L.NewFunction(nixosConfigureHAProxy))
+	L.SetField(nixosModule, "configure_traefik", L.NewFunction(nixosConfigureTraefik))
+	L.SetField(nixosModule, "configure_squid", L.NewFunction(nixosConfigureSquid))
+
+	// Additional services
+	L.SetField(nixosModule, "configure_openvpn", L.NewFunction(nixosConfigureOpenVPN))
+	L.SetField(nixosModule, "configure_k3s", L.NewFunction(nixosConfigureK3s))
+	L.SetField(nixosModule, "configure_gitlab_runner", L.NewFunction(nixosConfigureGitLabRunner))
+
+	// Import/Export configuration
+	L.SetField(nixosModule, "import_configuration", L.NewFunction(nixosImportConfiguration))
+	L.SetField(nixosModule, "export_module", L.NewFunction(nixosExportModule))
+	L.SetField(nixosModule, "validate_config", L.NewFunction(nixosValidateConfig))
+
+	// Performance tuning
+	L.SetField(nixosModule, "configure_performance", L.NewFunction(nixosConfigurePerformance))
+	L.SetField(nixosModule, "configure_swap", L.NewFunction(nixosConfigureSwap))
+
 	// Set as global
 	L.SetGlobal("nixos", nixosModule)
 }
@@ -2966,4 +3035,2248 @@ func luaValueToNixString(L *lua.LState, value lua.LValue) string {
 	default:
 		return "null"
 	}
+}
+// ============================================================================
+// BOOT AND HARDWARE CONFIGURATION
+// ============================================================================
+
+// nixosConfigureBoot configures boot settings with complete options
+// Usage: local ok, msg = nixos.configure_boot({
+//     loader = {type = "systemd-boot" | "grub", device = "/dev/sda"},
+//     kernel_params = {"quiet", "splash"},
+//     kernel_modules = {"kvm-intel", "vfio"},
+//     kernel_packages = "pkgs.linuxPackages_latest",
+//     tmp_on_tmpfs = true,
+//     settings = { ... }
+// })
+func nixosConfigureBoot(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	// Read current configuration
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	var bootConfig strings.Builder
+	bootConfig.WriteString("  boot = {\n")
+
+	// Loader configuration
+	loaderTable := L.GetField(params, "loader")
+	if tbl, ok := loaderTable.(*lua.LTable); ok {
+		loaderType := getStringField(L, tbl, "type", "systemd-boot")
+		bootConfig.WriteString("    loader = {\n")
+
+		if loaderType == "systemd-boot" {
+			bootConfig.WriteString("      systemd-boot = {\n")
+			bootConfig.WriteString("        enable = true;\n")
+			if editor := getBoolFieldFromTable(L, tbl, "editor", true); !editor {
+				bootConfig.WriteString("        editor = false;\n")
+			}
+			if timeout := getIntField(L, tbl, "timeout", 0); timeout > 0 {
+				bootConfig.WriteString(fmt.Sprintf("        timeout = %d;\n", timeout))
+			}
+			bootConfig.WriteString("      };\n")
+		} else if loaderType == "grub" {
+			device := getStringField(L, tbl, "device", "/dev/sda")
+			bootConfig.WriteString("      grub = {\n")
+			bootConfig.WriteString("        enable = true;\n")
+			bootConfig.WriteString(fmt.Sprintf("        device = \"%s\";\n", device))
+			if version := getIntField(L, tbl, "version", 2); version > 0 {
+				bootConfig.WriteString(fmt.Sprintf("        version = %d;\n", version))
+			}
+			if useOSProber := getBoolFieldFromTable(L, tbl, "use_os_prober", false); useOSProber {
+				bootConfig.WriteString("        useOSProber = true;\n")
+			}
+			bootConfig.WriteString("      };\n")
+		}
+
+		// EFI configuration
+		if canTouchEFI := getBoolFieldFromTable(L, tbl, "can_touch_efi_variables", true); canTouchEFI {
+			bootConfig.WriteString("      efi.canTouchEfiVariables = true;\n")
+		}
+		bootConfig.WriteString("    };\n")
+	}
+
+	// Kernel parameters
+	kernelParamsTable := L.GetField(params, "kernel_params")
+	if tbl, ok := kernelParamsTable.(*lua.LTable); ok {
+		var params []string
+		tbl.ForEach(func(_, val lua.LValue) {
+			if str, ok := val.(lua.LString); ok {
+				params = append(params, fmt.Sprintf("\"%s\"", string(str)))
+			}
+		})
+		if len(params) > 0 {
+			bootConfig.WriteString(fmt.Sprintf("    kernelParams = [ %s ];\n", strings.Join(params, " ")))
+		}
+	}
+
+	// Kernel modules
+	kernelModulesTable := L.GetField(params, "kernel_modules")
+	if tbl, ok := kernelModulesTable.(*lua.LTable); ok {
+		var modules []string
+		tbl.ForEach(func(_, val lua.LValue) {
+			if str, ok := val.(lua.LString); ok {
+				modules = append(modules, fmt.Sprintf("\"%s\"", string(str)))
+			}
+		})
+		if len(modules) > 0 {
+			bootConfig.WriteString(fmt.Sprintf("    kernelModules = [ %s ];\n", strings.Join(modules, " ")))
+		}
+	}
+
+	// Extra module packages
+	extraModulesTable := L.GetField(params, "extra_module_packages")
+	if tbl, ok := extraModulesTable.(*lua.LTable); ok {
+		var packages []string
+		tbl.ForEach(func(_, val lua.LValue) {
+			if str, ok := val.(lua.LString); ok {
+				packages = append(packages, string(str))
+			}
+		})
+		if len(packages) > 0 {
+			bootConfig.WriteString(fmt.Sprintf("    extraModulePackages = [ %s ];\n", strings.Join(packages, " ")))
+		}
+	}
+
+	// Kernel package
+	if kernelPkg := getStringField(L, params, "kernel_packages", ""); kernelPkg != "" {
+		bootConfig.WriteString(fmt.Sprintf("    kernelPackages = %s;\n", kernelPkg))
+	}
+
+	// tmpOnTmpfs
+	if tmpOnTmpfs := getBoolFieldFromTable(L, params, "tmp_on_tmpfs", false); tmpOnTmpfs {
+		bootConfig.WriteString("    tmpOnTmpfs = true;\n")
+	}
+
+	// Additional settings
+	settingsTable := L.GetField(params, "settings")
+	if tbl, ok := settingsTable.(*lua.LTable); ok {
+		tbl.ForEach(func(key, val lua.LValue) {
+			keyStr := lua.LVAsString(key)
+			valStr := luaValueToNixString(L, val)
+			bootConfig.WriteString(fmt.Sprintf("    %s = %s;\n", keyStr, valStr))
+		})
+	}
+
+	bootConfig.WriteString("  };\n")
+
+	// Update or add boot configuration
+	bootRegex := regexp.MustCompile(`(?s)boot\s*=\s*\{[^}]*\};`)
+	if bootRegex.MatchString(config) {
+		config = bootRegex.ReplaceAllString(config, strings.TrimSpace(bootConfig.String()))
+	} else {
+		// Add before closing brace
+		config = strings.TrimSuffix(config, "}\n") + "\n" + bootConfig.String() + "}\n"
+	}
+
+	// Write back
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("boot configuration updated successfully"))
+	return 2
+}
+
+// nixosConfigureHardware configures hardware-specific settings
+// Usage: local ok, msg = nixos.configure_hardware({
+//     enable_all_firmware = true,
+//     cpu = "intel" | "amd",
+//     gpu = "nvidia" | "amd" | "intel",
+//     bluetooth = true,
+//     sound = true,
+//     settings = { ... }
+// })
+func nixosConfigureHardware(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	var hwConfig strings.Builder
+	hwConfig.WriteString("  hardware = {\n")
+
+	// Enable all firmware
+	if enableAllFirmware := getBoolFieldFromTable(L, params, "enable_all_firmware", false); enableAllFirmware {
+		hwConfig.WriteString("    enableAllFirmware = true;\n")
+	}
+
+	// CPU-specific configuration
+	if cpu := getStringField(L, params, "cpu", ""); cpu != "" {
+		hwConfig.WriteString("    cpu." + cpu + ".updateMicrocode = true;\n")
+	}
+
+	// GPU configuration
+	if gpu := getStringField(L, params, "gpu", ""); gpu != "" {
+		if gpu == "nvidia" {
+			hwConfig.WriteString("    nvidia = {\n")
+			hwConfig.WriteString("      modesetting.enable = true;\n")
+			if prime := getBoolFieldFromTable(L, params, "nvidia_prime", false); prime {
+				hwConfig.WriteString("      prime.sync.enable = true;\n")
+			}
+			hwConfig.WriteString("    };\n")
+			hwConfig.WriteString("    opengl = {\n")
+			hwConfig.WriteString("      enable = true;\n")
+			hwConfig.WriteString("      driSupport = true;\n")
+			hwConfig.WriteString("      driSupport32Bit = true;\n")
+			hwConfig.WriteString("    };\n")
+		} else if gpu == "amd" {
+			hwConfig.WriteString("    opengl = {\n")
+			hwConfig.WriteString("      enable = true;\n")
+			hwConfig.WriteString("      driSupport = true;\n")
+			hwConfig.WriteString("      driSupport32Bit = true;\n")
+			hwConfig.WriteString("      extraPackages = with pkgs; [ amdvlk ];\n")
+			hwConfig.WriteString("    };\n")
+		}
+	}
+
+	// Bluetooth
+	if bluetooth := getBoolFieldFromTable(L, params, "bluetooth", false); bluetooth {
+		hwConfig.WriteString("    bluetooth = {\n")
+		hwConfig.WriteString("      enable = true;\n")
+		if powerOnBoot := getBoolFieldFromTable(L, params, "bluetooth_power_on_boot", true); powerOnBoot {
+			hwConfig.WriteString("      powerOnBoot = true;\n")
+		}
+		hwConfig.WriteString("    };\n")
+	}
+
+	// Additional settings
+	settingsTable := L.GetField(params, "settings")
+	if tbl, ok := settingsTable.(*lua.LTable); ok {
+		tbl.ForEach(func(key, val lua.LValue) {
+			keyStr := lua.LVAsString(key)
+			valStr := luaValueToNixString(L, val)
+			hwConfig.WriteString(fmt.Sprintf("    %s = %s;\n", keyStr, valStr))
+		})
+	}
+
+	hwConfig.WriteString("  };\n")
+
+	// Update or add hardware configuration
+	hwRegex := regexp.MustCompile(`(?s)hardware\s*=\s*\{[^}]*\};`)
+	if hwRegex.MatchString(config) {
+		config = hwRegex.ReplaceAllString(config, strings.TrimSpace(hwConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + hwConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("hardware configuration updated successfully"))
+	return 2
+}
+
+// nixosConfigureKernel configures kernel and modules
+// Usage: local ok, msg = nixos.configure_kernel({
+//     package = "pkgs.linuxPackages_latest",
+//     sysctl = {key = "value"},
+//     modules = {"kvm", "vfio"},
+//     blacklisted_modules = {"nouveau"}
+// })
+func nixosConfigureKernel(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	// Boot kernel package
+	if kernelPkg := getStringField(L, params, "package", ""); kernelPkg != "" {
+		bootKernelRegex := regexp.MustCompile(`boot\.kernelPackages\s*=\s*[^;]+;`)
+		newLine := fmt.Sprintf("  boot.kernelPackages = %s;", kernelPkg)
+		if bootKernelRegex.MatchString(config) {
+			config = bootKernelRegex.ReplaceAllString(config, newLine)
+		} else {
+			config = strings.TrimSuffix(config, "}\n") + "\n" + newLine + "\n}\n"
+		}
+	}
+
+	// Sysctl settings
+	sysctlTable := L.GetField(params, "sysctl")
+	if tbl, ok := sysctlTable.(*lua.LTable); ok {
+		var sysctlConfig strings.Builder
+		sysctlConfig.WriteString("  boot.kernel.sysctl = {\n")
+		tbl.ForEach(func(key, val lua.LValue) {
+			keyStr := lua.LVAsString(key)
+			valStr := luaValueToNixString(L, val)
+			sysctlConfig.WriteString(fmt.Sprintf("    \"%s\" = %s;\n", keyStr, valStr))
+		})
+		sysctlConfig.WriteString("  };")
+
+		sysctlRegex := regexp.MustCompile(`(?s)boot\.kernel\.sysctl\s*=\s*\{[^}]*\};`)
+		if sysctlRegex.MatchString(config) {
+			config = sysctlRegex.ReplaceAllString(config, sysctlConfig.String())
+		} else {
+			config = strings.TrimSuffix(config, "}\n") + "\n" + sysctlConfig.String() + "\n}\n"
+		}
+	}
+
+	// Blacklisted modules
+	blacklistTable := L.GetField(params, "blacklisted_modules")
+	if tbl, ok := blacklistTable.(*lua.LTable); ok {
+		var modules []string
+		tbl.ForEach(func(_, val lua.LValue) {
+			if str, ok := val.(lua.LString); ok {
+				modules = append(modules, fmt.Sprintf("\"%s\"", string(str)))
+			}
+		})
+		if len(modules) > 0 {
+			blacklistLine := fmt.Sprintf("  boot.blacklistedKernelModules = [ %s ];", strings.Join(modules, " "))
+			blacklistRegex := regexp.MustCompile(`boot\.blacklistedKernelModules\s*=\s*\[[^\]]*\];`)
+			if blacklistRegex.MatchString(config) {
+				config = blacklistRegex.ReplaceAllString(config, blacklistLine)
+			} else {
+				config = strings.TrimSuffix(config, "}\n") + "\n" + blacklistLine + "\n}\n"
+			}
+		}
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("kernel configuration updated successfully"))
+	return 2
+}
+// ============================================================================
+// VIRTUALIZATION
+// ============================================================================
+
+// nixosConfigureLibvirt configures libvirt/KVM virtualization
+// Usage: local ok, msg = nixos.configure_libvirt({
+//     enable = true,
+//     qemu_ovmf = true,
+//     qemu_run_as_root = false,
+//     on_boot = "start" | "ignore",
+//     settings = { ... }
+// })
+func nixosConfigureLibvirt(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+
+	var libvirtConfig strings.Builder
+	libvirtConfig.WriteString("  virtualisation.libvirtd = {\n")
+	libvirtConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	if qemuOvmf := getBoolFieldFromTable(L, params, "qemu_ovmf", false); qemuOvmf {
+		libvirtConfig.WriteString("    qemu.ovmf.enable = true;\n")
+	}
+
+	if qemuRunAsRoot := getBoolFieldFromTable(L, params, "qemu_run_as_root", false); !qemuRunAsRoot {
+		libvirtConfig.WriteString("    qemu.runAsRoot = false;\n")
+	}
+
+	if onBoot := getStringField(L, params, "on_boot", ""); onBoot != "" {
+		libvirtConfig.WriteString(fmt.Sprintf("    onBoot = \"%s\";\n", onBoot))
+	}
+
+	// Additional settings
+	settingsTable := L.GetField(params, "settings")
+	if tbl, ok := settingsTable.(*lua.LTable); ok {
+		tbl.ForEach(func(key, val lua.LValue) {
+			keyStr := lua.LVAsString(key)
+			valStr := luaValueToNixString(L, val)
+			libvirtConfig.WriteString(fmt.Sprintf("    %s = %s;\n", keyStr, valStr))
+		})
+	}
+
+	libvirtConfig.WriteString("  };\n")
+
+	// Update configuration
+	libvirtRegex := regexp.MustCompile(`(?s)virtualisation\.libvirtd\s*=\s*\{[^}]*\};`)
+	if libvirtRegex.MatchString(config) {
+		config = libvirtRegex.ReplaceAllString(config, strings.TrimSpace(libvirtConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + libvirtConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("libvirt configuration updated successfully"))
+	return 2
+}
+
+// nixosCreateVM creates a declarative NixOS VM
+// Usage: local ok, msg = nixos.create_vm({
+//     name = "myvm",
+//     memory = 2048,
+//     vcpu = 2,
+//     disk_size = "20G",
+//     network = "bridge",
+//     auto_start = true,
+//     config = { ... }
+// })
+func nixosCreateVM(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+	vmName := getStringField(L, params, "name", "")
+
+	if vmName == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("VM name is required"))
+		return 2
+	}
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	var vmConfig strings.Builder
+	vmConfig.WriteString(fmt.Sprintf("  virtualisation.libvirtd.domains.\"%s\" = {\n", vmName))
+	vmConfig.WriteString("    enable = true;\n")
+
+	if memory := getIntField(L, params, "memory", 0); memory > 0 {
+		vmConfig.WriteString(fmt.Sprintf("    memory = %d;\n", memory))
+	}
+
+	if vcpu := getIntField(L, params, "vcpu", 0); vcpu > 0 {
+		vmConfig.WriteString(fmt.Sprintf("    vcpu = %d;\n", vcpu))
+	}
+
+	if diskSize := getStringField(L, params, "disk_size", ""); diskSize != "" {
+		vmConfig.WriteString(fmt.Sprintf("    diskSize = \"%s\";\n", diskSize))
+	}
+
+	if network := getStringField(L, params, "network", ""); network != "" {
+		vmConfig.WriteString(fmt.Sprintf("    network = \"%s\";\n", network))
+	}
+
+	if autoStart := getBoolFieldFromTable(L, params, "auto_start", false); autoStart {
+		vmConfig.WriteString("    autoStart = true;\n")
+	}
+
+	// VM configuration
+	configTable := L.GetField(params, "config")
+	if tbl, ok := configTable.(*lua.LTable); ok {
+		tbl.ForEach(func(key, val lua.LValue) {
+			keyStr := lua.LVAsString(key)
+			valStr := luaValueToNixString(L, val)
+			vmConfig.WriteString(fmt.Sprintf("    %s = %s;\n", keyStr, valStr))
+		})
+	}
+
+	vmConfig.WriteString("  };\n")
+
+	// Add to configuration
+	config = strings.TrimSuffix(config, "}\n") + "\n" + vmConfig.String() + "}\n"
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("VM %s created successfully", vmName)))
+	return 2
+}
+
+// ============================================================================
+// BACKUP AND SNAPSHOTS
+// ============================================================================
+
+// nixosConfigureBackup configures backup solutions (restic, borg, etc.)
+// Usage: local ok, msg = nixos.configure_backup({
+//     backend = "restic" | "borg",
+//     repository = "s3:...",
+//     password_file = "/etc/nixos/backup-password",
+//     paths = {"/home", "/etc"},
+//     exclude = {"*.tmp", "cache"},
+//     schedule = "daily" | "weekly",
+//     settings = { ... }
+// })
+func nixosConfigureBackup(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+	backend := getStringField(L, params, "backend", "restic")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	var backupConfig strings.Builder
+	backupConfig.WriteString(fmt.Sprintf("  services.%s.backups = {\n", backend))
+	backupConfig.WriteString("    systemBackup = {\n")
+
+	if repository := getStringField(L, params, "repository", ""); repository != "" {
+		backupConfig.WriteString(fmt.Sprintf("      repository = \"%s\";\n", repository))
+	}
+
+	if passwordFile := getStringField(L, params, "password_file", ""); passwordFile != "" {
+		backupConfig.WriteString(fmt.Sprintf("      passwordFile = \"%s\";\n", passwordFile))
+	}
+
+	// Paths to backup
+	pathsTable := L.GetField(params, "paths")
+	if tbl, ok := pathsTable.(*lua.LTable); ok {
+		var paths []string
+		tbl.ForEach(func(_, val lua.LValue) {
+			if str, ok := val.(lua.LString); ok {
+				paths = append(paths, fmt.Sprintf("\"%s\"", string(str)))
+			}
+		})
+		if len(paths) > 0 {
+			backupConfig.WriteString(fmt.Sprintf("      paths = [ %s ];\n", strings.Join(paths, " ")))
+		}
+	}
+
+	// Exclusions
+	excludeTable := L.GetField(params, "exclude")
+	if tbl, ok := excludeTable.(*lua.LTable); ok {
+		var excludes []string
+		tbl.ForEach(func(_, val lua.LValue) {
+			if str, ok := val.(lua.LString); ok {
+				excludes = append(excludes, fmt.Sprintf("\"%s\"", string(str)))
+			}
+		})
+		if len(excludes) > 0 {
+			backupConfig.WriteString(fmt.Sprintf("      exclude = [ %s ];\n", strings.Join(excludes, " ")))
+		}
+	}
+
+	// Schedule
+	if schedule := getStringField(L, params, "schedule", ""); schedule != "" {
+		backupConfig.WriteString(fmt.Sprintf("      timerConfig.OnCalendar = \"%s\";\n", schedule))
+	}
+
+	// Additional settings
+	settingsTable := L.GetField(params, "settings")
+	if tbl, ok := settingsTable.(*lua.LTable); ok {
+		tbl.ForEach(func(key, val lua.LValue) {
+			keyStr := lua.LVAsString(key)
+			valStr := luaValueToNixString(L, val)
+			backupConfig.WriteString(fmt.Sprintf("      %s = %s;\n", keyStr, valStr))
+		})
+	}
+
+	backupConfig.WriteString("    };\n")
+	backupConfig.WriteString("  };\n")
+
+	// Update configuration
+	backupRegex := regexp.MustCompile(fmt.Sprintf(`(?s)services\.%s\.backups\s*=\s*\{[^}]*\};`, backend))
+	if backupRegex.MatchString(config) {
+		config = backupRegex.ReplaceAllString(config, strings.TrimSpace(backupConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + backupConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("backup configuration updated successfully"))
+	return 2
+}
+
+// nixosCreateSnapshot creates a system snapshot
+// Usage: local ok, msg = nixos.create_snapshot({description = "Before upgrade"})
+func nixosCreateSnapshot(L *lua.LState) int {
+	params := L.CheckTable(1)
+	description := getStringField(L, params, "description", "Manual snapshot")
+
+	// Create snapshot by running nixos-rebuild boot
+	cmd := exec.Command("nixos-rebuild", "boot")
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to create snapshot: %v: %s", err, string(output))))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("snapshot created: %s", description)))
+	return 2
+}
+
+// ============================================================================
+// MONITORING AND LOGGING
+// ============================================================================
+
+// nixosConfigureMonitoring configures monitoring (Prometheus, Grafana, etc.)
+// Usage: local ok, msg = nixos.configure_monitoring({
+//     prometheus = {enable = true, port = 9090, exporters = {"node", "systemd"}},
+//     grafana = {enable = true, port = 3000, domain = "grafana.example.com"},
+//     alertmanager = {enable = true, port = 9093}
+// })
+func nixosConfigureMonitoring(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	var monitoringConfig strings.Builder
+
+	// Prometheus configuration
+	prometheusTable := L.GetField(params, "prometheus")
+	if tbl, ok := prometheusTable.(*lua.LTable); ok {
+		enable := getBoolFieldFromTable(L, tbl, "enable", false)
+		monitoringConfig.WriteString("  services.prometheus = {\n")
+		monitoringConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+		if port := getIntField(L, tbl, "port", 0); port > 0 {
+			monitoringConfig.WriteString(fmt.Sprintf("    port = %d;\n", port))
+		}
+
+		// Exporters
+		exportersTable := L.GetField(tbl, "exporters")
+		if expTbl, ok := exportersTable.(*lua.LTable); ok {
+			monitoringConfig.WriteString("    exporters = {\n")
+			expTbl.ForEach(func(_, val lua.LValue) {
+				if str, ok := val.(lua.LString); ok {
+					exporter := string(str)
+					monitoringConfig.WriteString(fmt.Sprintf("      %s.enable = true;\n", exporter))
+				}
+			})
+			monitoringConfig.WriteString("    };\n")
+		}
+
+		monitoringConfig.WriteString("  };\n")
+	}
+
+	// Grafana configuration
+	grafanaTable := L.GetField(params, "grafana")
+	if tbl, ok := grafanaTable.(*lua.LTable); ok {
+		enable := getBoolFieldFromTable(L, tbl, "enable", false)
+		monitoringConfig.WriteString("  services.grafana = {\n")
+		monitoringConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+		if port := getIntField(L, tbl, "port", 0); port > 0 {
+			monitoringConfig.WriteString(fmt.Sprintf("    settings.server.http_port = %d;\n", port))
+		}
+
+		if domain := getStringField(L, tbl, "domain", ""); domain != "" {
+			monitoringConfig.WriteString(fmt.Sprintf("    settings.server.domain = \"%s\";\n", domain))
+		}
+
+		monitoringConfig.WriteString("  };\n")
+	}
+
+	// Add to configuration
+	config = strings.TrimSuffix(config, "}\n") + "\n" + monitoringConfig.String() + "}\n"
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("monitoring configuration updated successfully"))
+	return 2
+}
+
+// nixosConfigureJournald configures systemd journal
+// Usage: local ok, msg = nixos.configure_journald({
+//     max_retention_sec = "7d",
+//     max_file_size = "100M",
+//     forward_to_syslog = false
+// })
+func nixosConfigureJournald(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	var journaldConfig strings.Builder
+	journaldConfig.WriteString("  services.journald.extraConfig = ''\n")
+
+	if maxRetention := getStringField(L, params, "max_retention_sec", ""); maxRetention != "" {
+		journaldConfig.WriteString(fmt.Sprintf("    MaxRetentionSec=%s\n", maxRetention))
+	}
+
+	if maxFileSize := getStringField(L, params, "max_file_size", ""); maxFileSize != "" {
+		journaldConfig.WriteString(fmt.Sprintf("    SystemMaxFileSize=%s\n", maxFileSize))
+	}
+
+	if forwardToSyslog := getBoolFieldFromTable(L, params, "forward_to_syslog", false); forwardToSyslog {
+		journaldConfig.WriteString("    ForwardToSyslog=yes\n")
+	}
+
+	journaldConfig.WriteString("  '';\n")
+
+	// Update configuration
+	journaldRegex := regexp.MustCompile(`(?s)services\.journald\.extraConfig\s*=\s*''[^']*'';`)
+	if journaldRegex.MatchString(config) {
+		config = journaldRegex.ReplaceAllString(config, strings.TrimSpace(journaldConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + journaldConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("journald configuration updated successfully"))
+	return 2
+}
+
+// nixosConfigureLogrotate configures log rotation
+// Usage: local ok, msg = nixos.configure_logrotate({
+//     enable = true,
+//     frequency = "daily" | "weekly",
+//     keep = 14
+// })
+func nixosConfigureLogrotate(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+
+	var logrotateConfig strings.Builder
+	logrotateConfig.WriteString("  services.logrotate = {\n")
+	logrotateConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	if frequency := getStringField(L, params, "frequency", ""); frequency != "" {
+		logrotateConfig.WriteString(fmt.Sprintf("    frequency = \"%s\";\n", frequency))
+	}
+
+	if keep := getIntField(L, params, "keep", 0); keep > 0 {
+		logrotateConfig.WriteString(fmt.Sprintf("    keep = %d;\n", keep))
+	}
+
+	logrotateConfig.WriteString("  };\n")
+
+	// Update configuration
+	logrotateRegex := regexp.MustCompile(`(?s)services\.logrotate\s*=\s*\{[^}]*\};`)
+	if logrotateRegex.MatchString(config) {
+		config = logrotateRegex.ReplaceAllString(config, strings.TrimSpace(logrotateConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + logrotateConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("logrotate configuration updated successfully"))
+	return 2
+}
+// ============================================================================
+// DESKTOP ENVIRONMENT
+// ============================================================================
+
+// nixosConfigureXServer configures X11
+func nixosConfigureXServer(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	var xserverConfig strings.Builder
+	xserverConfig.WriteString("  services.xserver = {\n")
+	xserverConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	if layout := getStringField(L, params, "layout", ""); layout != "" {
+		xserverConfig.WriteString(fmt.Sprintf("    layout = \"%s\";\n", layout))
+	}
+
+	if videoDrivers := getStringField(L, params, "video_drivers", ""); videoDrivers != "" {
+		xserverConfig.WriteString(fmt.Sprintf("    videoDrivers = [ \"%s\" ];\n", videoDrivers))
+	}
+
+	settingsTable := L.GetField(params, "settings")
+	if tbl, ok := settingsTable.(*lua.LTable); ok {
+		tbl.ForEach(func(key, val lua.LValue) {
+			keyStr := lua.LVAsString(key)
+			valStr := luaValueToNixString(L, val)
+			xserverConfig.WriteString(fmt.Sprintf("    %s = %s;\n", keyStr, valStr))
+		})
+	}
+
+	xserverConfig.WriteString("  };\n")
+
+	xserverRegex := regexp.MustCompile(`(?s)services\.xserver\s*=\s*\{[^}]*\};`)
+	if xserverRegex.MatchString(config) {
+		config = xserverRegex.ReplaceAllString(config, strings.TrimSpace(xserverConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + xserverConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("X server configuration updated successfully"))
+	return 2
+}
+
+// nixosConfigureDesktop configures desktop environment
+func nixosConfigureDesktop(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+	desktop := getStringField(L, params, "desktop", "gnome")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	var desktopConfig strings.Builder
+	desktopConfig.WriteString("  services.xserver = {\n")
+	desktopConfig.WriteString("    enable = true;\n")
+
+	switch desktop {
+	case "gnome":
+		desktopConfig.WriteString("    desktopManager.gnome.enable = true;\n")
+	case "kde", "plasma":
+		desktopConfig.WriteString("    desktopManager.plasma5.enable = true;\n")
+	case "xfce":
+		desktopConfig.WriteString("    desktopManager.xfce.enable = true;\n")
+	case "i3":
+		desktopConfig.WriteString("    windowManager.i3.enable = true;\n")
+	}
+
+	desktopConfig.WriteString("  };\n")
+
+	config = strings.TrimSuffix(config, "}\n") + "\n" + desktopConfig.String() + "}\n"
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("%s desktop configured successfully", desktop)))
+	return 2
+}
+
+// nixosConfigureDisplayManager configures display manager
+func nixosConfigureDisplayManager(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+	dm := getStringField(L, params, "display_manager", "gdm")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	var dmConfig strings.Builder
+	dmConfig.WriteString("  services.xserver.displayManager = {\n")
+
+	switch dm {
+	case "gdm":
+		dmConfig.WriteString("    gdm.enable = true;\n")
+	case "sddm":
+		dmConfig.WriteString("    sddm.enable = true;\n")
+	case "lightdm":
+		dmConfig.WriteString("    lightdm.enable = true;\n")
+	}
+
+	if autoLogin := getStringField(L, params, "auto_login_user", ""); autoLogin != "" {
+		dmConfig.WriteString("    autoLogin = {\n")
+		dmConfig.WriteString("      enable = true;\n")
+		dmConfig.WriteString(fmt.Sprintf("      user = \"%s\";\n", autoLogin))
+		dmConfig.WriteString("    };\n")
+	}
+
+	dmConfig.WriteString("  };\n")
+
+	config = strings.TrimSuffix(config, "}\n") + "\n" + dmConfig.String() + "}\n"
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("%s display manager configured successfully", dm)))
+	return 2
+}
+
+// nixosConfigureAudio configures audio system
+func nixosConfigureAudio(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+	system := getStringField(L, params, "system", "pipewire")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	var audioConfig strings.Builder
+
+	if system == "pipewire" {
+		audioConfig.WriteString("  services.pipewire = {\n")
+		audioConfig.WriteString("    enable = true;\n")
+		audioConfig.WriteString("    alsa.enable = true;\n")
+		audioConfig.WriteString("    alsa.support32Bit = true;\n")
+		audioConfig.WriteString("    pulse.enable = true;\n")
+		audioConfig.WriteString("  };\n")
+	} else if system == "pulseaudio" {
+		audioConfig.WriteString("  sound.enable = true;\n")
+		audioConfig.WriteString("  hardware.pulseaudio.enable = true;\n")
+	}
+
+	config = strings.TrimSuffix(config, "}\n") + "\n" + audioConfig.String() + "}\n"
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("%s audio configured successfully", system)))
+	return 2
+}
+
+// ============================================================================
+// DATABASE SERVERS
+// ============================================================================
+
+// nixosConfigurePostgreSQL configures PostgreSQL advanced
+func nixosConfigurePostgreSQL(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	var pgConfig strings.Builder
+	pgConfig.WriteString("  services.postgresql = {\n")
+	pgConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	if pkg := getStringField(L, params, "package", ""); pkg != "" {
+		pgConfig.WriteString(fmt.Sprintf("    package = %s;\n", pkg))
+	}
+
+	if enableTCPIP := getBoolFieldFromTable(L, params, "enable_tcp_ip", false); enableTCPIP {
+		pgConfig.WriteString("    enableTCPIP = true;\n")
+	}
+
+	if port := getIntField(L, params, "port", 0); port > 0 {
+		pgConfig.WriteString(fmt.Sprintf("    port = %d;\n", port))
+	}
+
+	if auth := getStringField(L, params, "authentication", ""); auth != "" {
+		pgConfig.WriteString(fmt.Sprintf("    authentication = ''\n%s\n    '';\n", auth))
+	}
+
+	settingsTable := L.GetField(params, "settings")
+	if tbl, ok := settingsTable.(*lua.LTable); ok {
+		pgConfig.WriteString("    settings = {\n")
+		tbl.ForEach(func(key, val lua.LValue) {
+			keyStr := lua.LVAsString(key)
+			valStr := luaValueToNixString(L, val)
+			pgConfig.WriteString(fmt.Sprintf("      %s = %s;\n", keyStr, valStr))
+		})
+		pgConfig.WriteString("    };\n")
+	}
+
+	pgConfig.WriteString("  };\n")
+
+	pgRegex := regexp.MustCompile(`(?s)services\.postgresql\s*=\s*\{[^}]*\};`)
+	if pgRegex.MatchString(config) {
+		config = pgRegex.ReplaceAllString(config, strings.TrimSpace(pgConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + pgConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("PostgreSQL configuration updated successfully"))
+	return 2
+}
+
+// nixosConfigureMySQL configures MySQL/MariaDB
+func nixosConfigureMySQL(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	var mysqlConfig strings.Builder
+	mysqlConfig.WriteString("  services.mysql = {\n")
+	mysqlConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	if pkg := getStringField(L, params, "package", ""); pkg != "" {
+		mysqlConfig.WriteString(fmt.Sprintf("    package = %s;\n", pkg))
+	}
+
+	if port := getIntField(L, params, "port", 0); port > 0 {
+		mysqlConfig.WriteString(fmt.Sprintf("    port = %d;\n", port))
+	}
+
+	settingsTable := L.GetField(params, "settings")
+	if tbl, ok := settingsTable.(*lua.LTable); ok {
+		mysqlConfig.WriteString("    settings = {\n")
+		tbl.ForEach(func(key, val lua.LValue) {
+			keyStr := lua.LVAsString(key)
+			valStr := luaValueToNixString(L, val)
+			mysqlConfig.WriteString(fmt.Sprintf("      %s = %s;\n", keyStr, valStr))
+		})
+		mysqlConfig.WriteString("    };\n")
+	}
+
+	mysqlConfig.WriteString("  };\n")
+
+	mysqlRegex := regexp.MustCompile(`(?s)services\.mysql\s*=\s*\{[^}]*\};`)
+	if mysqlRegex.MatchString(config) {
+		config = mysqlRegex.ReplaceAllString(config, strings.TrimSpace(mysqlConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + mysqlConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("MySQL configuration updated successfully"))
+	return 2
+}
+
+// nixosConfigureRedis configures Redis
+func nixosConfigureRedis(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	var redisConfig strings.Builder
+	redisConfig.WriteString("  services.redis.servers.main = {\n")
+	redisConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	if port := getIntField(L, params, "port", 0); port > 0 {
+		redisConfig.WriteString(fmt.Sprintf("    port = %d;\n", port))
+	}
+
+	if bind := getStringField(L, params, "bind", ""); bind != "" {
+		redisConfig.WriteString(fmt.Sprintf("    bind = \"%s\";\n", bind))
+	}
+
+	settingsTable := L.GetField(params, "settings")
+	if tbl, ok := settingsTable.(*lua.LTable); ok {
+		tbl.ForEach(func(key, val lua.LValue) {
+			keyStr := lua.LVAsString(key)
+			valStr := luaValueToNixString(L, val)
+			redisConfig.WriteString(fmt.Sprintf("    %s = %s;\n", keyStr, valStr))
+		})
+	}
+
+	redisConfig.WriteString("  };\n")
+
+	config = strings.TrimSuffix(config, "}\n") + "\n" + redisConfig.String() + "}\n"
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("Redis configuration updated successfully"))
+	return 2
+}
+
+// nixosConfigureMongoDB configures MongoDB
+func nixosConfigureMongoDB(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	var mongoConfig strings.Builder
+	mongoConfig.WriteString("  services.mongodb = {\n")
+	mongoConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	if bind := getStringField(L, params, "bind_ip", ""); bind != "" {
+		mongoConfig.WriteString(fmt.Sprintf("    bind_ip = \"%s\";\n", bind))
+	}
+
+	settingsTable := L.GetField(params, "settings")
+	if tbl, ok := settingsTable.(*lua.LTable); ok {
+		tbl.ForEach(func(key, val lua.LValue) {
+			keyStr := lua.LVAsString(key)
+			valStr := luaValueToNixString(L, val)
+			mongoConfig.WriteString(fmt.Sprintf("    %s = %s;\n", keyStr, valStr))
+		})
+	}
+
+	mongoConfig.WriteString("  };\n")
+
+	mongoRegex := regexp.MustCompile(`(?s)services\.mongodb\s*=\s*\{[^}]*\};`)
+	if mongoRegex.MatchString(config) {
+		config = mongoRegex.ReplaceAllString(config, strings.TrimSpace(mongoConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + mongoConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("MongoDB configuration updated successfully"))
+	return 2
+}
+// ============================================================================
+// WEB SERVERS
+// ============================================================================
+
+// nixosConfigureApache configures Apache HTTP Server
+func nixosConfigureApache(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	var apacheConfig strings.Builder
+	apacheConfig.WriteString("  services.httpd = {\n")
+	apacheConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	if adminAddr := getStringField(L, params, "admin_addr", ""); adminAddr != "" {
+		apacheConfig.WriteString(fmt.Sprintf("    adminAddr = \"%s\";\n", adminAddr))
+	}
+
+	vhostsTable := L.GetField(params, "virtual_hosts")
+	if tbl, ok := vhostsTable.(*lua.LTable); ok {
+		apacheConfig.WriteString("    virtualHosts = {\n")
+		tbl.ForEach(func(key, val lua.LValue) {
+			domain := lua.LVAsString(key)
+			if vhTbl, ok := val.(*lua.LTable); ok {
+				apacheConfig.WriteString(fmt.Sprintf("      \"%s\" = {\n", domain))
+				vhTbl.ForEach(func(k, v lua.LValue) {
+					keyStr := lua.LVAsString(k)
+					valStr := luaValueToNixString(L, v)
+					apacheConfig.WriteString(fmt.Sprintf("        %s = %s;\n", keyStr, valStr))
+				})
+				apacheConfig.WriteString("      };\n")
+			}
+		})
+		apacheConfig.WriteString("    };\n")
+	}
+
+	apacheConfig.WriteString("  };\n")
+
+	httpdRegex := regexp.MustCompile(`(?s)services\.httpd\s*=\s*\{[^}]*\};`)
+	if httpdRegex.MatchString(config) {
+		config = httpdRegex.ReplaceAllString(config, strings.TrimSpace(apacheConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + apacheConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("Apache configuration updated successfully"))
+	return 2
+}
+
+// nixosConfigureCaddy configures Caddy web server
+func nixosConfigureCaddy(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	var caddyConfig strings.Builder
+	caddyConfig.WriteString("  services.caddy = {\n")
+	caddyConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	if email := getStringField(L, params, "email", ""); email != "" {
+		caddyConfig.WriteString(fmt.Sprintf("    email = \"%s\";\n", email))
+	}
+
+	if caddyfile := getStringField(L, params, "caddyfile", ""); caddyfile != "" {
+		caddyConfig.WriteString(fmt.Sprintf("    configFile = pkgs.writeText \"Caddyfile\" ''\n%s\n    '';\n", caddyfile))
+	}
+
+	vhostsTable := L.GetField(params, "virtual_hosts")
+	if tbl, ok := vhostsTable.(*lua.LTable); ok {
+		caddyConfig.WriteString("    virtualHosts = {\n")
+		tbl.ForEach(func(key, val lua.LValue) {
+			domain := lua.LVAsString(key)
+			if vhTbl, ok := val.(*lua.LTable); ok {
+				caddyConfig.WriteString(fmt.Sprintf("      \"%s\" = {\n", domain))
+				vhTbl.ForEach(func(k, v lua.LValue) {
+					keyStr := lua.LVAsString(k)
+					valStr := luaValueToNixString(L, v)
+					caddyConfig.WriteString(fmt.Sprintf("        %s = %s;\n", keyStr, valStr))
+				})
+				caddyConfig.WriteString("      };\n")
+			}
+		})
+		caddyConfig.WriteString("    };\n")
+	}
+
+	caddyConfig.WriteString("  };\n")
+
+	caddyRegex := regexp.MustCompile(`(?s)services\.caddy\s*=\s*\{[^}]*\};`)
+	if caddyRegex.MatchString(config) {
+		config = caddyRegex.ReplaceAllString(config, strings.TrimSpace(caddyConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + caddyConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("Caddy configuration updated successfully"))
+	return 2
+}
+
+// ============================================================================
+// MAIL, DNS, DHCP SERVERS
+// ============================================================================
+
+// nixosConfigureMailServer configures Postfix + Dovecot
+func nixosConfigureMailServer(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	var mailConfig strings.Builder
+	
+	// Postfix
+	postfixEnable := getBoolFieldFromTable(L, params, "enable_postfix", true)
+	mailConfig.WriteString("  services.postfix = {\n")
+	mailConfig.WriteString(fmt.Sprintf("    enable = %t;\n", postfixEnable))
+	if hostname := getStringField(L, params, "hostname", ""); hostname != "" {
+		mailConfig.WriteString(fmt.Sprintf("    hostname = \"%s\";\n", hostname))
+	}
+	if domain := getStringField(L, params, "domain", ""); domain != "" {
+		mailConfig.WriteString(fmt.Sprintf("    domain = \"%s\";\n", domain))
+	}
+	mailConfig.WriteString("  };\n")
+
+	// Dovecot
+	dovecotEnable := getBoolFieldFromTable(L, params, "enable_dovecot", true)
+	mailConfig.WriteString("  services.dovecot2 = {\n")
+	mailConfig.WriteString(fmt.Sprintf("    enable = %t;\n", dovecotEnable))
+	mailConfig.WriteString("    enableImap = true;\n")
+	mailConfig.WriteString("    enablePop3 = false;\n")
+	mailConfig.WriteString("  };\n")
+
+	config = strings.TrimSuffix(config, "}\n") + "\n" + mailConfig.String() + "}\n"
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("Mail server configuration updated successfully"))
+	return 2
+}
+
+// nixosConfigureDNS configures DNS server (BIND, dnsmasq, unbound)
+func nixosConfigureDNS(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+	dnsType := getStringField(L, params, "type", "dnsmasq")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	var dnsConfig strings.Builder
+
+	switch dnsType {
+	case "dnsmasq":
+		dnsConfig.WriteString("  services.dnsmasq = {\n")
+		dnsConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+		if servers := getStringField(L, params, "servers", ""); servers != "" {
+			dnsConfig.WriteString(fmt.Sprintf("    servers = [ \"%s\" ];\n", servers))
+		}
+		dnsConfig.WriteString("  };\n")
+	case "bind":
+		dnsConfig.WriteString("  services.bind = {\n")
+		dnsConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+		dnsConfig.WriteString("  };\n")
+	case "unbound":
+		dnsConfig.WriteString("  services.unbound = {\n")
+		dnsConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+		dnsConfig.WriteString("  };\n")
+	}
+
+	config = strings.TrimSuffix(config, "}\n") + "\n" + dnsConfig.String() + "}\n"
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("%s DNS server configured successfully", dnsType)))
+	return 2
+}
+
+// nixosConfigureDHCP configures DHCP server
+func nixosConfigureDHCP(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	var dhcpConfig strings.Builder
+	dhcpConfig.WriteString("  services.dhcpd4 = {\n")
+	dhcpConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	if interfaces := getStringField(L, params, "interfaces", ""); interfaces != "" {
+		dhcpConfig.WriteString(fmt.Sprintf("    interfaces = [ \"%s\" ];\n", interfaces))
+	}
+
+	if extraConfig := getStringField(L, params, "extra_config", ""); extraConfig != "" {
+		dhcpConfig.WriteString(fmt.Sprintf("    extraConfig = ''\n%s\n    '';\n", extraConfig))
+	}
+
+	dhcpConfig.WriteString("  };\n")
+
+	config = strings.TrimSuffix(config, "}\n") + "\n" + dhcpConfig.String() + "}\n"
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("DHCP server configuration updated successfully"))
+	return 2
+}
+
+// ============================================================================
+// FILE SHARING
+// ============================================================================
+
+// nixosConfigureNFS configures NFS server
+func nixosConfigureNFS(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	var nfsConfig strings.Builder
+	nfsConfig.WriteString("  services.nfs.server = {\n")
+	nfsConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	exportsTable := L.GetField(params, "exports")
+	if tbl, ok := exportsTable.(*lua.LTable); ok {
+		nfsConfig.WriteString("    exports = ''\n")
+		tbl.ForEach(func(_, val lua.LValue) {
+			if str, ok := val.(lua.LString); ok {
+				nfsConfig.WriteString(fmt.Sprintf("      %s\n", string(str)))
+			}
+		})
+		nfsConfig.WriteString("    '';\n")
+	}
+
+	nfsConfig.WriteString("  };\n")
+
+	config = strings.TrimSuffix(config, "}\n") + "\n" + nfsConfig.String() + "}\n"
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("NFS server configuration updated successfully"))
+	return 2
+}
+
+// nixosConfigureSamba configures Samba/CIFS server
+func nixosConfigureSamba(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	var sambaConfig strings.Builder
+	sambaConfig.WriteString("  services.samba = {\n")
+	sambaConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	if extraConfig := getStringField(L, params, "extra_config", ""); extraConfig != "" {
+		sambaConfig.WriteString(fmt.Sprintf("    extraConfig = ''\n%s\n    '';\n", extraConfig))
+	}
+
+	sharesTable := L.GetField(params, "shares")
+	if tbl, ok := sharesTable.(*lua.LTable); ok {
+		sambaConfig.WriteString("    shares = {\n")
+		tbl.ForEach(func(key, val lua.LValue) {
+			shareName := lua.LVAsString(key)
+			if shareTbl, ok := val.(*lua.LTable); ok {
+				sambaConfig.WriteString(fmt.Sprintf("      \"%s\" = {\n", shareName))
+				shareTbl.ForEach(func(k, v lua.LValue) {
+					keyStr := lua.LVAsString(k)
+					valStr := luaValueToNixString(L, v)
+					sambaConfig.WriteString(fmt.Sprintf("        %s = %s;\n", keyStr, valStr))
+				})
+				sambaConfig.WriteString("      };\n")
+			}
+		})
+		sambaConfig.WriteString("    };\n")
+	}
+
+	sambaConfig.WriteString("  };\n")
+
+	sambaRegex := regexp.MustCompile(`(?s)services\.samba\s*=\s*\{[^}]*\};`)
+	if sambaRegex.MatchString(config) {
+		config = sambaRegex.ReplaceAllString(config, strings.TrimSpace(sambaConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + sambaConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("Samba configuration updated successfully"))
+	return 2
+}
+
+// ============================================================================
+// LDAP
+// ============================================================================
+
+// nixosConfigureLDAP configures OpenLDAP
+func nixosConfigureLDAP(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	var ldapConfig strings.Builder
+	ldapConfig.WriteString("  services.openldap = {\n")
+	ldapConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	if suffix := getStringField(L, params, "suffix", ""); suffix != "" {
+		ldapConfig.WriteString(fmt.Sprintf("    suffix = \"%s\";\n", suffix))
+	}
+
+	if rootdn := getStringField(L, params, "root_dn", ""); rootdn != "" {
+		ldapConfig.WriteString(fmt.Sprintf("    rootdn = \"%s\";\n", rootdn))
+	}
+
+	settingsTable := L.GetField(params, "settings")
+	if tbl, ok := settingsTable.(*lua.LTable); ok {
+		tbl.ForEach(func(key, val lua.LValue) {
+			keyStr := lua.LVAsString(key)
+			valStr := luaValueToNixString(L, val)
+			ldapConfig.WriteString(fmt.Sprintf("    %s = %s;\n", keyStr, valStr))
+		})
+	}
+
+	ldapConfig.WriteString("  };\n")
+
+	config = strings.TrimSuffix(config, "}\n") + "\n" + ldapConfig.String() + "}\n"
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("LDAP configuration updated successfully"))
+	return 2
+}
+
+// ============================================================================
+// CERTIFICATES AND ACME
+// ============================================================================
+
+// nixosConfigureACME configures Let's Encrypt ACME
+func nixosConfigureACME(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	email := getStringField(L, params, "email", "")
+	if email == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("email is required for ACME"))
+		return 2
+	}
+
+	acceptTerms := getBoolFieldFromTable(L, params, "accept_terms", false)
+	
+	var acmeConfig strings.Builder
+	acmeConfig.WriteString("  security.acme = {\n")
+	acmeConfig.WriteString(fmt.Sprintf("    acceptTerms = %t;\n", acceptTerms))
+	acmeConfig.WriteString(fmt.Sprintf("    defaults.email = \"%s\";\n", email))
+
+	certsTable := L.GetField(params, "certs")
+	if tbl, ok := certsTable.(*lua.LTable); ok {
+		acmeConfig.WriteString("    certs = {\n")
+		tbl.ForEach(func(key, val lua.LValue) {
+			domain := lua.LVAsString(key)
+			if certTbl, ok := val.(*lua.LTable); ok {
+				acmeConfig.WriteString(fmt.Sprintf("      \"%s\" = {\n", domain))
+				certTbl.ForEach(func(k, v lua.LValue) {
+					keyStr := lua.LVAsString(k)
+					valStr := luaValueToNixString(L, v)
+					acmeConfig.WriteString(fmt.Sprintf("        %s = %s;\n", keyStr, valStr))
+				})
+				acmeConfig.WriteString("      };\n")
+			}
+		})
+		acmeConfig.WriteString("    };\n")
+	}
+
+	acmeConfig.WriteString("  };\n")
+
+	acmeRegex := regexp.MustCompile(`(?s)security\.acme\s*=\s*\{[^}]*\};`)
+	if acmeRegex.MatchString(config) {
+		config = acmeRegex.ReplaceAllString(config, strings.TrimSpace(acmeConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + acmeConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("ACME configuration updated successfully"))
+	return 2
+}
+
+// nixosAddCertificate adds a custom certificate
+func nixosAddCertificate(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+	certFile := getStringField(L, params, "cert_file", "")
+	keyFile := getStringField(L, params, "key_file", "")
+
+	if certFile == "" || keyFile == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("cert_file and key_file are required"))
+		return 2
+	}
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	var certConfig strings.Builder
+	certConfig.WriteString(fmt.Sprintf("  security.pki.certificateFiles = [ \"%s\" ];\n", certFile))
+
+	config = strings.TrimSuffix(config, "}\n") + "\n" + certConfig.String() + "}\n"
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("certificate added successfully"))
+	return 2
+}
+// ============================================================================
+// PROXY AND LOAD BALANCING
+// ============================================================================
+
+// nixosConfigureHAProxy configures HAProxy load balancer
+func nixosConfigureHAProxy(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	var haproxyConfig strings.Builder
+	haproxyConfig.WriteString("  services.haproxy = {\n")
+	haproxyConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	if haproxyConf := getStringField(L, params, "config", ""); haproxyConf != "" {
+		haproxyConfig.WriteString(fmt.Sprintf("    config = ''\n%s\n    '';\n", haproxyConf))
+	}
+
+	haproxyConfig.WriteString("  };\n")
+
+	haproxyRegex := regexp.MustCompile(`(?s)services\.haproxy\s*=\s*\{[^}]*\};`)
+	if haproxyRegex.MatchString(config) {
+		config = haproxyRegex.ReplaceAllString(config, strings.TrimSpace(haproxyConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + haproxyConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("HAProxy configuration updated successfully"))
+	return 2
+}
+
+// nixosConfigureTraefik configures Traefik reverse proxy
+func nixosConfigureTraefik(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	var traefikConfig strings.Builder
+	traefikConfig.WriteString("  services.traefik = {\n")
+	traefikConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	settingsTable := L.GetField(params, "settings")
+	if tbl, ok := settingsTable.(*lua.LTable); ok {
+		traefikConfig.WriteString("    staticConfigOptions = {\n")
+		tbl.ForEach(func(key, val lua.LValue) {
+			keyStr := lua.LVAsString(key)
+			valStr := luaValueToNixString(L, val)
+			traefikConfig.WriteString(fmt.Sprintf("      %s = %s;\n", keyStr, valStr))
+		})
+		traefikConfig.WriteString("    };\n")
+	}
+
+	traefikConfig.WriteString("  };\n")
+
+	traefikRegex := regexp.MustCompile(`(?s)services\.traefik\s*=\s*\{[^}]*\};`)
+	if traefikRegex.MatchString(config) {
+		config = traefikRegex.ReplaceAllString(config, strings.TrimSpace(traefikConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + traefikConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("Traefik configuration updated successfully"))
+	return 2
+}
+
+// nixosConfigureSquid configures Squid proxy
+func nixosConfigureSquid(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	var squidConfig strings.Builder
+	squidConfig.WriteString("  services.squid = {\n")
+	squidConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	if extraConfig := getStringField(L, params, "extra_config", ""); extraConfig != "" {
+		squidConfig.WriteString(fmt.Sprintf("    extraConfig = ''\n%s\n    '';\n", extraConfig))
+	}
+
+	squidConfig.WriteString("  };\n")
+
+	config = strings.TrimSuffix(config, "}\n") + "\n" + squidConfig.String() + "}\n"
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("Squid configuration updated successfully"))
+	return 2
+}
+
+// ============================================================================
+// ADDITIONAL SERVICES
+// ============================================================================
+
+// nixosConfigureOpenVPN configures OpenVPN
+func nixosConfigureOpenVPN(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	var ovpnConfig strings.Builder
+
+	// Server configuration
+	serverTable := L.GetField(params, "server")
+	if tbl, ok := serverTable.(*lua.LTable); ok {
+		enable := getBoolFieldFromTable(L, tbl, "enable", false)
+		ovpnConfig.WriteString("  services.openvpn.servers = {\n")
+		ovpnConfig.WriteString("    myserver = {\n")
+		ovpnConfig.WriteString(fmt.Sprintf("      enable = %t;\n", enable))
+		
+		if configFile := getStringField(L, tbl, "config", ""); configFile != "" {
+			ovpnConfig.WriteString(fmt.Sprintf("      config = ''\n%s\n      '';\n", configFile))
+		}
+		
+		ovpnConfig.WriteString("    };\n")
+		ovpnConfig.WriteString("  };\n")
+	}
+
+	config = strings.TrimSuffix(config, "}\n") + "\n" + ovpnConfig.String() + "}\n"
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("OpenVPN configuration updated successfully"))
+	return 2
+}
+
+// nixosConfigureK3s configures k3s Kubernetes
+func nixosConfigureK3s(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	role := getStringField(L, params, "role", "server")
+
+	var k3sConfig strings.Builder
+	k3sConfig.WriteString("  services.k3s = {\n")
+	k3sConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+	k3sConfig.WriteString(fmt.Sprintf("    role = \"%s\";\n", role))
+
+	if extraFlags := getStringField(L, params, "extra_flags", ""); extraFlags != "" {
+		k3sConfig.WriteString(fmt.Sprintf("    extraFlags = \"%s\";\n", extraFlags))
+	}
+
+	k3sConfig.WriteString("  };\n")
+
+	k3sRegex := regexp.MustCompile(`(?s)services\.k3s\s*=\s*\{[^}]*\};`)
+	if k3sRegex.MatchString(config) {
+		config = k3sRegex.ReplaceAllString(config, strings.TrimSpace(k3sConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + k3sConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("k3s configuration updated successfully"))
+	return 2
+}
+
+// nixosConfigureGitLabRunner configures GitLab CI Runner
+func nixosConfigureGitLabRunner(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	enable := getBoolFieldFromTable(L, params, "enable", true)
+	var gitlabConfig strings.Builder
+	gitlabConfig.WriteString("  services.gitlab-runner = {\n")
+	gitlabConfig.WriteString(fmt.Sprintf("    enable = %t;\n", enable))
+
+	servicesTable := L.GetField(params, "services")
+	if tbl, ok := servicesTable.(*lua.LTable); ok {
+		gitlabConfig.WriteString("    services = {\n")
+		tbl.ForEach(func(key, val lua.LValue) {
+			name := lua.LVAsString(key)
+			if svcTbl, ok := val.(*lua.LTable); ok {
+				gitlabConfig.WriteString(fmt.Sprintf("      \"%s\" = {\n", name))
+				svcTbl.ForEach(func(k, v lua.LValue) {
+					keyStr := lua.LVAsString(k)
+					valStr := luaValueToNixString(L, v)
+					gitlabConfig.WriteString(fmt.Sprintf("        %s = %s;\n", keyStr, valStr))
+				})
+				gitlabConfig.WriteString("      };\n")
+			}
+		})
+		gitlabConfig.WriteString("    };\n")
+	}
+
+	gitlabConfig.WriteString("  };\n")
+
+	config = strings.TrimSuffix(config, "}\n") + "\n" + gitlabConfig.String() + "}\n"
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("GitLab Runner configuration updated successfully"))
+	return 2
+}
+
+// ============================================================================
+// IMPORT/EXPORT CONFIGURATION
+// ============================================================================
+
+// nixosImportConfiguration imports a configuration from another system
+func nixosImportConfiguration(L *lua.LState) int {
+	params := L.CheckTable(1)
+	sourceFile := getStringField(L, params, "source_file", "")
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	if sourceFile == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("source_file is required"))
+		return 2
+	}
+
+	// Read source configuration
+	sourceContent, err := os.ReadFile(sourceFile)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read source file: %v", err)))
+		return 2
+	}
+
+	// Read current configuration
+	currentContent, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read current config: %v", err)))
+		return 2
+	}
+
+	// Merge configurations (simple append for now)
+	mergedConfig := string(currentContent)
+	mergedConfig = strings.TrimSuffix(mergedConfig, "}\n")
+	mergedConfig += "\n  # Imported configuration\n"
+	mergedConfig += string(sourceContent)
+	mergedConfig += "\n}\n"
+
+	// Write back
+	if err := os.WriteFile(configPath, []byte(mergedConfig), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("configuration imported from %s", sourceFile)))
+	return 2
+}
+
+// nixosExportModule exports current configuration as a Nix module
+func nixosExportModule(L *lua.LState) int {
+	params := L.CheckTable(1)
+	outputFile := getStringField(L, params, "output_file", "")
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	if outputFile == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("output_file is required"))
+		return 2
+	}
+
+	// Read current configuration
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+
+	// Create module wrapper
+	module := fmt.Sprintf(`{ config, pkgs, ... }:
+
+{
+  # Exported from %s
+%s
+}
+`, configPath, string(content))
+
+	// Write to output file
+	if err := os.WriteFile(outputFile, []byte(module), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write module: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("configuration exported to %s", outputFile)))
+	return 2
+}
+
+// nixosValidateConfig validates configuration without applying
+func nixosValidateConfig(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	// Run nixos-rebuild dry-build to validate
+	cmd := exec.Command("nixos-rebuild", "dry-build", "-I", fmt.Sprintf("nixos-config=%s", configPath))
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("validation failed: %v: %s", err, string(output))))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("configuration is valid"))
+	return 2
+}
+
+// ============================================================================
+// PERFORMANCE TUNING
+// ============================================================================
+
+// nixosConfigurePerformance configures performance tuning
+func nixosConfigurePerformance(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	var perfConfig strings.Builder
+
+	// CPU governor
+	if governor := getStringField(L, params, "cpu_governor", ""); governor != "" {
+		perfConfig.WriteString(fmt.Sprintf("  powerManagement.cpuFreqGovernor = \"%s\";\n", governor))
+	}
+
+	// Enable zram
+	if enableZram := getBoolFieldFromTable(L, params, "enable_zram", false); enableZram {
+		perfConfig.WriteString("  zramSwap.enable = true;\n")
+		if zramSize := getIntField(L, params, "zram_size_percentage", 0); zramSize > 0 {
+			perfConfig.WriteString(fmt.Sprintf("  zramSwap.memoryPercent = %d;\n", zramSize))
+		}
+	}
+
+	// Kernel parameters for performance
+	kernelParamsTable := L.GetField(params, "kernel_params")
+	if tbl, ok := kernelParamsTable.(*lua.LTable); ok {
+		var params []string
+		tbl.ForEach(func(_, val lua.LValue) {
+			if str, ok := val.(lua.LString); ok {
+				params = append(params, fmt.Sprintf("\"%s\"", string(str)))
+			}
+		})
+		if len(params) > 0 {
+			perfConfig.WriteString(fmt.Sprintf("  boot.kernelParams = [ %s ];\n", strings.Join(params, " ")))
+		}
+	}
+
+	config = strings.TrimSuffix(config, "}\n") + "\n" + perfConfig.String() + "}\n"
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("performance configuration updated successfully"))
+	return 2
+}
+
+// nixosConfigureSwap configures swap settings
+func nixosConfigureSwap(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+	config := string(content)
+
+	var swapConfig strings.Builder
+
+	devicesTable := L.GetField(params, "devices")
+	if tbl, ok := devicesTable.(*lua.LTable); ok {
+		swapConfig.WriteString("  swapDevices = [\n")
+		tbl.ForEach(func(_, val lua.LValue) {
+			if devTbl, ok := val.(*lua.LTable); ok {
+				swapConfig.WriteString("    {\n")
+				devTbl.ForEach(func(k, v lua.LValue) {
+					keyStr := lua.LVAsString(k)
+					valStr := luaValueToNixString(L, v)
+					swapConfig.WriteString(fmt.Sprintf("      %s = %s;\n", keyStr, valStr))
+				})
+				swapConfig.WriteString("    }\n")
+			}
+		})
+		swapConfig.WriteString("  ];\n")
+	}
+
+	swapRegex := regexp.MustCompile(`(?s)swapDevices\s*=\s*\[[^\]]*\];`)
+	if swapRegex.MatchString(config) {
+		config = swapRegex.ReplaceAllString(config, strings.TrimSpace(swapConfig.String()))
+	} else {
+		config = strings.TrimSuffix(config, "}\n") + "\n" + swapConfig.String() + "}\n"
+	}
+
+	if err := os.WriteFile(configPath, []byte(config), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("swap configuration updated successfully"))
+	return 2
 }
