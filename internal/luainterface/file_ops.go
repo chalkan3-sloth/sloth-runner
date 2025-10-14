@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 	"text/template"
 
 	lua "github.com/yuin/gopher-lua"
@@ -688,10 +687,8 @@ func (f *FileOpsModule) stat(L *lua.LState) int {
 	L.SetField(result, "checksum", lua.LString(checksum))
 
 	// Get owner/group (Unix only)
-	if stat, ok := info.Sys().(*syscall.Stat_t); ok {
-		L.SetField(result, "uid", lua.LNumber(stat.Uid))
-		L.SetField(result, "gid", lua.LNumber(stat.Gid))
-	}
+	// Use build tags to handle platform-specific code
+	addUnixFileInfo(L, result, info)
 
 	L.Push(result)
 	return 1
