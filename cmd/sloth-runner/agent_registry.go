@@ -43,7 +43,7 @@ func newAgentRegistryServer() *agentRegistryServer {
 		db = nil
 	} else {
 		pterm.Success.Printf("Agent database initialized at: %s\n", dbPath)
-		
+
 		// Cleanup inactive agents older than 24 hours on startup
 		if removed, err := db.CleanupInactiveAgents(24); err == nil && removed > 0 {
 			pterm.Info.Printf("Cleaned up %d inactive agents\n", removed)
@@ -155,7 +155,7 @@ func (s *agentRegistryServer) ListAgents(ctx context.Context, req *pb.ListAgents
 	defer s.mu.RUnlock()
 
 	var agents []*pb.AgentInfo
-	
+
 	if s.db != nil {
 		// Get agents from SQLite database
 		dbAgents, err := s.db.ListAgents()
@@ -163,7 +163,7 @@ func (s *agentRegistryServer) ListAgents(ctx context.Context, req *pb.ListAgents
 			pterm.Error.Printf("Failed to list agents from database: %v\n", err)
 			return &pb.ListAgentsResponse{Agents: agents}, nil
 		}
-		
+
 		for _, agent := range dbAgents {
 			agents = append(agents, &pb.AgentInfo{
 				AgentName:         agent.Name,
@@ -209,7 +209,7 @@ func (s *agentRegistryServer) Heartbeat(ctx context.Context, req *pb.HeartbeatRe
 		pterm.Debug.Printf("Heartbeat received from agent: %s\n", req.AgentName)
 		return &pb.HeartbeatResponse{Success: true, Message: "Heartbeat received"}, nil
 	}
-	
+
 	return &pb.HeartbeatResponse{Success: false, Message: "Database not available"}, nil
 }
 
@@ -218,7 +218,7 @@ func (s *agentRegistryServer) ExecuteCommand(req *pb.ExecuteCommandRequest, stre
 	s.mu.RLock()
 	var agentAddress string
 	var err error
-	
+
 	if s.db != nil {
 		agentAddress, err = s.db.GetAgentAddress(req.AgentName)
 		if err != nil {
@@ -270,7 +270,7 @@ func (s *agentRegistryServer) StopAgent(ctx context.Context, req *pb.StopAgentRe
 	s.mu.RLock()
 	var agentAddress string
 	var err error
-	
+
 	if s.db != nil {
 		agentAddress, err = s.db.GetAgentAddress(req.AgentName)
 		if err != nil {
@@ -460,11 +460,11 @@ func (s *agentRegistryServer) SendEvent(ctx context.Context, req *pb.SendEventRe
 func (s *agentRegistryServer) SendEventBatch(ctx context.Context, req *pb.SendEventBatchRequest) (*pb.SendEventBatchResponse, error) {
 	if len(req.Events) == 0 {
 		return &pb.SendEventBatchResponse{
-			Success:          false,
-			Message:          "No events provided",
-			EventsReceived:   0,
-			EventsProcessed:  0,
-			FailedEventIds:   []string{},
+			Success:         false,
+			Message:         "No events provided",
+			EventsReceived:  0,
+			EventsProcessed: 0,
+			FailedEventIds:  []string{},
 		}, nil
 	}
 
@@ -479,11 +479,11 @@ func (s *agentRegistryServer) SendEventBatch(ctx context.Context, req *pb.SendEv
 		}
 
 		return &pb.SendEventBatchResponse{
-			Success:          false,
-			Message:          "Event dispatcher not initialized on master",
-			EventsReceived:   int32(len(req.Events)),
-			EventsProcessed:  0,
-			FailedEventIds:   failedIds,
+			Success:         false,
+			Message:         "Event dispatcher not initialized on master",
+			EventsReceived:  int32(len(req.Events)),
+			EventsProcessed: 0,
+			FailedEventIds:  failedIds,
 		}, nil
 	}
 
@@ -543,11 +543,11 @@ func (s *agentRegistryServer) SendEventBatch(ctx context.Context, req *pb.SendEv
 		"success_rate", fmt.Sprintf("%.1f%%", successRate))
 
 	return &pb.SendEventBatchResponse{
-		Success:          processedCount > 0,
-		Message:          fmt.Sprintf("Processed %d/%d events successfully", processedCount, len(req.Events)),
-		EventsReceived:   int32(len(req.Events)),
-		EventsProcessed:  processedCount,
-		FailedEventIds:   failedEventIds,
+		Success:         processedCount > 0,
+		Message:         fmt.Sprintf("Processed %d/%d events successfully", processedCount, len(req.Events)),
+		EventsReceived:  int32(len(req.Events)),
+		EventsProcessed: processedCount,
+		FailedEventIds:  failedEventIds,
 	}, nil
 }
 
@@ -559,7 +559,7 @@ func (s *agentRegistryServer) Start(port int) error {
 	}
 
 	pterm.Warning.Println("Starting master in insecure mode.")
-	
+
 	s.grpcServer = grpc.NewServer()
 	pb.RegisterAgentRegistryServer(s.grpcServer, s)
 	pterm.Info.Printf("Agent registry listening at %v\n", lis.Addr())
@@ -571,7 +571,7 @@ func (s *agentRegistryServer) Stop() {
 	if s.grpcServer != nil {
 		s.grpcServer.GracefulStop()
 	}
-	
+
 	// Close database connection
 	if s.db != nil {
 		if err := s.db.Close(); err != nil {

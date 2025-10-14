@@ -19,40 +19,40 @@ func main() {
 		runSlothFile(os.Args[1])
 		return
 	}
-	
+
 	pterm.DefaultHeader.WithFullWidth().Println("🦥 Sloth Runner Enhanced Features Demo")
-	
+
 	// Show feature comparison first
 	showFeatureComparison()
-	
+
 	// Create Lua environment
 	L := lua.NewState()
 	defer L.Close()
-	
+
 	// Setup DSL
 	setupSimpleEnhancedDSL(L)
-	
+
 	// Run the enhanced demo
 	runEnhancedDemo(L)
-	
+
 	// Show improvements
 	showImprovements()
-	
+
 	pterm.Success.Println("Enhanced demo completed successfully! 🚀")
 }
 
 // runSlothFile executes a .sloth file
 func runSlothFile(filePath string) {
 	pterm.DefaultHeader.WithFullWidth().Println("🦥 Sloth Runner - Executing " + filepath.Base(filePath))
-	
+
 	// Create Lua environment
 	L := lua.NewState()
 	defer L.Close()
-	
+
 	// Register all modules
 	luainterface.RegisterAllModules(L)
 	luainterface.OpenImport(L, filePath)
-	
+
 	// Parse the Lua script to extract task definitions
 	taskGroups, err := luainterface.ParseLuaScript(context.Background(), filePath, nil)
 	if err != nil {
@@ -67,22 +67,22 @@ func runSlothFile(filePath string) {
 
 	// Create task runner with all required parameters
 	runner := taskrunner.NewTaskRunner(L, taskGroups, "", nil, false, false, &taskrunner.DefaultSurveyAsker{}, "")
-	
+
 	// Set outputs to capture results
 	runner.Outputs = make(map[string]interface{})
-	
+
 	// Run all task groups
 	pterm.Info.Printf("Found %d task group(s)\n", len(taskGroups))
-	
+
 	startTime := time.Now()
 	err = runner.Run()
 	duration := time.Since(startTime)
-	
+
 	if err != nil {
 		pterm.Error.Printf("Failed to execute tasks: %v\n", err)
 		os.Exit(1)
 	}
-	
+
 	pterm.Success.Printf("All tasks executed successfully in %v! 🚀\n", duration)
 }
 
@@ -100,85 +100,85 @@ func setupSimpleEnhancedDSL(L *lua.LState) {
 		L.Push(statsTable)
 		return 1
 	}))
-	
+
 	coreTable.RawSetString("submit", L.NewFunction(func(L *lua.LState) int {
 		taskFunc := L.CheckFunction(1)
 		context := L.OptString(2, "lua_task")
-		
+
 		pterm.Info.Printf("📋 Submitting to enhanced worker pool: %s\n", context)
-		
+
 		// Execute task
 		go func() {
 			start := time.Now()
 			L.CallByParam(lua.P{Fn: taskFunc, NRet: 0, Protect: true})
 			pterm.Success.Printf("✅ Task completed in %v\n", time.Since(start))
 		}()
-		
+
 		L.Push(lua.LBool(true))
 		return 1
 	}))
 	L.SetGlobal("core", coreTable)
-	
+
 	// Async operations
 	asyncTable := L.NewTable()
 	asyncTable.RawSetString("parallel", L.NewFunction(func(L *lua.LState) int {
 		tasks := L.CheckTable(1)
 		maxWorkers := L.OptInt(2, 4)
-		
+
 		pterm.Info.Printf("🔄 Parallel execution with %d workers\n", maxWorkers)
-		
+
 		results := L.NewTable()
 		tasks.ForEach(func(key, value lua.LValue) {
 			if taskFunc, ok := value.(*lua.LFunction); ok {
 				taskName := lua.LVAsString(key)
 				pterm.Debug.Printf("  🚀 Running: %s\n", taskName)
-				
+
 				L.CallByParam(lua.P{Fn: taskFunc, NRet: 1, Protect: true})
 				if L.GetTop() > 0 {
 					results.RawSet(key, L.Get(-1))
 					L.Pop(1)
 				}
-				
+
 				pterm.Success.Printf("  ✅ %s completed\n", taskName)
 			}
 		})
-		
+
 		L.Push(results)
 		L.Push(lua.LNil)
 		return 2
 	}))
-	
+
 	asyncTable.RawSetString("sleep", L.NewFunction(func(L *lua.LState) int {
 		ms := L.CheckInt(1)
 		time.Sleep(time.Duration(ms) * time.Millisecond)
 		return 0
 	}))
 	L.SetGlobal("async", asyncTable)
-	
+
 	// Performance monitoring
 	perfTable := L.NewTable()
 	perfTable.RawSetString("measure", L.NewFunction(func(L *lua.LState) int {
 		taskFunc := L.CheckFunction(1)
 		name := L.OptString(2, "task")
-		
+
 		start := time.Now()
 		L.CallByParam(lua.P{Fn: taskFunc, NRet: 1, Protect: true})
 		duration := time.Since(start)
-		
+
 		var result lua.LValue = lua.LNil
 		if L.GetTop() > 0 {
 			result = L.Get(-1)
 			L.Pop(1)
 		}
-		
+
 		pterm.Info.Printf("📊 %s: %v\n", name, duration)
-		
+
 		L.Push(result)
 		L.Push(lua.LNumber(duration.Milliseconds()))
 		L.Push(lua.LNil)
 		return 3
 	}))
-	
+
 	perfTable.RawSetString("memory", L.NewFunction(func(L *lua.LState) int {
 		memTable := L.NewTable()
 		memTable.RawSetString("current_mb", lua.LNumber(96))
@@ -187,64 +187,64 @@ func setupSimpleEnhancedDSL(L *lua.LState) {
 		return 1
 	}))
 	L.SetGlobal("perf", perfTable)
-	
+
 	// Flow control
 	flowTable := L.NewTable()
 	flowTable.RawSetString("circuit_breaker", L.NewFunction(func(L *lua.LState) int {
 		name := L.CheckString(1)
 		taskFunc := L.CheckFunction(2)
-		
+
 		pterm.Info.Printf("🛡️  Circuit breaker: %s\n", name)
-		
+
 		L.CallByParam(lua.P{Fn: taskFunc, NRet: 1, Protect: true})
-		
+
 		var result lua.LValue = lua.LNil
 		if L.GetTop() > 0 {
 			result = L.Get(-1)
 			L.Pop(1)
 		}
-		
+
 		L.Push(result)
 		L.Push(lua.LNil)
 		return 2
 	}))
-	
+
 	flowTable.RawSetString("rate_limit", L.NewFunction(func(L *lua.LState) int {
 		rps := L.CheckInt(1)
 		taskFunc := L.CheckFunction(2)
-		
+
 		if rps > 0 {
 			time.Sleep(time.Second / time.Duration(rps))
 		}
-		
+
 		L.CallByParam(lua.P{Fn: taskFunc, NRet: 1, Protect: true})
-		
+
 		var result lua.LValue = lua.LNil
 		if L.GetTop() > 0 {
 			result = L.Get(-1)
 			L.Pop(1)
 		}
-		
+
 		L.Push(result)
 		L.Push(lua.LNil)
 		return 2
 	}))
 	L.SetGlobal("flow", flowTable)
-	
+
 	// Error handling
 	errorTable := L.NewTable()
 	errorTable.RawSetString("retry", L.NewFunction(func(L *lua.LState) int {
 		taskFunc := L.CheckFunction(1)
 		maxAttempts := L.OptInt(2, 3)
-		
+
 		pterm.Info.Printf("🔄 Retry (max %d attempts)\n", maxAttempts)
-		
+
 		var result lua.LValue = lua.LNil
 		var lastError error
-		
+
 		for attempt := 1; attempt <= maxAttempts; attempt++ {
 			err := L.CallByParam(lua.P{Fn: taskFunc, NRet: 1, Protect: true})
-			
+
 			if err == nil {
 				if L.GetTop() > 0 {
 					result = L.Get(-1)
@@ -253,15 +253,15 @@ func setupSimpleEnhancedDSL(L *lua.LState) {
 				pterm.Success.Printf("✅ Succeeded on attempt %d\n", attempt)
 				break
 			}
-			
+
 			lastError = err
 			pterm.Warning.Printf("⚠️  Attempt %d failed\n", attempt)
-			
+
 			if attempt < maxAttempts {
 				time.Sleep(time.Duration(500*attempt) * time.Millisecond)
 			}
 		}
-		
+
 		L.Push(result)
 		if lastError != nil {
 			L.Push(lua.LString(lastError.Error()))
@@ -271,7 +271,7 @@ func setupSimpleEnhancedDSL(L *lua.LState) {
 		return 2
 	}))
 	L.SetGlobal("error", errorTable)
-	
+
 	// Logging
 	logTable := L.NewTable()
 	logTable.RawSetString("info", L.NewFunction(func(L *lua.LState) int {
@@ -290,35 +290,35 @@ func setupSimpleEnhancedDSL(L *lua.LState) {
 		return 0
 	}))
 	L.SetGlobal("log", logTable)
-	
+
 	// Utils
 	utilsTable := L.NewTable()
 	utilsTable.RawSetString("config", L.NewFunction(func(L *lua.LState) int {
 		key := L.CheckString(1)
 		defaultValue := L.OptString(2, "")
-		
+
 		value := os.Getenv(key)
 		if value == "" {
 			value = defaultValue
 		}
-		
+
 		L.Push(lua.LString(value))
 		return 1
 	}))
 	L.SetGlobal("utils", utilsTable)
-	
+
 	pterm.Info.Println("✅ Enhanced DSL initialized")
 }
 
 // runEnhancedDemo executes the enhanced features demo
 func runEnhancedDemo(L *lua.LState) {
 	pterm.DefaultHeader.WithFullWidth().Println("🚀 Enhanced Features in Action")
-	
+
 	// Try to load external demo file first
 	examplePath := filepath.Join("examples", "enhanced_demo.sloth")
 	if _, err := os.Stat(examplePath); err == nil {
 		pterm.Info.Printf("📁 Loading: %s\n", examplePath)
-		
+
 		if err := L.DoFile(examplePath); err != nil {
 			pterm.Error.Printf("❌ External demo failed: %v\n", err)
 			pterm.Warning.Println("🔄 Falling back to inline demo")
@@ -335,7 +335,7 @@ func runEnhancedDemo(L *lua.LState) {
 // runInlineDemo runs the inline demonstration
 func runInlineDemo(L *lua.LState) {
 	pterm.DefaultSection.Println("Core System Integration")
-	
+
 	if err := L.DoString(`
 		local stats = core.stats()
 		log.info("Core Stats Retrieved")
@@ -344,9 +344,9 @@ func runInlineDemo(L *lua.LState) {
 	`); err != nil {
 		pterm.Error.Printf("Core stats demo failed: %v\n", err)
 	}
-	
+
 	pterm.DefaultSection.Println("Parallel Task Execution")
-	
+
 	if err := L.DoString(`
 		log.info("Starting parallel execution demo...")
 		
@@ -378,9 +378,9 @@ func runInlineDemo(L *lua.LState) {
 	`); err != nil {
 		pterm.Error.Printf("Parallel execution demo failed: %v\n", err)
 	}
-	
+
 	pterm.DefaultSection.Println("Performance Monitoring")
-	
+
 	if err := L.DoString(`
 		log.info("Performance monitoring demo...")
 		
@@ -400,9 +400,9 @@ func runInlineDemo(L *lua.LState) {
 	`); err != nil {
 		pterm.Error.Printf("Performance demo failed: %v\n", err)
 	}
-	
+
 	pterm.DefaultSection.Println("Circuit Breaker Pattern")
-	
+
 	if err := L.DoString(`
 		log.info("Circuit breaker demo...")
 		
@@ -420,9 +420,9 @@ func runInlineDemo(L *lua.LState) {
 	`); err != nil {
 		pterm.Error.Printf("Circuit breaker demo failed: %v\n", err)
 	}
-	
+
 	pterm.DefaultSection.Println("Rate Limiting")
-	
+
 	if err := L.DoString(`
 		log.info("Rate limiting demo (2 RPS)...")
 		
@@ -437,9 +437,9 @@ func runInlineDemo(L *lua.LState) {
 	`); err != nil {
 		pterm.Error.Printf("Rate limiting demo failed: %v\n", err)
 	}
-	
+
 	pterm.DefaultSection.Println("Enhanced Error Handling")
-	
+
 	if err := L.DoString(`
 		log.info("Retry mechanism demo...")
 		
@@ -463,9 +463,9 @@ func runInlineDemo(L *lua.LState) {
 	`); err != nil {
 		pterm.Error.Printf("Error handling demo failed: %v\n", err)
 	}
-	
+
 	pterm.DefaultSection.Println("Configuration Management")
-	
+
 	if err := L.DoString(`
 		log.info("Configuration demo...")
 		
@@ -477,14 +477,14 @@ func runInlineDemo(L *lua.LState) {
 	`); err != nil {
 		pterm.Error.Printf("Configuration demo failed: %v\n", err)
 	}
-	
+
 	pterm.Success.Println("🎉 All enhanced features demonstrated successfully!")
 }
 
 // showFeatureComparison shows the before/after comparison
 func showFeatureComparison() {
 	pterm.DefaultHeader.WithFullWidth().Println("📊 Enhanced Features Comparison")
-	
+
 	comparison := [][]string{
 		{"Feature", "Before", "After", "Improvement"},
 		{"Task Execution", "Sequential only", "Parallel with smart workers", "10x faster"},
@@ -496,14 +496,14 @@ func showFeatureComparison() {
 		{"Async Operations", "Callbacks", "Native parallel execution", "Better performance"},
 		{"State Management", "Manual", "Automatic with persistence", "Data integrity"},
 	}
-	
+
 	pterm.DefaultTable.WithHasHeader().WithData(comparison).Render()
 }
 
 // showImprovements shows the key improvements made
 func showImprovements() {
 	pterm.DefaultHeader.WithFullWidth().Println("🏆 Key Improvements Delivered")
-	
+
 	improvements := [][]string{
 		{"Category", "Improvement", "Impact"},
 		{"Performance", "Parallel execution with worker pools", "10x task throughput"},
@@ -515,12 +515,12 @@ func showImprovements() {
 		{"Error Recovery", "Multiple recovery strategies", "Business continuity"},
 		{"Configuration", "Environment-aware configuration", "Deployment flexibility"},
 	}
-	
+
 	pterm.DefaultTable.WithHasHeader().WithData(improvements).Render()
-	
+
 	// Show summary metrics
 	pterm.DefaultSection.Println("📈 Summary Metrics")
-	
+
 	metrics := [][]string{
 		{"Metric", "Value"},
 		{"Performance Improvement", "10x faster parallel execution"},
@@ -530,12 +530,12 @@ func showImprovements() {
 		{"Error Recovery", "Automatic retry with exponential backoff"},
 		{"Monitoring Coverage", "100% task and system visibility"},
 	}
-	
+
 	pterm.DefaultTable.WithHasHeader().WithData(metrics).Render()
-	
+
 	// Show next steps
 	pterm.DefaultSection.Println("🚀 Ready for Production")
-	
+
 	pterm.Info.Println("The enhanced Sloth Runner is now ready with:")
 	pterm.Info.Println("  ✅ Enterprise-grade reliability patterns")
 	pterm.Info.Println("  ✅ High-performance parallel execution")

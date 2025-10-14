@@ -139,7 +139,7 @@ func (adb *AgentDB) RegisterAgent(name, address string) error {
 // UpdateHeartbeat updates the last heartbeat timestamp for an agent
 func (adb *AgentDB) UpdateHeartbeat(name string) error {
 	query := `UPDATE agents SET last_heartbeat = ?, updated_at = ? WHERE name = ?`
-	
+
 	now := time.Now().Unix()
 	result, err := adb.db.Exec(query, now, now, name)
 	if err != nil {
@@ -285,10 +285,10 @@ func (adb *AgentDB) ListAgents() ([]*AgentRecord, error) {
 // GetAgentAddress retrieves the address of an agent by name
 func (adb *AgentDB) GetAgentAddress(name string) (string, error) {
 	query := `SELECT address FROM agents WHERE name = ? AND last_heartbeat > ?`
-	
+
 	// Only consider agents that have sent a heartbeat in the last 60 seconds
 	cutoff := time.Now().Unix() - 60
-	
+
 	var address string
 	err := adb.db.QueryRow(query, name, cutoff).Scan(&address)
 	if err != nil {
@@ -304,7 +304,7 @@ func (adb *AgentDB) GetAgentAddress(name string) (string, error) {
 // RemoveAgent removes an agent from the database
 func (adb *AgentDB) RemoveAgent(name string) error {
 	query := `DELETE FROM agents WHERE name = ?`
-	
+
 	result, err := adb.db.Exec(query, name)
 	if err != nil {
 		return fmt.Errorf("failed to remove agent: %w", err)
@@ -330,9 +330,9 @@ func (adb *AgentDB) UnregisterAgent(name string) error {
 // CleanupInactiveAgents removes agents that haven't sent heartbeat for a specified duration
 func (adb *AgentDB) CleanupInactiveAgents(maxInactiveHours int) (int, error) {
 	cutoff := time.Now().Unix() - int64(maxInactiveHours*3600)
-	
+
 	query := `DELETE FROM agents WHERE last_heartbeat < ? AND last_heartbeat > 0`
-	
+
 	result, err := adb.db.Exec(query, cutoff)
 	if err != nil {
 		return 0, fmt.Errorf("failed to cleanup inactive agents: %w", err)
