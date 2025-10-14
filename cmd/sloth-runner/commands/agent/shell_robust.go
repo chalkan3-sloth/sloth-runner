@@ -257,10 +257,10 @@ Client:   %s
 
 [Ctrl+D or 'exit' to quit] [Ctrl+C to interrupt]
 `,
-			pterm.FgGreen.Sprintf(agentName),
-			pterm.FgCyan.Sprintf(address),
+			pterm.FgGreen.Sprint(agentName),
+			pterm.FgCyan.Sprint(address),
 			width, height,
-			pterm.FgYellow.Sprintf(hostname),
+			pterm.FgYellow.Sprint(hostname),
 		))
 
 	fmt.Println(banner)
