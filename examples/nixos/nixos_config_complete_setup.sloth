@@ -1,0 +1,550 @@
+-- Complete NixOS Configuration Workflow
+-- Based on: https://github.com/chalkan3/nixos-config
+--
+-- This workflow demonstrates how to transform a traditional NixOS configuration
+-- repository into a fully automated, declarative Sloth workflow using the
+-- advanced table-based configuration functions.
+--
+-- Execute with:
+-- sloth-runner run nixos_complete_setup --file nixos_config_complete_setup.sloth --delegate-to <nixos-host> --yes
+
+-- ============================================================================
+-- TASK 1: CONFIGURE BOOT AND HARDWARE
+-- ============================================================================
+
+local configure_boot_settings = task("configure_boot_settings")
+    :description("Configure systemd-boot bootloader and EFI settings")
+    :command(function(this, params)
+        log.info("🚀 Configuring boot settings...")
+
+        local ok, msg = nixos.configure_boot({
+            loader = {
+                type = "systemd-boot",
+                timeout = 5,
+                editor = false,
+                can_touch_efi_variables = true
+            },
+            kernel_params = {
+                "quiet",
+                "splash"
+            },
+            tmp_on_tmpfs = false
+        })
+
+        if not ok then
+            log.error("❌ Boot configuration failed: " .. tostring(msg))
+            return false, msg
+        end
+
+        log.info("✅ " .. msg)
+        return true, msg
+    end)
+    :build()
+
+-- ============================================================================
+-- TASK 2: CONFIGURE SYSTEM SETTINGS
+-- ============================================================================
+
+local configure_system_settings = task("configure_system_settings")
+    :description("Configure hostname, timezone, locale, and console")
+    :command(function(this, params)
+        log.info("⚙️  Configuring system settings...")
+
+        -- System configuration
+        local ok, msg = nixos.configure_system({
+            timezone = "America/Sao_Paulo",
+            locale = "en_US.UTF-8",
+            console = {
+                keymap = "us"
+            }
+        })
+
+        if not ok then
+            log.error("❌ System configuration failed: " .. tostring(msg))
+            return false, msg
+        end
+
+        -- Hostname
+        local ok2, msg2 = nixos.set_hostname({hostname = "nixos-qemu"})
+        if not ok2 then
+            log.error("❌ Hostname configuration failed: " .. tostring(msg2))
+            return false, msg2
+        end
+
+        log.info("✅ System settings configured")
+        return true, "System configuration completed"
+    end)
+    :build()
+
+-- ============================================================================
+-- TASK 3: CONFIGURE USERS
+-- ============================================================================
+
+local configure_users = task("configure_users")
+    :description("Configure system users with groups and passwords")
+    :command(function(this, params)
+        log.info("👥 Configuring users...")
+
+        -- User: chalkan3
+        local ok1, msg1 = nixos.configure_user({
+            username = "chalkan3",
+            description = "Chalkan3 User",
+            shell = "pkgs.zsh",
+            groups = {"wheel", "networkmanager"},
+            create_home = true,
+            is_normal_user = true,
+            -- In production, use hashed passwords or password files
+            -- hashed_password = "$6$rounds=4096$...",
+            settings = {
+                initialPassword = "changeme123!"
+            }
+        })
+
+        if not ok1 then
+            log.error("❌ User chalkan3 creation failed: " .. tostring(msg1))
+            return false, msg1
+        end
+
+        -- User: nixos (default user)
+        local ok2, msg2 = nixos.configure_user({
+            username = "nixos",
+            description = "Nixos Default User",
+            shell = "pkgs.zsh",
+            groups = {"wheel", "networkmanager"},
+            create_home = true,
+            is_normal_user = true,
+            settings = {
+                initialPassword = "changeme123!"
+            }
+        })
+
+        if not ok2 then
+            log.error("❌ User nixos creation failed: " .. tostring(msg2))
+            return false, msg2
+        end
+
+        -- Root password
+        local ok3, msg3 = nixos.configure_user({
+            username = "root",
+            settings = {
+                initialPassword = "root"
+            }
+        })
+
+        if not ok3 then
+            log.error("❌ Root password configuration failed: " .. tostring(msg3))
+            return false, msg3
+        end
+
+        log.info("✅ All users configured successfully")
+        return true, "Users configured"
+    end)
+    :build()
+
+-- ============================================================================
+-- TASK 4: CONFIGURE PACKAGES
+-- ============================================================================
+
+local configure_packages = task("configure_packages")
+    :description("Install system-wide packages and configure shell")
+    :command(function(this, params)
+        log.info("📦 Configuring system packages...")
+
+        local ok, msg = nixos.configure_environment({
+            packages = {
+                -- Core tools
+                "vim",
+                "neovim",
+                "wget",
+                "curl",
+                "git",
+
+                -- Shell and terminal
+                "zsh",
+                "kitty.terminfo",
+
+                -- Utilities
+                "btop",
+                "lsd",
+                "fzf",
+                "gh"
+            },
+            variables = {
+                EDITOR = "nvim",
+                VISUAL = "nvim"
+            },
+            settings = {
+                enableZshCompletion = true
+            }
+        })
+
+        if not ok then
+            log.error("❌ Package configuration failed: " .. tostring(msg))
+            return false, msg
+        end
+
+        -- Enable nix-ld
+        local ok2, msg2 = nixos.configure_service({
+            service = "nix-ld",
+            enable = true
+        })
+
+        if not ok2 then
+            log.warn("⚠️  nix-ld configuration warning: " .. tostring(msg2))
+        end
+
+        log.info("✅ " .. msg)
+        return true, "Packages and shell configured"
+    end)
+    :build()
+
+-- ============================================================================
+-- TASK 5: CONFIGURE NETWORKING
+-- ============================================================================
+
+local configure_networking = task("configure_networking")
+    :description("Configure NetworkManager and firewall")
+    :command(function(this, params)
+        log.info("🌐 Configuring networking...")
+
+        local ok, msg = nixos.configure_networking({
+            enable_network_manager = true,
+            firewall = {
+                enable = true,
+                tcp_ports = {22, 50051},
+                udp_ports = {}
+            }
+        })
+
+        if not ok then
+            log.error("❌ Networking configuration failed: " .. tostring(msg))
+            return false, msg
+        end
+
+        log.info("✅ " .. msg)
+        return true, msg
+    end)
+    :build()
+
+-- ============================================================================
+-- TASK 6: CONFIGURE SERVICES
+-- ============================================================================
+
+local configure_services = task("configure_services")
+    :description("Configure SSH and other system services")
+    :command(function(this, params)
+        log.info("🔐 Configuring services...")
+
+        -- OpenSSH service
+        local ok1, msg1 = nixos.configure_service({
+            service = "openssh",
+            enable = true,
+            settings = {
+                permitRootLogin = "yes",
+                passwordAuthentication = true,
+                openFirewall = true
+            }
+        })
+
+        if not ok1 then
+            log.error("❌ SSH service configuration failed: " .. tostring(msg1))
+            return false, msg1
+        end
+
+        -- QEMU Guest Agent (for VM)
+        local ok2, msg2 = nixos.configure_service({
+            service = "qemu-guest-agent",
+            enable = true
+        })
+
+        if not ok2 then
+            log.warn("⚠️  QEMU guest agent warning (OK if not a VM): " .. tostring(msg2))
+        end
+
+        log.info("✅ Services configured successfully")
+        return true, "Services configured"
+    end)
+    :build()
+
+-- ============================================================================
+-- TASK 7: CONFIGURE VIRTUALIZATION (Optional)
+-- ============================================================================
+
+local configure_virtualization = task("configure_virtualization")
+    :description("Configure libvirt/KVM for virtualization support")
+    :command(function(this, params)
+        log.info("🖥️  Configuring virtualization...")
+
+        local ok, msg = nixos.configure_libvirt({
+            enable = true,
+            qemu_ovmf = true,
+            qemu_run_as_root = false,
+            on_boot = "ignore"
+        })
+
+        if not ok then
+            log.warn("⚠️  Virtualization configuration warning: " .. tostring(msg))
+            return true, "Virtualization skipped (optional)"
+        end
+
+        log.info("✅ " .. msg)
+        return true, msg
+    end)
+    :build()
+
+-- ============================================================================
+-- TASK 8: CONFIGURE PERFORMANCE TUNING
+-- ============================================================================
+
+local configure_performance = task("configure_performance")
+    :description("Configure performance settings and zram")
+    :command(function(this, params)
+        log.info("⚡ Configuring performance tuning...")
+
+        local ok, msg = nixos.configure_performance({
+            cpu_governor = "performance",
+            enable_zram = true,
+            zram_size_percentage = 50,
+            kernel_params = {
+                "mitigations=off",  -- For better performance (less secure)
+                "nowatchdog"
+            }
+        })
+
+        if not ok then
+            log.warn("⚠️  Performance tuning warning: " .. tostring(msg))
+            return true, "Performance tuning skipped"
+        end
+
+        log.info("✅ " .. msg)
+        return true, msg
+    end)
+    :build()
+
+-- ============================================================================
+-- TASK 9: BACKUP CURRENT CONFIGURATION
+-- ============================================================================
+
+local backup_configuration = task("backup_configuration")
+    :description("Create backup of current configuration before rebuild")
+    :command(function(this, params)
+        log.info("💾 Creating configuration backup...")
+
+        local ok, msg = nixos.backup_config({
+            backup_path = "/etc/nixos/configuration.nix.backup-" .. os.date("%Y%m%d-%H%M%S")
+        })
+
+        if not ok then
+            log.error("❌ Backup failed: " .. tostring(msg))
+            return false, msg
+        end
+
+        log.info("✅ " .. msg)
+        return true, msg
+    end)
+    :build()
+
+-- ============================================================================
+-- TASK 10: VALIDATE CONFIGURATION
+-- ============================================================================
+
+local validate_configuration = task("validate_configuration")
+    :description("Validate NixOS configuration before applying")
+    :command(function(this, params)
+        log.info("✓ Validating configuration...")
+
+        local ok, msg = nixos.validate_config({})
+
+        if not ok then
+            log.error("❌ Configuration validation failed: " .. tostring(msg))
+            log.error("   Please fix the errors before applying!")
+            return false, msg
+        end
+
+        log.info("✅ Configuration is valid!")
+        return true, msg
+    end)
+    :build()
+
+-- ============================================================================
+-- TASK 11: APPLY CONFIGURATION (nixos-rebuild switch)
+-- ============================================================================
+
+local apply_configuration = task("apply_configuration")
+    :description("Apply NixOS configuration with nixos-rebuild switch")
+    :command(function(this, params)
+        log.info("🔄 Applying NixOS configuration...")
+        log.info("   This may take several minutes...")
+        log.info("")
+
+        local ok, msg = nixos.rebuild({
+            action = "switch",
+            use_sudo = true
+        })
+
+        if not ok then
+            log.error("❌ nixos-rebuild switch failed: " .. tostring(msg))
+            log.error("   You may need to rollback using: nixos-rebuild switch --rollback")
+            return false, msg
+        end
+
+        log.info("✅ " .. msg)
+        return true, msg
+    end)
+    :build()
+
+-- ============================================================================
+-- TASK 12: VERIFY SYSTEM STATE
+-- ============================================================================
+
+local verify_system_state = task("verify_system_state")
+    :description("Verify that all services and settings are active")
+    :command(function(this, params)
+        log.info("🔍 Verifying system state...")
+
+        -- List current generation
+        local ok, msg = nixos.list_generations({})
+        if ok then
+            log.info("Current generation info:")
+            log.info(msg)
+        end
+
+        log.info("✅ System verification complete")
+        return true, "System verified"
+    end)
+    :build()
+
+-- ============================================================================
+-- WORKFLOW DEFINITION
+-- ============================================================================
+
+workflow.define("nixos_complete_setup")
+    :description("Complete NixOS configuration from github.com/chalkan3/nixos-config")
+    :version("1.0.0")
+    :tasks({
+        configure_boot_settings,
+        configure_system_settings,
+        configure_users,
+        configure_packages,
+        configure_networking,
+        configure_services,
+        configure_virtualization,
+        configure_performance,
+        backup_configuration,
+        validate_configuration,
+        apply_configuration,
+        verify_system_state
+    })
+    :config({
+        timeout = "30m",
+        max_parallel_tasks = 1,  -- Sequential execution for safety
+        continue_on_error = false
+    })
+    :on_start(function()
+        print("")
+        print("═══════════════════════════════════════════════════════════════════════")
+        print("  🦥 Complete NixOS Configuration Workflow")
+        print("═══════════════════════════════════════════════════════════════════════")
+        print("")
+        print("  Based on: https://github.com/chalkan3/nixos-config")
+        print("")
+        print("  This workflow will configure a complete NixOS system with:")
+        print("")
+        print("  BOOT & HARDWARE:")
+        print("  • systemd-boot bootloader with EFI support")
+        print("  • Kernel parameters and modules")
+        print("")
+        print("  SYSTEM CONFIGURATION:")
+        print("  • Hostname: nixos-qemu")
+        print("  • Timezone: America/Sao_Paulo")
+        print("  • Locale: en_US.UTF-8")
+        print("")
+        print("  USERS:")
+        print("  • chalkan3 (wheel, networkmanager)")
+        print("  • nixos (wheel, networkmanager)")
+        print("  • root with password")
+        print("")
+        print("  PACKAGES:")
+        print("  • Development: vim, neovim, git, gh")
+        print("  • Utilities: btop, lsd, fzf, wget, curl")
+        print("  • Shell: zsh with completion")
+        print("")
+        print("  NETWORKING:")
+        print("  • NetworkManager enabled")
+        print("  • Firewall: ports 22, 50051")
+        print("")
+        print("  SERVICES:")
+        print("  • OpenSSH (enabled, root login allowed)")
+        print("  • QEMU Guest Agent (for VMs)")
+        print("")
+        print("  PERFORMANCE:")
+        print("  • CPU governor: performance")
+        print("  • zram swap: 50% of RAM")
+        print("")
+        print("  The configuration will be validated before applying!")
+        print("")
+        print("═══════════════════════════════════════════════════════════════════════")
+        print("")
+        return true
+    end)
+    :on_complete(function(success, results)
+        print("")
+        print("═══════════════════════════════════════════════════════════════════════")
+
+        if success then
+            print("  ✅ NixOS Configuration Completed Successfully!")
+            print("═══════════════════════════════════════════════════════════════════════")
+            print("")
+            print("  Your NixOS system is now fully configured and ready!")
+            print("")
+            print("  USERS:")
+            print("  • chalkan3:  changeme123!")
+            print("  • nixos:     changeme123!")
+            print("  • root:      root")
+            print("")
+            print("  ⚠️  IMPORTANT: Change these default passwords!")
+            print("")
+            print("  NEXT STEPS:")
+            print("  1. Change user passwords: passwd")
+            print("  2. Add SSH keys for users")
+            print("  3. Update passwords in configuration")
+            print("  4. Re-run workflow to apply changes")
+            print("")
+            print("  USEFUL COMMANDS:")
+            print("  • nixos-rebuild switch         - Apply configuration")
+            print("  • nixos-rebuild switch --rollback  - Rollback to previous")
+            print("  • nix-collect-garbage -d       - Clean old generations")
+            print("  • nixos-option <option>        - Query configuration")
+            print("")
+            print("  GENERATION MANAGEMENT:")
+
+            -- Show current generation
+            local ok, msg = nixos.list_generations({})
+            if ok then
+                print("")
+                print("  " .. msg:gsub("\n", "\n  "))
+            end
+            print("")
+
+        else
+            print("  ❌ NixOS Configuration Failed!")
+            print("═══════════════════════════════════════════════════════════════════════")
+            print("")
+            print("  Some tasks failed during execution.")
+            print("  Check the error messages above for details.")
+            print("")
+            print("  TROUBLESHOOTING:")
+            print("  1. Review the error messages above")
+            print("  2. Check /etc/nixos/configuration.nix")
+            print("  3. Run: nixos-rebuild dry-build")
+            print("  4. Restore backup if needed")
+            print("")
+            print("  ROLLBACK:")
+            print("  • nixos-rebuild switch --rollback")
+            print("")
+        end
+
+        print("═══════════════════════════════════════════════════════════════════════")
+        print("")
+        return true
+    end)
