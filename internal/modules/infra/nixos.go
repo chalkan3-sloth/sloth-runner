@@ -66,6 +66,36 @@ func RegisterNixOSModule(L *lua.LState) {
 	L.SetField(nixosModule, "configure_system", L.NewFunction(nixosConfigureSystem))
 	L.SetField(nixosModule, "configure_environment", L.NewFunction(nixosConfigureEnvironment))
 
+	// Systemd management
+	L.SetField(nixosModule, "create_systemd_service", L.NewFunction(nixosCreateSystemdService))
+	L.SetField(nixosModule, "create_systemd_timer", L.NewFunction(nixosCreateSystemdTimer))
+	L.SetField(nixosModule, "create_systemd_mount", L.NewFunction(nixosCreateSystemdMount))
+
+	// Storage management
+	L.SetField(nixosModule, "configure_zfs", L.NewFunction(nixosConfigureZFS))
+	L.SetField(nixosModule, "configure_filesystem", L.NewFunction(nixosConfigureFilesystem))
+
+	// Container management
+	L.SetField(nixosModule, "configure_container", L.NewFunction(nixosConfigureContainer))
+	L.SetField(nixosModule, "configure_docker", L.NewFunction(nixosConfigureDocker))
+
+	// Advanced networking
+	L.SetField(nixosModule, "configure_vlan", L.NewFunction(nixosConfigureVLAN))
+	L.SetField(nixosModule, "configure_bridge", L.NewFunction(nixosConfigureBridge))
+	L.SetField(nixosModule, "configure_vpn", L.NewFunction(nixosConfigureVPN))
+
+	// Security and secrets
+	L.SetField(nixosModule, "configure_security", L.NewFunction(nixosConfigureSecurity))
+
+	// Generation management
+	L.SetField(nixosModule, "list_generations", L.NewFunction(nixosListGenerations))
+	L.SetField(nixosModule, "rollback", L.NewFunction(nixosRollback))
+	L.SetField(nixosModule, "switch_generation", L.NewFunction(nixosSwitchGeneration))
+	L.SetField(nixosModule, "delete_generations", L.NewFunction(nixosDeleteGenerations))
+
+	// Declarative containers and VMs
+	L.SetField(nixosModule, "test_config", L.NewFunction(nixosTestConfig))
+
 	// Set as global
 	L.SetGlobal("nixos", nixosModule)
 }
@@ -2079,6 +2109,745 @@ func nixosConfigureEnvironment(L *lua.LState) int {
 
 	L.Push(lua.LBool(true))
 	L.Push(lua.LString("environment configured successfully"))
+	return 2
+}
+
+// ============================================================================
+// Systemd Management Functions
+// ============================================================================
+
+// nixosCreateSystemdService creates a custom systemd service
+func nixosCreateSystemdService(L *lua.LState) int {
+	params := L.CheckTable(1)
+
+	serviceName := getStringField(L, params, "name", "")
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	if serviceName == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("service name is required"))
+		return 2
+	}
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+
+	configStr := string(content)
+
+	// Build systemd service configuration
+	var serviceConfig strings.Builder
+	serviceConfig.WriteString(fmt.Sprintf("  systemd.services.%s = {\n", serviceName))
+
+	if description := getStringField(L, params, "description", ""); description != "" {
+		serviceConfig.WriteString(fmt.Sprintf("    description = \"%s\";\n", description))
+	}
+
+	if wantedBy := getStringField(L, params, "wanted_by", ""); wantedBy != "" {
+		serviceConfig.WriteString(fmt.Sprintf("    wantedBy = [ \"%s\" ];\n", wantedBy))
+	}
+
+	if after := getStringField(L, params, "after", ""); after != "" {
+		serviceConfig.WriteString(fmt.Sprintf("    after = [ \"%s\" ];\n", after))
+	}
+
+	// Service section
+	serviceSection := L.GetField(params, "service")
+	if tbl, ok := serviceSection.(*lua.LTable); ok {
+		serviceConfig.WriteString("    serviceConfig = {\n")
+
+		if execStart := getStringFieldFromTable(L, tbl, "exec_start", ""); execStart != "" {
+			serviceConfig.WriteString(fmt.Sprintf("      ExecStart = \"%s\";\n", execStart))
+		}
+		if restart := getStringFieldFromTable(L, tbl, "restart", ""); restart != "" {
+			serviceConfig.WriteString(fmt.Sprintf("      Restart = \"%s\";\n", restart))
+		}
+		if user := getStringFieldFromTable(L, tbl, "user", ""); user != "" {
+			serviceConfig.WriteString(fmt.Sprintf("      User = \"%s\";\n", user))
+		}
+		if group := getStringFieldFromTable(L, tbl, "group", ""); group != "" {
+			serviceConfig.WriteString(fmt.Sprintf("      Group = \"%s\";\n", group))
+		}
+		if workingDir := getStringFieldFromTable(L, tbl, "working_directory", ""); workingDir != "" {
+			serviceConfig.WriteString(fmt.Sprintf("      WorkingDirectory = \"%s\";\n", workingDir))
+		}
+
+		serviceConfig.WriteString("    };\n")
+	}
+
+	serviceConfig.WriteString("  };\n")
+
+	newContent := addLineToConfig(configStr, serviceConfig.String())
+
+	if err := os.WriteFile(configPath, []byte(newContent), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("systemd service %s created", serviceName)))
+	return 2
+}
+
+// nixosCreateSystemdTimer creates a systemd timer
+func nixosCreateSystemdTimer(L *lua.LState) int {
+	params := L.CheckTable(1)
+
+	timerName := getStringField(L, params, "name", "")
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	if timerName == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("timer name is required"))
+		return 2
+	}
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+
+	configStr := string(content)
+
+	var timerConfig strings.Builder
+	timerConfig.WriteString(fmt.Sprintf("  systemd.timers.%s = {\n", timerName))
+	timerConfig.WriteString("    wantedBy = [ \"timers.target\" ];\n")
+
+	if onCalendar := getStringField(L, params, "on_calendar", ""); onCalendar != "" {
+		timerConfig.WriteString("    timerConfig = {\n")
+		timerConfig.WriteString(fmt.Sprintf("      OnCalendar = \"%s\";\n", onCalendar))
+		if persistent := getBoolField(L, params, "persistent", false); persistent {
+			timerConfig.WriteString("      Persistent = true;\n")
+		}
+		timerConfig.WriteString("    };\n")
+	}
+
+	timerConfig.WriteString("  };\n")
+
+	newContent := addLineToConfig(configStr, timerConfig.String())
+
+	if err := os.WriteFile(configPath, []byte(newContent), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("systemd timer %s created", timerName)))
+	return 2
+}
+
+// nixosCreateSystemdMount creates a systemd mount unit
+func nixosCreateSystemdMount(L *lua.LState) int {
+	params := L.CheckTable(1)
+
+	mountName := getStringField(L, params, "name", "")
+	what := getStringField(L, params, "what", "")
+	where := getStringField(L, params, "where", "")
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	if mountName == "" || what == "" || where == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("name, what, and where are required"))
+		return 2
+	}
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+
+	configStr := string(content)
+
+	var mountConfig strings.Builder
+	mountConfig.WriteString(fmt.Sprintf("  systemd.mounts = [{\n"))
+	mountConfig.WriteString(fmt.Sprintf("    what = \"%s\";\n", what))
+	mountConfig.WriteString(fmt.Sprintf("    where = \"%s\";\n", where))
+	if fsType := getStringField(L, params, "type", ""); fsType != "" {
+		mountConfig.WriteString(fmt.Sprintf("    type = \"%s\";\n", fsType))
+	}
+	if options := getStringField(L, params, "options", ""); options != "" {
+		mountConfig.WriteString(fmt.Sprintf("    options = \"%s\";\n", options))
+	}
+	mountConfig.WriteString("  }];\n")
+
+	newContent := addLineToConfig(configStr, mountConfig.String())
+
+	if err := os.WriteFile(configPath, []byte(newContent), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("systemd mount %s created", mountName)))
+	return 2
+}
+
+// ============================================================================
+// Storage Management Functions
+// ============================================================================
+
+// nixosConfigureZFS configures ZFS support and pools
+func nixosConfigureZFS(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+
+	configStr := string(content)
+
+	var zfsConfig strings.Builder
+	zfsConfig.WriteString("  boot.supportedFilesystems = [ \"zfs\" ];\n")
+
+	if hostId := getStringField(L, params, "host_id", ""); hostId != "" {
+		zfsConfig.WriteString(fmt.Sprintf("  networking.hostId = \"%s\";\n", hostId))
+	}
+
+	zfsConfig.WriteString("  services.zfs = {\n")
+	zfsConfig.WriteString("    autoScrub.enable = true;\n")
+	if autoSnapshot := getBoolField(L, params, "auto_snapshot", false); autoSnapshot {
+		zfsConfig.WriteString("    autoSnapshot.enable = true;\n")
+	}
+	zfsConfig.WriteString("  };\n")
+
+	newContent := addLineToConfig(configStr, zfsConfig.String())
+
+	if err := os.WriteFile(configPath, []byte(newContent), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("ZFS configured successfully"))
+	return 2
+}
+
+// nixosConfigureFilesystem configures advanced filesystem options
+func nixosConfigureFilesystem(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+
+	configStr := string(content)
+
+	var fsConfig strings.Builder
+
+	// Filesystems support
+	var supportedFS []string
+	supportedFSTable := L.GetField(params, "supported")
+	if tbl, ok := supportedFSTable.(*lua.LTable); ok {
+		tbl.ForEach(func(_, value lua.LValue) {
+			if str, ok := value.(lua.LString); ok {
+				supportedFS = append(supportedFS, string(str))
+			}
+		})
+	}
+
+	if len(supportedFS) > 0 {
+		fsConfig.WriteString("  boot.supportedFilesystems = [ ")
+		for _, fs := range supportedFS {
+			fsConfig.WriteString(fmt.Sprintf("\"%s\" ", fs))
+		}
+		fsConfig.WriteString("];\n")
+	}
+
+	newContent := addLineToConfig(configStr, fsConfig.String())
+
+	if err := os.WriteFile(configPath, []byte(newContent), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("filesystem configuration updated"))
+	return 2
+}
+
+// ============================================================================
+// Container Management Functions
+// ============================================================================
+
+// nixosConfigureContainer creates a declarative NixOS container
+func nixosConfigureContainer(L *lua.LState) int {
+	params := L.CheckTable(1)
+
+	containerName := getStringField(L, params, "name", "")
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	if containerName == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("container name is required"))
+		return 2
+	}
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+
+	configStr := string(content)
+
+	var containerConfig strings.Builder
+	containerConfig.WriteString(fmt.Sprintf("  containers.%s = {\n", containerName))
+	containerConfig.WriteString("    autoStart = true;\n")
+
+	if privateNetwork := getBoolField(L, params, "private_network", false); privateNetwork {
+		containerConfig.WriteString("    privateNetwork = true;\n")
+		if hostAddress := getStringField(L, params, "host_address", ""); hostAddress != "" {
+			containerConfig.WriteString(fmt.Sprintf("    hostAddress = \"%s\";\n", hostAddress))
+		}
+		if localAddress := getStringField(L, params, "local_address", ""); localAddress != "" {
+			containerConfig.WriteString(fmt.Sprintf("    localAddress = \"%s\";\n", localAddress))
+		}
+	}
+
+	containerConfig.WriteString("    config = { config, pkgs, ... }: {\n")
+	containerConfig.WriteString("      services.openssh.enable = true;\n")
+	containerConfig.WriteString("    };\n")
+	containerConfig.WriteString("  };\n")
+
+	newContent := addLineToConfig(configStr, containerConfig.String())
+
+	if err := os.WriteFile(configPath, []byte(newContent), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("container %s configured", containerName)))
+	return 2
+}
+
+// nixosConfigureDocker configures Docker with advanced settings
+func nixosConfigureDocker(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+
+	configStr := string(content)
+
+	var dockerConfig strings.Builder
+	dockerConfig.WriteString("  virtualisation.docker = {\n")
+	dockerConfig.WriteString("    enable = true;\n")
+
+	if rootless := getBoolField(L, params, "rootless", false); rootless {
+		dockerConfig.WriteString("    rootless = {\n")
+		dockerConfig.WriteString("      enable = true;\n")
+		dockerConfig.WriteString("      setSocketVariable = true;\n")
+		dockerConfig.WriteString("    };\n")
+	}
+
+	if autoPrune := getBoolField(L, params, "auto_prune", false); autoPrune {
+		dockerConfig.WriteString("    autoPrune.enable = true;\n")
+	}
+
+	dockerConfig.WriteString("  };\n")
+
+	newContent := addLineToConfig(configStr, dockerConfig.String())
+
+	if err := os.WriteFile(configPath, []byte(newContent), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("Docker configured successfully"))
+	return 2
+}
+
+// ============================================================================
+// Advanced Networking Functions
+// ============================================================================
+
+// nixosConfigureVLAN configures a VLAN interface
+func nixosConfigureVLAN(L *lua.LState) int {
+	params := L.CheckTable(1)
+
+	vlanName := getStringField(L, params, "name", "")
+	id := getIntField(L, params, "id", 0)
+	interface_ := getStringField(L, params, "interface", "")
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	if vlanName == "" || id == 0 || interface_ == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("name, id, and interface are required"))
+		return 2
+	}
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+
+	configStr := string(content)
+
+	var vlanConfig strings.Builder
+	vlanConfig.WriteString(fmt.Sprintf("  networking.vlans.%s = {\n", vlanName))
+	vlanConfig.WriteString(fmt.Sprintf("    id = %d;\n", id))
+	vlanConfig.WriteString(fmt.Sprintf("    interface = \"%s\";\n", interface_))
+	vlanConfig.WriteString("  };\n")
+
+	newContent := addLineToConfig(configStr, vlanConfig.String())
+
+	if err := os.WriteFile(configPath, []byte(newContent), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("VLAN %s configured", vlanName)))
+	return 2
+}
+
+// nixosConfigureBridge configures a network bridge
+func nixosConfigureBridge(L *lua.LState) int {
+	params := L.CheckTable(1)
+
+	bridgeName := getStringField(L, params, "name", "")
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	if bridgeName == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("bridge name is required"))
+		return 2
+	}
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+
+	configStr := string(content)
+
+	var bridgeConfig strings.Builder
+	bridgeConfig.WriteString(fmt.Sprintf("  networking.bridges.%s = {\n", bridgeName))
+
+	var interfaces []string
+	interfacesTable := L.GetField(params, "interfaces")
+	if tbl, ok := interfacesTable.(*lua.LTable); ok {
+		tbl.ForEach(func(_, value lua.LValue) {
+			if str, ok := value.(lua.LString); ok {
+				interfaces = append(interfaces, string(str))
+			}
+		})
+	}
+
+	if len(interfaces) > 0 {
+		bridgeConfig.WriteString("    interfaces = [ ")
+		for _, iface := range interfaces {
+			bridgeConfig.WriteString(fmt.Sprintf("\"%s\" ", iface))
+		}
+		bridgeConfig.WriteString("];\n")
+	}
+
+	bridgeConfig.WriteString("  };\n")
+
+	newContent := addLineToConfig(configStr, bridgeConfig.String())
+
+	if err := os.WriteFile(configPath, []byte(newContent), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("bridge %s configured", bridgeName)))
+	return 2
+}
+
+// nixosConfigureVPN configures VPN (WireGuard or OpenVPN)
+func nixosConfigureVPN(L *lua.LState) int {
+	params := L.CheckTable(1)
+
+	vpnType := getStringField(L, params, "type", "wireguard")
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+
+	configStr := string(content)
+
+	var vpnConfig strings.Builder
+
+	if vpnType == "wireguard" {
+		interfaceName := getStringField(L, params, "interface", "wg0")
+		vpnConfig.WriteString(fmt.Sprintf("  networking.wireguard.interfaces.%s = {\n", interfaceName))
+
+		if privateKeyFile := getStringField(L, params, "private_key_file", ""); privateKeyFile != "" {
+			vpnConfig.WriteString(fmt.Sprintf("    privateKeyFile = \"%s\";\n", privateKeyFile))
+		}
+
+		if listenPort := getIntField(L, params, "listen_port", 0); listenPort > 0 {
+			vpnConfig.WriteString(fmt.Sprintf("    listenPort = %d;\n", listenPort))
+		}
+
+		vpnConfig.WriteString("  };\n")
+	}
+
+	newContent := addLineToConfig(configStr, vpnConfig.String())
+
+	if err := os.WriteFile(configPath, []byte(newContent), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("%s VPN configured", vpnType)))
+	return 2
+}
+
+// ============================================================================
+// Security Functions
+// ============================================================================
+
+// nixosConfigureSecurity configures security options
+func nixosConfigureSecurity(L *lua.LState) int {
+	params := L.CheckTable(1)
+	configPath := getStringField(L, params, "config_path", "/etc/nixos/configuration.nix")
+
+	content, err := os.ReadFile(configPath)
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to read config: %v", err)))
+		return 2
+	}
+
+	configStr := string(content)
+
+	var securityConfig strings.Builder
+	securityConfig.WriteString("  security = {\n")
+
+	if sudo := getBoolField(L, params, "sudo_wheel_needs_password", true); !sudo {
+		securityConfig.WriteString("    sudo.wheelNeedsPassword = false;\n")
+	}
+
+	if polkit := getBoolField(L, params, "polkit_enable", false); polkit {
+		securityConfig.WriteString("    polkit.enable = true;\n")
+	}
+
+	if apparmor := getBoolField(L, params, "apparmor_enable", false); apparmor {
+		securityConfig.WriteString("    apparmor.enable = true;\n")
+	}
+
+	securityConfig.WriteString("  };\n")
+
+	newContent := addLineToConfig(configStr, securityConfig.String())
+
+	if err := os.WriteFile(configPath, []byte(newContent), 0644); err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to write config: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("security settings configured"))
+	return 2
+}
+
+// ============================================================================
+// Generation Management Functions
+// ============================================================================
+
+// nixosListGenerations lists all system generations
+func nixosListGenerations(L *lua.LState) int {
+	params := L.OptTable(1, L.NewTable())
+	useSudo := getBoolField(L, params, "use_sudo", false)
+
+	var cmdArgs []string
+	if useSudo {
+		cmdArgs = append(cmdArgs, "sudo")
+	}
+	cmdArgs = append(cmdArgs, "nix-env", "--list-generations", "-p", "/nix/var/nix/profiles/system")
+
+	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		L.Push(lua.LNil)
+		L.Push(lua.LString(fmt.Sprintf("failed to list generations: %v", err)))
+		return 2
+	}
+
+	L.Push(lua.LString(string(output)))
+	L.Push(lua.LNil)
+	return 2
+}
+
+// nixosRollback rolls back to the previous generation
+func nixosRollback(L *lua.LState) int {
+	params := L.OptTable(1, L.NewTable())
+	useSudo := getBoolField(L, params, "use_sudo", true)
+
+	var cmdArgs []string
+	if useSudo {
+		cmdArgs = append(cmdArgs, "sudo")
+	}
+	cmdArgs = append(cmdArgs, "nixos-rebuild", "switch", "--rollback")
+
+	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("rollback failed: %v\nOutput: %s", err, string(output))))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("successfully rolled back to previous generation"))
+	return 2
+}
+
+// nixosSwitchGeneration switches to a specific generation
+func nixosSwitchGeneration(L *lua.LState) int {
+	params := L.CheckTable(1)
+
+	generation := getIntField(L, params, "generation", 0)
+	useSudo := getBoolField(L, params, "use_sudo", true)
+
+	if generation == 0 {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("generation number is required"))
+		return 2
+	}
+
+	var cmdArgs []string
+	if useSudo {
+		cmdArgs = append(cmdArgs, "sudo")
+	}
+	cmdArgs = append(cmdArgs, "nix-env", "-p", "/nix/var/nix/profiles/system", "--switch-generation", fmt.Sprintf("%d", generation))
+
+	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to switch generation: %v\nOutput: %s", err, string(output))))
+		return 2
+	}
+
+	// Now activate it
+	if useSudo {
+		cmdArgs = []string{"sudo", "/nix/var/nix/profiles/system/bin/switch-to-configuration", "switch"}
+	} else {
+		cmdArgs = []string{"/nix/var/nix/profiles/system/bin/switch-to-configuration", "switch"}
+	}
+
+	cmd = exec.Command(cmdArgs[0], cmdArgs[1:]...)
+	output, err = cmd.CombinedOutput()
+
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to activate generation: %v\nOutput: %s", err, string(output))))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("switched to generation %d", generation)))
+	return 2
+}
+
+// nixosDeleteGenerations deletes old generations
+func nixosDeleteGenerations(L *lua.LState) int {
+	params := L.CheckTable(1)
+
+	olderThan := getStringField(L, params, "older_than", "")
+	useSudo := getBoolField(L, params, "use_sudo", true)
+
+	if olderThan == "" {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("older_than parameter is required (e.g., '30d')"))
+		return 2
+	}
+
+	var cmdArgs []string
+	if useSudo {
+		cmdArgs = append(cmdArgs, "sudo")
+	}
+	cmdArgs = append(cmdArgs, "nix-env", "-p", "/nix/var/nix/profiles/system", "--delete-generations", olderThan)
+
+	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("failed to delete generations: %v\nOutput: %s", err, string(output))))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString(fmt.Sprintf("deleted generations older than %s", olderThan)))
+	return 2
+}
+
+// ============================================================================
+// Testing Functions
+// ============================================================================
+
+// nixosTestConfig tests the configuration without applying it
+func nixosTestConfig(L *lua.LState) int {
+	params := L.OptTable(1, L.NewTable())
+	useSudo := getBoolField(L, params, "use_sudo", true)
+
+	var cmdArgs []string
+	if useSudo {
+		cmdArgs = append(cmdArgs, "sudo")
+	}
+	cmdArgs = append(cmdArgs, "nixos-rebuild", "test", "--fast")
+
+	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
+	output, err := cmd.CombinedOutput()
+
+	if err != nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(fmt.Sprintf("configuration test failed: %v\nOutput: %s", err, string(output))))
+		return 2
+	}
+
+	L.Push(lua.LBool(true))
+	L.Push(lua.LString("configuration test passed"))
 	return 2
 }
 
