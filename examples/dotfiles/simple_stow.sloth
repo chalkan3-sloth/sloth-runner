@@ -4,112 +4,115 @@
 stack("my-dotfiles")
 
 -- Basic example: Stow a single package
-task({
-    name = "stow-vim",
-    description = "Deploy Vim configuration",
-    run = function()
-        local result, err = stow.stow({
-            package = "vim"
-        })
-        
-        if err then
-            error("Failed: " .. err)
-        end
-        
-        if result.changed then
-            print("✓ Vim config deployed")
-        else
-            print("• Already configured")
-        end
-    end
-})
+local stow_vim = task("stow-vim")
+	:description("Deploy Vim configuration")
+	:command(function(this, params)
+		local result, err = stow.stow({
+			package = "vim"
+		})
+
+		if err then
+			error("Failed: " .. err)
+		end
+
+		if result.changed then
+			print("✓ Vim config deployed")
+		else
+			print("• Already configured")
+		end
+
+		return true, "Vim configuration deployed"
+	end)
+	:build()
 
 -- Deploy multiple packages
-task({
-    name = "stow-all",
-    description = "Deploy all my dotfiles",
-    run = function()
-        local configs = {"vim", "zsh", "tmux", "git"}
-        
-        for _, config in ipairs(configs) do
-            print("Setting up " .. config .. "...")
-            
-            stow.stow({
-                package = config,
-                dir = os.getenv("HOME") .. "/.dotfiles"
-            })
-        end
-        
-        print("✅ All configs deployed!")
-    end
-})
+local stow_all = task("stow-all")
+	:description("Deploy all my dotfiles")
+	:command(function(this, params)
+		local configs = {"vim", "zsh", "tmux", "git"}
+
+		for _, config in ipairs(configs) do
+			print("Setting up " .. config .. "...")
+
+			stow.stow({
+				package = config,
+				dir = os.getenv("HOME") .. "/.dotfiles"
+			})
+		end
+
+		print("✅ All configs deployed!")
+		return true, "All dotfiles deployed successfully"
+	end)
+	:build()
 
 -- Remove a configuration
-task({
-    name = "unstow-vim",
-    description = "Remove Vim configuration",
-    run = function()
-        stow.unstow({
-            package = "vim"
-        })
-        
-        print("✓ Vim config removed")
-    end
-})
+local unstow_vim = task("unstow-vim")
+	:description("Remove Vim configuration")
+	:command(function(this, params)
+		stow.unstow({
+			package = "vim"
+		})
+
+		print("✓ Vim config removed")
+		return true, "Vim configuration removed"
+	end)
+	:build()
 
 -- Check what's currently stowed
-task({
-    name = "list-stowed",
-    description = "List all stowed packages",
-    run = function()
-        local packages = stow.list_packages()
-        
-        print("Your dotfiles packages:")
-        
-        for _, pkg in ipairs(packages) do
-            local is_stowed = stow.is_stowed({
-                package = pkg
-            })
-            
-            local status = is_stowed and "✓" or "○"
-            print(status .. " " .. pkg)
-        end
-    end
-})
+local list_stowed = task("list-stowed")
+	:description("List all stowed packages")
+	:command(function(this, params)
+		local packages = stow.list_packages()
+
+		print("Your dotfiles packages:")
+
+		for _, pkg in ipairs(packages) do
+			local is_stowed = stow.is_stowed({
+				package = pkg
+			})
+
+			local status = is_stowed and "✓" or "○"
+			print(status .. " " .. pkg)
+		end
+
+		return true, "Package list displayed"
+	end)
+	:build()
 
 -- Verify a package
-task({
-    name = "verify-vim",
-    description = "Check Vim config integrity",
-    run = function()
-        local result = stow.verify({
-            package = "vim"
-        })
-        
-        print("Vim Configuration Status:")
-        print("  Files: " .. result.total_files)
-        print("  Links: " .. result.stowed_links)
-        print("  Valid: " .. (result.is_valid and "Yes" or "No"))
-        
-        if result.is_valid then
-            print("✅ Configuration is healthy")
-        else
-            print("⚠ Issues detected!")
-        end
-    end
-})
+local verify_vim = task("verify-vim")
+	:description("Check Vim config integrity")
+	:command(function(this, params)
+		local result = stow.verify({
+			package = "vim"
+		})
+
+		print("Vim Configuration Status:")
+		print("  Files: " .. result.total_files)
+		print("  Links: " .. result.stowed_links)
+		print("  Valid: " .. (result.is_valid and "Yes" or "No"))
+
+		if result.is_valid then
+			print("✅ Configuration is healthy")
+		else
+			print("⚠ Issues detected!")
+		end
+
+		return true, "Verification complete"
+	end)
+	:build()
 
 -- Deploy to remote server
-task({
-    name = "deploy-to-server",
-    description = "Deploy configs to remote server",
-    run = function()
-        stow.stow({
-            package = "vim",
-            dir = "/home/user/.dotfiles",
-            delegate_to = "my-server"
-        })
-        
-        print("✓ Deployed to remote server")
-    end
-})
+local deploy_to_server = task("deploy-to-server")
+	:description("Deploy configs to remote server")
+	:command(function(this, params)
+		stow.stow({
+			package = "vim",
+			dir = "/home/user/.dotfiles",
+			delegate_to = "my-server"
+		})
+
+		print("✓ Deployed to remote server")
+		return true, "Deployed to remote server successfully"
+	end)
+	:build()

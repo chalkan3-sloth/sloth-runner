@@ -1,15 +1,10 @@
 -- User Management Example
 -- Demonstrates comprehensive user and group management capabilities
 
-workflow("user-management", {
-	description = "Complete user management workflow",
-})
-
 -- Task 1: Create application user
-task("create-app-user", {
-	workflow = "user-management",
-	description = "Create application user with proper configuration",
-	action = function()
+local create_app_user = task("create-app-user")
+	:description("Create application user with proper configuration")
+	:command(function(this, params)
 		local user = require("user")
 
 		print("📦 Creating application user...")
@@ -48,14 +43,15 @@ task("create-app-user", {
 		else
 			print("ℹ️  User 'webapp' already exists")
 		end
-	end,
-})
+
+		return true, "Application user created successfully"
+	end)
+	:build()
 
 -- Task 2: Setup development users
-task("setup-dev-users", {
-	workflow = "user-management",
-	description = "Setup development team users",
-	action = function()
+local setup_dev_users = task("setup-dev-users")
+	:description("Setup development team users")
+	:command(function(this, params)
 		local user = require("user")
 
 		print("\n👥 Setting up development users...")
@@ -93,14 +89,15 @@ task("setup-dev-users", {
 				print("ℹ️  User " .. dev .. " already exists")
 			end
 		end
-	end,
-})
+
+		return true, "Development users setup completed"
+	end)
+	:build()
 
 -- Task 3: Audit users across multiple servers
-task("audit-users-multi-server", {
-	workflow = "user-management",
-	description = "Audit users on multiple servers using delegate_to",
-	action = function()
+local audit_users_multi_server = task("audit-users-multi-server")
+	:description("Audit users on multiple servers using delegate_to")
+	:command(function(this, params)
 		local user = require("user")
 
 		print("\n🔍 Performing user audit...")
@@ -151,14 +148,15 @@ task("audit-users-multi-server", {
 				end
 			end)
 		end
-	end,
-})
+
+		return true, "User audit completed"
+	end)
+	:build()
 
 -- Task 4: Manage user groups
-task("manage-groups", {
-	workflow = "user-management",
-	description = "Demonstrate group management",
-	action = function()
+local manage_groups = task("manage-groups")
+	:description("Demonstrate group management")
+	:command(function(this, params)
 		local user = require("user")
 
 		print("\n🔐 Managing user groups...")
@@ -200,14 +198,15 @@ task("manage-groups", {
 				end
 			end
 		end
-	end,
-})
+
+		return true, "Group management completed"
+	end)
+	:build()
 
 -- Task 5: User validation and security
-task("validate-security", {
-	workflow = "user-management",
-	description = "Validate usernames and security settings",
-	action = function()
+local validate_security = task("validate-security")
+	:description("Validate usernames and security settings")
+	:command(function(this, params)
 		local user = require("user")
 
 		print("\n🔒 Security validation...")
@@ -245,14 +244,14 @@ task("validate-security", {
 		end
 
 		print("✅ Security validation complete")
-	end,
-})
+		return true, "Security validation completed"
+	end)
+	:build()
 
 -- Task 6: Cleanup temporary users
-task("cleanup-temp-users", {
-	workflow = "user-management",
-	description = "Clean up temporary users (dry-run)",
-	action = function()
+local cleanup_temp_users = task("cleanup-temp-users")
+	:description("Clean up temporary users (dry-run)")
+	:command(function(this, params)
 		local user = require("user")
 
 		print("\n🧹 Checking for temporary users...")
@@ -276,14 +275,14 @@ task("cleanup-temp-users", {
 		end
 
 		print("✅ Cleanup check complete")
-	end,
-})
+		return true, "Cleanup check completed"
+	end)
+	:build()
 
 -- Task 7: User information query
-task("query-user-info", {
-	workflow = "user-management",
-	description = "Query detailed user information",
-	action = function()
+local query_user_info = task("query-user-info")
+	:description("Query detailed user information")
+	:command(function(this, params)
 		local user = require("user")
 
 		print("\n📊 Detailed user information query...")
@@ -292,7 +291,7 @@ task("query-user-info", {
 		local current, _ = user.get_current()
 		if not current then
 			print("⚠️  Could not get current user")
-			return
+			return false, "Could not get current user"
 		end
 
 		local username = current.username
@@ -338,7 +337,49 @@ task("query-user-info", {
 		end
 
 		print(string.rep("=", 50))
-	end,
+		return true, "User information query completed"
+	end)
+	:build()
+
+workflow.define("user-management", {
+	description = "Complete user management workflow",
+	tasks = {
+		create_app_user = {
+			name = "create-app-user",
+			description = "Create application user with proper configuration",
+			command = create_app_user
+		},
+		setup_dev_users = {
+			name = "setup-dev-users",
+			description = "Setup development team users",
+			command = setup_dev_users
+		},
+		audit_users_multi_server = {
+			name = "audit-users-multi-server",
+			description = "Audit users on multiple servers using delegate_to",
+			command = audit_users_multi_server
+		},
+		manage_groups = {
+			name = "manage-groups",
+			description = "Demonstrate group management",
+			command = manage_groups
+		},
+		validate_security = {
+			name = "validate-security",
+			description = "Validate usernames and security settings",
+			command = validate_security
+		},
+		cleanup_temp_users = {
+			name = "cleanup-temp-users",
+			description = "Clean up temporary users (dry-run)",
+			command = cleanup_temp_users
+		},
+		query_user_info = {
+			name = "query-user-info",
+			description = "Query detailed user information",
+			command = query_user_info
+		}
+	}
 })
 
 print("\n")

@@ -5,424 +5,425 @@
 stack("dotfiles-production")
 
 -- Single machine dotfiles setup
-task({
-    name = "setup-local-dotfiles",
-    description = "Deploy all dotfiles to local machine",
-    run = function()
-        print("🔧 Setting up dotfiles...")
-        
-        local packages = {"vim", "zsh", "tmux", "git"}
-        local dotfiles_dir = os.getenv("HOME") .. "/.dotfiles"
-        
-        for _, pkg in ipairs(packages) do
-            print("\n📦 Processing package: " .. pkg)
-            
-            -- Check if package directory exists
-            local pkg_path = dotfiles_dir .. "/" .. pkg
-            local stat_result = file_ops.stat({
-                path = pkg_path
-            })
-            
-            if not stat_result or not stat_result.is_directory then
-                print("  ⚠ Package directory not found: " .. pkg_path)
-                goto continue
-            end
-            
-            -- Check current state
-            local is_stowed = stow.is_stowed({
-                package = pkg,
-                dir = dotfiles_dir
-            })
-            
-            if is_stowed then
-                print("  ✓ Already stowed, verifying...")
-                
-                -- Verify integrity
-                local verify = stow.verify({
-                    package = pkg,
-                    dir = dotfiles_dir
-                })
-                
-                if verify.is_valid and verify.is_complete then
-                    print("  ✓ Verification passed")
-                else
-                    print("  ⚠ Issues detected, restowing...")
-                    stow.restow({
-                        package = pkg,
-                        dir = dotfiles_dir
-                    })
-                end
-            else
-                -- First time stowing - check for conflicts
-                local check = stow.check({
-                    package = pkg,
-                    dir = dotfiles_dir
-                })
-                
-                if check.would_succeed then
-                    print("  → Stowing package...")
-                    local result, err = stow.stow({
-                        package = pkg,
-                        dir = dotfiles_dir,
-                        verbose = true
-                    })
-                    
-                    if err then
-                        error("Failed to stow " .. pkg .. ": " .. err)
-                    end
-                    
-                    if result.changed then
-                        print("  ✓ Package stowed successfully")
-                        
-                        -- Show created links
-                        if result.links then
-                            local link_count = 0
-                            for _ in pairs(result.links) do
-                                link_count = link_count + 1
-                            end
-                            print("  → Created " .. link_count .. " symlinks")
-                        end
-                    end
-                else
-                    print("  ⚠ Conflicts detected:")
-                    print(check.output)
-                    print("  → Adopting existing files...")
-                    
-                    stow.adopt({
-                        package = pkg,
-                        dir = dotfiles_dir
-                    })
-                    
-                    print("  ✓ Files adopted into dotfiles")
-                end
-            end
-            
-            ::continue::
-        end
-        
-        print("\n✅ All dotfiles configured!")
-    end
-})
+local setup_local_dotfiles = task("setup-local-dotfiles")
+	:description("Deploy all dotfiles to local machine")
+	:command(function(this, params)
+		print("🔧 Setting up dotfiles...")
+
+		local packages = {"vim", "zsh", "tmux", "git"}
+		local dotfiles_dir = os.getenv("HOME") .. "/.dotfiles"
+
+		for _, pkg in ipairs(packages) do
+			print("\n📦 Processing package: " .. pkg)
+
+			-- Check if package directory exists
+			local pkg_path = dotfiles_dir .. "/" .. pkg
+			local stat_result = file_ops.stat({
+				path = pkg_path
+			})
+
+			if not stat_result or not stat_result.is_directory then
+				print("  ⚠ Package directory not found: " .. pkg_path)
+				goto continue
+			end
+
+			-- Check current state
+			local is_stowed = stow.is_stowed({
+				package = pkg,
+				dir = dotfiles_dir
+			})
+
+			if is_stowed then
+				print("  ✓ Already stowed, verifying...")
+
+				-- Verify integrity
+				local verify = stow.verify({
+					package = pkg,
+					dir = dotfiles_dir
+				})
+
+				if verify.is_valid and verify.is_complete then
+					print("  ✓ Verification passed")
+				else
+					print("  ⚠ Issues detected, restowing...")
+					stow.restow({
+						package = pkg,
+						dir = dotfiles_dir
+					})
+				end
+			else
+				-- First time stowing - check for conflicts
+				local check = stow.check({
+					package = pkg,
+					dir = dotfiles_dir
+				})
+
+				if check.would_succeed then
+					print("  → Stowing package...")
+					local result, err = stow.stow({
+						package = pkg,
+						dir = dotfiles_dir,
+						verbose = true
+					})
+
+					if err then
+						error("Failed to stow " .. pkg .. ": " .. err)
+					end
+
+					if result.changed then
+						print("  ✓ Package stowed successfully")
+
+						-- Show created links
+						if result.links then
+							local link_count = 0
+							for _ in pairs(result.links) do
+								link_count = link_count + 1
+							end
+							print("  → Created " .. link_count .. " symlinks")
+						end
+					end
+				else
+					print("  ⚠ Conflicts detected:")
+					print(check.output)
+					print("  → Adopting existing files...")
+
+					stow.adopt({
+						package = pkg,
+						dir = dotfiles_dir
+					})
+
+					print("  ✓ Files adopted into dotfiles")
+				end
+			end
+
+			::continue::
+		end
+
+		print("\n✅ All dotfiles configured!")
+		return true, "All dotfiles configured successfully"
+	end)
+	:build()
 
 -- Deploy to multiple remote servers
-task({
-    name = "deploy-team-dotfiles",
-    description = "Deploy standardized dotfiles to all team servers",
-    run = function()
-        print("🚀 Deploying team dotfiles...")
-        
-        local servers = {
-            "dev-server-01",
-            "dev-server-02",
-            "staging-server"
-        }
-        
-        local team_configs = {"vim", "tmux", "git", "bash"}
-        local team_dotfiles = "/opt/team-dotfiles"
-        
-        -- Deploy in parallel using goroutines
-        goroutine.map(servers, function(server)
-            print("\n[" .. server .. "] Starting deployment...")
-            
-            for _, config in ipairs(team_configs) do
-                local result, err = stow.stow({
-                    package = config,
-                    dir = team_dotfiles,
-                    target = "/home/developer",
-                    delegate_to = server
-                })
-                
-                if err then
-                    print("[" .. server .. "] ❌ Failed to deploy " .. config .. ": " .. err)
-                else
-                    if result.changed then
-                        print("[" .. server .. "] ✓ " .. config .. " deployed")
-                    else
-                        print("[" .. server .. "] • " .. config .. " already configured")
-                    end
-                end
-            end
-            
-            -- Verify deployment
-            print("[" .. server .. "] Verifying deployment...")
-            local all_valid = true
-            
-            for _, config in ipairs(team_configs) do
-                local verify = stow.verify({
-                    package = config,
-                    dir = team_dotfiles,
-                    target = "/home/developer",
-                    delegate_to = server
-                })
-                
-                if not verify.is_valid or not verify.is_complete then
-                    print("[" .. server .. "] ⚠ Verification failed for " .. config)
-                    all_valid = false
-                end
-            end
-            
-            if all_valid then
-                print("[" .. server .. "] ✅ All configurations verified")
-            else
-                print("[" .. server .. "] ⚠ Some configurations need attention")
-            end
-        end)
-        
-        print("\n✅ Team dotfiles deployment complete!")
-    end
-})
+local deploy_team_dotfiles = task("deploy-team-dotfiles")
+	:description("Deploy standardized dotfiles to all team servers")
+	:command(function(this, params)
+		print("🚀 Deploying team dotfiles...")
+
+		local servers = {
+			"dev-server-01",
+			"dev-server-02",
+			"staging-server"
+		}
+
+		local team_configs = {"vim", "tmux", "git", "bash"}
+		local team_dotfiles = "/opt/team-dotfiles"
+
+		-- Deploy in parallel using goroutines
+		goroutine.map(servers, function(server)
+			print("\n[" .. server .. "] Starting deployment...")
+
+			for _, config in ipairs(team_configs) do
+				local result, err = stow.stow({
+					package = config,
+					dir = team_dotfiles,
+					target = "/home/developer",
+					delegate_to = server
+				})
+
+				if err then
+					print("[" .. server .. "] ❌ Failed to deploy " .. config .. ": " .. err)
+				else
+					if result.changed then
+						print("[" .. server .. "] ✓ " .. config .. " deployed")
+					else
+						print("[" .. server .. "] • " .. config .. " already configured")
+					end
+				end
+			end
+
+			-- Verify deployment
+			print("[" .. server .. "] Verifying deployment...")
+			local all_valid = true
+
+			for _, config in ipairs(team_configs) do
+				local verify = stow.verify({
+					package = config,
+					dir = team_dotfiles,
+					target = "/home/developer",
+					delegate_to = server
+				})
+
+				if not verify.is_valid or not verify.is_complete then
+					print("[" .. server .. "] ⚠ Verification failed for " .. config)
+					all_valid = false
+				end
+			end
+
+			if all_valid then
+				print("[" .. server .. "] ✅ All configurations verified")
+			else
+				print("[" .. server .. "] ⚠ Some configurations need attention")
+			end
+		end)
+
+		print("\n✅ Team dotfiles deployment complete!")
+		return true, "Team dotfiles deployment complete"
+	end)
+	:build()
 
 -- Advanced: Safe configuration rotation
-task({
-    name = "rotate-nvim-config",
-    description = "Safely upgrade Neovim configuration with rollback support",
-    run = function()
-        print("🔄 Rotating Neovim configuration...")
-        
-        local old_version = "nvim-legacy"
-        local new_version = "nvim-modern"
-        local config_target = os.getenv("HOME") .. "/.config"
-        
-        -- Check if old version is stowed
-        local old_stowed = stow.is_stowed({
-            package = old_version,
-            target = config_target
-        })
-        
-        if old_stowed then
-            print("→ Backing up current configuration state...")
-            
-            -- Verify old config before removing
-            local old_verify = stow.verify({
-                package = old_version,
-                target = config_target
-            })
-            
-            print("  Old config status:")
-            print("    Files: " .. old_verify.total_files)
-            print("    Links: " .. old_verify.stowed_links)
-            print("    Valid: " .. tostring(old_verify.is_valid))
-            
-            -- Unstow old version
-            print("\n→ Removing old configuration...")
-            stow.unstow({
-                package = old_version,
-                target = config_target
-            })
-            print("  ✓ Old configuration removed")
-        end
-        
-        -- Check new version before stowing
-        print("\n→ Checking new configuration...")
-        local check = stow.check({
-            package = new_version,
-            target = config_target
-        })
-        
-        if not check.would_succeed then
-            print("  ⚠ Conflicts detected with new version!")
-            print(check.output)
-            
-            if old_stowed then
-                print("\n→ Rolling back to old version...")
-                stow.stow({
-                    package = old_version,
-                    target = config_target
-                })
-                error("Rollback complete - fix conflicts before upgrading")
-            else
-                error("Cannot proceed - conflicts detected")
-            end
-        end
-        
-        -- Deploy new version
-        print("\n→ Deploying new configuration...")
-        local result, err = stow.stow({
-            package = new_version,
-            target = config_target,
-            verbose = true,
-            ignore = {"*.swp", "*.bak", ".git"}
-        })
-        
-        if err then
-            print("  ❌ Deployment failed: " .. err)
-            
-            if old_stowed then
-                print("\n→ Rolling back to old version...")
-                stow.stow({
-                    package = old_version,
-                    target = config_target
-                })
-            end
-            
-            error("Rollback complete")
-        end
-        
-        print("  ✓ New configuration deployed")
-        
-        -- Comprehensive verification
-        print("\n→ Verifying new configuration...")
-        local verify = stow.verify({
-            package = new_version,
-            target = config_target
-        })
-        
-        print("  Verification results:")
-        print("    Total files: " .. verify.total_files)
-        print("    Stowed links: " .. verify.stowed_links)
-        print("    Complete: " .. tostring(verify.is_complete))
-        print("    Valid: " .. tostring(verify.is_valid))
-        
-        if verify.broken_links then
-            local broken_count = 0
-            for _ in pairs(verify.broken_links) do
-                broken_count = broken_count + 1
-            end
-            
-            if broken_count > 0 then
-                print("    Broken links: " .. broken_count)
-            end
-        end
-        
-        if not verify.is_valid or not verify.is_complete then
-            print("\n⚠ Verification failed! Rolling back...")
-            
-            stow.unstow({
-                package = new_version,
-                target = config_target
-            })
-            
-            if old_stowed then
-                stow.stow({
-                    package = old_version,
-                    target = config_target
-                })
-            end
-            
-            error("Configuration verification failed - rolled back")
-        end
-        
-        print("\n✅ Configuration successfully rotated to " .. new_version)
-        
-        -- Get details of created links
-        local links = stow.get_links({
-            package = new_version,
-            target = config_target
-        })
-        
-        if links then
-            print("\n📋 Created symlinks:")
-            for i, link in ipairs(links) do
-                print("  " .. i .. ". " .. link)
-            end
-        end
-    end
-})
+local rotate_nvim_config = task("rotate-nvim-config")
+	:description("Safely upgrade Neovim configuration with rollback support")
+	:command(function(this, params)
+		print("🔄 Rotating Neovim configuration...")
+
+		local old_version = "nvim-legacy"
+		local new_version = "nvim-modern"
+		local config_target = os.getenv("HOME") .. "/.config"
+
+		-- Check if old version is stowed
+		local old_stowed = stow.is_stowed({
+			package = old_version,
+			target = config_target
+		})
+
+		if old_stowed then
+			print("→ Backing up current configuration state...")
+
+			-- Verify old config before removing
+			local old_verify = stow.verify({
+				package = old_version,
+				target = config_target
+			})
+
+			print("  Old config status:")
+			print("    Files: " .. old_verify.total_files)
+			print("    Links: " .. old_verify.stowed_links)
+			print("    Valid: " .. tostring(old_verify.is_valid))
+
+			-- Unstow old version
+			print("\n→ Removing old configuration...")
+			stow.unstow({
+				package = old_version,
+				target = config_target
+			})
+			print("  ✓ Old configuration removed")
+		end
+
+		-- Check new version before stowing
+		print("\n→ Checking new configuration...")
+		local check = stow.check({
+			package = new_version,
+			target = config_target
+		})
+
+		if not check.would_succeed then
+			print("  ⚠ Conflicts detected with new version!")
+			print(check.output)
+
+			if old_stowed then
+				print("\n→ Rolling back to old version...")
+				stow.stow({
+					package = old_version,
+					target = config_target
+				})
+				return false, "Rollback complete - fix conflicts before upgrading"
+			else
+				return false, "Cannot proceed - conflicts detected"
+			end
+		end
+
+		-- Deploy new version
+		print("\n→ Deploying new configuration...")
+		local result, err = stow.stow({
+			package = new_version,
+			target = config_target,
+			verbose = true,
+			ignore = {"*.swp", "*.bak", ".git"}
+		})
+
+		if err then
+			print("  ❌ Deployment failed: " .. err)
+
+			if old_stowed then
+				print("\n→ Rolling back to old version...")
+				stow.stow({
+					package = old_version,
+					target = config_target
+				})
+			end
+
+			return false, "Rollback complete"
+		end
+
+		print("  ✓ New configuration deployed")
+
+		-- Comprehensive verification
+		print("\n→ Verifying new configuration...")
+		local verify = stow.verify({
+			package = new_version,
+			target = config_target
+		})
+
+		print("  Verification results:")
+		print("    Total files: " .. verify.total_files)
+		print("    Stowed links: " .. verify.stowed_links)
+		print("    Complete: " .. tostring(verify.is_complete))
+		print("    Valid: " .. tostring(verify.is_valid))
+
+		if verify.broken_links then
+			local broken_count = 0
+			for _ in pairs(verify.broken_links) do
+				broken_count = broken_count + 1
+			end
+
+			if broken_count > 0 then
+				print("    Broken links: " .. broken_count)
+			end
+		end
+
+		if not verify.is_valid or not verify.is_complete then
+			print("\n⚠ Verification failed! Rolling back...")
+
+			stow.unstow({
+				package = new_version,
+				target = config_target
+			})
+
+			if old_stowed then
+				stow.stow({
+					package = old_version,
+					target = config_target
+				})
+			end
+
+			return false, "Configuration verification failed - rolled back"
+		end
+
+		print("\n✅ Configuration successfully rotated to " .. new_version)
+
+		-- Get details of created links
+		local links = stow.get_links({
+			package = new_version,
+			target = config_target
+		})
+
+		if links then
+			print("\n📋 Created symlinks:")
+			for i, link in ipairs(links) do
+				print("  " .. i .. ". " .. link)
+			end
+		end
+
+		return true, "Configuration successfully rotated to " .. new_version
+	end)
+	:build()
 
 -- List and manage all dotfiles
-task({
-    name = "audit-dotfiles",
-    description = "Audit all dotfiles packages and their status",
-    run = function()
-        print("📊 Dotfiles Audit Report")
-        print("=" .. string.rep("=", 50))
-        
-        local dotfiles_dir = os.getenv("HOME") .. "/.dotfiles"
-        
-        -- List all available packages
-        local packages, err = stow.list_packages({
-            dir = dotfiles_dir
-        })
-        
-        if err then
-            error("Failed to list packages: " .. err)
-        end
-        
-        print("\n📦 Available packages: " .. #packages)
-        
-        for i, pkg in ipairs(packages) do
-            print("\n" .. i .. ". " .. pkg)
-            
-            -- Check if stowed
-            local is_stowed = stow.is_stowed({
-                package = pkg,
-                dir = dotfiles_dir
-            })
-            
-            print("   Status: " .. (is_stowed and "✓ STOWED" or "○ Not stowed"))
-            
-            if is_stowed then
-                -- Get verification details
-                local verify = stow.verify({
-                    package = pkg,
-                    dir = dotfiles_dir
-                })
-                
-                print("   Files: " .. verify.total_files)
-                print("   Links: " .. verify.stowed_links)
-                print("   Complete: " .. (verify.is_complete and "Yes" or "No"))
-                print("   Valid: " .. (verify.is_valid and "Yes" or "No"))
-                
-                if not verify.is_valid and verify.broken_links then
-                    print("   ⚠ Broken links detected:")
-                    for j, broken in ipairs(verify.broken_links) do
-                        print("     - " .. broken)
-                    end
-                end
-            end
-        end
-        
-        print("\n" .. string.rep("=", 50))
-        print("✅ Audit complete")
-    end
-})
+local audit_dotfiles = task("audit-dotfiles")
+	:description("Audit all dotfiles packages and their status")
+	:command(function(this, params)
+		print("📊 Dotfiles Audit Report")
+		print("=" .. string.rep("=", 50))
+
+		local dotfiles_dir = os.getenv("HOME") .. "/.dotfiles"
+
+		-- List all available packages
+		local packages, err = stow.list_packages({
+			dir = dotfiles_dir
+		})
+
+		if err then
+			error("Failed to list packages: " .. err)
+		end
+
+		print("\n📦 Available packages: " .. #packages)
+
+		for i, pkg in ipairs(packages) do
+			print("\n" .. i .. ". " .. pkg)
+
+			-- Check if stowed
+			local is_stowed = stow.is_stowed({
+				package = pkg,
+				dir = dotfiles_dir
+			})
+
+			print("   Status: " .. (is_stowed and "✓ STOWED" or "○ Not stowed"))
+
+			if is_stowed then
+				-- Get verification details
+				local verify = stow.verify({
+					package = pkg,
+					dir = dotfiles_dir
+				})
+
+				print("   Files: " .. verify.total_files)
+				print("   Links: " .. verify.stowed_links)
+				print("   Complete: " .. (verify.is_complete and "Yes" or "No"))
+				print("   Valid: " .. (verify.is_valid and "Yes" or "No"))
+
+				if not verify.is_valid and verify.broken_links then
+					print("   ⚠ Broken links detected:")
+					for j, broken in ipairs(verify.broken_links) do
+						print("     - " .. broken)
+					end
+				end
+			end
+		end
+
+		print("\n" .. string.rep("=", 50))
+		print("✅ Audit complete")
+		return true, "Audit complete"
+	end)
+	:build()
 
 -- Cleanup and maintenance
-task({
-    name = "cleanup-dotfiles",
-    description = "Remove all stowed dotfiles",
-    run = function()
-        print("🧹 Cleaning up dotfiles...")
-        
-        local dotfiles_dir = os.getenv("HOME") .. "/.dotfiles"
-        
-        -- Get all packages
-        local packages = stow.list_packages({
-            dir = dotfiles_dir
-        })
-        
-        if not packages then
-            print("No packages found")
-            return
-        end
-        
-        -- Unstow each package
-        local unstowed_count = 0
-        
-        for _, pkg in ipairs(packages) do
-            local is_stowed = stow.is_stowed({
-                package = pkg,
-                dir = dotfiles_dir
-            })
-            
-            if is_stowed then
-                print("→ Unstowing " .. pkg .. "...")
-                local result, err = stow.unstow({
-                    package = pkg,
-                    dir = dotfiles_dir
-                })
-                
-                if err then
-                    print("  ⚠ Failed to unstow: " .. err)
-                else
-                    if result.changed then
-                        print("  ✓ Unstowed")
-                        unstowed_count = unstowed_count + 1
-                    end
-                end
-            end
-        end
-        
-        print("\n✅ Cleanup complete - " .. unstowed_count .. " packages unstowed")
-    end
-})
+local cleanup_dotfiles = task("cleanup-dotfiles")
+	:description("Remove all stowed dotfiles")
+	:command(function(this, params)
+		print("🧹 Cleaning up dotfiles...")
+
+		local dotfiles_dir = os.getenv("HOME") .. "/.dotfiles"
+
+		-- Get all packages
+		local packages = stow.list_packages({
+			dir = dotfiles_dir
+		})
+
+		if not packages then
+			print("No packages found")
+			return true, "No packages found"
+		end
+
+		-- Unstow each package
+		local unstowed_count = 0
+
+		for _, pkg in ipairs(packages) do
+			local is_stowed = stow.is_stowed({
+				package = pkg,
+				dir = dotfiles_dir
+			})
+
+			if is_stowed then
+				print("→ Unstowing " .. pkg .. "...")
+				local result, err = stow.unstow({
+					package = pkg,
+					dir = dotfiles_dir
+				})
+
+				if err then
+					print("  ⚠ Failed to unstow: " .. err)
+				else
+					if result.changed then
+						print("  ✓ Unstowed")
+						unstowed_count = unstowed_count + 1
+					end
+				end
+			end
+		end
+
+		print("\n✅ Cleanup complete - " .. unstowed_count .. " packages unstowed")
+		return true, "Cleanup complete - " .. unstowed_count .. " packages unstowed"
+	end)
+	:build()

@@ -4,8 +4,9 @@
 print("🦥 User Management Demo - Creating users with passwords")
 
 -- Example 1: Create a simple user with password
-task("create-basic-user", {
-	action = function()
+local create_basic_user = task("create-basic-user")
+	:description("Create a simple user with password")
+	:command(function(this, params)
 		print("📝 Creating basic user with password...")
 
 		local ok, msg = user.create("webuser", {
@@ -20,15 +21,18 @@ task("create-basic-user", {
 			print("✅ User 'webuser' created successfully!")
 			print("   Home: /home/webuser")
 			print("   Shell: /bin/bash")
+			return true, "User 'webuser' created successfully"
 		else
 			print("❌ Failed to create user: " .. msg)
+			return false, "Failed to create user: " .. msg
 		end
-	end,
-})
+	end)
+	:build()
 
 -- Example 2: Create a system user with password
-task("create-system-user", {
-	action = function()
+local create_system_user = task("create-system-user")
+	:description("Create a system user with password")
+	:command(function(this, params)
 		print("\n📝 Creating system user with password...")
 
 		local ok, msg = user.create("appservice", {
@@ -43,15 +47,18 @@ task("create-system-user", {
 			print("✅ System user 'appservice' created successfully!")
 			print("   Type: System user")
 			print("   Shell: /bin/false (no login)")
+			return true, "System user 'appservice' created successfully"
 		else
 			print("❌ Failed to create system user: " .. msg)
+			return false, "Failed to create system user: " .. msg
 		end
-	end,
-})
+	end)
+	:build()
 
 -- Example 3: Create a DevOps user with multiple groups and password
-task("create-devops-user", {
-	action = function()
+local create_devops_user = task("create-devops-user")
+	:description("Create a DevOps user with multiple groups and password")
+	:command(function(this, params)
 		print("\n📝 Creating DevOps user with groups and password...")
 
 		local ok, msg = user.create("devops", {
@@ -75,15 +82,18 @@ task("create-devops-user", {
 				print("   UID: " .. info.uid)
 				print("   GID: " .. info.gid)
 			end
+			return true, "DevOps user 'devops' created successfully"
 		else
 			print("❌ Failed to create DevOps user: " .. msg)
+			return false, "Failed to create DevOps user: " .. msg
 		end
-	end,
-})
+	end)
+	:build()
 
 -- Example 4: Create database user with specific UID/GID and password
-task("create-db-user", {
-	action = function()
+local create_db_user = task("create-db-user")
+	:description("Create database user with specific UID/GID and password")
+	:command(function(this, params)
 		print("\n📝 Creating database user with specific UID/GID and password...")
 
 		-- First, create the database group if it doesn't exist
@@ -106,15 +116,18 @@ task("create-db-user", {
 			print("   UID: 5432")
 			print("   GID: 5432")
 			print("   Home: /var/lib/postgresql")
+			return true, "Database user 'postgres' created successfully"
 		else
 			print("❌ Failed to create database user: " .. msg)
+			return false, "Failed to create database user: " .. msg
 		end
-	end,
-})
+	end)
+	:build()
 
 -- Example 5: Create multiple users with different configurations
-task("create-team-users", {
-	action = function()
+local create_team_users = task("create-team-users")
+	:description("Create multiple users with different configurations")
+	:command(function(this, params)
 		print("\n📝 Creating team users with passwords...")
 
 		local users = {
@@ -138,6 +151,7 @@ task("create-team-users", {
 			},
 		}
 
+		local created_count = 0
 		for _, u in ipairs(users) do
 			local ok, msg = user.create(u.name, {
 				password = u.password,
@@ -150,16 +164,20 @@ task("create-team-users", {
 
 			if ok then
 				print("✅ User '" .. u.name .. "' created successfully!")
+				created_count = created_count + 1
 			else
 				print("❌ Failed to create user '" .. u.name .. "': " .. msg)
 			end
 		end
-	end,
-})
+
+		return true, "Created " .. created_count .. " team users"
+	end)
+	:build()
 
 -- Example 6: Create user with password expiration
-task("create-temp-user", {
-	action = function()
+local create_temp_user = task("create-temp-user")
+	:description("Create user with password expiration")
+	:command(function(this, params)
 		print("\n📝 Creating temporary user with password expiration...")
 
 		local ok, msg = user.create("contractor", {
@@ -180,15 +198,18 @@ task("create-temp-user", {
 			if expire_ok then
 				print("   Password will expire on first login ✓")
 			end
+			return true, "Temporary user 'contractor' created successfully"
 		else
 			print("❌ Failed to create temporary user: " .. msg)
+			return false, "Failed to create temporary user: " .. msg
 		end
-	end,
-})
+	end)
+	:build()
 
 -- Example 7: Create user and then change password
-task("create-and-change-password", {
-	action = function()
+local create_and_change_password = task("create-and-change-password")
+	:description("Create user and update password")
+	:command(function(this, params)
 		print("\n📝 Creating user and updating password...")
 
 		-- Create user with initial password
@@ -208,18 +229,22 @@ task("create-and-change-password", {
 
 			if pass_ok then
 				print("✅ Password updated successfully!")
+				return true, "User 'testuser' created and password updated"
 			else
 				print("❌ Failed to update password: " .. pass_msg)
+				return false, "Failed to update password: " .. pass_msg
 			end
 		else
 			print("❌ Failed to create user: " .. msg)
+			return false, "Failed to create user: " .. msg
 		end
-	end,
-})
+	end)
+	:build()
 
 -- Example 8: Remote user creation with delegate_to
-task("create-remote-users", {
-	action = function()
+local create_remote_users = task("create-remote-users")
+	:description("Create users on remote servers")
+	:command(function(this, params)
 		print("\n📝 Creating users on remote servers...")
 
 		local servers = { "web-server-01", "web-server-02", "db-server-01" }
@@ -244,8 +269,10 @@ task("create-remote-users", {
 				end
 			end)
 		end
-	end,
-})
+
+		return true, "Remote users created on all servers"
+	end)
+	:build()
 
 print("\n" .. string.rep("=", 60))
 print("🦥 User Management Demo Complete!")

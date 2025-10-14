@@ -10,43 +10,46 @@ values({
     incus_host = "localhost"  -- Change to your Incus host
 })
 
-task({
-    name = "launch-container",
-    delegate_to = values.incus_host,
-    run = function()
-        log.info("Launching container: " .. values.container_name)
-        
-        -- Create and start container
-        incus.instance({
-            name = values.container_name,
-            image = values.image
-        }):create()
-          :start()
-          :wait_running()
-        
-        log.success("Container is running!")
-    end
-})
+local launch_container = task("launch-container")
+	:description("Launch and start an Ubuntu container")
+	:delegate_to(values.incus_host)
+	:command(function(this, params)
+		log.info("Launching container: " .. values.container_name)
 
-task({
-    name = "configure-container",
-    delegate_to = values.incus_host,
-    depends_on = {"launch-container"},
-    run = function()
-        local container = incus.instance({name = values.container_name})
-        
-        -- Update and install packages
-        log.info("Installing packages...")
-        container:exec({command = "apt update"})
-        container:exec({command = "apt install -y curl wget vim"})
-        
-        -- Get container IP
-        local state = container:state()
-        if state and state.network and state.network.eth0 then
-            local addrs = state.network.eth0.addresses
-            if addrs and #addrs > 0 then
-                log.success("Container IP: " .. addrs[1].address)
-            end
-        end
-    end
-})
+		-- Create and start container
+		incus.instance({
+			name = values.container_name,
+			image = values.image
+		}):create()
+		  :start()
+		  :wait_running()
+
+		log.success("Container is running!")
+		return true, "Container launched and running"
+	end)
+	:build()
+
+local configure_container = task("configure-container")
+	:description("Install packages and configure the container")
+	:delegate_to(values.incus_host)
+	:depends_on({"launch-container"})
+	:command(function(this, params)
+		local container = incus.instance({name = values.container_name})
+
+		-- Update and install packages
+		log.info("Installing packages...")
+		container:exec({command = "apt update"})
+		container:exec({command = "apt install -y curl wget vim"})
+
+		-- Get container IP
+		local state = container:state()
+		if state and state.network and state.network.eth0 then
+			local addrs = state.network.eth0.addresses
+			if addrs and #addrs > 0 then
+				log.success("Container IP: " .. addrs[1].address)
+			end
+		end
+
+		return true, "Container configured successfully"
+	end)
+	:build()
