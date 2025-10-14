@@ -53,7 +53,7 @@ func runInteractiveShell(ctx context.Context, stream pb.Agent_InteractiveShellCl
 
 	// Handle signals: Ctrl+C, SIGTERM, and window resize
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGWINCH)
+	setupShellSignals(sigChan)
 
 	// Channels for coordination
 	done := make(chan struct{})
@@ -123,8 +123,7 @@ func runInteractiveShell(ctx context.Context, stream pb.Agent_InteractiveShellCl
 	for {
 		select {
 		case sig := <-sigChan:
-			switch sig {
-			case syscall.SIGWINCH:
+			if isSigwinch(sig) {
 				// Handle terminal resize
 				newWidth, newHeight, _ := term.GetSize(int(os.Stdin.Fd()))
 				if err := stream.Send(&pb.ShellInput{
@@ -134,10 +133,10 @@ func runInteractiveShell(ctx context.Context, stream pb.Agent_InteractiveShellCl
 				}); err != nil {
 					return fmt.Errorf("failed to send resize: %w", err)
 				}
-			case os.Interrupt:
+			} else if sig == os.Interrupt {
 				// Send Ctrl+C to remote shell
 				stream.Send(&pb.ShellInput{StdinData: []byte{0x03}}) // Ctrl+C
-			case syscall.SIGTERM:
+			} else if sig == syscall.SIGTERM {
 				// Terminate the shell gracefully
 				stream.Send(&pb.ShellInput{Terminate: true})
 				stream.CloseSend()

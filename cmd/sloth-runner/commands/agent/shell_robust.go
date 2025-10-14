@@ -60,7 +60,7 @@ func runInteractiveShellRobust(ctx context.Context, stream pb.Agent_InteractiveS
 
 	// Signal handling
 	sigChan := make(chan os.Signal, 10) // Buffered to avoid missing signals
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM, syscall.SIGWINCH)
+	setupShellSignals(sigChan)
 	defer signal.Stop(sigChan)
 
 	// Coordination channels
@@ -185,8 +185,7 @@ mainLoop:
 	for {
 		select {
 		case sig := <-sigChan:
-			switch sig {
-			case syscall.SIGWINCH:
+			if isSigwinch(sig) {
 				// Terminal resized
 				newWidth, newHeight, err := term.GetSize(int(os.Stdin.Fd()))
 				if err == nil {
@@ -196,12 +195,10 @@ mainLoop:
 						WindowCols: uint32(newWidth),
 					})
 				}
-
-			case os.Interrupt:
+			} else if sig == os.Interrupt {
 				// Ctrl+C - send to remote
 				stream.Send(&pb.ShellInput{StdinData: []byte{0x03}})
-
-			case syscall.SIGTERM:
+			} else if sig == syscall.SIGTERM {
 				// Terminate gracefully
 				stream.Send(&pb.ShellInput{Terminate: true})
 				cancel()
