@@ -9,13 +9,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// runCmd is not available in non-CGO builds
-var runCmd *cobra.Command
-
-func init() {
-	// runCmd is disabled in non-CGO builds
-	// The command would require SQLite which needs CGO
-	runCmd = &cobra.Command{
+// NewRunCommand returns a stub run command for non-CGO builds
+func NewRunCommand(ctx *AppContext) *cobra.Command {
+	return &cobra.Command{
 		Use:   "run",
 		Short: "Run workflow (requires CGO build)",
 		Long: `The 'run' command requires CGO support for SQLite-based state management.
@@ -31,7 +27,4 @@ For simple command execution without state management, use other commands.`,
 			return fmt.Errorf("'run' command requires CGO support (not available in this build)")
 		},
 	}
-
-	// Note: runCmd is not automatically added to rootCmd in non-CGO builds
-	// because it's not functional. Users need CGO-enabled builds for this feature.
 }
