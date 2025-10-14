@@ -176,10 +176,10 @@ Commands:
 
 Tip: Full-screen apps (vi, htop, nano) are fully supported!
 `,
-		pterm.FgGreen.Sprintf(agentName),
-		pterm.FgCyan.Sprintf(address),
+		pterm.FgGreen.Sprint(agentName),
+		pterm.FgCyan.Sprint(address),
 		width, height,
-		pterm.FgYellow.Sprintf(hostname),
+		pterm.FgYellow.Sprint(hostname),
 	))
 
 	fmt.Println(banner)
