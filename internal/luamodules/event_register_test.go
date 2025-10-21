@@ -1,6 +1,7 @@
 package luamodules
 
 import (
+	"fmt"
 	"testing"
 
 	lua "github.com/yuin/gopher-lua"
@@ -493,5 +494,62 @@ func TestEventRegisterModule_ExtractCommonFields_AgentNames(t *testing.T) {
 				t.Errorf("Expected agent %s, got %v", agentName, watcherConfig["agent"])
 			}
 		})
+	}
+}
+
+// Test storeWatcher with different watcher types
+func TestEventRegisterModule_StoreWatcher_DifferentTypes(t *testing.T) {
+	watcherTypes := []string{"file", "process", "port", "service", "cpu", "memory", "custom"}
+
+	L := lua.NewState()
+	defer L.Close()
+
+	module := NewEventRegisterModule()
+
+	for i, watcherType := range watcherTypes {
+		watcherConfig := map[string]interface{}{
+			"id":   fmt.Sprintf("watcher-%d", i),
+			"type": watcherType,
+		}
+
+		module.storeWatcher(L, watcherConfig)
+	}
+
+	// Verify all watchers are stored
+	watchersTable := L.GetGlobal("_WATCHERS").(*lua.LTable)
+
+	for i := range watcherTypes {
+		watcherID := fmt.Sprintf("watcher-%d", i)
+		value := L.GetField(watchersTable, watcherID)
+		if value == lua.LNil {
+			t.Errorf("Expected watcher %s to be stored", watcherID)
+		}
+	}
+}
+
+// Test extractCommonFields with both interval and agent
+func TestEventRegisterModule_ExtractCommonFields_BothFields(t *testing.T) {
+	L := lua.NewState()
+	defer L.Close()
+
+	module := NewEventRegisterModule()
+
+	config := L.NewTable()
+	L.SetField(config, "interval", lua.LString("30s"))
+	L.SetField(config, "agent", lua.LString("production-agent"))
+
+	watcherConfig := make(map[string]interface{})
+	module.extractCommonFields(L, config, watcherConfig)
+
+	if len(watcherConfig) != 2 {
+		t.Errorf("Expected 2 fields in watcherConfig, got %d", len(watcherConfig))
+	}
+
+	if interval, ok := watcherConfig["interval"].(string); !ok || interval != "30s" {
+		t.Error("Expected interval to be extracted")
+	}
+
+	if agent, ok := watcherConfig["agent"].(string); !ok || agent != "production-agent" {
+		t.Error("Expected agent to be extracted")
 	}
 }
